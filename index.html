@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+
+<html lang="de">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
+<meta content="#070b0d" name="theme-color"/>
+<meta content="MapCreator für Ardumower – mobile Kartenaufnahme über Web Bluetooth und Sunray." name="description"/>
+<title>MapCreator für Ardumower</title>
+<link href="./manifest.webmanifest" rel="manifest"/>
+<link href="./icon.svg" rel="icon" type="image/svg+xml"/>
+<link href="./styles.css" rel="stylesheet"/>
+</head>
+<body>
+<header class="topbar">
+<div class="brand">
+<span aria-hidden="true" class="brand-mark">M</span>
+<div>
+<div class="eyebrow">SUNRAY · MAPCREATOR</div>
+<h1>MapCreator für Ardumower</h1>
+</div>
+</div>
+
+<div class="topbar-actions"><button aria-label="Auf Englisch umschalten" class="language-toggle" data-language="de" id="languageToggle" type="button"><span class="lang-option lang-de">DE</span><span aria-hidden="true" class="lang-divider">|</span><span class="lang-option lang-en">EN</span></button><div class="pill offline" id="connectionPill">Nicht verbunden</div></div></header>
+<nav aria-label="Bereiche" class="tabs" data-i18n-aria-label="tabsAria" role="tablist">
+<button aria-controls="tabCapture" aria-selected="true" class="tab-btn active" data-tab="capture" role="tab" type="button">
+<span class="tab-icon">◎</span><span data-i18n="tabCapture">Aufnahme</span>
+</button>
+<button aria-controls="tabMaps" aria-selected="false" class="tab-btn" data-tab="maps" role="tab" type="button">
+<span class="tab-icon">▱</span><span data-i18n="tabMaps">Karten</span>
+</button>
+<button aria-controls="tabConnection" aria-selected="false" class="tab-btn" data-tab="connection" role="tab" type="button">
+<span class="tab-icon">⌁</span><span data-i18n="tabConnection">Verbindung</span>
+</button>
+<button aria-controls="tabControl" aria-selected="false" class="tab-btn" data-tab="control" role="tab" type="button">
+<span class="tab-icon">✥</span><span data-i18n="tabControl">Steuerung</span>
+</button>
+<button aria-controls="tabHelp" aria-selected="false" class="tab-btn" data-tab="help" role="tab" type="button">
+<span class="tab-icon">?</span><span data-i18n="tabHelp">Hilfe</span>
+</button>
+<button aria-controls="tabDebug" aria-selected="false" class="tab-btn" data-tab="debug" role="tab" type="button">
+<span class="tab-icon">⋯</span><span data-i18n="tabDebug">Diagnose</span>
+</button>
+</nav>
+<main class="app-shell">
+<section class="tab-panel active" data-panel="capture" id="tabCapture" role="tabpanel">
+<div class="capture-header">
+<div class="map-title-block">
+<span class="overline" data-i18n="activeMap">AKTIVE KARTE</span>
+<strong id="activeMapName">–</strong>
+</div>
+<div class="gps-badge no-data" id="gpsBadge">
+<span class="gps-dot"></span>
+<span id="gpsBadgeText">Keine GPS-Daten</span>
+</div>
+</div>
+<section aria-label="Live-Daten" class="telemetry-strip" data-i18n-aria-label="liveDataAria">
+<div class="telemetry-item">
+<span>X</span><strong id="xValue">–</strong><small>m</small>
+</div>
+<div class="telemetry-item">
+<span>Y</span><strong id="yValue">–</strong><small>m</small>
+</div>
+<div class="telemetry-item gps-item">
+<span>GPS</span><strong id="solutionValue">–</strong><small id="gpsDetail">keine Daten</small>
+</div>
+<div class="telemetry-item">
+<span data-i18n="battery">Akku</span><strong id="batteryValue">–</strong><small id="firmwareValue">Sunray</small>
+</div>
+</section>
+<section class="mapping-stage">
+<div class="map-frame">
+<svg aria-label="Vorschau der aufgenommenen Mähkarte" data-i18n-aria-label="mapPreviewAria" id="mapSvg" role="img" viewBox="0 0 1000 680">
+<rect class="canvas-bg" height="680" width="1000" x="0" y="0"></rect>
+<g id="gridLayer"></g>
+<g id="shapeLayer"></g>
+<g id="robotLayer"></g>
+</svg>
+<aside aria-label="Mapping-Werkzeuge" class="map-tools-panel" data-i18n-aria-label="mappingToolsAria">
+<div aria-label="Kartenelement" class="mode-row" data-i18n-aria-label="mapElementAria" role="group">
+<button class="mode-btn active" data-i18n="perimeter" data-mode="perimeter" type="button">Perimeter</button>
+<button class="mode-btn" data-i18n="exclusion" data-mode="exclusion" type="button">Ausschluss</button>
+<button class="mode-btn" data-i18n="dock" data-mode="dock" type="button">Dock</button>
+</div>
+<div class="auto-capture-tools" id="autoCaptureTools">
+<label class="fix-switch">
+<input id="autoCaptureEnabled" type="checkbox"/>
+<span data-i18n="autoCapture">Auto-Aufnahme</span>
+</label>
+<label class="field compact auto-distance-field">
+<span data-i18n="captureDistance">Punktabstand</span>
+<div class="unit-input"><input id="autoCaptureDistanceInput" inputmode="decimal" max="5" min="0.1" step="0.05" type="number" value="0.50"/><span>m</span></div>
+</label>
+<label class="field compact">
+<span data-i18n="autoCaptureMode">Aufnahmemodus</span>
+<select id="autoCaptureModeSelect">
+<option value="distance" data-i18n="autoModeDistance">Distanz</option>
+<option value="smart" data-i18n="autoModeSmart">Intelligent</option>
+</select>
+</label>
+<small class="auto-capture-state" id="autoCaptureState" data-i18n="autoCaptureOff">Auto-Aufnahme aus</small>
+</div>
+<button class="map-tool-action edit-tool" id="editModeBtn" type="button" aria-pressed="false">
+<span aria-hidden="true">✎</span>
+<span>
+<strong data-i18n="editPoints">Punkte bearbeiten</strong>
+<small id="editModeHint" data-i18n="editPointsHint">Vorhandenen Punkt antippen und neu anlernen</small>
+</span>
+</button>
+<div class="edit-controls hidden" id="editControls">
+<div class="edit-action-row" role="group" data-i18n-aria-label="editActionAria">
+<button class="edit-action-btn active" data-edit-action="point" data-i18n="editSinglePoint" type="button">Punkt</button>
+<button class="edit-action-btn" data-edit-action="segment" data-i18n="editSegment" type="button">Teilstück</button>
+<button class="edit-action-btn" data-edit-action="straight" data-i18n="straightLine" type="button">Gerade</button>
+</div>
+<label class="field compact">
+<span data-i18n="editMap">Karte bearbeiten</span>
+<select id="editMapSelect"></select>
+</label>
+<div class="edit-selection-card" id="editSelectionCard">
+<strong id="editSelectedLabel" data-i18n="noPointSelected">Kein Punkt ausgewählt</strong>
+<small id="editSelectedCoords" data-i18n="tapPointOnMap">Punkt direkt auf der Karte antippen.</small>
+</div>
+<label class="field compact">
+<span data-i18n="maxRelearnDistance">Max. Abstand zum Punkt</span>
+<div class="unit-input"><input id="editMaxDistanceInput" inputmode="decimal" max="10" min="0.1" step="0.1" type="number" value="1.00"/><span>m</span></div>
+</label>
+<div class="edit-small-actions">
+<button class="ghost compact-btn" data-i18n="clearSelection" disabled id="clearEditSelectionBtn" type="button">Auswahl aufheben</button>
+<button class="danger compact-btn hidden" data-i18n="cancelSegment" id="cancelSegmentBtn" type="button">Teilstück abbrechen</button>
+</div>
+</div>
+<div class="exclusion-controls hidden" id="exclusionControls">
+<label class="field compact grow">
+<span data-i18n="exclusionArea">Ausschlussfläche</span>
+<select id="exclusionSelect"></select>
+</label>
+<div class="mini-action-row">
+<button class="secondary compact-btn" data-i18n="newExclusion" id="newExclusionBtn" type="button">+ Neu</button>
+<button class="danger compact-btn" data-i18n="delete" id="deleteExclusionBtn" type="button">Löschen</button>
+</div>
+</div>
+<button class="map-tool-action undo-tool" disabled="" id="undoBtn" type="button">
+<span aria-hidden="true">↶</span>
+<span>
+<strong id="undoButtonTitle">Letzten Punkt löschen</strong>
+<small id="undoButtonHint">Noch kein Punkt aufgenommen</small>
+</span>
+</button>
+<button class="map-tool-action history-undo-tool" disabled id="historyUndoBtn" type="button">
+<span aria-hidden="true">⟲</span>
+<span><strong data-i18n="undoLastChange">Letzte Änderung zurück</strong><small id="historyUndoHint" data-i18n="noChangeToUndo">Noch keine Änderung im Verlauf</small></span>
+</button>
+<button class="map-tool-action clear-tool" data-i18n="clearCurrentElement" id="clearModeBtn" type="button">Aktuelles Element leeren</button>
+<details class="view-tool-drawer">
+<summary data-i18n="viewScale">Ansicht &amp; Maßstab</summary>
+<div class="view-settings">
+<label class="fix-switch view-toggle">
+<input checked="" id="showGrid" type="checkbox"/>
+<span data-i18n="showGrid">Raster anzeigen</span>
+</label>
+<label class="field compact">
+<span data-i18n="gridSpacing">Rasterweite</span>
+<select id="gridStepSelect">
+<option value="0.1">0.10 m</option>
+<option value="0.25">0.25 m</option>
+<option selected="" value="0.5">0.50 m</option>
+<option value="1">1.00 m</option>
+<option value="2">2.00 m</option>
+<option value="5">5.00 m</option>
+<option value="auto" data-i18n="gridAuto">Automatisch</option>
+</select>
+</label>
+<div class="view-divider"></div>
+<label class="fix-switch view-toggle">
+<input checked="" id="showMower" type="checkbox"/>
+<span data-i18n="showMower">Mäher anzeigen</span>
+</label>
+<div class="mower-size-grid">
+<label class="field compact">
+<span data-i18n="mowerLength">Länge</span>
+<div class="unit-input"><input id="mowerLengthInput" inputmode="decimal" max="3" min="0.1" step="0.01" type="number" value="0.60"/><span>m</span></div>
+</label>
+<label class="field compact">
+<span data-i18n="mowerWidth">Breite</span>
+<div class="unit-input"><input id="mowerWidthInput" inputmode="decimal" max="3" min="0.1" step="0.01" type="number" value="0.35"/><span>m</span></div>
+</label>
+</div>
+<small class="view-note" data-i18n="mowerScaleNote">Der Mäher wird maßstäblich zur Karte dargestellt.</small>
+<div class="view-divider"></div>
+<label class="fix-switch view-toggle">
+<input checked id="showTrail" type="checkbox"/>
+<span data-i18n="showTrail">Fahrspur anzeigen</span>
+</label>
+<button class="ghost compact-btn" data-i18n="clearTrail" id="clearTrailBtn" type="button">Fahrspur löschen</button>
+<div class="view-divider"></div>
+<label class="fix-switch view-toggle">
+<input checked id="showPointQuality" type="checkbox"/>
+<span data-i18n="showPointQuality">Punktqualität anzeigen</span>
+</label>
+<label class="fix-switch view-toggle">
+<input checked id="keepAwake" type="checkbox"/>
+<span data-i18n="keepAwake">Bildschirm beim Mapping wachhalten</span>
+</label>
+<small class="view-note" id="wakeLockStatus" data-i18n="wakeLockAuto">Wird bei aktiver Aufnahme automatisch verwendet.</small>
+</div>
+</details>
+<details class="measurement-tool-drawer" id="measurementDrawer">
+<summary data-i18n="measurement">Messen</summary>
+<div class="validation-controls">
+<button class="secondary compact-btn" data-i18n="startMeasurement" id="measureModeBtn" type="button">Messung starten</button>
+<div class="validation-summary" id="measurementSummary" data-i18n="measurementHint">Zwei Stellen auf der Karte antippen.</div>
+<button class="ghost compact-btn" data-i18n="clearMeasurement" id="clearMeasurementBtn" type="button">Messung löschen</button>
+</div>
+</details>
+<details class="validation-tool-drawer" id="validationDrawer">
+<summary data-i18n="mapCheck">Kartenprüfung</summary>
+<div class="validation-controls">
+<button class="secondary compact-btn" data-i18n="checkNow" id="validateMapBtn" type="button">Jetzt prüfen</button>
+<div class="validation-summary" id="validationSummary" data-i18n="notCheckedYet">Noch nicht geprüft.</div>
+<div class="validation-list" id="validationList"></div>
+</div>
+</details>
+<div class="tool-status-block">
+<label class="fix-switch">
+<input checked="" id="fixOnly" type="checkbox"/>
+<span data-i18n="onlyRtkFix">Nur bei RTK FIX</span>
+</label>
+<span aria-live="polite" class="tool-point-status" id="pointStatus">Zum Aufnehmen zuerst verbinden.</span>
+<span class="save-state" id="saveState">–</span>
+</div>
+<details class="recent-tool-drawer">
+<summary data-i18n="recentPoints">Letzte Punkte</summary>
+<div class="recent-points" id="recentPoints"></div>
+</details>
+</aside>
+<div class="map-hud">
+<span id="mapSummary">Keine Karte geladen.</span>
+<span class="map-distance-info" id="mapDistanceInfo">–</span>
+</div>
+</div>
+</section>
+<section aria-label="Punkt aufnehmen" class="capture-dock" data-i18n-aria-label="capturePointAria">
+<button class="capture capture-idle" disabled="" id="addPointBtn" type="button">
+<span aria-hidden="true" class="capture-icon">＋</span>
+<span class="capture-copy">
+<strong id="captureButtonTitle">Punkt aufnehmen</strong>
+<small id="captureButtonHint">Warte auf aktuelle Position</small>
+</span>
+</button>
+</section>
+</section>
+<section class="tab-panel" data-panel="maps" hidden="" id="tabMaps" role="tabpanel">
+<div class="page-heading">
+<div>
+<span class="overline" data-i18n="localOnDevice">LOKAL AUF DIESEM GERÄT</span>
+<h2 data-i18n="myMaps">Meine Karten</h2>
+<p data-i18n="mapsDescription">Bis zu 10 Mähkarten lokal speichern, auswählen und als JSON oder GeoJSON sichern.</p>
+</div>
+</div>
+<section class="map-gallery-section">
+<div class="map-gallery-head"><strong data-i18n="mapOverview">Kartenübersicht</strong><span id="mapCountBadge">0 / 10</span></div>
+<div class="map-gallery" id="mapGallery"></div>
+</section>
+<section class="card">
+<div class="form-stack">
+<label class="field">
+<span data-i18n="activeMapField">Aktive Karte</span>
+<select id="mapSelect"></select>
+</label>
+<div class="new-map-row">
+<label class="field grow">
+<span data-i18n="newMapField">Neue Karte</span>
+<input data-i18n-placeholder="newMapPlaceholder" id="newMapName" maxlength="60" placeholder="z. B. Hintergarten" type="text"/>
+</label>
+<button class="primary" data-i18n="createMap" id="newMapBtn" type="button">Neue Karte anlegen</button>
+</div>
+</div>
+</section>
+<section class="card action-card">
+<div>
+<h3 data-i18n="backupManagement">Backup &amp; Verwaltung</h3>
+<p data-i18n="backupDescription">Die Kartendaten liegen in IndexedDB des Browsers. Ein Export ist die einfachste Sicherung.</p>
+</div>
+<div class="stacked-actions">
+<div aria-label="Karte exportieren" class="export-grid" data-i18n-aria-label="exportMapAria" role="group">
+<button class="secondary" data-i18n="saveJson" id="exportJsonBtn" type="button">Als JSON speichern</button>
+<button class="secondary" data-i18n="saveGeoJson" id="exportGeoJsonBtn" type="button">Als GeoJSON speichern</button>
+</div>
+<small class="export-hint" data-i18n="exportHint">JSON enthält das vollständige Mapper-Backup. GeoJSON speichert Perimeter/Ausschlüsse/Dock als Geometrien mit lokalen Sunray-X/Y-Koordinaten in Metern.</small>
+<label class="secondary file-button" data-i18n="importJsonGeoJson" for="importInput">JSON / GeoJSON importieren</label>
+<input accept="application/json,application/geo+json,.json,.geojson" hidden="" id="importInput" type="file"/>
+<button class="secondary" data-i18n="lockCurrentMap" id="lockMapBtn" type="button">Karte sperren</button>
+<button class="danger" data-i18n="deleteCurrentMap" id="deleteMapBtn" type="button">Aktuelle Karte löschen</button>
+</div>
+</section>
+<section class="card history-card">
+<div class="history-card-head">
+<div>
+<h3 data-i18n="versionsHistory">Versionen &amp; Verlauf</h3>
+<p data-i18n="versionsDescription">Wichtige Bearbeitungen werden lokal als Wiederherstellungspunkte gespeichert.</p>
+</div>
+<button class="secondary" data-i18n="saveVersionNow" id="saveVersionBtn" type="button">Version jetzt speichern</button>
+</div>
+<div class="history-list" id="historyList"></div>
+</section>
+</section>
+<section class="tab-panel" data-panel="connection" hidden="" id="tabConnection" role="tabpanel">
+<div class="page-heading">
+<div>
+<span class="overline" data-i18n="webBluetooth">WEB BLUETOOTH</span>
+<h2 data-i18n="connectArdumower">Ardumower verbinden</h2>
+<p data-i18n="connectionDescription">Direkte BLE-Verbindung zum ESP32. Kein WLAN und kein Server erforderlich.</p>
+</div>
+</div>
+<div class="notice warning hidden" id="browserWarning"></div>
+<section class="card connection-card">
+<div class="connection-hero">
+<div aria-hidden="true" class="connection-orb">⌁</div>
+<div>
+<h3 data-i18n="bluetoothConnection">Bluetooth-Verbindung</h3>
+<p aria-live="polite" id="connectionDetail">Bereit.</p>
+</div>
+</div>
+<label class="field password-field">
+<span data-i18n="sunrayPassword">Sunray-Passwort</span>
+<input aria-describedby="passwordHint" autocomplete="off" id="passwordInput" inputmode="numeric" type="password" value="123456"/>
+<small data-i18n="passwordHint" id="passwordHint">Nur für diese Sitzung. Wird nicht mit der Karte gespeichert.</small>
+</label>
+<div class="connection-actions">
+<button class="primary big-action" data-i18n="searchConnect" id="connectBtn" type="button">Gerät suchen &amp; verbinden</button>
+<button class="secondary" data-i18n="disconnect" disabled="" id="disconnectBtn" type="button">Verbindung trennen</button>
+<button class="ghost" id="demoBtn" type="button">Demo-Modus starten</button>
+</div>
+</section>
+</section>
+
+<section class="tab-panel" data-panel="control" hidden="" id="tabControl" role="tabpanel">
+<div class="page-heading">
+<div><span class="overline" data-i18n="controlOverline">MANUELL · BLE · SUNRAY</span><h2 data-i18n="controlTitle">Mähersteuerung</h2><p data-i18n="controlIntro">Direkte manuelle Fahrt über Sunray. Fahrbefehle funktionieren nur bei aktiver BLE-Verbindung.</p></div>
+</div>
+<section class="card control-safety-card">
+<div class="control-status-row"><span data-i18n="controlConnection">Verbindung</span><strong id="controlConnectionStatus">Nicht verbunden</strong></div>
+<div class="notice warning"><strong data-i18n="controlSafetyTitle">Sicherheit</strong><span data-i18n="controlSafetyText">Nur bei freier Sicht zum Mäher verwenden. Der physische Not-Aus/Stop-Taster am Mäher bleibt die wichtigste Sicherheitsfunktion. Bei Funkverlust kann der Browser keinen Stop-Befehl mehr übertragen.</span></div>
+<button class="danger emergency-stop" id="emergencyStopBtn" type="button"><span>■</span><strong data-i18n="stopEverything">STOP ALLES</strong><small data-i18n="stopEverythingHint">Fahrt stoppen · Mähmotor aus · Sunray IDLE</small></button>
+</section>
+<section class="card manual-drive-card">
+<div class="control-section-head"><div><h3 data-i18n="manualDrive">Manuell fahren</h3><p data-i18n="manualDriveHint">Richtung gedrückt halten. Beim Loslassen wird sofort AT+M,0,0 gesendet.</p></div><div class="speed-readout"><span data-i18n="driveSpeed">Tempo</span><strong id="driveSpeedValue">0,15 m/s</strong></div></div>
+<label class="field"><span data-i18n="driveSpeed">Tempo</span><input id="driveSpeedSlider" type="range" min="0.05" max="0.35" step="0.01" value="0.15"/></label>
+<div class="drive-pad" aria-label="Manuelle Fahrsteuerung" data-i18n-aria-label="manualDrive">
+<button class="drive-btn drive-forward" data-drive="forward" type="button"><span>▲</span><small data-i18n="forward">Vor</small></button>
+<button class="drive-btn drive-left" data-drive="left" type="button"><span>◀</span><small data-i18n="left">Links</small></button>
+<button class="drive-btn drive-stop" id="driveStopBtn" type="button"><span>■</span><small data-i18n="stop">Stop</small></button>
+<button class="drive-btn drive-right" data-drive="right" type="button"><span>▶</span><small data-i18n="right">Rechts</small></button>
+<button class="drive-btn drive-reverse" data-drive="reverse" type="button"><span>▼</span><small data-i18n="reverse">Zurück</small></button>
+</div>
+<div class="control-command-state" id="driveState" data-i18n="driveIdle">Fahrt gestoppt</div>
+</section>
+<section class="card mow-control-card">
+<div class="control-section-head"><div><h3 data-i18n="mowMotor">Mähmotor</h3><p data-i18n="mowMotorHint">Zum Einschalten zuerst freigeben und den Startknopf gedrückt halten. Ausschalten ist immer sofort möglich.</p></div><span class="mow-state off" id="mowMotorState" data-i18n="mowOff">AUS</span></div>
+<label class="fix-switch danger-switch"><input id="mowArmCheckbox" type="checkbox"/><span data-i18n="armMowMotor">Mähmotor-Steuerung freigeben</span></label>
+<div class="mow-pwm-control">
+<div class="control-section-head mow-pwm-head"><div><h4 data-i18n="mowPwmTitle">Mähmotor-Leistung (PWM)</h4><p data-i18n="mowPwmHint">0 = aus · 255 = maximale in Sunray erlaubte PWM. Das ist keine gemessene Drehzahl.</p></div><div class="speed-readout"><span>PWM</span><strong id="mowPwmReadout">255 · 100%</strong></div></div>
+<label class="sr-only" for="mowPwmSlider" data-i18n="mowPwmTitle">Mähmotor-Leistung (PWM)</label>
+<input id="mowPwmSlider" class="mow-pwm-slider" type="range" min="0" max="255" step="1" value="255"/>
+<div class="mow-pwm-input-row">
+<label class="field compact-field"><span data-i18n="mowPwmValue">PWM-Wert</span><input id="mowPwmNumber" inputmode="numeric" type="number" min="0" max="255" step="1" value="255"/></label>
+<button class="secondary mow-pwm-apply" id="mowPwmApplyBtn" type="button" data-i18n="mowPwmApply">PWM übernehmen</button>
+</div>
+</div>
+<button class="mow-start-button" disabled id="mowMotorBtn" type="button"><strong data-i18n="holdToStartMow">Zum Einschalten 1,5 s halten</strong><small data-i18n="mowHoldHint">Beim Einschalten dreht das Messerwerk an.</small></button>
+<div class="mow-progress" aria-hidden="true"><span id="mowHoldProgress"></span></div>
+<small class="view-note" data-i18n="mowStateNote">Die Anzeige zeigt den zuletzt von MapCreator gesendeten Zustand, keine unabhängige Drehzahl-Rückmeldung.</small>
+</section>
+</section>
+<section class="tab-panel" data-panel="help" hidden="" id="tabHelp" role="tabpanel">
+<div class="page-heading">
+<div>
+<span class="overline" data-i18n="helpOverline">HILFE · OFFLINE · KOMPATIBILITÄT</span>
+<h2 data-i18n="helpTitle">Hilfe & Anleitung</h2>
+<p data-i18n="helpIntro">Alles Wichtige für Kartenerstellung, Bluetooth, Offline-Betrieb und Datensicherung.</p>
+</div>
+</div>
+
+<section class="card help-system-card">
+<div class="help-card-head">
+<div>
+<h3 data-i18n="systemCheckTitle">Systemcheck auf diesem Gerät</h3>
+<p data-i18n="systemCheckText">Hier siehst du sofort, ob die technischen Voraussetzungen für den Einsatz im Garten passen.</p>
+</div>
+<span class="help-version">v13</span>
+</div>
+<div class="help-status-grid">
+<div class="help-status-row"><span data-i18n="secureContextLabel">HTTPS / sicherer Kontext</span><strong class="status-value" id="helpSecureStatus">–</strong></div>
+<div class="help-status-row"><span data-i18n="webBluetoothLabel">Web Bluetooth</span><strong class="status-value" id="helpBluetoothStatus">–</strong></div>
+<div class="help-status-row"><span data-i18n="offlineCacheLabel">Offline-Cache</span><strong class="status-value" id="helpOfflineStatus">–</strong></div>
+<div class="help-status-row"><span data-i18n="internetStatusLabel">Internetverbindung</span><strong class="status-value" id="helpNetworkStatus">–</strong></div>
+</div>
+<small class="help-source-note" data-i18n="compatibilityDate">Kompatibilitätsstand: August 2026.</small><small class="help-source-note" data-i18n="networkStatusNote">Der Online/Offline-Wert ist ein Browser-Netzwerksignal und kein aktiver Test zu GitHub.</small>
+</section>
+
+<section class="card help-card">
+<h3 data-i18n="quickStartTitle">Schnellstart im Garten</h3>
+<ol class="help-steps">
+<li><span data-i18n="quick1">MapCreator einmal mit Internet in Chrome öffnen. Dadurch werden die App-Dateien für Offline-Betrieb gespeichert.</span></li>
+<li><span data-i18n="quick2">Optional über Chrome „Zum Startbildschirm hinzufügen“ / „App installieren“ wählen.</span></li>
+<li><span data-i18n="quick3">Bluetooth am Android-Gerät einschalten und im Reiter „Verbindung“ auf „Gerät suchen & verbinden“ tippen.</span></li>
+<li><span data-i18n="quick4">Im Bluetooth-Dialog den Ardumower auswählen. Die Auswahl muss aus Sicherheitsgründen vom Benutzer bestätigt werden.</span></li>
+<li><span data-i18n="quick5">Eine vorhandene Karte wählen oder unter „Karten“ eine neue Karte anlegen.</span></li>
+<li><span data-i18n="quick6">Auf RTK FIX warten. Bei aktivem „Nur bei RTK FIX“ wird der große Aufnahme-Button erst dann grün.</span></li>
+<li><span data-i18n="quick7">Perimeter, Ausschlussflächen oder Dockpfad aufnehmen. Auto-Aufnahme kann Punkte nach eingestellter Distanz setzen.</span></li>
+<li><span data-i18n="quick8">Nach der Aufnahme die Kartenprüfung ausführen und die Karte als JSON sichern; GeoJSON ist zusätzlich für Geometrie-Austausch verfügbar.</span></li>
+</ol>
+</section>
+
+<section class="card help-card">
+<h3 data-i18n="compatTitle">Android & Browser-Kompatibilität</h3>
+<div class="compat-grid">
+<div class="compat-item good"><strong>Android + Chrome</strong><span data-i18n="compatAndroidChrome">Empfohlen. Technische Mindestbasis für Web Bluetooth ist Android 6.0; verwende möglichst eine aktuelle Chrome-Version.</span></div>
+<div class="compat-item good"><strong>Samsung Internet</strong><span data-i18n="compatSamsung">Web Bluetooth wird unterstützt. Für den MapCreator empfehlen wir trotzdem Chrome als primär getesteten Browser.</span></div>
+<div class="compat-item bad"><strong>Firefox / Firefox Android</strong><span data-i18n="compatFirefox">Nicht geeignet für die Bluetooth-Verbindung: Firefox stellt die benötigte Web-Bluetooth-API nicht bereit. Die Offline-Seite allein kann funktionieren, BLE jedoch nicht.</span></div>
+<div class="compat-item bad"><strong>iPhone / iPad</strong><span data-i18n="compatIos">Nicht unterstützt. Safari und Chrome auf iOS/iPadOS stellen für Webseiten derzeit kein natives Web Bluetooth bereit. Dadurch kann der MapCreator den Ardumower dort nicht direkt per BLE verbinden.</span></div>
+<div class="compat-item neutral"><strong>Windows / macOS</strong><span data-i18n="compatDesktop">Mit unterstütztem Chromium-Browser kann Web Bluetooth ebenfalls funktionieren. Die Oberfläche ist jedoch primär für Android-Handys und -Tablets ausgelegt.</span></div>
+</div>
+<div class="notice info help-note"><strong data-i18n="androidMinTitle">Android-Version:</strong> <span data-i18n="androidMinText">Google dokumentiert Web Bluetooth für Chrome auf Android ab Android 6.0. Da alte Geräte und Browser-Versionen stark variieren, ist ein aktuelles Android mit aktuellem Chrome klar empfehlenswert.</span></div><div class="notice info help-note"><strong data-i18n="androidPermissionTitle">Bluetooth-Berechtigungen:</strong> <span data-i18n="androidPermissionText">Falls die Gerätesuche blockiert ist, prüfe die Android-App-Berechtigungen von Chrome. Ab Android 12 gibt es dafür die Berechtigungsgruppe „Geräte in der Nähe“.</span></div>
+</section>
+
+<section class="card help-card">
+<h3 data-i18n="offlineTitle">Offline im Garten</h3>
+<div class="help-two-col">
+<div>
+<h4 data-i18n="offlineWorksTitle">Das funktioniert ohne Internet</h4>
+<ul class="help-list">
+<li data-i18n="offlineWorks1">Bluetooth-Verbindung zum Ardumower</li>
+<li data-i18n="offlineWorks2">Live-X/Y, RTK-Status und Kartenaufnahme</li>
+<li data-i18n="offlineWorks3">Auto-Aufnahme, Punkt-/Teilstück-Bearbeitung und Kartenprüfung</li>
+<li data-i18n="offlineWorks4">Bis zu 10 Karten in IndexedDB, Versionen und Undo</li>
+<li data-i18n="offlineWorks5">JSON- und GeoJSON-Export</li>
+</ul>
+</div>
+<div>
+<h4 data-i18n="offlineNeedsTitle">Dafür wird Internet benötigt</h4>
+<ul class="help-list">
+<li data-i18n="offlineNeeds1">Der allererste Aufruf von GitHub Pages</li>
+<li data-i18n="offlineNeeds2">Ein neues App-Update herunterladen</li>
+<li data-i18n="offlineNeeds3">Neu laden, falls der Offline-Cache vorher gelöscht wurde</li>
+</ul>
+</div>
+</div>
+<div class="notice warning"><span data-i18n="offlineWarning">Wichtig: Browserdaten/Website-Daten löschen kann sowohl Offline-Cache als auch lokal gespeicherte Karten entfernen. Regelmäßig JSON-Backups erstellen.</span></div>
+</section>
+
+<section class="card help-card">
+<h3 data-i18n="bluetoothHelpTitle">Bluetooth-Verbindung verstehen</h3>
+<ul class="help-list">
+<li data-i18n="bleHelp1">MapCreator nutzt Bluetooth Low Energy (BLE) und verbindet sich direkt mit dem Ardumower-ESP32 – nicht über das Internet.</li>
+<li data-i18n="bleHelp2">Der bekannte Ardumower-BLE-UART-Service verwendet FFE0/FFE1. Sunray-Kommandos werden über diese Verbindung übertragen.</li>
+<li data-i18n="bleHelp3">Die Gerätesuche darf ein Browser nur nach einer Benutzeraktion starten. Deshalb musst du den großen Verbindungsbutton antippen und den Ardumower auswählen.</li>
+<li data-i18n="bleHelp4">Das Sunray-Passwort wird nur für die laufende Sitzung verwendet und nicht mit der Karte gespeichert.</li>
+<li data-i18n="bleHelp5">Wenn die BLE-Verbindung durch Standby, Reichweite oder Browser-Neustart abbricht, einfach erneut „Gerät suchen & verbinden“ verwenden.</li>
+</ul>
+</section>
+
+<section class="card help-card">
+<h3 data-i18n="mappingHelpTitle">Karten erstellen & korrigieren</h3>
+<div class="help-feature-grid">
+<div><strong data-i18n="helpPerimeterTitle">Perimeter</strong><span data-i18n="helpPerimeterText">Äußere Mähgrenze Punkt für Punkt oder automatisch nach Distanz aufnehmen.</span></div>
+<div><strong data-i18n="helpExclusionTitle">Ausschlussflächen</strong><span data-i18n="helpExclusionText">Mehrere geschlossene Bereiche innerhalb des Perimeters anlegen, die nicht gemäht werden sollen.</span></div>
+<div><strong data-i18n="helpDockTitle">Dockpfad</strong><span data-i18n="helpDockText">Offenen Punktpfad für den Dockbereich erfassen.</span></div>
+<div><strong data-i18n="helpEditTitle">Punkte bearbeiten</strong><span data-i18n="helpEditText">Vorhandenen Punkt auswählen, Mäher in seine Nähe stellen und die Position neu anlernen.</span></div>
+<div><strong data-i18n="helpSegmentTitle">Teilstück neu anlernen</strong><span data-i18n="helpSegmentText">Start- und Endpunkt wählen und nur den Abschnitt dazwischen neu aufnehmen.</span></div>
+<div><strong data-i18n="helpStraightTitle">Gerade</strong><span data-i18n="helpStraightText">Zwei Punkte auswählen und dazwischenliegende Punkte auf einer Geraden verteilen.</span></div>
+<div><strong data-i18n="helpValidationTitle">Kartenprüfung</strong><span data-i18n="helpValidationText">Sucht Selbstüberschneidungen, problematische Abstände, Ausschlüsse außerhalb des Perimeters und fehlende RTK-FIX-Punkte.</span></div>
+<div><strong data-i18n="helpVersionsTitle">Versionen & Undo</strong><span data-i18n="helpVersionsText">Wichtige Änderungen werden lokal als Wiederherstellungspunkte gespeichert.</span></div>
+<div><strong data-i18n="helpQualityTitle">Punktqualität</strong><span data-i18n="helpQualityText">Kartenpunkte können abhängig von RTK-Lösung und Genauigkeit farblich bewertet werden.</span></div>
+<div><strong data-i18n="helpSmartAutoTitle">Intelligente Auto-Aufnahme</strong><span data-i18n="helpSmartAutoText">Auf Geraden werden weniger Punkte gesetzt, bei Richtungsänderungen automatisch dichter.</span></div>
+<div><strong data-i18n="helpMeasureTitle">Messwerkzeug</strong><span data-i18n="helpMeasureText">Zwei Stellen antippen und die Distanz direkt in Metern ablesen.</span></div>
+<div><strong data-i18n="helpLockTitle">Kartensperre</strong><span data-i18n="helpLockText">Fertige Karten lassen sich gegen versehentliche Änderungen sperren.</span></div>
+</div>
+</section>
+
+<section class="card help-card">
+<h3 data-i18n="controlHelpTitle">Manuelle Mähersteuerung</h3>
+<ul class="help-list">
+<li data-i18n="controlHelp1">Im Reiter „Steuerung“ wird der Mäher mit gedrückt gehaltenen Richtungstasten über Sunray AT+M bewegt. Loslassen sendet Stop.</li>
+<li data-i18n="controlHelp2">„STOP ALLES“ sendet Fahrstopp, schaltet den Mähmotor aus und setzt Sunray auf IDLE.</li>
+<li data-i18n="controlHelp3">Der Mähmotor benötigt eine bewusste Freigabe und einen gehaltenen Startknopf. Ausschalten erfolgt mit einem Tipp.</li>
+<li data-i18n="controlHelp4">Wichtig: Bei Bluetooth-Funkverlust kann die Webseite keinen neuen Stop-Befehl mehr übertragen. Deshalb nur bei Sichtkontakt arbeiten und den physischen Stop/Not-Aus am Mäher erreichbar halten.</li>
+<li data-i18n="controlHelp5">Die Mähmotor-Leistung ist von 0 bis 255 einstellbar. Sunray verwendet den Wert als PWM-Obergrenze; er ist keine direkte RPM-Vorgabe oder unabhängige Drehzahlmessung.</li>
+</ul>
+</section>
+
+<section class="card help-card">
+<h3 data-i18n="formatsTitle">Speichern, JSON & GeoJSON</h3>
+<div class="help-two-col">
+<div class="format-card"><strong>JSON</strong><p data-i18n="jsonHelp">Empfohlenes vollständiges Backup für MapCreator. Enthält Kartenstruktur, Punkte und zusätzliche Metadaten wie Aufnahme-/Editierinformationen.</p></div>
+<div class="format-card"><strong>GeoJSON</strong><p data-i18n="geoJsonHelp">Für Geometrie-Austausch. Perimeter und Ausschlüsse werden als Polygone, der Dockpfad als LineString exportiert.</p></div>
+</div>
+<div class="notice info help-note"><span data-i18n="geoJsonXYWarning">Die Ardumower-Koordinaten sind lokale Sunray-X/Y-Werte in Metern. Sie sind keine GPS-Längen-/Breitengrade und werden deshalb im Export ausdrücklich als lokales metrisches Koordinatensystem gekennzeichnet.</span></div>
+</section>
+
+<section class="card help-card">
+<h3 data-i18n="troubleshootingTitle">Fehlerbehebung</h3>
+<div class="faq-list">
+<details><summary data-i18n="faqDeviceTitle">Ardumower wird nicht gefunden</summary><p data-i18n="faqDeviceText">Prüfe Bluetooth am Tablet, aktuelle Chrome-Version, Reichweite und ob der ESP32 BLE sendet. Falls eine andere App bereits verbunden ist, diese Verbindung zuerst trennen. Danach Bluetooth-Gerätesuche erneut öffnen.</p></details>
+<details><summary data-i18n="faqButtonTitle">Aufnahme-Button wird nicht grün</summary><p data-i18n="faqButtonText">Grün bedeutet echten RTK FIX. Prüfe RTK-Empfang und die Live-Daten. Wenn „Nur bei RTK FIX“ aktiv ist, bleibt die Aufnahme bei FLOAT/INVALID gesperrt.</p></details>
+<details><summary data-i18n="faqOfflineTitle">Die App startet ohne WLAN nicht</summary><p data-i18n="faqOfflineText">Öffne die GitHub-Pages-Seite mindestens einmal mit Internet und warte, bis der Offline-Cache im Systemcheck als bereit angezeigt wird. Danach am besten als PWA installieren.</p></details>
+<details><summary data-i18n="faqMapsGoneTitle">Meine Karten sind verschwunden</summary><p data-i18n="faqMapsGoneText">Karten liegen lokal im Browser. Gelöschte Website-Daten, ein anderer Browser oder ein anderes Benutzerprofil haben einen eigenen Speicher. Importiere dein letztes JSON-Backup.</p></details>
+<details><summary data-i18n="faqIosTitle">Warum funktioniert es auf iPhone/iPad nicht?</summary><p data-i18n="faqIosText">Der MapCreator benötigt Web Bluetooth. Safari und Chrome auf iOS/iPadOS bieten diese Web-API derzeit nicht nativ an; deshalb kann die Webseite den Ardumower dort nicht direkt auswählen und verbinden.</p></details>
+</div>
+</section>
+
+<section class="card help-card">
+<h3 data-i18n="privacyTitle">Daten & Privatsphäre</h3>
+<ul class="help-list">
+<li data-i18n="privacy1">GitHub Pages liefert nur die statische App aus. Deine aufgezeichneten Karten werden nicht automatisch zu GitHub hochgeladen.</li>
+<li data-i18n="privacy2">Karten und Versionen liegen lokal im Browser des verwendeten Geräts.</li>
+<li data-i18n="privacy3">Bluetooth-Kommunikation läuft direkt zwischen Browser und Ardumower-ESP32.</li>
+<li data-i18n="privacy4">Das Sunray-Passwort wird nicht in den Kartendaten gespeichert.</li>
+<li data-i18n="privacy5">Für wichtige Karten regelmäßig ein JSON-Backup auf einem zweiten Speicherort ablegen.</li>
+</ul>
+</section>
+</section>
+
+<section class="tab-panel" data-panel="debug" hidden="" id="tabDebug" role="tabpanel">
+<div class="page-heading">
+<div>
+<span class="overline" data-i18n="technicalData">TECHNISCHE DATEN</span>
+<h2 data-i18n="tabDebug">Diagnose</h2>
+<p data-i18n="diagnosticsDescription">Für den ersten Test am echten Ardumower: Hier siehst du die Sunray-Kommunikation.</p>
+</div>
+</div>
+<section class="card debug-card">
+<div class="debug-actions">
+<button class="secondary" data-i18n="sendVersion" disabled="" id="requestVersionBtn" type="button">AT+V senden</button>
+<button class="secondary" data-i18n="sendState" disabled="" id="requestStateBtn" type="button">AT+S senden</button>
+<button class="ghost" data-i18n="clearLog" id="clearLogBtn" type="button">Log leeren</button>
+</div>
+<pre aria-live="polite" id="debugLog"></pre>
+</section>
+</section>
+</main>
+<footer data-i18n="footerText">
+    Lokale Kartenaufnahme · kein Upload zum Mäher · Web Bluetooth benötigt einen unterstützten Browser
+  </footer>
+<script src="./protocol.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>
