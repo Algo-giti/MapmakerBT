@@ -37,24 +37,34 @@
 </svg>
 
 <div class="map-fab-stack map-fab-topright">
-<button aria-label="Punkt löschen" class="map-fab danger-fab" data-i18n-aria-label="deletePoint" hidden="" id="deletePointBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></button>
+<div class="fab-with-label" id="deleteFabWrap">
+<span class="fab-label" id="deleteBtnLabel">Letzten Punkt</span>
+<button class="map-fab delete-fab" id="deletePointBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></button>
+</div>
 <button aria-label="Ansicht zurücksetzen" class="map-fab" data-i18n-aria-label="fitView" hidden="" id="fitViewBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
 </div>
 
-<button aria-label="Letzten Punkt löschen" class="map-fab undo-fab" data-i18n-aria-label="undoTitle" disabled="" id="undoBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 9h10a5 5 0 0 1 0 10H8M4 9l4-4M4 9l4 4"/></svg><span class="sr-only" id="undoButtonTitle">Letzten Punkt löschen</span></button>
-
+<div class="capture-cluster" id="captureCluster">
+<div class="fab-with-label">
+<span class="fab-label" id="autoCaptureLabel">Automatik</span>
+<button class="auto-fab" id="autoCaptureBtn" type="button">
+<span aria-hidden="true" class="auto-fab-icon icon-play"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span>
+<span aria-hidden="true" class="auto-fab-icon icon-pause"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg></span>
+</button>
+</div>
 <button class="capture-fab" id="addPointBtn" type="button">
 <span aria-hidden="true" class="capture-ring" id="captureProgress"></span>
 <span aria-hidden="true" class="capture-fab-icon icon-add"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>
 <span aria-hidden="true" class="capture-fab-icon icon-move"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg></span>
 <span class="capture-fab-label" id="captureButtonTitle">Punkt aufnehmen</span>
 </button>
+</div>
 
 <div class="map-hud">
 <span class="hud-line" id="mapSummary">Keine Karte geladen.</span>
-<span class="hud-line hud-dim" id="captureButtonHint">Warte auf Position</span>
 <span aria-live="polite" class="hud-line hud-dim" id="pointStatus">Zum Aufnehmen zuerst verbinden.</span>
-<span class="hud-line hud-dim" id="mapDistanceInfo">–</span>
+<span class="sr-only" id="captureButtonHint">Warte auf Position</span>
+<span class="sr-only" id="mapDistanceInfo">–</span>
 <span class="sr-only" id="activeMapName">–</span>
 <span class="sr-only" id="saveState">–</span>
 </div>
@@ -71,15 +81,28 @@
 
 </div>
 
+<div class="modal-backdrop" hidden="" id="modeDialog">
+<div aria-labelledby="modeDialogTitle" aria-modal="true" class="modal" role="dialog">
+<h2 data-i18n="chooseMode" id="modeDialogTitle">Aufnahmemodus wählen</h2>
+<div class="mode-options">
+<button class="mode-option" data-mode="perimeter" type="button"><span aria-hidden="true" class="mode-dot"></span><span data-i18n="perimeter">Perimeter</span></button>
+<button class="mode-option" data-mode="exclusion" type="button"><span aria-hidden="true" class="mode-dot"></span><span data-i18n="exclusion">Ausschluss</span></button>
+<button class="mode-option" data-mode="waypoint" type="button"><span aria-hidden="true" class="mode-dot"></span><span data-i18n="waypoints">Wegpunkte</span></button>
+<button class="mode-option" data-mode="dock" type="button"><span aria-hidden="true" class="mode-dot"></span><span data-i18n="dock">Dock</span></button>
+</div>
+<button class="ghost" data-i18n="cancel" id="modeDialogCancel" type="button">Abbrechen</button>
+</div>
+</div>
+
 <section class="menu-page" hidden="" id="menuPage">
 <header class="menu-bar">
 <button aria-label="Zurück zur Karte" class="appbar-icon-btn" data-i18n-aria-label="backToMap" id="menuCloseBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>
 <strong data-i18n="menu">Menü</strong>
 <button aria-label="Auf Englisch umschalten" class="language-toggle" data-language="de" id="languageToggle" type="button"><span class="lang-option lang-de">DE</span><span aria-hidden="true" class="lang-divider">|</span><span class="lang-option lang-en">EN</span></button>
 </header>
-<div class="menu-scroll">
+<div class="menu-scroll" id="menuScroll">
 
-<details class="menu-section" open="" id="menuConnection">
+<details class="menu-section" id="menuConnection">
 <summary data-i18n="tabConnection">Verbindung</summary>
 <div class="menu-body">
 <div class="pill offline" id="connectionPill">Nicht verbunden</div>
@@ -164,11 +187,29 @@
 </div>
 <div class="history-list" id="historyList"></div>
 </section>
+<section class="card">
+<div class="exclusion-controls hidden" id="exclusionControls">
+<label class="field compact grow"><span data-i18n="exclusionArea">Ausschlussfläche</span><select id="exclusionSelect"></select></label>
+<div class="mini-action-row">
+<button class="secondary compact-btn" data-i18n="newExclusion" id="newExclusionBtn" type="button">+ Neu</button>
+<button class="danger compact-btn" data-i18n="delete" id="deleteExclusionBtn" type="button">Löschen</button>
+</div>
+</div>
+<button class="ghost compact-btn" data-i18n="clearCurrentElement" id="clearModeBtn" type="button">Aktuelles Element leeren</button>
+<button class="ghost compact-btn" data-i18n="undoLastChange" disabled="" id="historyUndoBtn" type="button">Letzte Änderung zurück</button>
+<small class="view-note" data-i18n="noChangeToUndo" id="historyUndoHint">Noch keine Änderung im Verlauf</small>
+<details class="recent-tool-drawer"><summary data-i18n="recentPoints">Letzte Punkte</summary><div class="recent-points" id="recentPoints"></div></details>
+</section>
 </div>
 </details>
 
-<details class="menu-section">
-<summary data-i18n="driveSettings">Fahren</summary>
+<details class="menu-section" id="menuSettings">
+<summary data-i18n="settings">Einstellungen</summary>
+<div class="menu-body">
+<div class="menu-subsections" id="settingsSections">
+
+<details class="menu-subsection">
+<summary data-i18n="driveSettings">Fahrgeschwindigkeit</summary>
 <div class="menu-body">
 <section class="card">
 <div class="control-section-head"><div><h3 data-i18n="driveSpeedRange">Geschwindigkeit</h3><p data-i18n="driveSpeedRangeHint">Auslenkung des Joysticks regelt stufenlos zwischen Min und Max.</p></div><div class="speed-readout"><span data-i18n="driveSpeed">Tempo</span><strong id="driveSpeedValue">0,08 – 0,25 m/s</strong></div></div>
@@ -182,10 +223,20 @@
 </div>
 </details>
 
-<details class="menu-section">
+<details class="menu-subsection">
 <summary data-i18n="viewScale">Ansicht &amp; Maßstab</summary>
 <div class="menu-body">
 <section class="card">
+<div class="theme-setting">
+<span class="field-label" data-i18n="appearance">Darstellung</span>
+<div aria-label="Darstellung" class="theme-segment" data-i18n-aria-label="appearance" role="group">
+<button class="theme-btn" data-theme-choice="system" data-i18n="themeSystem" type="button">System</button>
+<button class="theme-btn" data-theme-choice="light" data-i18n="themeLight" type="button">Hell</button>
+<button class="theme-btn" data-theme-choice="dark" data-i18n="themeDark" type="button">Dunkel</button>
+</div>
+<small class="view-note" data-i18n="themeHint">„System“ übernimmt die Einstellung des Geräts.</small>
+</div>
+<div class="view-divider"></div>
 <label class="fix-switch view-toggle"><input checked="" id="showGrid" type="checkbox"/><span data-i18n="showGrid">Raster anzeigen</span></label>
 <label class="field compact">
 <span data-i18n="gridSpacing">Rasterweite</span>
@@ -211,32 +262,21 @@
 </div>
 </details>
 
-<details class="menu-section">
+<details class="menu-subsection">
 <summary data-i18n="captureSettings">Aufnahme</summary>
 <div class="menu-body">
 <section class="card">
 <label class="fix-switch"><input checked="" id="fixOnly" type="checkbox"/><span data-i18n="onlyRtkFix">Nur bei RTK FIX</span></label>
+<small class="view-note" data-i18n="onlyRtkFixHint">Ohne echten RTK FIX bleibt die Aufnahme gesperrt.</small>
 <div class="view-divider"></div>
-<label class="fix-switch"><input id="autoCaptureEnabled" type="checkbox"/><span data-i18n="autoCapture">Auto-Aufnahme</span></label>
-<label class="field compact"><span data-i18n="captureDistance">Punktabstand</span><div class="unit-input"><input id="autoCaptureDistanceInput" inputmode="decimal" max="5" min="0.1" step="0.05" type="number" value="0.50"/><span>m</span></div></label>
-<label class="field compact">
-<span data-i18n="autoCaptureMode">Aufnahmemodus</span>
-<select id="autoCaptureModeSelect"><option data-i18n="autoModeDistance" value="distance">Distanz</option><option data-i18n="autoModeSmart" value="smart">Intelligent</option></select>
-</label>
-<small class="auto-capture-state" data-i18n="autoCaptureOff" id="autoCaptureState">Auto-Aufnahme aus</small>
-<div class="view-divider"></div>
-<div class="exclusion-controls hidden" id="exclusionControls">
-<label class="field compact grow"><span data-i18n="exclusionArea">Ausschlussfläche</span><select id="exclusionSelect"></select></label>
-<div class="mini-action-row">
-<button class="secondary compact-btn" data-i18n="newExclusion" id="newExclusionBtn" type="button">+ Neu</button>
-<button class="danger compact-btn" data-i18n="delete" id="deleteExclusionBtn" type="button">Löschen</button>
-</div>
-</div>
-<button class="ghost compact-btn" data-i18n="clearCurrentElement" id="clearModeBtn" type="button">Aktuelles Element leeren</button>
-<button class="ghost compact-btn" data-i18n="undoLastChange" disabled="" id="historyUndoBtn" type="button">Letzte Änderung zurück</button>
-<small class="view-note" data-i18n="noChangeToUndo" id="historyUndoHint">Noch keine Änderung im Verlauf</small>
-<details class="recent-tool-drawer"><summary data-i18n="recentPoints">Letzte Punkte</summary><div class="recent-points" id="recentPoints"></div></details>
+<label class="field compact"><span data-i18n="autoCaptureInterval">Intervall der automatischen Aufnahme</span><div class="unit-input"><input id="autoCaptureIntervalInput" inputmode="decimal" max="120" min="1" step="1" type="number" value="5"/><span>s</span></div></label>
+<small class="auto-capture-state" data-i18n="autoCaptureOff" id="autoCaptureState">Automatik aus</small>
+<small class="view-note" data-i18n="autoCaptureWhereHint">Ein- und ausgeschaltet wird die Automatik über den Knopf auf der Karte.</small>
 </section>
+</div>
+</details>
+
+</div>
 </div>
 </details>
 
@@ -247,6 +287,7 @@
 <button class="secondary compact-btn" data-i18n="checkNow" id="validateMapBtn" type="button">Jetzt prüfen</button>
 <div class="validation-summary" data-i18n="notCheckedYet" id="validationSummary">Noch nicht geprüft.</div>
 <div class="validation-list" id="validationList"></div>
+<button class="secondary compact-btn" data-i18n="closeOpenContours" hidden="" id="closeContoursBtn" type="button">Offene Konturen schließen</button>
 </section>
 </div>
 </details>

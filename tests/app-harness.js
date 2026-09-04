@@ -32,7 +32,15 @@ function loadApp(options = {}) {
   const { clock = null, bleAdapter = null, exportNames = [] } = options;
   const elements = new Map();
   const documentStub = {
-    documentElement: { lang: 'de' },
+    documentElement: (() => {
+      const attrs = new Map();
+      return {
+        lang: 'de',
+        setAttribute(name, value) { attrs.set(name, String(value)); },
+        getAttribute(name) { return attrs.has(name) ? attrs.get(name) : null; },
+        removeAttribute(name) { attrs.delete(name); },
+      };
+    })(),
     getElementById(id) { if (!elements.has(id)) elements.set(id, elementStub(id)); return elements.get(id); },
     querySelector() { return null; },
     querySelectorAll() { return []; },
@@ -54,7 +62,9 @@ function loadApp(options = {}) {
     setTimeout, clearTimeout, setInterval, clearInterval,
     performance: { now: () => Date.now() },
     URL: { createObjectURL() { return 'blob:test'; }, revokeObjectURL() {} },
-    alert() {}, confirm() { return true; },
+    alert(message) { sandbox.__lastAlert = message; },
+    // Tests steuern die Antwort ueber sandbox.__confirmAnswer und lesen die Frage zurueck.
+    confirm(message) { sandbox.__lastConfirm = message; return sandbox.__confirmAnswer !== false; },
   };
 
   if (clock) {

@@ -18,6 +18,9 @@ const BLE_RX_OVERFLOW_LIMIT = 3;
 // (rund 8 s), ist die Antwortkette gestoert — auch wenn noch Bruchstuecke eintrudeln und
 // der reine Stille-Watchdog deshalb nicht anschlaegt.
 const BLE_UNANSWERED_POLL_LIMIT = 4;
+// Manuelle Aufnahme mittelt die letzten Fixes, statt den Nutzer warten zu lassen.
+const POSITION_SMOOTHING_WINDOW_MS = 2000;
+const POSITION_SMOOTHING_MAX_SAMPLES = 10;
 const DRIVE_POINTER_MIN_INTERVAL_MS = 160;
 const DB_NAME = 'ardumower-bt-mapper';
 const DB_VERSION = 1;
@@ -29,6 +32,19 @@ const MAX_MAPS = 10;
 
 const I18N = {
   de: {
+    chooseMode: 'Aufnahmemodus wählen', cancel: 'Abbrechen',
+    closeContourQuestion: 'Soll {label} geschlossen werden? Der letzte Punkt wird mit dem ersten verbunden.',
+    closeOpenContours: 'Offene Konturen schließen', closeContoursConfirm: '{count} offene Kontur(en) jetzt schließen?',
+    checkAreaOpen: '{label}: Kontur ist offen — letzter und erster Punkt sind nicht verbunden.',
+    areaSelected: '{name} ausgewählt · gesamte Fläche', areaDeleted: 'Ausschlussfläche gelöscht.',
+    deleteAreaConfirm: '„{name}“ mit allen Punkten löschen?',
+    settings: 'Einstellungen', appearance: 'Darstellung', themeSystem: 'System', themeLight: 'Hell', themeDark: 'Dunkel',
+    themeHint: '„System“ übernimmt die Einstellung des Geräts.',
+    autoCaptureInterval: 'Intervall der automatischen Aufnahme', autoCaptureOn: 'Automatik läuft',
+    autoCaptureWhereHint: 'Ein- und ausgeschaltet wird die Automatik über den Knopf auf der Karte.',
+    autoCaptureWaiting: 'Automatik wartet auf eine brauchbare Position …',
+    onlyRtkFixHint: 'Ohne echten RTK FIX bleibt die Aufnahme gesperrt.',
+    deleteLastLabel: 'Letzten Punkt', deletePointLabel: 'Punktauswahl löschen', deleteAreaLabel: 'Fläche löschen',
     bleLinkStalled: 'Keine Daten mehr vom Mäher – Verbindung wird neu aufgebaut.',
     reconnectGaveUp: 'Verbindung fehlgeschlagen – bitte erneut verbinden.',
     bleProtocolError: 'Gestörte Daten vom Mäher – Verbindung wird neu aufgebaut.',
@@ -37,7 +53,7 @@ const I18N = {
     rtkFix: 'Fix', rtkFloat: 'Float', rtkNone: 'No Fix', rtkNoData: 'Kein GPS',
     movePoint: 'Verschieben', movePointHint: 'Tippen: Punkt springt auf die Mäherposition', holdToCapture: 'Zum Aufnehmen gedrückt halten',
     deletePoint: 'Ausgewählten Punkt löschen', pointDeleted: 'Punkt {n} gelöscht.', fitView: 'Ansicht zurücksetzen',
-    driveSettings: 'Fahren', driveSpeedRange: 'Geschwindigkeit', driveSpeedRangeHint: 'Auslenkung des Joysticks regelt stufenlos zwischen Min und Max.',
+    driveSettings: 'Fahrgeschwindigkeit', driveSpeedRange: 'Geschwindigkeit', driveSpeedRangeHint: 'Auslenkung des Joysticks regelt stufenlos zwischen Min und Max.',
     driveSpeedMin: 'Minimum', driveSpeedMax: 'Maximum', driveTurnMax: 'Maximale Drehrate',
     driveSafetyNote: 'Loslassen stoppt sofort. Sunray stoppt zusätzlich nach 1 s ohne neues Fahrkommando.',
     captureSettings: 'Aufnahme',
@@ -49,35 +65,24 @@ const I18N = {
     driveHelp4: 'Diese App steuert bewusst kein Mähen: kein Start, kein Stop, kein Docking. Sie nimmt ausschließlich Karten auf.',
     appTitle: 'MapCreator für Ardumower',
     appDescription: 'MapCreator für Ardumower – mobile Kartenaufnahme über Web Bluetooth und Sunray.',
-    languageToggleLabel: 'Auf Englisch umschalten',
-    tabCapture: 'Aufnahme', tabMaps: 'Karten', tabConnection: 'Verbindung', tabControl: 'Steuerung', tabHelp: 'Hilfe', tabDebug: 'Diagnose',
+    languageToggleLabel: 'Auf Englisch umschalten', tabMaps: 'Karten', tabConnection: 'Verbindung', tabHelp: 'Hilfe', tabDebug: 'Diagnose',
     activeMap: 'AKTIVE KARTE', battery: 'Akku', perimeter: 'Perimeter', exclusion: 'Ausschluss', dock: 'Dock',
     exclusionArea: 'Ausschlussfläche', newExclusion: '+ Neu', delete: 'Löschen', clearCurrentElement: 'Aktuelles Element leeren',
-    onlyRtkFix: 'Nur bei RTK FIX', recentPoints: 'Letzte Punkte', localOnDevice: 'LOKAL AUF DIESEM GERÄT',
+    onlyRtkFix: 'Nur bei RTK FIX', recentPoints: 'Letzte Punkte',
     viewScale: 'Ansicht & Maßstab', showGrid: 'Raster anzeigen', gridSpacing: 'Rasterweite', gridAuto: 'Automatisch',
     showMower: 'Mäher anzeigen', mowerLength: 'Länge', mowerWidth: 'Breite', mowerScaleNote: 'Der Mäher wird maßstäblich zur Karte dargestellt.', mowerTooltip: 'Mäher {length} × {width} m',
-    editPoints: 'Punkte bearbeiten', editPointsHint: 'Vorhandenen Punkt antippen und neu anlernen', editModeActive: 'Editiermodus aktiv · Punkt auf der Karte auswählen', editMap: 'Karte bearbeiten',
-    noPointSelected: 'Kein Punkt ausgewählt', tapPointOnMap: 'Punkt direkt auf der Karte antippen.', maxRelearnDistance: 'Max. Abstand zum Punkt', clearSelection: 'Auswahl aufheben',
-    selectedPointInfo: '{label} · Punkt {n}', selectedPointCoords: 'X {x} · Y {y}', relearnPoint: 'Punkt neu anlernen', relearnReady: 'Punkt {n} · Abstand {distance} m · RTK FIX',
-    moveCloser: 'Mäher näher zum Punkt fahren', tooFarHint: 'Abstand {distance} m · erlaubt max. {max} m', relearnNoPosition: 'Warte auf Mäherposition', relearnSelectFirst: 'Zuerst einen Punkt auf der Karte auswählen',
-    relearnBlocked: '{solution} · Neu anlernen gesperrt', relearnWarning: 'Ohne RTK FIX neu anlernen', pointRelearned: 'Punkt {n} neu angelernt: X {x} · Y {y}',
-    myMaps: 'Meine Karten', mapsDescription: 'Bis zu 10 Mähkarten lokal speichern, auswählen und als JSON oder GeoJSON sichern.',
+    noPointSelected: 'Kein Punkt ausgewählt',
+    selectedPointInfo: '{label} · Punkt {n}', relearnPoint: 'Punkt neu anlernen', pointRelearned: 'Punkt {n} neu angelernt: X {x} · Y {y}',
     activeMapField: 'Aktive Karte', newMapField: 'Neue Karte', newMapPlaceholder: 'z. B. Hintergarten', createMap: 'Neue Karte anlegen', mapLimitReached: 'Maximal 10 Karten können lokal gespeichert werden. Lösche zuerst eine Karte.',
     backupManagement: 'Backup & Verwaltung', backupDescription: 'Die Kartendaten liegen in IndexedDB des Browsers. Ein Export ist die einfachste Sicherung.',
     saveJson: 'Als JSON speichern', saveGeoJson: 'Als GeoJSON speichern',
     exportHint: 'JSON enthält das vollständige Mapper-Backup. GeoJSON speichert Perimeter/Ausschlüsse/Dock als Geometrien mit lokalen Sunray-X/Y-Koordinaten in Metern.',
-    importJsonGeoJson: 'JSON / GeoJSON importieren', deleteCurrentMap: 'Aktuelle Karte löschen', webBluetooth: 'WEB BLUETOOTH',
-    connectArdumower: 'Ardumower verbinden', connectionDescription: 'Direkte BLE-Verbindung zum ESP32. Kein WLAN und kein Server erforderlich.',
+    importJsonGeoJson: 'JSON / GeoJSON importieren', deleteCurrentMap: 'Aktuelle Karte löschen',
     bluetoothConnection: 'Bluetooth-Verbindung', sunrayPassword: 'Sunray-Passwort', passwordHint: 'Nur für diese Sitzung. Wird nicht mit der Karte gespeichert.',
-    searchConnect: 'Gerät suchen & verbinden', disconnect: 'Verbindung trennen', technicalData: 'TECHNISCHE DATEN',
-    diagnosticsDescription: 'Für den ersten Test am echten Ardumower: Hier siehst du die Sunray-Kommunikation.',
-    sendVersion: 'AT+V senden', sendState: 'AT+S senden', clearLog: 'Log leeren',
-    footerText: 'Lokale Kartenaufnahme · kein Upload zum Mäher · Web Bluetooth benötigt einen unterstützten Browser',
-    tabsAria: 'Bereiche', liveDataAria: 'Live-Daten', mapPreviewAria: 'Vorschau der aufgenommenen Mähkarte',
-    mappingToolsAria: 'Mapping-Werkzeuge', mapElementAria: 'Kartenelement', capturePointAria: 'Punkt aufnehmen', exportMapAria: 'Karte exportieren',
+    searchConnect: 'Gerät suchen & verbinden', disconnect: 'Verbindung trennen',
+    sendVersion: 'AT+V senden', sendState: 'AT+S senden', clearLog: 'Log leeren', mapPreviewAria: 'Vorschau der aufgenommenen Mähkarte', exportMapAria: 'Karte exportieren',
     notConnected: 'Nicht verbunden', bleConnected: 'BLE verbunden', demoActive: 'Demo aktiv',
-    ready: 'Bereit.', readyConnect: 'Bereit. Tippe auf „Gerät suchen & verbinden“.', bluetoothDisconnected: 'Bluetooth-Verbindung getrennt.',
-    noGpsData: 'Keine GPS-Daten', noExtraData: 'keine Zusatzdaten', age: 'Alter {value} s', satellites: '{value} Sat',
+    ready: 'Bereit.', readyConnect: 'Bereit. Tippe auf „Gerät suchen & verbinden“.', bluetoothDisconnected: 'Bluetooth-Verbindung getrennt.', noExtraData: 'keine Zusatzdaten', age: 'Alter {value} s', satellites: '{value} Sat',
     noMapActive: 'Keine Karte aktiv', createMapFirst: 'Im Reiter „Karten“ zuerst eine Karte anlegen', pleaseCreateMap: 'Bitte zuerst eine Karte anlegen.',
     waitPosition: 'Warte auf Position', noCurrentXY: 'Noch keine aktuellen X/Y-Daten', noCurrentPosition: 'Keine aktuelle Position vom Ardumower.',
     capturePoint: 'Punkt aufnehmen', readyPoint: 'Bereit: X {x} m · Y {y} m · RTK FIX', noRtkFix: 'Kein RTK FIX',
@@ -94,7 +99,7 @@ const I18N = {
     demoStop: 'Demo-Modus beenden', demoStart: 'Demo-Modus starten', demoDetail: 'Demo-Modus: simulierte RTK-FIX-Position.', demoEnded: 'Demo beendet.',
     firstMapName: 'Meine erste Karte', saving: 'Speichert …', savedAt: 'Lokal gespeichert · {time}', noExclusion: 'Noch keine Ausschlussfläche',
     exclusionN: 'Ausschluss {n}', mapN: 'Karte {n}', deleteMapConfirm: 'Karte „{name}“ wirklich lokal löschen?',
-    dockPath: 'Dockpfad', undoTitle: 'Letzten Punkt löschen', undoHintCount: '{label} · Punkt {count} wird entfernt', undoHintEmpty: '{label} · noch kein Punkt aufgenommen',
+    dockPath: 'Dockpfad',
     deleteExclusionConfirm: '{name} wirklich löschen?', pointSaved: 'Punkt gespeichert: X {x} · Y {y}', dockPoints: 'Dockpunkte', clearConfirm: '{label} wirklich leeren?',
     mapSummary: '{name} · Perimeter {perimeter} · Ausschluss {exclusions} ({points} Punkte) · Dock {dock}', noMap: 'Keine Karte', noMapLoaded: 'Keine Karte geladen.',
     recentPoint: 'Punkt {n}', invalidMapFile: 'Datei ist keine MapCreator-für-Ardumower-Karte.', unknown: 'unbekannt',
@@ -104,21 +109,14 @@ const I18N = {
     browserNoBluetooth: 'Dieser Browser stellt Web Bluetooth nicht bereit. Für den Prototyp Android + Chrome verwenden; der Demo-Modus funktioniert trotzdem.',
     connectionFailed: 'Verbindung fehlgeschlagen: {message}', bleError: 'BLE Fehler', importFailed: 'Import fehlgeschlagen: {message}',
     versionError: 'AT+V Fehler', startError: 'Startfehler: {message}', appStarted: 'App gestartet',
-    autoCapture: 'Auto-Aufnahme', captureDistance: 'Punktabstand', autoCaptureOff: 'Auto-Aufnahme aus', autoCaptureReady: 'Bereit · alle {distance} m', autoCaptureRunning: 'Läuft · {count} Punkte automatisch',
-    startAutoCapture: 'Auto-Aufnahme starten', stopAutoCapture: 'Auto-Aufnahme stoppen', autoCaptureStartHint: 'Erster Punkt wird sofort gespeichert · danach alle {distance} m', autoCaptureStopHint: '{count} Punkte automatisch aufgenommen', autoPointSaved: 'Auto-Punkt {count}: X {x} · Y {y}',
-    editActionAria: 'Bearbeitungsart', editSinglePoint: 'Punkt', editSegment: 'Teilstück', straightLine: 'Gerade', selectSegmentStart: 'Startpunkt auswählen', selectSegmentEnd: 'Endpunkt auswählen',
-    segmentStartSelected: 'Start: {label} · Punkt {n}', segmentRangeSelected: '{label} · Punkte {start}–{end}', segmentDifferentElement: 'Start und Ende müssen im selben Kartenelement liegen.', segmentNeedOrder: 'Zwei unterschiedliche Punkte auswählen.',
-    startSegmentRelearn: 'Teilstück neu anlernen', startSegmentHint: 'Am Startpunkt beginnen · anschließend entlang der neuen Grenze fahren', segmentRecording: 'Teilstück wird aufgenommen', segmentRecordingHint: '{count} neue Punkte · bis zum Endpunkt fahren',
-    finishSegment: 'Teilstück übernehmen', finishSegmentHint: 'Endpunkt erreicht · Abstand {distance} m', segmentEndTooFar: 'Zum Endpunkt fahren', segmentEndDistance: 'Noch {distance} m bis zum Endpunkt', cancelSegment: 'Teilstück abbrechen', segmentCancelled: 'Teilstück-Aufnahme abgebrochen.', segmentRelearned: 'Teilstück {start}–{end} durch {count} neue Punkte ersetzt.',
-    straightenSegment: 'Zwischenpunkte begradigen', straightenHint: 'Punkte {start}–{end} werden gleichmäßig auf einer Geraden verteilt', segmentStraightened: 'Punkte {start}–{end} wurden begradigt.',
-    showTrail: 'Fahrspur anzeigen', clearTrail: 'Fahrspur löschen', trailCleared: 'Fahrspur gelöscht.', distanceToBoundary: 'Zur Grenze {distance} m', distanceToPoint: 'Zum Punkt {distance} m', distanceToEnd: 'Zum Endpunkt {distance} m',
+    autoCapture: 'Auto-Aufnahme', autoCaptureOff: 'Automatik aus', autoCaptureRunning: 'Läuft · {count} Punkte automatisch', autoPointSaved: 'Auto-Punkt {count}: X {x} · Y {y}',
+    showTrail: 'Fahrspur anzeigen', clearTrail: 'Fahrspur löschen', trailCleared: 'Fahrspur gelöscht.', distanceToBoundary: 'Zur Grenze {distance} m', distanceToPoint: 'Zum Punkt {distance} m',
     mapCheck: 'Kartenprüfung', checkNow: 'Jetzt prüfen', notCheckedYet: 'Noch nicht geprüft.', mapCheckOk: 'Karte plausibel · Fläche {area} m² · Umfang {perimeter} m · RTK FIX {fix}/{points}', mapCheckIssues: '{errors} Fehler · {warnings} Hinweise · Fläche {area} m²',
     checkPerimeterTooFew: 'Perimeter hat weniger als 3 Punkte.', checkAreaTooFew: '{label} hat weniger als 3 Punkte.', checkSelfIntersection: '{label} überschneidet sich selbst.', checkExclusionOutside: '{label} liegt nicht vollständig innerhalb des Perimeters.', checkExclusionOverlap: '{a} und {b} überschneiden sich.',
     checkClosePoints: '{label}: {count} sehr kurze Punktabstände unter 5 cm.', checkLongSegments: '{label}: {count} Strecken sind länger als 5 m.', checkNonFixPoints: '{count} von {points} Punkten wurden nicht mit RTK FIX aufgenommen.', checkDockEmpty: 'Kein Dockpfad vorhanden (optional).',
     versionsHistory: 'Versionen & Verlauf', versionsDescription: 'Wichtige Bearbeitungen werden lokal als Wiederherstellungspunkte gespeichert.', saveVersionNow: 'Version jetzt speichern', noVersions: 'Noch keine Versionen gespeichert.', restoreVersion: 'Wiederherstellen', versionSaved: 'Version gespeichert.',
     undoLastChange: 'Letzte Änderung zurück', noChangeToUndo: 'Noch keine Änderung im Verlauf', undoChangeHint: '{reason} · {time}', restoreConfirm: 'Version vom {time} wirklich wiederherstellen?', restoredVersion: 'Version vom {time} wiederhergestellt.',
-    historyManual: 'Manuelle Version', historyAddPoint: 'Punkt aufgenommen', historyAutoCapture: 'Auto-Aufnahme', historyDeletePoint: 'Punkt gelöscht', historyRelearnPoint: 'Punkt neu angelernt', historySegment: 'Teilstück neu angelernt', historyStraight: 'Teilstück begradigt', historyClear: 'Element geleert', historyDeleteExclusion: 'Ausschluss gelöscht', historyCreateExclusion: 'Ausschluss angelegt', historyRestore: 'Vor Wiederherstellung',
-    helpOverline: 'HILFE · OFFLINE · KOMPATIBILITÄT', helpTitle: 'Hilfe & Anleitung', helpIntro: 'Alles Wichtige für Kartenerstellung, Bluetooth, Offline-Betrieb und Datensicherung.',
+    historyManual: 'Manuelle Version', historyAddPoint: 'Punkt aufgenommen', historyAutoCapture: 'Auto-Aufnahme', historyDeletePoint: 'Punkt gelöscht', historyRelearnPoint: 'Punkt neu angelernt', historyClear: 'Element geleert', historyDeleteExclusion: 'Ausschluss gelöscht', historyCreateExclusion: 'Ausschluss angelegt', historyRestore: 'Vor Wiederherstellung',
     systemCheckTitle: 'Systemcheck auf diesem Gerät', systemCheckText: 'Hier siehst du sofort, ob die technischen Voraussetzungen für den Einsatz im Garten passen.',
     secureContextLabel: 'HTTPS / sicherer Kontext', webBluetoothLabel: 'Web Bluetooth', offlineCacheLabel: 'Offline-Cache', internetStatusLabel: 'Browser-Netzwerkstatus', compatibilityDate: 'Kompatibilitätsstand: August 2026.', networkStatusNote: 'Der Online/Offline-Wert ist ein Browser-Netzwerksignal und kein aktiver Test zu GitHub.',
     statusReady: 'Bereit', statusAvailable: 'Verfügbar', statusUnavailable: 'Nicht verfügbar', statusOnline: 'Online', statusOffline: 'Offline', statusSecure: 'Sicher', statusInsecure: 'Nicht sicher', statusPreparing: 'Wird vorbereitet …',
@@ -142,26 +140,33 @@ const I18N = {
     offlineNeeds1: 'Der allererste Aufruf von GitHub Pages', offlineNeeds2: 'Ein neues App-Update herunterladen', offlineNeeds3: 'Neu laden, falls der Offline-Cache vorher gelöscht wurde',
     offlineWarning: 'Wichtig: Browserdaten/Website-Daten löschen kann sowohl Offline-Cache als auch lokal gespeicherte Karten entfernen. Regelmäßig JSON-Backups erstellen.',
     bluetoothHelpTitle: 'Bluetooth-Verbindung verstehen', bleHelp1: 'MapCreator nutzt Bluetooth Low Energy (BLE) und verbindet sich direkt mit dem Ardumower-ESP32 – nicht über das Internet.', bleHelp2: 'Der bekannte Ardumower-BLE-UART-Service verwendet FFE0/FFE1. Sunray-Kommandos werden über diese Verbindung übertragen.', bleHelp3: 'Die Gerätesuche darf ein Browser nur nach einer Benutzeraktion starten. Deshalb musst du den Verbindungsbutton antippen und den Ardumower auswählen.', bleHelp4: 'Das Sunray-Passwort wird nur für die laufende Sitzung verwendet und nicht mit der Karte gespeichert.', bleHelp5: 'Wenn die BLE-Verbindung durch Standby, Reichweite oder Browser-Neustart abbricht, einfach erneut „Gerät suchen & verbinden“ verwenden.',
-    mappingHelpTitle: 'Karten erstellen & korrigieren', helpPerimeterTitle: 'Perimeter', helpPerimeterText: 'Äußere Mähgrenze Punkt für Punkt oder automatisch nach Distanz aufnehmen.', helpExclusionTitle: 'Ausschlussflächen', helpExclusionText: 'Mehrere geschlossene Bereiche innerhalb des Perimeters anlegen, die nicht gemäht werden sollen.', helpDockTitle: 'Dockpfad', helpDockText: 'Offenen Punktpfad für den Dockbereich erfassen.', helpEditTitle: 'Punkte bearbeiten', helpEditText: 'Punkt auf der Karte antippen: der Hauptbutton wird zum Verschieben-Button, das Werkzeug oben rechts löscht ihn.', helpSegmentTitle: 'Teilstück neu anlernen', helpSegmentText: 'Start- und Endpunkt wählen und nur den Abschnitt dazwischen neu aufnehmen.', helpStraightTitle: 'Gerade', helpStraightText: 'Zwei Punkte auswählen und dazwischenliegende Punkte auf einer Geraden verteilen.', helpValidationTitle: 'Kartenprüfung', helpValidationText: 'Sucht Selbstüberschneidungen, problematische Abstände, Ausschlüsse außerhalb des Perimeters und fehlende RTK-FIX-Punkte.', helpVersionsTitle: 'Versionen & Undo', helpVersionsText: 'Wichtige Änderungen werden lokal als Wiederherstellungspunkte gespeichert.',
+    mappingHelpTitle: 'Karten erstellen & korrigieren', helpPerimeterTitle: 'Perimeter', helpPerimeterText: 'Äußere Mähgrenze Punkt für Punkt oder automatisch nach Distanz aufnehmen.', helpExclusionTitle: 'Ausschlussflächen', helpExclusionText: 'Mehrere geschlossene Bereiche innerhalb des Perimeters anlegen, die nicht gemäht werden sollen.', helpDockTitle: 'Dockpfad', helpDockText: 'Offenen Punktpfad für den Dockbereich erfassen.', helpEditTitle: 'Punkte bearbeiten', helpEditText: 'Punkt auf der Karte antippen: der Hauptbutton wird zum Verschieben-Button, das Werkzeug oben rechts löscht ihn.', helpValidationTitle: 'Kartenprüfung', helpValidationText: 'Sucht Selbstüberschneidungen, problematische Abstände, Ausschlüsse außerhalb des Perimeters und fehlende RTK-FIX-Punkte.', helpVersionsTitle: 'Versionen & Undo', helpVersionsText: 'Wichtige Änderungen werden lokal als Wiederherstellungspunkte gespeichert.',
     formatsTitle: 'Speichern, JSON & GeoJSON', jsonHelp: 'Empfohlenes vollständiges Backup für MapCreator. Enthält Kartenstruktur, Punkte und zusätzliche Metadaten wie Aufnahme-/Editierinformationen.', geoJsonHelp: 'Für Geometrie-Austausch. Perimeter und Ausschlüsse werden als Polygone, der Dockpfad als LineString exportiert.', geoJsonXYWarning: 'Die Ardumower-Koordinaten sind lokale Sunray-X/Y-Werte in Metern. Sie sind keine GPS-Längen-/Breitengrade und werden deshalb im Export ausdrücklich als lokales metrisches Koordinatensystem gekennzeichnet.',
     troubleshootingTitle: 'Fehlerbehebung', faqDeviceTitle: 'Ardumower wird nicht gefunden', faqDeviceText: 'Prüfe Bluetooth am Tablet, aktuelle Chrome-Version, Reichweite und ob der ESP32 BLE sendet. Falls eine andere App bereits verbunden ist, diese Verbindung zuerst trennen. Danach Bluetooth-Gerätesuche erneut öffnen.', faqButtonTitle: 'Aufnahme-Button wird nicht grün', faqButtonText: 'Grün bedeutet echten RTK FIX. Prüfe RTK-Empfang und die Live-Daten. Wenn „Nur bei RTK FIX“ aktiv ist, bleibt die Aufnahme bei FLOAT/INVALID gesperrt.', faqOfflineTitle: 'Die App startet ohne WLAN nicht', faqOfflineText: 'Öffne die GitHub-Pages-Seite mindestens einmal mit Internet und warte, bis der Offline-Cache im Systemcheck als bereit angezeigt wird. Danach am besten als PWA installieren.', faqMapsGoneTitle: 'Meine Karten sind verschwunden', faqMapsGoneText: 'Karten liegen lokal im Browser. Gelöschte Website-Daten, ein anderer Browser oder ein anderes Benutzerprofil haben einen eigenen Speicher. Importiere dein letztes JSON-Backup.', faqIosTitle: 'Warum funktioniert es auf iPhone/iPad nicht?', faqIosText: 'Der MapCreator benötigt Web Bluetooth. Safari und Chrome auf iOS/iPadOS bieten diese Web-API derzeit nicht nativ an; deshalb kann die Webseite den Ardumower dort nicht direkt auswählen und verbinden.',
     privacyTitle: 'Daten & Privatsphäre', privacy1: 'GitHub Pages liefert nur die statische App aus. Deine aufgezeichneten Karten werden nicht automatisch zu GitHub hochgeladen.', privacy2: 'Karten und Versionen liegen lokal im Browser des verwendeten Geräts.', privacy3: 'Bluetooth-Kommunikation läuft direkt zwischen Browser und Ardumower-ESP32.', privacy4: 'Das Sunray-Passwort wird nicht in den Kartendaten gespeichert.', privacy5: 'Für wichtige Karten regelmäßig ein JSON-Backup auf einem zweiten Speicherort ablegen.',
-
+    historyCloseContour: 'Kontur geschlossen',
     historyClosePerimeter: 'Perimeter schließen/öffnen',
-    autoCaptureMode: 'Aufnahmemodus', autoModeDistance: 'Distanz', autoModeSmart: 'Intelligent', smartAutoHint: 'Geraden sparsam · Kurven dichter',
     showPointQuality: 'Punktqualität anzeigen', keepAwake: 'Bildschirm beim Mapping wachhalten', wakeLockAuto: 'Wird bei aktiver Aufnahme automatisch verwendet.', wakeLockActive: 'Bildschirm bleibt wach.', wakeLockUnavailable: 'Wake Lock in diesem Browser nicht verfügbar.', wakeLockReleased: 'Wake Lock derzeit nicht aktiv.',
     perimeterNearStart: 'Startpunkt erreicht · Abstand {distance} m', closePerimeter: 'Perimeter schließen', perimeterClosed: 'Perimeter geschlossen · kein doppelter Startpunkt gespeichert.', perimeterAlreadyClosed: 'Perimeter ist bereits geschlossen.', reopenPerimeter: 'Perimeter wieder öffnen', checkPerimeterOpen: 'Perimeter ist noch nicht als geschlossen markiert.',
-    mapOverview: 'Kartenübersicht', lockCurrentMap: 'Karte sperren', unlockCurrentMap: 'Karte entsperren', mapLocked: 'Gesperrt', mapUnlocked: 'Bearbeitbar', mapLockedHint: 'Diese Karte ist gesperrt. Zum Bearbeiten zuerst entsperren.', mapCardArea: '{area} m²', mapCardPoints: '{points} Punkte', mapCardChanged: 'Geändert {date}', selectMap: 'Karte auswählen',
-    controlOverline: 'MANUELL · BLE · SUNRAY', toolsOverline: 'KARTE · AUFNAHME', handedness: 'Bedienseite', rightHanded: 'Rechtshänder · Fahren rechts', leftHanded: 'Linkshänder · Fahren links', handednessHint: 'Fahrsteuerung auf der Daumenseite, Werkzeuge gegenüber.', controlTitle: 'Mähersteuerung', controlIntro: 'Direkte manuelle Fahrt über Sunray. Fahrbefehle funktionieren nur bei aktiver BLE-Verbindung.', controlConnection: 'Verbindung', tools: 'Werkzeuge', drive: 'Fahren', joystickHint: 'Kugel in Fahrtrichtung ziehen · Loslassen stoppt sofort.', closePanel: 'Fenster schließen',
-    controlSafetyTitle: 'Sicherheit', controlSafetyText: 'Nur bei freier Sicht zum Mäher verwenden. Der physische Not-Aus/Stop-Taster am Mäher bleibt die wichtigste Sicherheitsfunktion. Bei Funkverlust kann der Browser keinen Stop-Befehl mehr übertragen.',
-    stopEverything: 'STOP ALLES', stopEverythingHint: 'Fahrt stoppen · Mähmotor aus · Sunray IDLE', stopEverythingDone: 'STOP gesendet · Fahrt 0 · Mähmotor AUS · IDLE',
-    manualDrive: 'Manuell fahren', manualDriveHint: 'Richtung gedrückt halten. Beim Loslassen wird sofort AT+M,0,0 gesendet.', driveSpeed: 'Tempo', forward: 'Vor', reverse: 'Zurück', left: 'Links', right: 'Rechts', stop: 'Stop', driveIdle: 'Fahrt gestoppt', driveForward: 'Vorwärts {speed} m/s', driveReverse: 'Rückwärts {speed} m/s', driveLeft: 'Drehen links', driveRight: 'Drehen rechts', driveNeedConnection: 'Für manuelle Fahrt zuerst per BLE verbinden.',
-    mowMotor: 'Mähmotor', mowMotorHint: 'Zum Einschalten zuerst freigeben und den Startknopf gedrückt halten. Ausschalten ist immer sofort möglich.', mowOff: 'AUS', mowOn: 'EIN', armMowMotor: 'Mähmotor-Steuerung freigeben', holdToStartMow: 'Zum Einschalten 1,5 s halten', mowHoldHint: 'Beim Einschalten dreht das Messerwerk an.', mowTurnOff: 'Mähmotor ausschalten', mowTapOffHint: 'Tippen zum sofortigen Ausschalten.', mowArmedHint: 'Freigegeben · Startknopf 1,5 s halten', mowNeedArm: 'Zuerst Mähmotor-Steuerung freigeben.', mowNeedPwm: 'PWM muss größer als 0 sein, bevor der Mähmotor eingeschaltet werden kann.', mowStateNote: 'Die Anzeige zeigt den zuletzt von MapCreator gesendeten Zustand, keine unabhängige Drehzahl-Rückmeldung.', mowStarted: 'Mähmotor EIN gesendet.', mowStopped: 'Mähmotor AUS gesendet.', mowPwmTitle: 'Mähmotor-Leistung (PWM)', mowPwmHint: '0 = aus · 255 = maximale in Sunray erlaubte PWM. Das ist keine gemessene Drehzahl.', mowPwmValue: 'PWM-Wert', mowPwmApply: 'PWM übernehmen', mowPwmApplied: 'Mähmotor-PWM auf {pwm}/255 ({percent} %) gesetzt.', mowPwmZeroStopped: 'PWM 0 gesetzt · Mähmotor AUS.',
-    controlHelpTitle: 'Manuelle Mähersteuerung', controlHelp1: 'In der Kartenansicht öffnet „Fahren“ die große runde Joystick-Steuerung. Die Kugel kann stufenlos vor/zurück und seitlich gezogen werden; dadurch sind auch Kurvenfahrten möglich. Loslassen sendet sofort Stop.', controlHelp2: '„STOP ALLES“ sendet Fahrstopp, schaltet den Mähmotor aus und setzt Sunray auf IDLE.', controlHelp3: 'Der Mähmotor benötigt eine bewusste Freigabe und einen gehaltenen Startknopf. Ausschalten erfolgt mit einem Tipp.', controlHelp4: 'Wichtig: Bei Bluetooth-Funkverlust kann die Webseite keinen neuen Stop-Befehl mehr übertragen. Deshalb nur bei Sichtkontakt arbeiten und den physischen Stop/Not-Aus am Mäher erreichbar halten.', controlHelp5: 'Die Mähmotor-Leistung ist von 0 bis 255 einstellbar. Sunray verwendet den Wert als PWM-Obergrenze; er ist keine direkte RPM-Vorgabe oder unabhängige Drehzahlmessung.', controlHelp6: 'Unter „Ansicht & Maßstab“ kann zwischen Rechts- und Linkshänder-Bedienung gewechselt werden. Standard ist Fahren rechts und Werkzeuge links.',
-    helpQualityTitle: 'Punktqualität', helpQualityText: 'Kartenpunkte können abhängig von RTK-Lösung und Genauigkeit farblich bewertet werden.', helpSmartAutoTitle: 'Intelligente Auto-Aufnahme', helpSmartAutoText: 'Auf Geraden werden weniger Punkte gesetzt, bei Richtungsänderungen automatisch dichter.', helpMeasureTitle: 'Messwerkzeug', helpMeasureText: 'Zwei Stellen antippen und die Distanz direkt in Metern ablesen.', helpLockTitle: 'Kartensperre', helpLockText: 'Fertige Karten lassen sich gegen versehentliche Änderungen sperren.',
+    mapOverview: 'Kartenübersicht', lockCurrentMap: 'Karte sperren', unlockCurrentMap: 'Karte entsperren', mapLocked: 'Gesperrt', mapLockedHint: 'Diese Karte ist gesperrt. Zum Bearbeiten zuerst entsperren.', mapCardArea: '{area} m²', mapCardPoints: '{points} Punkte', mapCardChanged: 'Geändert {date}', selectMap: 'Karte auswählen', tools: 'Werkzeuge', drive: 'Fahren', stopEverythingDone: 'STOP gesendet · Fahrt 0 · Mähmotor AUS · IDLE',
+    manualDrive: 'Manuell fahren', driveSpeed: 'Tempo', forward: 'Vor', reverse: 'Zurück', left: 'Links', right: 'Rechts', stop: 'Stop', driveIdle: 'Fahrt gestoppt', driveNeedConnection: 'Für manuelle Fahrt zuerst per BLE verbinden.',
+    helpQualityTitle: 'Punktqualität', helpQualityText: 'Kartenpunkte können abhängig von RTK-Lösung und Genauigkeit farblich bewertet werden.', helpSmartAutoTitle: 'Intelligente Auto-Aufnahme', helpSmartAutoText: 'Auf Geraden werden weniger Punkte gesetzt, bei Richtungsänderungen automatisch dichter.', helpLockTitle: 'Kartensperre', helpLockText: 'Fertige Karten lassen sich gegen versehentliche Änderungen sperren.',
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   },
   en: {
+    chooseMode: 'Choose capture mode', cancel: 'Cancel',
+    closeContourQuestion: 'Close {label}? The last point will be connected to the first one.',
+    closeOpenContours: 'Close open contours', closeContoursConfirm: 'Close {count} open contour(s) now?',
+    checkAreaOpen: '{label}: contour is open — last and first point are not connected.',
+    areaSelected: '{name} selected · whole area', areaDeleted: 'Exclusion area deleted.',
+    deleteAreaConfirm: 'Delete “{name}” with all its points?',
+    settings: 'Settings', appearance: 'Appearance', themeSystem: 'System', themeLight: 'Light', themeDark: 'Dark',
+    themeHint: '“System” follows the device setting.',
+    autoCaptureInterval: 'Automatic capture interval', autoCaptureOn: 'Automatic running',
+    autoCaptureWhereHint: 'The automatic capture is switched on and off with the button on the map.',
+    autoCaptureWaiting: 'Automatic capture is waiting for a usable position …',
+    onlyRtkFixHint: 'Without a true RTK FIX capturing stays blocked.',
+    deleteLastLabel: 'Last point', deletePointLabel: 'Delete selected point', deleteAreaLabel: 'Delete area',
     bleLinkStalled: 'No more data from the mower – reconnecting.',
     reconnectGaveUp: 'Connection failed – please reconnect.',
     bleProtocolError: 'Corrupted data from the mower – reconnecting.',
@@ -170,7 +175,7 @@ const I18N = {
     rtkFix: 'Fix', rtkFloat: 'Float', rtkNone: 'No Fix', rtkNoData: 'No GPS',
     movePoint: 'Move', movePointHint: 'Tap: the point jumps to the mower position', holdToCapture: 'Hold to capture',
     deletePoint: 'Delete selected point', pointDeleted: 'Point {n} deleted.', fitView: 'Reset view',
-    driveSettings: 'Drive', driveSpeedRange: 'Speed', driveSpeedRangeHint: 'Joystick deflection scales steplessly between min and max.',
+    driveSettings: 'Drive speed', driveSpeedRange: 'Speed', driveSpeedRangeHint: 'Joystick deflection scales steplessly between min and max.',
     driveSpeedMin: 'Minimum', driveSpeedMax: 'Maximum', driveTurnMax: 'Maximum turn rate',
     driveSafetyNote: 'Releasing stops immediately. Sunray also stops after 1 s without a new drive command.',
     captureSettings: 'Capture',
@@ -182,35 +187,24 @@ const I18N = {
     driveHelp4: 'This app deliberately does not control mowing: no start, no stop, no docking. It only captures maps.',
     appTitle: 'MapCreator für Ardumower',
     appDescription: 'MapCreator für Ardumower – mobile map recording via Web Bluetooth and Sunray.',
-    languageToggleLabel: 'Switch to German',
-    tabCapture: 'Capture', tabMaps: 'Maps', tabConnection: 'Connection', tabControl: 'Control', tabHelp: 'Help', tabDebug: 'Diagnostics',
+    languageToggleLabel: 'Switch to German', tabMaps: 'Maps', tabConnection: 'Connection', tabHelp: 'Help', tabDebug: 'Diagnostics',
     activeMap: 'ACTIVE MAP', battery: 'Battery', perimeter: 'Perimeter', exclusion: 'Exclusion', dock: 'Dock',
     exclusionArea: 'Exclusion area', newExclusion: '+ New', delete: 'Delete', clearCurrentElement: 'Clear current element',
-    onlyRtkFix: 'RTK FIX only', recentPoints: 'Recent points', localOnDevice: 'LOCAL ON THIS DEVICE',
+    onlyRtkFix: 'RTK FIX only', recentPoints: 'Recent points',
     viewScale: 'View & scale', showGrid: 'Show grid', gridSpacing: 'Grid spacing', gridAuto: 'Automatic',
     showMower: 'Show mower', mowerLength: 'Length', mowerWidth: 'Width', mowerScaleNote: 'The mower is drawn to scale on the map.', mowerTooltip: 'Mower {length} × {width} m',
-    editPoints: 'Edit points', editPointsHint: 'Tap an existing point and relearn it', editModeActive: 'Edit mode active · select a point on the map', editMap: 'Edit map',
-    noPointSelected: 'No point selected', tapPointOnMap: 'Tap a point directly on the map.', maxRelearnDistance: 'Max. distance to point', clearSelection: 'Clear selection',
-    selectedPointInfo: '{label} · point {n}', selectedPointCoords: 'X {x} · Y {y}', relearnPoint: 'Relearn point', relearnReady: 'Point {n} · distance {distance} m · RTK FIX',
-    moveCloser: 'Move mower closer to point', tooFarHint: 'Distance {distance} m · allowed max. {max} m', relearnNoPosition: 'Waiting for mower position', relearnSelectFirst: 'Select a point on the map first',
-    relearnBlocked: '{solution} · relearn blocked', relearnWarning: 'Relearn without RTK FIX', pointRelearned: 'Point {n} relearned: X {x} · Y {y}',
-    myMaps: 'My maps', mapsDescription: 'Store and select up to 10 mowing maps locally and save them as JSON or GeoJSON.',
+    noPointSelected: 'No point selected',
+    selectedPointInfo: '{label} · point {n}', relearnPoint: 'Relearn point', pointRelearned: 'Point {n} relearned: X {x} · Y {y}',
     activeMapField: 'Active map', newMapField: 'New map', newMapPlaceholder: 'e.g. Back garden', createMap: 'Create new map', mapLimitReached: 'A maximum of 10 maps can be stored locally. Delete a map first.',
     backupManagement: 'Backup & management', backupDescription: 'Map data is stored in the browser’s IndexedDB. Exporting is the easiest way to create a backup.',
     saveJson: 'Save as JSON', saveGeoJson: 'Save as GeoJSON',
     exportHint: 'JSON contains the complete MapCreator backup. GeoJSON stores perimeter/exclusions/dock as geometries using local Sunray X/Y coordinates in metres.',
-    importJsonGeoJson: 'Import JSON / GeoJSON', deleteCurrentMap: 'Delete current map', webBluetooth: 'WEB BLUETOOTH',
-    connectArdumower: 'Connect Ardumower', connectionDescription: 'Direct BLE connection to the ESP32. No Wi-Fi and no server required.',
+    importJsonGeoJson: 'Import JSON / GeoJSON', deleteCurrentMap: 'Delete current map',
     bluetoothConnection: 'Bluetooth connection', sunrayPassword: 'Sunray password', passwordHint: 'For this session only. It is not stored with the map.',
-    searchConnect: 'Find device & connect', disconnect: 'Disconnect', technicalData: 'TECHNICAL DATA',
-    diagnosticsDescription: 'For the first test with the real Ardumower: Sunray communication is shown here.',
-    sendVersion: 'Send AT+V', sendState: 'Send AT+S', clearLog: 'Clear log',
-    footerText: 'Local map recording · no upload to the mower · Web Bluetooth requires a supported browser',
-    tabsAria: 'Sections', liveDataAria: 'Live data', mapPreviewAria: 'Preview of the recorded mowing map',
-    mappingToolsAria: 'Mapping tools', mapElementAria: 'Map element', capturePointAria: 'Capture point', exportMapAria: 'Export map',
+    searchConnect: 'Find device & connect', disconnect: 'Disconnect',
+    sendVersion: 'Send AT+V', sendState: 'Send AT+S', clearLog: 'Clear log', mapPreviewAria: 'Preview of the recorded mowing map', exportMapAria: 'Export map',
     notConnected: 'Not connected', bleConnected: 'BLE connected', demoActive: 'Demo active',
-    ready: 'Ready.', readyConnect: 'Ready. Tap “Find device & connect”.', bluetoothDisconnected: 'Bluetooth connection disconnected.',
-    noGpsData: 'No GPS data', noExtraData: 'no additional data', age: 'Age {value} s', satellites: '{value} sat',
+    ready: 'Ready.', readyConnect: 'Ready. Tap “Find device & connect”.', bluetoothDisconnected: 'Bluetooth connection disconnected.', noExtraData: 'no additional data', age: 'Age {value} s', satellites: '{value} sat',
     noMapActive: 'No active map', createMapFirst: 'Create a map in the “Maps” tab first', pleaseCreateMap: 'Please create a map first.',
     waitPosition: 'Waiting for position', noCurrentXY: 'No current X/Y data yet', noCurrentPosition: 'No current position from the Ardumower.',
     capturePoint: 'Capture point', readyPoint: 'Ready: X {x} m · Y {y} m · RTK FIX', noRtkFix: 'No RTK FIX',
@@ -227,7 +221,7 @@ const I18N = {
     demoStop: 'Stop demo mode', demoStart: 'Start demo mode', demoDetail: 'Demo mode: simulated RTK FIX position.', demoEnded: 'Demo ended.',
     firstMapName: 'My first map', saving: 'Saving …', savedAt: 'Saved locally · {time}', noExclusion: 'No exclusion area yet',
     exclusionN: 'Exclusion {n}', mapN: 'Map {n}', deleteMapConfirm: 'Really delete map “{name}” locally?',
-    dockPath: 'Dock path', undoTitle: 'Delete last point', undoHintCount: '{label} · point {count} will be removed', undoHintEmpty: '{label} · no point captured yet',
+    dockPath: 'Dock path',
     deleteExclusionConfirm: 'Really delete {name}?', pointSaved: 'Point saved: X {x} · Y {y}', dockPoints: 'Dock points', clearConfirm: 'Really clear {label}?',
     mapSummary: '{name} · Perimeter {perimeter} · Exclusions {exclusions} ({points} points) · Dock {dock}', noMap: 'No map', noMapLoaded: 'No map loaded.',
     recentPoint: 'Point {n}', invalidMapFile: 'File is not a MapCreator für Ardumower map.', unknown: 'unknown',
@@ -237,21 +231,14 @@ const I18N = {
     browserNoBluetooth: 'This browser does not provide Web Bluetooth. Use Android + Chrome for the prototype; demo mode still works.',
     connectionFailed: 'Connection failed: {message}', bleError: 'BLE error', importFailed: 'Import failed: {message}',
     versionError: 'AT+V error', startError: 'Startup error: {message}', appStarted: 'App started',
-    autoCapture: 'Auto capture', captureDistance: 'Point spacing', autoCaptureOff: 'Auto capture off', autoCaptureReady: 'Ready · every {distance} m', autoCaptureRunning: 'Running · {count} points captured automatically',
-    startAutoCapture: 'Start auto capture', stopAutoCapture: 'Stop auto capture', autoCaptureStartHint: 'First point is saved immediately · then every {distance} m', autoCaptureStopHint: '{count} points captured automatically', autoPointSaved: 'Auto point {count}: X {x} · Y {y}',
-    editActionAria: 'Edit action', editSinglePoint: 'Point', editSegment: 'Section', straightLine: 'Straight', selectSegmentStart: 'Select start point', selectSegmentEnd: 'Select end point',
-    segmentStartSelected: 'Start: {label} · point {n}', segmentRangeSelected: '{label} · points {start}–{end}', segmentDifferentElement: 'Start and end must be in the same map element.', segmentNeedOrder: 'Select two different points.',
-    startSegmentRelearn: 'Relearn section', startSegmentHint: 'Start at the first point · then move along the new boundary', segmentRecording: 'Recording section', segmentRecordingHint: '{count} new points · move to the end point',
-    finishSegment: 'Apply section', finishSegmentHint: 'End point reached · distance {distance} m', segmentEndTooFar: 'Move to end point', segmentEndDistance: '{distance} m remaining to end point', cancelSegment: 'Cancel section', segmentCancelled: 'Section recording cancelled.', segmentRelearned: 'Section {start}–{end} replaced with {count} new points.',
-    straightenSegment: 'Straighten intermediate points', straightenHint: 'Points {start}–{end} are evenly distributed on a straight line', segmentStraightened: 'Points {start}–{end} were straightened.',
-    showTrail: 'Show movement trail', clearTrail: 'Clear movement trail', trailCleared: 'Movement trail cleared.', distanceToBoundary: 'To boundary {distance} m', distanceToPoint: 'To point {distance} m', distanceToEnd: 'To end point {distance} m',
+    autoCapture: 'Auto capture', autoCaptureOff: 'Automatic off', autoCaptureRunning: 'Running · {count} points captured automatically', autoPointSaved: 'Auto point {count}: X {x} · Y {y}',
+    showTrail: 'Show movement trail', clearTrail: 'Clear movement trail', trailCleared: 'Movement trail cleared.', distanceToBoundary: 'To boundary {distance} m', distanceToPoint: 'To point {distance} m',
     mapCheck: 'Map check', checkNow: 'Check now', notCheckedYet: 'Not checked yet.', mapCheckOk: 'Map looks plausible · area {area} m² · perimeter {perimeter} m · RTK FIX {fix}/{points}', mapCheckIssues: '{errors} errors · {warnings} notes · area {area} m²',
     checkPerimeterTooFew: 'Perimeter has fewer than 3 points.', checkAreaTooFew: '{label} has fewer than 3 points.', checkSelfIntersection: '{label} intersects itself.', checkExclusionOutside: '{label} is not fully inside the perimeter.', checkExclusionOverlap: '{a} and {b} overlap.',
     checkClosePoints: '{label}: {count} very short point gaps below 5 cm.', checkLongSegments: '{label}: {count} segments are longer than 5 m.', checkNonFixPoints: '{count} of {points} points were not captured with RTK FIX.', checkDockEmpty: 'No dock path present (optional).',
     versionsHistory: 'Versions & history', versionsDescription: 'Important edits are stored locally as restore points.', saveVersionNow: 'Save version now', noVersions: 'No versions saved yet.', restoreVersion: 'Restore', versionSaved: 'Version saved.',
     undoLastChange: 'Undo last change', noChangeToUndo: 'No change in history yet', undoChangeHint: '{reason} · {time}', restoreConfirm: 'Restore version from {time}?', restoredVersion: 'Version from {time} restored.',
-    historyManual: 'Manual version', historyAddPoint: 'Point captured', historyAutoCapture: 'Auto capture', historyDeletePoint: 'Point deleted', historyRelearnPoint: 'Point relearned', historySegment: 'Section relearned', historyStraight: 'Section straightened', historyClear: 'Element cleared', historyDeleteExclusion: 'Exclusion deleted', historyCreateExclusion: 'Exclusion created', historyRestore: 'Before restore',
-    helpOverline: 'HELP · OFFLINE · COMPATIBILITY', helpTitle: 'Help & guide', helpIntro: 'Everything you need for map creation, Bluetooth, offline use and backups.',
+    historyManual: 'Manual version', historyAddPoint: 'Point captured', historyAutoCapture: 'Auto capture', historyDeletePoint: 'Point deleted', historyRelearnPoint: 'Point relearned', historyClear: 'Element cleared', historyDeleteExclusion: 'Exclusion deleted', historyCreateExclusion: 'Exclusion created', historyRestore: 'Before restore',
     systemCheckTitle: 'System check on this device', systemCheckText: 'See immediately whether the technical requirements for garden use are met.',
     secureContextLabel: 'HTTPS / secure context', webBluetoothLabel: 'Web Bluetooth', offlineCacheLabel: 'Offline cache', internetStatusLabel: 'Browser network status', compatibilityDate: 'Compatibility status: August 2026.', networkStatusNote: 'The online/offline value is a browser network signal, not an active test against GitHub.',
     statusReady: 'Ready', statusAvailable: 'Available', statusUnavailable: 'Unavailable', statusOnline: 'Online', statusOffline: 'Offline', statusSecure: 'Secure', statusInsecure: 'Not secure', statusPreparing: 'Preparing …',
@@ -275,23 +262,17 @@ const I18N = {
     offlineNeeds1: 'The very first GitHub Pages load', offlineNeeds2: 'Downloading a new app update', offlineNeeds3: 'Reloading after the offline cache has been cleared',
     offlineWarning: 'Important: clearing browser/site data can remove both the offline cache and locally stored maps. Create JSON backups regularly.',
     bluetoothHelpTitle: 'Understanding the Bluetooth connection', bleHelp1: 'MapCreator uses Bluetooth Low Energy (BLE) and connects directly to the Ardumower ESP32 – not through the internet.', bleHelp2: 'The known Ardumower BLE UART service uses FFE0/FFE1. Sunray commands are transported through this connection.', bleHelp3: 'A browser may start device discovery only after a user action. You therefore have to tap the connect button and select the Ardumower.', bleHelp4: 'The Sunray password is used only for the current session and is not stored with the map.', bleHelp5: 'If BLE disconnects because of standby, range or a browser restart, simply use “Find device & connect” again.',
-    mappingHelpTitle: 'Creating & correcting maps', helpPerimeterTitle: 'Perimeter', helpPerimeterText: 'Record the outer mowing boundary point by point or automatically by distance.', helpExclusionTitle: 'Exclusion areas', helpExclusionText: 'Create multiple closed areas inside the perimeter that must not be mowed.', helpDockTitle: 'Dock path', helpDockText: 'Record an open point path for the docking area.', helpEditTitle: 'Edit points', helpEditText: 'Select an existing point, move the mower close to it and relearn its position.', helpSegmentTitle: 'Relearn a section', helpSegmentText: 'Choose a start and end point and re-record only the section between them.', helpStraightTitle: 'Straight line', helpStraightText: 'Select two points and distribute the points between them on a straight line.', helpValidationTitle: 'Map check', helpValidationText: 'Finds self-intersections, problematic spacing, exclusions outside the perimeter and points captured without RTK FIX.', helpVersionsTitle: 'Versions & undo', helpVersionsText: 'Important changes are stored locally as restore points.',
+    mappingHelpTitle: 'Creating & correcting maps', helpPerimeterTitle: 'Perimeter', helpPerimeterText: 'Record the outer mowing boundary point by point or automatically by distance.', helpExclusionTitle: 'Exclusion areas', helpExclusionText: 'Create multiple closed areas inside the perimeter that must not be mowed.', helpDockTitle: 'Dock path', helpDockText: 'Record an open point path for the docking area.', helpEditTitle: 'Edit points', helpEditText: 'Select an existing point, move the mower close to it and relearn its position.', helpValidationTitle: 'Map check', helpValidationText: 'Finds self-intersections, problematic spacing, exclusions outside the perimeter and points captured without RTK FIX.', helpVersionsTitle: 'Versions & undo', helpVersionsText: 'Important changes are stored locally as restore points.',
     formatsTitle: 'Saving, JSON & GeoJSON', jsonHelp: 'Recommended complete MapCreator backup. Contains the map structure, points and extra metadata such as capture/edit information.', geoJsonHelp: 'For geometry exchange. Perimeter and exclusions are exported as polygons and the dock path as a LineString.', geoJsonXYWarning: 'Ardumower coordinates are local Sunray X/Y values in metres. They are not GPS longitude/latitude values, so the export explicitly marks them as a local metric coordinate system.',
     troubleshootingTitle: 'Troubleshooting', faqDeviceTitle: 'Ardumower is not found', faqDeviceText: 'Check Bluetooth on the tablet, a current Chrome version, range and whether the ESP32 is advertising BLE. If another app is already connected, disconnect it first. Then open Bluetooth device discovery again.', faqButtonTitle: 'Capture button does not turn green', faqButtonText: 'Green means a real RTK FIX. Check RTK reception and the live data. With “RTK FIX only” enabled, capture remains blocked for FLOAT/INVALID.', faqOfflineTitle: 'The app does not start without Wi-Fi', faqOfflineText: 'Open the GitHub Pages site at least once with internet and wait until the system check shows the offline cache as ready. Installing it as a PWA is recommended.', faqMapsGoneTitle: 'My maps are gone', faqMapsGoneText: 'Maps are stored locally in the browser. Cleared site data, a different browser or a different browser profile use separate storage. Import your latest JSON backup.', faqIosTitle: 'Why does it not work on iPhone/iPad?', faqIosText: 'MapCreator requires Web Bluetooth. Safari and Chrome on iOS/iPadOS currently do not provide this Web API natively, so the website cannot directly select and connect to the Ardumower there.',
     privacyTitle: 'Data & privacy', privacy1: 'GitHub Pages only serves the static app. Your recorded maps are not automatically uploaded to GitHub.', privacy2: 'Maps and versions stay in the browser storage of the device being used.', privacy3: 'Bluetooth communication runs directly between the browser and the Ardumower ESP32.', privacy4: 'The Sunray password is not stored in map data.', privacy5: 'For important maps, regularly keep a JSON backup in a second location.',
-
+    historyCloseContour: 'Contour closed',
     historyClosePerimeter: 'Close/reopen perimeter',
-    autoCaptureMode: 'Capture mode', autoModeDistance: 'Distance', autoModeSmart: 'Smart', smartAutoHint: 'Fewer points on straights · denser in curves',
     showPointQuality: 'Show point quality', keepAwake: 'Keep screen awake while mapping', wakeLockAuto: 'Used automatically while an active recording is running.', wakeLockActive: 'Screen will stay awake.', wakeLockUnavailable: 'Wake Lock is not available in this browser.', wakeLockReleased: 'Wake Lock is currently inactive.',
     perimeterNearStart: 'Start point reached · distance {distance} m', closePerimeter: 'Close perimeter', perimeterClosed: 'Perimeter closed · no duplicate start point stored.', perimeterAlreadyClosed: 'Perimeter is already closed.', reopenPerimeter: 'Reopen perimeter', checkPerimeterOpen: 'Perimeter is not marked as closed yet.',
-    mapOverview: 'Map overview', lockCurrentMap: 'Lock map', unlockCurrentMap: 'Unlock map', mapLocked: 'Locked', mapUnlocked: 'Editable', mapLockedHint: 'This map is locked. Unlock it before editing.', mapCardArea: '{area} m²', mapCardPoints: '{points} points', mapCardChanged: 'Changed {date}', selectMap: 'Select map',
-    controlOverline: 'MANUAL · BLE · SUNRAY', toolsOverline: 'MAP · CAPTURE', handedness: 'Control side', rightHanded: 'Right-handed · drive right', leftHanded: 'Left-handed · drive left', handednessHint: 'Drive control stays on your thumb side; tools stay opposite.', controlTitle: 'Mower control', controlIntro: 'Direct manual driving through Sunray. Drive commands only work with an active BLE connection.', controlConnection: 'Connection', tools: 'Tools', drive: 'Drive', joystickHint: 'Drag the puck in the direction of travel · releasing stops immediately.', closePanel: 'Close panel',
-    controlSafetyTitle: 'Safety', controlSafetyText: 'Use only with a clear line of sight to the mower. The physical emergency stop/stop button on the mower remains the primary safety control. If radio contact is lost, the browser cannot transmit another stop command.',
-    stopEverything: 'STOP ALL', stopEverythingHint: 'Stop drive · mowing motor off · Sunray IDLE', stopEverythingDone: 'STOP sent · drive 0 · mowing motor OFF · IDLE',
-    manualDrive: 'Manual drive', manualDriveHint: 'Hold a direction button. Releasing it immediately sends AT+M,0,0.', driveSpeed: 'Speed', forward: 'Forward', reverse: 'Reverse', left: 'Left', right: 'Right', stop: 'Stop', driveIdle: 'Drive stopped', driveForward: 'Forward {speed} m/s', driveReverse: 'Reverse {speed} m/s', driveLeft: 'Turning left', driveRight: 'Turning right', driveNeedConnection: 'Connect via BLE before using manual drive.',
-    mowMotor: 'Mowing motor', mowMotorHint: 'Arm it first, then hold the start button to switch on. Switching off is always immediate.', mowOff: 'OFF', mowOn: 'ON', armMowMotor: 'Arm mowing motor control', holdToStartMow: 'Hold 1.5 s to switch on', mowHoldHint: 'The cutting system starts rotating when enabled.', mowTurnOff: 'Switch mowing motor off', mowTapOffHint: 'Tap to switch off immediately.', mowArmedHint: 'Armed · hold start button for 1.5 s', mowNeedArm: 'Arm mowing motor control first.', mowNeedPwm: 'PWM must be greater than 0 before the mowing motor can be switched on.', mowStateNote: 'The indicator shows the last state sent by MapCreator, not an independent blade-speed confirmation.', mowStarted: 'Mowing motor ON sent.', mowStopped: 'Mowing motor OFF sent.', mowPwmTitle: 'Mowing motor power (PWM)', mowPwmHint: '0 = off · 255 = maximum PWM allowed by Sunray. This is not a measured RPM value.', mowPwmValue: 'PWM value', mowPwmApply: 'Apply PWM', mowPwmApplied: 'Mowing motor PWM set to {pwm}/255 ({percent}%).', mowPwmZeroStopped: 'PWM set to 0 · mowing motor OFF.',
-    controlHelpTitle: 'Manual mower control', controlHelp1: 'In the map view, “Drive” opens the large round joystick. Drag the puck continuously forward/back and sideways, allowing curved driving as well. Releasing it immediately sends stop.', controlHelp2: '“STOP ALL” sends drive stop, switches the mowing motor off and puts Sunray into IDLE.', controlHelp3: 'The mowing motor requires deliberate arming and a held start button. Switching it off takes one tap.', controlHelp4: 'Important: if the Bluetooth link is lost, the website cannot transmit a new stop command. Use only with line of sight and keep the mower’s physical stop/emergency control accessible.', controlHelp5: 'Mowing motor power is adjustable from 0 to 255. Sunray uses this as the PWM ceiling; it is not a direct RPM command or independent speed measurement.', controlHelp6: 'Under “View & scale” you can switch between right- and left-handed operation. The default is drive controls on the right and tools on the left.',
-    helpQualityTitle: 'Point quality', helpQualityText: 'Map points can be colour-coded based on RTK solution and recorded accuracy.', helpSmartAutoTitle: 'Smart auto capture', helpSmartAutoText: 'Uses fewer points on straight sections and automatically records more densely when direction changes.', helpMeasureTitle: 'Measurement tool', helpMeasureText: 'Tap two locations and read the distance directly in metres.', helpLockTitle: 'Map lock', helpLockText: 'Finished maps can be locked against accidental changes.',
+    mapOverview: 'Map overview', lockCurrentMap: 'Lock map', unlockCurrentMap: 'Unlock map', mapLocked: 'Locked', mapLockedHint: 'This map is locked. Unlock it before editing.', mapCardArea: '{area} m²', mapCardPoints: '{points} points', mapCardChanged: 'Changed {date}', selectMap: 'Select map', tools: 'Tools', drive: 'Drive', stopEverythingDone: 'STOP sent · drive 0 · mowing motor OFF · IDLE',
+    manualDrive: 'Manual drive', driveSpeed: 'Speed', forward: 'Forward', reverse: 'Reverse', left: 'Left', right: 'Right', stop: 'Stop', driveIdle: 'Drive stopped', driveNeedConnection: 'Connect via BLE before using manual drive.',
+    helpQualityTitle: 'Point quality', helpQualityText: 'Map points can be colour-coded based on RTK solution and recorded accuracy.', helpSmartAutoTitle: 'Smart auto capture', helpSmartAutoText: 'Uses fewer points on straight sections and automatically records more densely when direction changes.', helpLockTitle: 'Map lock', helpLockText: 'Finished maps can be locked against accidental changes.',
     solutionInvalid: 'INVALID', solutionUnknown: 'UNKNOWN', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   }
 };
@@ -328,17 +309,20 @@ const $ = (id) => document.getElementById(id);
 const ui = {
   // Kopfzeile
   menuBtn: $('menuBtn'), bleStatusBtn: $('bleStatusBtn'), modeCycleBtn: $('modeCycleBtn'), modeChipLabel: $('modeChipLabel'),
+  modeDialog: $('modeDialog'), modeDialogCancel: $('modeDialogCancel'), closeContoursBtn: $('closeContoursBtn'),
   rtkBadge: $('rtkBadge'), rtkText: $('rtkText'), rtkSats: $('rtkSats'), batteryChip: $('batteryChip'), batteryFill: $('batteryFill'), batteryValue: $('batteryValue'),
   // Kartenbuehne
   mapSvg: $('mapSvg'), gridLayer: $('gridLayer'), shapeLayer: $('shapeLayer'), robotLayer: $('robotLayer'),
-  deletePointBtn: $('deletePointBtn'), fitViewBtn: $('fitViewBtn'), undoBtn: $('undoBtn'), undoButtonTitle: $('undoButtonTitle'),
+  deletePointBtn: $('deletePointBtn'), deleteFabWrap: $('deleteFabWrap'), deleteBtnLabel: $('deleteBtnLabel'), fitViewBtn: $('fitViewBtn'),
+  captureCluster: $('captureCluster'), autoCaptureBtn: $('autoCaptureBtn'), autoCaptureLabel: $('autoCaptureLabel'),
   addPointBtn: $('addPointBtn'), captureProgress: $('captureProgress'), captureButtonTitle: $('captureButtonTitle'), captureButtonHint: $('captureButtonHint'),
   mapSummary: $('mapSummary'), mapDistanceInfo: $('mapDistanceInfo'), pointStatus: $('pointStatus'), activeMapName: $('activeMapName'), saveState: $('saveState'),
   // Fahren
   driveJoystick: $('driveJoystick'), joystickKnob: $('joystickKnob'), driveState: $('driveState'),
   driveSpeedMinInput: $('driveSpeedMinInput'), driveSpeedMaxInput: $('driveSpeedMaxInput'), driveTurnMaxInput: $('driveTurnMaxInput'), driveSpeedValue: $('driveSpeedValue'),
   // Menueseite
-  menuPage: $('menuPage'), menuCloseBtn: $('menuCloseBtn'), languageToggle: $('languageToggle'),
+  menuPage: $('menuPage'), menuScroll: $('menuScroll'), settingsSections: $('settingsSections'),
+  menuCloseBtn: $('menuCloseBtn'), languageToggle: $('languageToggle'),
   connectionPill: $('connectionPill'), connectionDetail: $('connectionDetail'), browserWarning: $('browserWarning'), passwordInput: $('passwordInput'),
   connectBtn: $('connectBtn'), disconnectBtn: $('disconnectBtn'), demoBtn: $('demoBtn'),
   xValue: $('xValue'), yValue: $('yValue'), solutionValue: $('solutionValue'), gpsDetail: $('gpsDetail'), firmwareValue: $('firmwareValue'),
@@ -348,7 +332,7 @@ const ui = {
   historyUndoBtn: $('historyUndoBtn'), historyUndoHint: $('historyUndoHint'), recentPoints: $('recentPoints'),
   exclusionControls: $('exclusionControls'), exclusionSelect: $('exclusionSelect'), newExclusionBtn: $('newExclusionBtn'), deleteExclusionBtn: $('deleteExclusionBtn'),
   fixOnly: $('fixOnly'), clearModeBtn: $('clearModeBtn'),
-  autoCaptureEnabled: $('autoCaptureEnabled'), autoCaptureDistanceInput: $('autoCaptureDistanceInput'), autoCaptureModeSelect: $('autoCaptureModeSelect'), autoCaptureState: $('autoCaptureState'),
+  autoCaptureIntervalInput: $('autoCaptureIntervalInput'), autoCaptureState: $('autoCaptureState'),
   showGrid: $('showGrid'), gridStepSelect: $('gridStepSelect'), showMower: $('showMower'), mowerLengthInput: $('mowerLengthInput'), mowerWidthInput: $('mowerWidthInput'),
   showTrail: $('showTrail'), clearTrailBtn: $('clearTrailBtn'), showPointQuality: $('showPointQuality'), keepAwake: $('keepAwake'), wakeLockStatus: $('wakeLockStatus'),
   validateMapBtn: $('validateMapBtn'), validationSummary: $('validationSummary'), validationList: $('validationList'), validationDrawer: $('validationDrawer'),
@@ -393,12 +377,15 @@ const state = {
   mode: 'perimeter',
   menuOpen: false,
   selectedPoint: null,
+  selectedArea: null,
+  fixHistory: [],
   // Nutzer-Zoom/-Verschiebung der Karte; solange custom=false folgt die Ansicht dem Auto-Fit.
   viewport: { zoom: 1, dx: 0, dy: 0, custom: false, base: null },
   gesture: null,
   hitRadiusUnits: 26,
   captureHold: null,
   autoCaptureRunning: false,
+  autoCaptureTimer: null,
   autoCaptureBusy: false,
   autoCaptureCount: 0,
   currentTransform: null,
@@ -416,7 +403,9 @@ const state = {
   activeMap: null,
   activeExclusionId: null,
   view: {
-    showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, editMaxDistance: 1.00, autoCaptureDistance: 0.50, autoCaptureMode: 'distance', showTrail: true, showPointQuality: true, keepAwake: true, mowPwm: 255, driveSpeed: 0.15, handedness: 'right',
+    showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35,
+    autoCaptureIntervalS: 5, showTrail: true, showPointQuality: true, keepAwake: true,
+    driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
   },
   telemetry: {
     x: null, y: null, delta: null, solution: null, age: null, accuracy: null,
@@ -596,8 +585,8 @@ function loadViewPreferences() {
     state.view.mowerLength = clampNumber(saved.mowerLength, 0.10, 3.00, 0.60);
     state.view.mowerWidth = clampNumber(saved.mowerWidth, 0.10, 3.00, 0.35);
     state.view.gridStep = saved.gridStep === 'auto' ? 'auto' : clampNumber(saved.gridStep, 0.10, 10.00, 0.50);
-    state.view.autoCaptureDistance = clampNumber(saved.autoCaptureDistance, 0.10, 5.00, 0.50);
-    state.view.autoCaptureMode = saved.autoCaptureMode === 'smart' ? 'smart' : 'distance';
+    state.view.autoCaptureIntervalS = Math.round(clampNumber(saved.autoCaptureIntervalS, 1, 120, 5));
+    state.view.theme = THEMES.includes(saved.theme) ? saved.theme : 'system';
     state.view.showTrail = saved.showTrail !== false;
     state.view.showPointQuality = saved.showPointQuality !== false;
     state.view.keepAwake = saved.keepAwake !== false;
@@ -605,7 +594,7 @@ function loadViewPreferences() {
     state.view.driveSpeedMax = clampNumber(saved.driveSpeedMax, 0.03, 0.50, 0.25);
     state.view.driveTurnMax = clampNumber(saved.driveTurnMax, 0.20, 2.00, 1.15);
   } catch (_) {
-    state.view = { showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, autoCaptureDistance: 0.50, autoCaptureMode: 'distance', showTrail: true, showPointQuality: true, keepAwake: true, driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15 };
+    state.view = { showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, autoCaptureIntervalS: 5, showTrail: true, showPointQuality: true, keepAwake: true, driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system' };
   }
 }
 
@@ -620,8 +609,8 @@ function applyViewPreferencesToUi() {
   if (!ui.gridStepSelect.value) ui.gridStepSelect.value = '0.5';
   ui.mowerLengthInput.value = state.view.mowerLength.toFixed(2);
   ui.mowerWidthInput.value = state.view.mowerWidth.toFixed(2);
-  ui.autoCaptureDistanceInput.value = state.view.autoCaptureDistance.toFixed(2);
-  ui.autoCaptureModeSelect.value = state.view.autoCaptureMode;
+  ui.autoCaptureIntervalInput.value = String(state.view.autoCaptureIntervalS);
+  applyTheme();
   ui.showTrail.checked = state.view.showTrail;
   ui.showPointQuality.checked = state.view.showPointQuality;
   ui.keepAwake.checked = state.view.keepAwake;
@@ -637,8 +626,7 @@ function updateViewPreferencesFromUi() {
   state.view.gridStep = ui.gridStepSelect.value === 'auto' ? 'auto' : clampNumber(ui.gridStepSelect.value, 0.10, 10.00, 0.50);
   state.view.mowerLength = clampNumber(ui.mowerLengthInput.value, 0.10, 3.00, state.view.mowerLength);
   state.view.mowerWidth = clampNumber(ui.mowerWidthInput.value, 0.10, 3.00, state.view.mowerWidth);
-  state.view.autoCaptureDistance = clampNumber(ui.autoCaptureDistanceInput.value, 0.10, 5.00, state.view.autoCaptureDistance);
-  state.view.autoCaptureMode = ui.autoCaptureModeSelect.value === 'smart' ? 'smart' : 'distance';
+  state.view.autoCaptureIntervalS = Math.round(clampNumber(ui.autoCaptureIntervalInput.value, 1, 120, state.view.autoCaptureIntervalS));
   state.view.showTrail = ui.showTrail.checked;
   state.view.showPointQuality = ui.showPointQuality.checked;
   state.view.keepAwake = ui.keepAwake.checked;
@@ -719,21 +707,6 @@ function normalizeAngleRad(value) {
   return a;
 }
 
-function shouldSmartCapture(target, current, baseDistance) {
-  const last = target?.[target.length - 1];
-  if (!last) return true;
-  const distance = xyDistance(last, current);
-  if (target.length < 2) return distance >= baseDistance;
-  const minimum = Math.max(0.12, baseDistance * 0.35);
-  if (distance < minimum) return false;
-  const prev = target[target.length - 2];
-  const h1 = Math.atan2(last.y - prev.y, last.x - prev.x);
-  const h2 = Math.atan2(current.y - last.y, current.x - last.x);
-  const turnDeg = Math.abs(normalizeAngleRad(h2 - h1)) * 180 / Math.PI;
-  if (turnDeg >= 12) return true;
-  return distance >= baseDistance * 2;
-}
-
 async function requestWakeLockIfNeeded() {
   if (!state.view.keepAwake || !('wakeLock' in navigator) || document.visibilityState !== 'visible') {
     refreshWakeLockStatus();
@@ -800,7 +773,6 @@ function refreshTelemetry() {
   ui.firmwareValue.textContent = state.firmware ? `${state.firmware.firmware} ${state.firmware.version}` : 'Sunray';
   refreshCaptureState();
   renderMap();
-  maybeCaptureAutomatically().catch((error) => log('AUTO', error.message));
 }
 
 function getSelectedPointArray() {
@@ -843,8 +815,32 @@ function mowerDistanceToSelected() {
   return Math.hypot(t.x - p.x, t.y - p.y);
 }
 
+function selectedExclusion() {
+  if (!state.selectedArea || !state.activeMap) return null;
+  return state.activeMap.exclusions.find((e) => e.id === state.selectedArea) || null;
+}
+
+/** Loescht die ausgewaehlte Ausschlussflaeche — mit Rueckfrage, weil viele Punkte verloren gehen. */
+async function deleteSelectedArea() {
+  const exclusion = selectedExclusion();
+  if (!exclusion || !ensureMapEditable()) return;
+  const index = state.activeMap.exclusions.indexOf(exclusion);
+  if (!confirm(tr('deleteAreaConfirm', { name: localizedExclusionName(exclusion, index) }))) return;
+  checkpointMap('deleteExclusion');
+  state.activeMap.exclusions = state.activeMap.exclusions.filter((e) => e.id !== exclusion.id);
+  state.selectedArea = null;
+  state.selectedPoint = null;
+  state.activeExclusionId = state.activeMap.exclusions[0]?.id || null;
+  state.validationResult = null;
+  renderExclusionControls();
+  await saveActiveMap();
+  renderMap();
+  ui.pointStatus.textContent = tr('areaDeleted');
+}
+
 function clearPointSelection({ render = true } = {}) {
   state.selectedPoint = null;
+  state.selectedArea = null;
   if (render) renderMap();
   refreshCaptureState();
 }
@@ -884,6 +880,39 @@ function updateBatteryChip() {
   ui.batteryFill.style.width = `${pct.toFixed(0)}%`;
   ui.batteryChip.classList.toggle('low', Number.isFinite(volts) && pct < 20);
   ui.batteryChip.classList.toggle('unknown', !Number.isFinite(volts));
+}
+
+// --- Akkordeon ------------------------------------------------------------
+/** In einer Gruppe ist immer nur ein Abschnitt offen. */
+function bindAccordion(container) {
+  if (!container) return;
+  const sections = [...(container.children || [])].filter((el) => el.tagName === 'DETAILS');
+  sections.forEach((section) => section.addEventListener('toggle', () => {
+    if (!section.open) return;
+    sections.forEach((other) => { if (other !== section) other.open = false; });
+  }));
+}
+
+// --- Hell/Dunkel ----------------------------------------------------------
+const THEMES = ['system', 'light', 'dark'];
+
+function applyTheme() {
+  const theme = THEMES.includes(state.view.theme) ? state.view.theme : 'system';
+  // 'system' setzt kein Attribut: dann entscheidet prefers-color-scheme im Stylesheet.
+  if (theme === 'system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', theme);
+  document.querySelectorAll('[data-theme-choice]').forEach((button) => {
+    const active = button.dataset.themeChoice === theme;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
+function setTheme(theme) {
+  if (!THEMES.includes(theme)) return;
+  state.view.theme = theme;
+  saveViewPreferences();
+  applyTheme();
 }
 
 // --- Menueseite -----------------------------------------------------------
@@ -1016,13 +1045,20 @@ function refreshCaptureState() {
   const selected = state.selectedPoint ? getSelectedPoint() : null;
 
   updateRtkBadge();
+  const auto = state.autoCaptureRunning;
   const button = ui.addPointBtn;
   button.classList.remove('capture-fix', 'capture-warning', 'capture-blocked', 'capture-idle', 'capture-stop');
   button.classList.toggle('move-mode', Boolean(selected));
-  ui.deletePointBtn.hidden = !selected || mapLocked;
+  // Automatik ersetzt den manuellen Knopf, statt neben ihm zu stehen.
+  ui.captureCluster.classList.toggle('auto-active', auto);
+  ui.addPointBtn.hidden = auto;
+  ui.autoCaptureLabel.textContent = tr(auto ? 'autoCaptureOn' : 'autoCapture');
+  ui.autoCaptureBtn.setAttribute('aria-pressed', String(auto));
+  ui.autoCaptureBtn.disabled = mapLocked || (!auto && !(hasMap && fresh && coords && !blockedByFixRule));
+  refreshDeleteButton();
   // Im Verschieben-Zustand gibt es kein Halten: eine laufende Halteaktion wird verworfen.
   // (Nicht umgekehrt: ein laufendes Halten darf nicht von der 2-s-Telemetrie abgebrochen werden.)
-  if (selected) cancelCaptureHold();
+  if (selected || auto) cancelCaptureHold();
 
   const show = (cls, title, hint, status) => {
     button.classList.add(cls);
@@ -1063,23 +1099,16 @@ function refreshCaptureState() {
     return;
   }
 
-  if (ui.autoCaptureEnabled.checked && state.autoCaptureRunning) {
-    button.disabled = false;
-    show('capture-stop', tr('stopAutoCapture'), tr('autoCaptureStopHint', { count: state.autoCaptureCount }));
+  if (auto) {
     ui.autoCaptureState.textContent = tr('autoCaptureRunning', { count: state.autoCaptureCount });
     return;
   }
+  ui.autoCaptureState.textContent = tr('autoCaptureOff');
 
-  ui.autoCaptureState.textContent = ui.autoCaptureEnabled.checked
-    ? (state.view.autoCaptureMode === 'smart' ? tr('smartAutoHint') : tr('autoCaptureReady', { distance: state.view.autoCaptureDistance.toFixed(2) }))
-    : tr('autoCaptureOff');
-
-  const autoMode = ui.autoCaptureEnabled.checked;
   button.disabled = !(hasMap && fresh && coords) || blockedByFixRule;
   if (!hasMap) show('capture-idle', tr('noMapActive'), tr('createMapFirst'), tr('pleaseCreateMap'));
   else if (!fresh || !coords) show('capture-idle', tr('waitPosition'), tr('noCurrentXY'), tr('noCurrentPosition'));
   else if (blockedByFixRule) show('capture-blocked', tr('noRtkFix'), tr('captureBlocked', { solution: solution() }), tr('pointBlocked', { solution: solution() }));
-  else if (autoMode) show(hasTrueFix ? 'capture-fix' : 'capture-warning', tr('startAutoCapture'), tr('autoCaptureStartHint', { distance: state.view.autoCaptureDistance.toFixed(2) }), tr('readyPoint', { x: t.x.toFixed(2), y: t.y.toFixed(2) }));
   else if (hasTrueFix) show('capture-fix', tr('capturePoint'), tr('holdToCapture'), tr('readyPoint', { x: t.x.toFixed(2), y: t.y.toFixed(2) }));
   else show('capture-warning', tr('captureAnyway'), tr('noTrueFix', { solution: solution() }), tr('warningPoint', { solution: solution() }));
 }
@@ -1121,6 +1150,10 @@ function handleLine(rawLine) {
     const parsed = SunrayProtocol.parseState(line);
     if (!parsed) return;
     state.pendingStateReplies = 0;
+    if (Number.isFinite(parsed.x) && Number.isFinite(parsed.y)) {
+      state.fixHistory.push({ x: parsed.x, y: parsed.y, at: Date.now() });
+      if (state.fixHistory.length > POSITION_SMOOTHING_MAX_SAMPLES) state.fixHistory.shift();
+    }
     state.telemetry = {
       x: parsed.x,
       y: parsed.y,
@@ -1524,6 +1557,8 @@ function normalizeMap(map) {
     if (!exclusion.id) exclusion.id = newId();
     if (!Array.isArray(exclusion.points)) exclusion.points = [];
     if (!exclusion.name) exclusion.name = `Ausschluss ${index + 1}`;
+    // Bestandskarten wurden immer geschlossen gezeichnet — dabei bleibt es.
+    exclusion.closed = exclusion.closed !== false;
   });
   if (!Array.isArray(map.waypoints)) map.waypoints = [];
   if (!Array.isArray(map.dockPoints)) map.dockPoints = [];
@@ -1556,8 +1591,9 @@ function checkpointMap(reasonKey, { beforeChange = true } = {}) {
 
 function historyReason(entry) {
   const keyMap = {
-    manual: 'historyManual', addPoint: 'historyAddPoint', autoCapture: 'historyAutoCapture', deletePoint: 'historyDeletePoint', relearnPoint: 'historyRelearnPoint', segment: 'historySegment', straight: 'historyStraight',
-    clear: 'historyClear', deleteExclusion: 'historyDeleteExclusion', createExclusion: 'historyCreateExclusion', closePerimeter: 'historyClosePerimeter', restore: 'historyRestore',
+    manual: 'historyManual', addPoint: 'historyAddPoint', autoCapture: 'historyAutoCapture', deletePoint: 'historyDeletePoint', relearnPoint: 'historyRelearnPoint',
+    clear: 'historyClear', deleteExclusion: 'historyDeleteExclusion', createExclusion: 'historyCreateExclusion',
+    closePerimeter: 'historyClosePerimeter', closeContour: 'historyCloseContour', restore: 'historyRestore',
   };
   return tr(keyMap[entry?.reasonKey] || 'historyManual');
 }
@@ -1780,20 +1816,48 @@ function getActivePointArray() {
   return null;
 }
 
-function refreshUndoState() {
-  const target = getActivePointArray();
-  const count = Array.isArray(target) ? target.length : 0;
-  const label = modeLabel(state.mode);
-  ui.undoBtn.disabled = count === 0 || Boolean(state.activeMap?.locked);
-  ui.undoButtonTitle.textContent = tr('undoTitle');
-  ui.undoBtn.title = count ? tr('undoHintCount', { label, count }) : tr('undoHintEmpty', { label });
+/**
+ * Ein Knopf, drei Aufgaben: ohne Auswahl loescht er den zuletzt aufgenommenen Punkt,
+ * bei ausgewaehltem Punkt genau diesen, bei ausgewaehlter Ausschlussflaeche die ganze Flaeche.
+ * Waehrend der Automatik-Aufnahme ist er ausgeblendet.
+ */
+function refreshDeleteButton() {
+  const button = ui.deletePointBtn;
+  const wrap = ui.deleteFabWrap;
+  const mapLocked = Boolean(state.activeMap?.locked);
+  const area = selectedExclusion();
+  const point = state.selectedPoint ? getSelectedPoint() : null;
+  const count = (getActivePointArray() || []).length;
+  if (wrap) wrap.hidden = state.autoCaptureRunning || mapLocked;
+  button.classList.remove('delete-point', 'delete-area');
+  if (area) {
+    button.classList.add('delete-area');
+    ui.deleteBtnLabel.textContent = tr('deleteAreaLabel');
+    button.disabled = false;
+  } else if (point) {
+    button.classList.add('delete-point');
+    ui.deleteBtnLabel.textContent = tr('deletePointLabel');
+    button.disabled = false;
+  } else {
+    ui.deleteBtnLabel.textContent = tr('deleteLastLabel');
+    button.disabled = count === 0;
+  }
+  button.title = ui.deleteBtnLabel.textContent;
+}
+
+/** Der Knopf aus refreshDeleteButton(): die Aktion richtet sich nach der aktuellen Auswahl. */
+async function deleteAction() {
+  if (state.autoCaptureRunning) return;
+  if (selectedExclusion()) { await deleteSelectedArea(); return; }
+  if (state.selectedPoint) { await deleteSelectedPoint(); return; }
+  await undoPoint();
 }
 
 async function createExclusion() {
   if (!state.activeMap || !ensureMapEditable()) return;
   checkpointMap('createExclusion');
   const number = state.activeMap.exclusions.length + 1;
-  const exclusion = { id: newId(), name: tr('exclusionN', { n: number }), points: [] };
+  const exclusion = { id: newId(), name: tr('exclusionN', { n: number }), points: [], closed: false };
   state.activeMap.exclusions.push(exclusion);
   state.activeExclusionId = exclusion.id;
   renderExclusionControls();
@@ -1815,11 +1879,25 @@ async function deleteExclusion() {
   renderMap();
 }
 
+/**
+ * Mittelt die Fixes der letzten POSITION_SMOOTHING_WINDOW_MS Millisekunden. Das daempft das
+ * GPS-Rauschen, ohne dass der Nutzer warten muss. Weniger als zwei Fixes im Fenster: kein Mittel.
+ */
+function smoothedPosition() {
+  const cutoff = Date.now() - POSITION_SMOOTHING_WINDOW_MS;
+  const samples = state.fixHistory.filter((f) => f.at >= cutoff);
+  if (samples.length < 2) return null;
+  const sum = samples.reduce((acc, f) => ({ x: acc.x + f.x, y: acc.y + f.y }), { x: 0, y: 0 });
+  return { x: sum.x / samples.length, y: sum.y / samples.length, samples: samples.length };
+}
+
 function pointFromTelemetry() {
   const t = state.telemetry;
+  const smooth = smoothedPosition();
   return {
-    x: Number(t.x.toFixed(3)),
-    y: Number(t.y.toFixed(3)),
+    x: Number((smooth ? smooth.x : t.x).toFixed(3)),
+    y: Number((smooth ? smooth.y : t.y).toFixed(3)),
+    smoothedFrom: smooth ? smooth.samples : 1,
     capturedAt: new Date().toISOString(),
     gps: {
       solution: t.solution,
@@ -1865,58 +1943,59 @@ async function appendCurrentPoint({ automatic = false, targetOverride = null, sa
   return point;
 }
 
-function stopAutoCapture() {
+function stopAutoCapture({ render = true } = {}) {
+  if (state.autoCaptureTimer) clearInterval(state.autoCaptureTimer);
+  state.autoCaptureTimer = null;
   state.autoCaptureRunning = false;
   state.autoCaptureBusy = false;
   releaseWakeLock();
-  refreshCaptureState();
+  if (render) { renderMap(); refreshCaptureState(); }
 }
 
-async function toggleAutoCapture() {
+/** Zeitgesteuerte Aufnahme: alle state.view.autoCaptureIntervalS Sekunden ein Punkt. */
+async function startAutoCapture() {
   if (!ensureMapEditable()) return;
-  if (state.autoCaptureRunning) {
-    stopAutoCapture();
-    return;
-  }
   if (!state.activeMap || !telemetryIsFresh() || (ui.fixOnly.checked && !telemetryHasFix())) return;
   if (state.mode === 'exclusion' && !getActivePointArray()) await createExclusion();
+  clearPointSelection({ render: false });
   checkpointMap('autoCapture');
   state.autoCaptureRunning = true;
   state.autoCaptureCount = 0;
   requestWakeLockIfNeeded();
-  const point = await appendCurrentPoint({ automatic: true });
-  if (point) {
-    state.autoCaptureCount = 1;
-    ui.pointStatus.textContent = tr('autoPointSaved', { count: 1, x: point.x.toFixed(2), y: point.y.toFixed(2) });
-  }
+  await autoCaptureTick();
+  const intervalMs = Math.max(1, state.view.autoCaptureIntervalS) * 1000;
+  state.autoCaptureTimer = setInterval(() => { autoCaptureTick().catch((error) => log('AUTO', error.message)); }, intervalMs);
   renderMap(); refreshCaptureState();
 }
 
-async function maybeCaptureAutomatically() {
-  if (state.autoCaptureBusy || !telemetryIsFresh()) return;
-  if (!state.autoCaptureRunning || (ui.fixOnly.checked && !telemetryHasFix())) return;
-  const target = getActivePointArray();
-  const last = target?.[target.length - 1];
-  if (!target || !last) return;
-  const closeCandidate = perimeterClosureCandidate();
-  if (closeCandidate) {
-    state.autoCaptureBusy = true;
-    try { await closePerimeter({ automatic: true }); } finally { state.autoCaptureBusy = false; }
+async function autoCaptureTick() {
+  if (!state.autoCaptureRunning || state.autoCaptureBusy) return;
+  if (!telemetryIsFresh() || (ui.fixOnly.checked && !telemetryHasFix())) {
+    ui.pointStatus.textContent = tr('autoCaptureWaiting');
     return;
   }
-  const shouldCapture = state.view.autoCaptureMode === 'smart'
-    ? shouldSmartCapture(target, state.telemetry, state.view.autoCaptureDistance)
-    : xyDistance(last, state.telemetry) >= state.view.autoCaptureDistance;
-  if (!shouldCapture) return;
   state.autoCaptureBusy = true;
   try {
+    if (state.mode === 'perimeter' && perimeterClosureCandidate()) {
+      await closePerimeter({ automatic: true });
+      stopAutoCapture({ render: false });
+      renderMap(); refreshCaptureState();
+      return;
+    }
     const point = await appendCurrentPoint({ automatic: true });
     if (point) {
       state.autoCaptureCount += 1;
       ui.pointStatus.textContent = tr('autoPointSaved', { count: state.autoCaptureCount, x: point.x.toFixed(2), y: point.y.toFixed(2) });
       renderMap(); refreshCaptureState();
     }
-  } finally { state.autoCaptureBusy = false; }
+  } finally {
+    state.autoCaptureBusy = false;
+  }
+}
+
+async function toggleAutoCapture() {
+  if (state.autoCaptureRunning) { stopAutoCapture(); return; }
+  await startAutoCapture();
 }
 
 async function addCurrentPoint() {
@@ -1924,7 +2003,6 @@ async function addCurrentPoint() {
   if (state.selectedPoint) { await relearnSelectedPoint(); clearPointSelection(); return; }
   if (state.mode === 'perimeter' && state.activeMap?.perimeterClosed) { await reopenPerimeter(); return; }
   if (state.mode === 'perimeter' && perimeterClosureCandidate()) { await closePerimeter(); return; }
-  if (ui.autoCaptureEnabled.checked) { await toggleAutoCapture(); return; }
   await appendCurrentPoint();
   renderMap();
 }
@@ -2064,6 +2142,11 @@ function computeTransform(points) {
 
 function toScreen(point, tr) {
   return { x: tr.ox + point.x * tr.scale, y: tr.oy - point.y * tr.scale };
+}
+
+/** Umkehrung von toScreen: viewBox-Koordinaten zurueck in Sunray-XY-Meter. */
+function toMapCoords(point, tr) {
+  return { x: (point.x - tr.ox) / tr.scale, y: (tr.oy - point.y) / tr.scale };
 }
 
 function drawPolyline(points, tr, className, close = false) {
@@ -2261,7 +2344,7 @@ function renderMap() {
     drawPolyline(state.activeMap.perimeter, transform, 'perimeter-shape', Boolean(state.activeMap.perimeterClosed));
     drawPoints(state.activeMap.perimeter, transform, 'point-perimeter', { role: 'perimeter' });
     state.activeMap.exclusions.forEach((exclusion) => {
-      drawPolyline(exclusion.points, transform, 'exclusion-shape', true);
+      drawPolyline(exclusion.points, transform, `exclusion-shape${exclusion.id === state.selectedArea ? ' selected-area' : ''}`, exclusion.closed !== false);
       drawPoints(exclusion.points, transform, 'point-exclusion', { role: 'exclusion', exclusionId: exclusion.id });
     });
     drawPolyline(state.activeMap.waypoints, transform, 'waypoint-shape', false);
@@ -2280,7 +2363,7 @@ function renderMap() {
   drawDistanceGuide(transform);
   drawRobot(transform);
   refreshMapDistanceInfo();
-  refreshUndoState();
+  refreshDeleteButton();
   refreshHistoryUndoState();
 
   ui.recentPoints.innerHTML = '';
@@ -2603,6 +2686,7 @@ function validateActiveMap() {
     if(ex.points.length>0 && ex.points.length<3)issues.push({severity:'error',key:'checkAreaTooFew',vars:{label}});
     if(ex.points.length>=4 && polygonSelfIntersects(ex.points))issues.push({severity:'error',key:'checkSelfIntersection',vars:{label}});
     if(ex.points.length>=3 && map.perimeter.length>=3 && (ex.points.some((p)=>!pointInPolygon(p,map.perimeter)) || polygonEdgesIntersect(ex.points,map.perimeter)))issues.push({severity:'error',key:'checkExclusionOutside',vars:{label}});
+    if(ex.points.length>=3 && ex.closed===false)issues.push({severity:'warning',key:'checkAreaOpen',vars:{label}});
     const spacing=pathSpacingIssues(ex.points,true); if(spacing.close)issues.push({severity:'warning',key:'checkClosePoints',vars:{label,count:spacing.close}}); if(spacing.long)issues.push({severity:'warning',key:'checkLongSegments',vars:{label,count:spacing.long}});
   });
   for(let i=0;i<map.exclusions.length;i+=1)for(let j=i+1;j<map.exclusions.length;j+=1){ const a=map.exclusions[i],b=map.exclusions[j]; if(a.points.length>=3&&b.points.length>=3&&polygonsIntersect(a.points,b.points))issues.push({severity:'error',key:'checkExclusionOverlap',vars:{a:localizedExclusionName(a,i),b:localizedExclusionName(b,j)}}); }
@@ -2623,6 +2707,7 @@ function renderValidation() {
   const errors=result.issues.filter((i)=>i.severity==='error').length; const warnings=result.issues.filter((i)=>i.severity==='warning').length;
   ui.validationSummary.textContent=errors||warnings ? tr('mapCheckIssues',{errors,warnings,area:result.area.toFixed(1)}) : tr('mapCheckOk',{area:result.area.toFixed(1),perimeter:result.perimeter.toFixed(1),fix:result.quality.fix,points:result.quality.total});
   result.issues.forEach((issue)=>{const row=document.createElement('div');row.className=`validation-item ${issue.severity}`;row.textContent=tr(issue.key,issue.vars);ui.validationList.appendChild(row);});
+  if (ui.closeContoursBtn) ui.closeContoursBtn.hidden = openContours().length === 0;
 }
 
 function refreshHistoryUndoState() {
@@ -2724,7 +2809,7 @@ function setMode(mode, { preserveSelection = false } = {}) {
   if (!CAPTURE_MODES.includes(mode)) return;
   if (state.autoCaptureRunning) stopAutoCapture();
   state.mode = mode;
-  if (!preserveSelection) state.selectedPoint = null;
+  if (!preserveSelection) { state.selectedPoint = null; state.selectedArea = null; }
   ui.modeChipLabel.textContent = modeLabel(mode);
   ui.modeCycleBtn.dataset.mode = mode;
   ui.exclusionControls.classList.toggle('hidden', mode !== 'exclusion');
@@ -2732,8 +2817,68 @@ function setMode(mode, { preserveSelection = false } = {}) {
   refreshCaptureState();
 }
 
-function cycleMode() {
-  setMode(CAPTURE_MODES[(CAPTURE_MODES.indexOf(state.mode) + 1) % CAPTURE_MODES.length]);
+function openModeDialog() {
+  if (!ui.modeDialog) return;
+  ui.modeDialog.hidden = false;
+  document.querySelectorAll('#modeDialog [data-mode]').forEach((button) => {
+    button.classList.toggle('active', button.dataset.mode === state.mode);
+  });
+}
+
+function closeModeDialog() {
+  if (ui.modeDialog) ui.modeDialog.hidden = true;
+}
+
+/**
+ * Moduswahl aus dem Dialog. Hat die verlassene Kontur mindestens drei Punkte und ist noch
+ * offen, wird einmal nachgefragt, ob sie geschlossen werden soll. Bei 0-2 Punkten oder bei
+ * offenen Pfaden (Wegpunkte, Dock) wechselt die App ohne Rueckfrage.
+ */
+async function requestModeChange(mode) {
+  closeModeDialog();
+  if (!CAPTURE_MODES.includes(mode) || mode === state.mode) return;
+  await offerToCloseContour(state.mode);
+  setMode(mode);
+}
+
+function openContours() {
+  const map = state.activeMap;
+  if (!map) return [];
+  const open = [];
+  if (map.perimeter.length >= 3 && !map.perimeterClosed) open.push({ role: 'perimeter', label: tr('perimeter') });
+  map.exclusions.forEach((ex, index) => {
+    if (ex.points.length >= 3 && ex.closed === false) open.push({ role: 'exclusion', id: ex.id, label: localizedExclusionName(ex, index) });
+  });
+  return open;
+}
+
+async function closeContour(entry) {
+  if (entry.role === 'perimeter') { await closePerimeter(); return; }
+  const exclusion = state.activeMap?.exclusions.find((e) => e.id === entry.id);
+  if (!exclusion) return;
+  checkpointMap('closeContour');
+  exclusion.closed = true;
+  state.validationResult = null;
+  await saveActiveMap();
+  renderMap();
+}
+
+async function offerToCloseContour(role) {
+  if (!state.activeMap || state.activeMap.locked) return;
+  const entry = openContours().find((c) => c.role === role
+    && (role !== 'exclusion' || c.id === state.activeExclusionId));
+  if (!entry) return;
+  if (!confirm(tr('closeContourQuestion', { label: entry.label }))) return;
+  await closeContour(entry);
+}
+
+/** Aus der Kartenpruefung: alle offenen Konturen auf einmal schliessen. */
+async function closeAllOpenContours() {
+  const open = openContours();
+  if (!open.length || !ensureMapEditable()) return;
+  if (!confirm(tr('closeContoursConfirm', { count: open.length }))) return;
+  for (const entry of open) await closeContour(entry);
+  validateActiveMap();
 }
 
 function selectablePoints() {
@@ -2748,6 +2893,7 @@ function selectablePoints() {
 function applyPointSelection(ref) {
   if (ref.role === 'exclusion' && ref.exclusionId) { state.activeExclusionId = ref.exclusionId; renderExclusionControls(); }
   setMode(ref.role, { preserveSelection: true });
+  state.selectedArea = null;
   state.selectedPoint = ref;
   refreshCaptureState(); renderMap();
 }
@@ -2762,11 +2908,25 @@ function handleMapTap(event) {
     const distance = Math.hypot(tap.x - local.x, tap.y - local.y);
     if (distance < nearestDistance) { nearestDistance = distance; nearest = item; }
   }
-  if (!nearest || nearestDistance > state.hitRadiusUnits) {
-    if (state.selectedPoint) clearPointSelection();
+  if (nearest && nearestDistance <= state.hitRadiusUnits) {
+    applyPointSelection({ role: nearest.role, index: nearest.index, exclusionId: nearest.exclusionId });
     return;
   }
-  applyPointSelection({ role: nearest.role, index: nearest.index, exclusionId: nearest.exclusionId });
+  // Tap in die Flaeche einer fertigen Ausschlusskontur waehlt die ganze Flaeche aus.
+  // Bewusst nur fuer Ausschlussflaechen: beim Perimeter wuerde das jeden Tap in die Karte greifen.
+  const mapPoint = toMapCoords(tap, transform);
+  const area = (state.activeMap?.exclusions || []).find((ex) => ex.points.length >= 3 && pointInPolygon(mapPoint, ex.points));
+  if (area) {
+    state.selectedPoint = null;
+    state.selectedArea = area.id;
+    state.activeExclusionId = area.id;
+    setMode('exclusion', { preserveSelection: true });
+    renderExclusionControls();
+    ui.pointStatus.textContent = tr('areaSelected', { name: localizedExclusionName(area, state.activeMap.exclusions.indexOf(area)) });
+    renderMap(); refreshCaptureState();
+    return;
+  }
+  if (state.selectedPoint || state.selectedArea) clearPointSelection();
 }
 
 function selectPointElement(element) {
@@ -2819,9 +2979,18 @@ function browserCheck() {
 function bindEvents() {
   // Kopfzeile
   ui.menuBtn.addEventListener('click', () => setMenuOpen(true));
+  bindAccordion(ui.menuScroll);
+  bindAccordion(ui.settingsSections);
+  document.querySelectorAll('[data-theme-choice]').forEach((button) => button.addEventListener('click', () => setTheme(button.dataset.themeChoice)));
   ui.menuCloseBtn.addEventListener('click', () => setMenuOpen(false));
   ui.bleStatusBtn.addEventListener('click', () => setMenuOpen(true, { section: 'menuConnection' }));
-  ui.modeCycleBtn.addEventListener('click', cycleMode);
+  ui.modeCycleBtn.addEventListener('click', openModeDialog);
+  ui.modeDialogCancel.addEventListener('click', closeModeDialog);
+  ui.modeDialog.addEventListener('click', (event) => { if (event.target === ui.modeDialog) closeModeDialog(); });
+  document.querySelectorAll('#modeDialog [data-mode]').forEach((button) => button.addEventListener('click', () => {
+    requestModeChange(button.dataset.mode).catch((e) => alert(e.message));
+  }));
+  ui.closeContoursBtn.addEventListener('click', () => closeAllOpenContours().catch((e) => alert(e.message)));
   ui.languageToggle.addEventListener('click', toggleLanguage);
   window.addEventListener('online', updateHelpSystemStatus);
   window.addEventListener('offline', updateHelpSystemStatus);
@@ -2851,8 +3020,8 @@ function bindEvents() {
   ui.fitViewBtn.addEventListener('click', () => resetViewport());
 
   // Kartenwerkzeuge
-  ui.deletePointBtn.addEventListener('click', () => deleteSelectedPoint().catch((e) => alert(e.message)));
-  ui.undoBtn.addEventListener('click', () => undoPoint().catch((e) => alert(e.message)));
+  ui.deletePointBtn.addEventListener('click', () => deleteAction().catch((e) => alert(e.message)));
+  ui.autoCaptureBtn.addEventListener('click', () => toggleAutoCapture().catch((e) => alert(e.message)));
   ui.addPointBtn.addEventListener('pointerdown', beginCaptureHold);
   ['pointerup', 'pointercancel', 'pointerleave'].forEach((name) => ui.addPointBtn.addEventListener(name, cancelCaptureHold));
   ui.addPointBtn.addEventListener('click', captureButtonTap);
@@ -2905,9 +3074,7 @@ function bindEvents() {
 
   // Aufnahme-Einstellungen
   ui.fixOnly.addEventListener('change', refreshCaptureState);
-  ui.autoCaptureEnabled.addEventListener('change', () => { if (!ui.autoCaptureEnabled.checked) stopAutoCapture(); refreshCaptureState(); });
-  ui.autoCaptureDistanceInput.addEventListener('change', () => { updateViewPreferencesFromUi(); applyViewPreferencesToUi(); refreshCaptureState(); });
-  ui.autoCaptureModeSelect.addEventListener('change', () => { updateViewPreferencesFromUi(); applyViewPreferencesToUi(); refreshCaptureState(); });
+  ui.autoCaptureIntervalInput.addEventListener('change', () => { updateViewPreferencesFromUi(); applyViewPreferencesToUi(); refreshCaptureState(); });
   ui.exclusionSelect.addEventListener('change', () => { state.activeExclusionId = ui.exclusionSelect.value || null; state.selectedPoint = null; renderMap(); refreshCaptureState(); });
   ui.newExclusionBtn.addEventListener('click', () => createExclusion().catch((e) => alert(e.message)));
   ui.deleteExclusionBtn.addEventListener('click', () => deleteExclusion().catch((e) => alert(e.message)));

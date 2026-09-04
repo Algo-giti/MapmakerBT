@@ -55,45 +55,69 @@ Die App besteht aus drei Zonen:
   Punkte und deren Verbindungslinien.
 - **Fahrzone** unten – der Joystick für den Daumen.
 
-Alle Einstellungen liegen auf einer eigenen **Menüseite** (☰): Verbindung, Karten, Fahren,
-Ansicht & Maßstab, Aufnahme, Kartenprüfung, Diagnose und Hilfe.
+Alle Einstellungen liegen auf einer eigenen **Menüseite** (☰) mit sechs Bereichen: Verbindung,
+Karten, Einstellungen, Kartenprüfung, Diagnose und Hilfe. Unter *Einstellungen* stecken
+Fahrgeschwindigkeit, Ansicht & Maßstab sowie Aufnahme. Es ist immer nur ein Bereich geöffnet;
+das Öffnen eines Bereichs klappt die anderen zu.
 
 ## Karte aufnehmen
 
 1. Im Menü unter **Karten** über **+ Neu** eine Karte anlegen.
-2. Auf der Karte den **Moduswahl-Button** in der Kopfzeile antippen; er schaltet der Reihe nach
-   durch **Perimeter → Ausschluss → Wegpunkt → Dock** und zeigt immer den aktiven Modus.
+2. Den **Moduswahl-Button** in der Kopfzeile antippen; es öffnet sich ein Auswahlfeld in der
+   Bildschirmmitte mit **Perimeter, Ausschluss, Wegpunkt und Dock**. Der Button zeigt danach
+   immer den aktiven Modus.
 3. Den Mäher an die gewünschte Stelle fahren und den großen Button unten rechts
    **gedrückt halten**, bis der Ring einmal herumgelaufen ist. Das Halten verhindert, dass beim
    Schieben oder Zoomen der Karte versehentlich Punkte entstehen.
    - **Grün** bedeutet echter RTK FIX – nur dann ist der Punkt wirklich genau.
    - Ist **„Nur bei RTK FIX"** aktiv, bleibt die Aufnahme bei FLOAT oder INVALID gesperrt.
-4. Für lange Strecken im Menü unter **Aufnahme** die **Auto-Aufnahme** einschalten: MapCreator
-   setzt selbstständig Punkte, auf geraden Abschnitten weniger, in Kurven dichter.
+4. Für lange Strecken die **Automatik** einschalten: der kleine Knopf mit dem Play-Symbol über
+   dem Aufnahme-Button. Solange sie läuft, ersetzt ein großer roter Knopf mit Pause-Symbol den
+   manuellen Button, und MapCreator setzt im eingestellten Takt selbstständig Punkte. Das
+   **Intervall** (Startwert 5 Sekunden) steht im Menü unter *Einstellungen › Aufnahme*.
 5. Nähert sich der Mäher nach einem ausreichend langen Perimeter wieder dem Startpunkt, bietet
    die App an, den Perimeter zu **schließen**.
-6. Weitere Ausschlussflächen legst du im Menü unter **Aufnahme** mit **+ Neu** an.
+6. Weitere Ausschlussflächen legst du im Menü unter *Karten* mit **+ Neu** an.
 
-Der Button unten links macht den zuletzt gesetzten Punkt rückgängig – beliebig oft
-hintereinander.
+Beim Wechsel des Aufnahmemodus fragt die App nach, ob die verlassene Kontur geschlossen werden
+soll – aber nur, wenn sie mindestens drei Punkte hat und noch offen ist. Sagst du Nein, bleibt sie
+offen und du kannst später an genau diesem Punkt weitermachen. Offene Konturen findet auch die
+**Kartenprüfung** und bietet an, sie zu schließen.
+
+Beim manuellen Aufnehmen mittelt MapCreator die Positionen der letzten rund zwei Sekunden. Das
+dämpft das GPS-Rauschen, ohne dass du warten musst.
 
 ## Punkte korrigieren
 
 Tippe einen vorhandenen Punkt direkt auf der Karte an. Die Trefferfläche ist deutlich größer als
 der sichtbare Punkt, damit sie mit dem Daumen erreichbar bleibt. Der ausgewählte Punkt wird
-hervorgehoben, und
+hervorgehoben, und der große Button unten rechts wird zum **Verschieben**-Button: ein einfacher
+Tipp setzt den Punkt auf die aktuelle Mäherposition.
 
-- der große Button unten rechts wird zum **Verschieben**-Button: ein einfacher Tipp setzt den
-  Punkt auf die aktuelle Mäherposition,
-- oben rechts erscheint das **Lösch-Werkzeug** für genau diesen Punkt.
+Tippst du mitten in eine fertige **Ausschlussfläche**, wird die ganze Fläche ausgewählt. Beim
+Perimeter passiert das absichtlich nicht, sonst ließe sich die Karte nicht mehr frei verschieben.
 
 Ein Tipp auf eine leere Stelle hebt die Auswahl wieder auf.
+
+### Der Lösch-Button oben rechts
+
+Ein Button, drei Aufgaben – die Beschriftung darüber sagt jeweils, was passiert:
+
+| Auswahl | Beschriftung | Wirkung |
+|---|---|---|
+| keine | Letzten Punkt | löscht den zuletzt aufgenommenen Punkt, beliebig oft hintereinander |
+| ein Punkt | Punktauswahl löschen | löscht genau diesen Punkt |
+| eine Ausschlussfläche | Fläche löschen | löscht die ganze Fläche, nach Rückfrage |
+
+Während die Automatik läuft, ist der Button ausgeblendet.
 
 Fertige Karten kannst du im Menü unter **Karten** **sperren**, damit sie nicht mehr versehentlich
 verändert werden.
 
 ## Kartenansicht
 
+- **Hell- und Dunkelmodus**: standardmäßig übernimmt die App die Einstellung des Geräts;
+  unter *Einstellungen › Ansicht & Maßstab* lässt sich Hell oder Dunkel fest wählen.
 - **Pinch-to-Zoom** und Verschieben mit dem Finger; die Karte lässt sich nicht aus dem Bild
   schieben, und der Button oben rechts stellt die automatische Ansicht wieder her.
 - Raster in 0,10 / 0,25 / 0,50 / 1 / 2 / 5 m oder automatisch
