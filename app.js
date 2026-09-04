@@ -101,7 +101,7 @@ const I18N = {
     exclusionN: 'Ausschluss {n}', mapN: 'Karte {n}', deleteMapConfirm: 'Karte „{name}“ wirklich lokal löschen?',
     dockPath: 'Dockpfad',
     deleteExclusionConfirm: '{name} wirklich löschen?', pointSaved: 'Punkt gespeichert: X {x} · Y {y}', dockPoints: 'Dockpunkte', clearConfirm: '{label} wirklich leeren?',
-    mapSummary: '{name} · Perimeter {perimeter} · Ausschluss {exclusions} ({points} Punkte) · Dock {dock}', noMap: 'Keine Karte', noMapLoaded: 'Keine Karte geladen.',
+    mapSummary: '{name} · {points} Punkte', noMap: 'Keine Karte', noMapLoaded: 'Keine Karte geladen.',
     recentPoint: 'Punkt {n}', invalidMapFile: 'Datei ist keine MapCreator-für-Ardumower-Karte.', unknown: 'unbekannt',
     unsupportedGeometry: 'GeoJSON-Geometrie {type} wird nicht unterstützt.', invalidCoordinates: 'GeoJSON enthält ungültige X/Y-Koordinaten.',
     invalidGeoJson: 'Datei ist kein unterstütztes GeoJSON FeatureCollection.', noGeoFeatures: 'GeoJSON enthält keine Features mit role=perimeter, exclusion oder dock.',
@@ -223,7 +223,7 @@ const I18N = {
     exclusionN: 'Exclusion {n}', mapN: 'Map {n}', deleteMapConfirm: 'Really delete map “{name}” locally?',
     dockPath: 'Dock path',
     deleteExclusionConfirm: 'Really delete {name}?', pointSaved: 'Point saved: X {x} · Y {y}', dockPoints: 'Dock points', clearConfirm: 'Really clear {label}?',
-    mapSummary: '{name} · Perimeter {perimeter} · Exclusions {exclusions} ({points} points) · Dock {dock}', noMap: 'No map', noMapLoaded: 'No map loaded.',
+    mapSummary: '{name} · {points} points', noMap: 'No map', noMapLoaded: 'No map loaded.',
     recentPoint: 'Point {n}', invalidMapFile: 'File is not a MapCreator für Ardumower map.', unknown: 'unknown',
     unsupportedGeometry: 'GeoJSON geometry {type} is not supported.', invalidCoordinates: 'GeoJSON contains invalid X/Y coordinates.',
     invalidGeoJson: 'File is not a supported GeoJSON FeatureCollection.', noGeoFeatures: 'GeoJSON contains no features with role=perimeter, exclusion, or dock.',
@@ -2352,8 +2352,7 @@ function renderMap() {
     drawPolyline(state.activeMap.dockPoints, transform, 'dock-shape', false);
     drawPoints(state.activeMap.dockPoints, transform, 'point-dock', { role: 'dock' });
 
-    const exPts = state.activeMap.exclusions.reduce((sum, e) => sum + e.points.length, 0);
-    ui.mapSummary.textContent = tr('mapSummary', { name: localizedMapName(state.activeMap), perimeter: state.activeMap.perimeter.length, exclusions: state.activeMap.exclusions.length, points: exPts, dock: state.activeMap.dockPoints.length });
+    ui.mapSummary.textContent = tr('mapSummary', { name: localizedMapName(state.activeMap), points: mapPointCount(state.activeMap) });
   } else {
     ui.activeMapName.textContent = tr('noMap');
     ui.mapSummary.textContent = tr('noMapLoaded');

@@ -2220,25 +2220,37 @@ body.menu-open .app-frame { visibility: hidden; }
 .map-point-hit { fill: transparent; stroke: none; cursor: pointer; }
 
 .map-hud {
+  /* Eine schmale Zeile am oberen Rand. bottom/right muessen zurueckgesetzt werden,
+     sonst spannt die aeltere .map-hud-Regel den Kasten ueber die ganze Kartenhoehe. */
   position: absolute;
   top: 0; left: 50%;
+  right: auto; bottom: auto;
   transform: translateX(-50%);
-  display: grid;
-  gap: 1px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: nowrap;
   width: max-content;
-  max-width: calc(100% - 20px);
-  padding: 3px 10px 4px;
-  border-radius: 0 0 10px 10px;
+  max-width: calc(100% - 12px);
+  height: auto;
+  padding: 2px 10px 3px;
+  border: 0;
+  border-radius: 0 0 9px 9px;
   background: var(--shell-hud);
+  backdrop-filter: blur(6px);
+  box-shadow: none;
   pointer-events: none;
   text-align: center;
-  font-size: .62rem;
-  line-height: 1.25;
+  font-family: inherit;
+  font-size: .6rem;
+  line-height: 1.5;
+  white-space: nowrap;
   color: var(--shell-text);
 }
-.map-hud .hud-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-hud .hud-line { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .map-hud .hud-dim { color: var(--shell-muted); }
 .map-hud .hud-dim:empty { display: none; }
+.map-hud .hud-dim:not(:empty)::before { content: "·"; margin-right: 6px; opacity: .6; }
 
 .map-fab-stack { position: absolute; top: 8px; right: 10px; display: grid; gap: 8px; }
 .map-fab {
