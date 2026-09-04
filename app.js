@@ -318,7 +318,7 @@ const ui = {
   mapSvg: $('mapSvg'), gridLayer: $('gridLayer'), shapeLayer: $('shapeLayer'), robotLayer: $('robotLayer'),
   deletePointBtn: $('deletePointBtn'), deleteFabWrap: $('deleteFabWrap'), deleteBtnLabel: $('deleteBtnLabel'), fitViewBtn: $('fitViewBtn'),
   captureCluster: $('captureCluster'), autoCaptureBtn: $('autoCaptureBtn'), autoCaptureLabel: $('autoCaptureLabel'),
-  addPointBtn: $('addPointBtn'), captureProgress: $('captureProgress'), captureButtonTitle: $('captureButtonTitle'), captureButtonHint: $('captureButtonHint'),
+  captureFabWrap: $('captureFabWrap'), addPointBtn: $('addPointBtn'), captureProgress: $('captureProgress'), captureButtonTitle: $('captureButtonTitle'), captureButtonHint: $('captureButtonHint'),
   mapSummary: $('mapSummary'), mapDistanceInfo: $('mapDistanceInfo'), pointStatus: $('pointStatus'), activeMapName: $('activeMapName'), saveState: $('saveState'),
   // Fahren
   driveJoystick: $('driveJoystick'), joystickKnob: $('joystickKnob'), driveState: $('driveState'),
@@ -379,6 +379,7 @@ const state = {
   lastBleRxAt: 0,
   mode: 'perimeter',
   menuOpen: false,
+  reloadingForUpdate: false,
   selectedPoint: null,
   selectedArea: null,
   fixHistory: [],
@@ -1054,7 +1055,8 @@ function refreshCaptureState() {
   button.classList.toggle('move-mode', Boolean(selected));
   // Automatik ersetzt den manuellen Knopf, statt neben ihm zu stehen.
   ui.captureCluster.classList.toggle('auto-active', auto);
-  ui.addPointBtn.hidden = auto;
+  // Der ganze Block inklusive Beschriftung verschwindet, nicht nur der Knopf.
+  ui.captureFabWrap.hidden = auto;
   ui.autoCaptureLabel.textContent = tr(auto ? 'autoCaptureOn' : 'autoCapture');
   ui.autoCaptureBtn.setAttribute('aria-pressed', String(auto));
   ui.autoCaptureBtn.disabled = mapLocked || (!auto && !(hasMap && fresh && coords && !blockedByFixRule));
@@ -3115,8 +3117,19 @@ async function init() {
   setConnectionStatus(false, 'notConnected', 'readyConnect');
   applyLanguage();
   if ('serviceWorker' in navigator && window.isSecureContext) {
+    // Uebernimmt ein neuer Service Worker die Kontrolle, wurde die Seite noch mit den Dateien
+    // des alten ausgeliefert. Einmal neu laden holt sie frisch — sonst muesste der Nutzer von
+    // Hand ein zweites Mal neu laden, um eine neue Version zu sehen.
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (state.reloadingForUpdate) return;
+        state.reloadingForUpdate = true;
+        log('Service Worker', 'neue Version aktiv, Seite wird neu geladen');
+        location.reload();
+      });
+    }
     navigator.serviceWorker.register('./sw.js')
-      .then(() => navigator.serviceWorker.ready)
+      .then((registration) => { registration.update().catch(() => {}); return navigator.serviceWorker.ready; })
       .then(() => { state.offlineCacheReady = true; updateHelpSystemStatus(); })
       .catch((error) => { state.offlineCacheReady = false; updateHelpSystemStatus(); log('Service Worker', error.message); });
   } else {

@@ -123,6 +123,34 @@ test('Aufgeklappte Abschnitte werden nicht beschnitten', () => {
   }
 });
 
+test('Alle Kartenknoepfe liegen auf einer gemeinsamen rechten Achse', () => {
+  const stack = { right: resolve('.map-fab-stack', 'right').value, width: resolve('.map-fab-stack', 'width').value };
+  const cluster = { right: resolve('.capture-cluster', 'right').value, width: resolve('.capture-cluster', 'width').value };
+  assert.strictEqual(stack.right, cluster.right, 'oben und unten muessen denselben Rechtsabstand haben');
+  assert.strictEqual(stack.width, cluster.width, 'gleiche Spaltenbreite haelt 48-px- und 92-px-Knopf auf einer Mittelachse');
+  assert.ok(stack.width, 'ohne feste Spaltenbreite richten sich verschieden breite Knoepfe unterschiedlich aus');
+  for (const selector of ['.map-fab-stack', '.capture-cluster']) {
+    assert.strictEqual(resolve(selector, 'justify-items').value, 'center', `${selector} muss seine Knoepfe zentrieren`);
+  }
+});
+
+test('Knopfbeschriftungen laufen nicht ueber den Bildschirmrand', () => {
+  // Die Beschriftungen sind breiter als ihre Knoepfe; ohne Umbruch und Breitenbegrenzung
+  // ragen sie rechts aus dem Bild ("Letzten Punkt" wird zu "Punkt").
+  assert.notStrictEqual(resolve('.fab-label', 'white-space').value, 'nowrap');
+  assert.ok(resolve('.fab-label', 'max-width').value, 'Beschriftung braucht eine Breitenbegrenzung');
+});
+
+test('Die Hinweiszeilen stehen untereinander und meiden die Knopfspalte', () => {
+  assert.strictEqual(resolve('.map-hud', 'display').value, 'grid', 'zwei Zeilen untereinander');
+  const columnWidth = parseInt(resolve('.map-fab-stack', 'width').value, 10);
+  const columnRight = parseInt(resolve('.map-fab-stack', 'right').value, 10);
+  const maxWidth = resolve('.map-hud', 'max-width').value || '';
+  const reserved = Number((maxWidth.match(/-\s*(\d+)px/) || [])[1] || 0);
+  assert.ok(reserved >= columnWidth + columnRight,
+    `max-width muss mindestens ${columnWidth + columnRight}px fuer die Knopfspalte freilassen, laesst ${reserved}px`);
+});
+
 test('Struktur: der Scrollcontainer ist direktes Kind der Menueseite', () => {
   const page = html.slice(html.indexOf('<section class="menu-page"'), html.indexOf('</section>', html.indexOf('<section class="menu-page"')));
   const head = page.slice(0, page.indexOf('<div class="menu-scroll"'));

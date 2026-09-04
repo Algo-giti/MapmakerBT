@@ -63,6 +63,15 @@ test('Alter Cache-Bestand wird beim Aktivieren entfernt', () => {
     'neue Version soll ohne zweiten Neustart uebernehmen');
 });
 
+test('Ein Wechsel des Service Workers laedt die Seite einmal neu', () => {
+  // Ohne das zeigt der erste Neuladevorgang nach einem Deploy noch die Dateien des alten,
+  // cache-first arbeitenden Workers — der Nutzer muesste von Hand ein zweites Mal neu laden.
+  assert.ok(app.includes("addEventListener('controllerchange'"), 'controllerchange wird nicht ausgewertet');
+  assert.ok(app.includes('state.reloadingForUpdate'), 'ohne Merker droht eine Neulade-Schleife');
+  assert.ok(/if \(navigator\.serviceWorker\.controller\)/.test(app),
+    'beim allerersten Besuch gibt es noch keinen Controller — dann darf nicht neu geladen werden');
+});
+
 test('Die laufende Version steht im Diagnoseprotokoll', () => {
   assert.ok(/log\(tr\('appStarted'\), APP_VERSION\)/.test(app),
     'sonst laesst sich auf dem Geraet nicht ablesen, welcher Stand laeuft');

@@ -280,13 +280,13 @@ test('Automatik ersetzt den manuellen Knopf und blendet den Loeschknopf aus', as
   t.setMode('waypoint');
   await t.toggleAutoCapture();
   assert.strictEqual(t.state.autoCaptureRunning, true);
-  assert.strictEqual(t.ui.addPointBtn.hidden, true, 'manueller Knopf verschwindet');
+  assert.strictEqual(t.ui.captureFabWrap.hidden, true, 'manueller Knopf samt Beschriftung verschwindet');
   assert.ok(t.ui.captureCluster.classList.contains('auto-active'));
   assert.strictEqual(t.ui.deleteFabWrap.hidden, true, 'kein Loeschen waehrend der Automatik');
   assert.strictEqual(t.state.activeMap.waypoints.length, 1, 'erster Punkt sofort');
   await t.toggleAutoCapture();
   assert.strictEqual(t.state.autoCaptureRunning, false);
-  assert.strictEqual(t.ui.addPointBtn.hidden, false);
+  assert.strictEqual(t.ui.captureFabWrap.hidden, false);
   assert.strictEqual(t.ui.deleteFabWrap.hidden, false);
 });
 
