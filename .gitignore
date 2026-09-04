@@ -1,0 +1,11 @@
+# Projekt-Gedächtnis von Claude Code – bleibt lokal
+CLAUDE.md
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Node (falls später Tooling dazukommt)
+node_modules/

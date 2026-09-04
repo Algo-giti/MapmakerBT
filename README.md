@@ -1,151 +1,157 @@
-# MapCreator für Ardumower v16
+# MapCreator für Ardumower
 
-Mobile, statische PWA für **GitHub Pages** zur Kartenerstellung und Kartenpflege eines Ardumower/Sunray über **Web Bluetooth**. Die App läuft primär auf Android + Chrome, speichert Karten lokal in IndexedDB und kann nach dem ersten erfolgreichen Laden offline weiterverwendet werden.
+MapCreator ist eine mobile Web-App, mit der du die Mähkarte deines Ardumower/Sunray direkt im
+Garten aufnimmst und pflegst. Die App verbindet sich per **Bluetooth Low Energy** direkt mit dem
+Ardumower-ESP32 – ohne Internet, ohne Server, ohne Konto.
 
-Die Oberfläche ist vollständig **Deutsch/Englisch** umschaltbar; Deutsch ist Standard.
+Die Oberfläche lässt sich zwischen **Deutsch und Englisch** umschalten; Deutsch ist voreingestellt.
 
-## Schwerpunkt
+## Was die App kann
 
-MapCreator bleibt ein Werkzeug für:
+- Ardumower per Bluetooth verbinden
+- lokale Sunray-X/Y-Position, RTK-Status, Satelliten und Akkuspannung live anzeigen
+- **Perimeter**, mehrere **Ausschlussflächen** und **Dockpunkte** aufnehmen
+- vorhandene Karten nachträglich korrigieren: einzelne Punkte neu anlernen, Teilstücke neu
+  aufnehmen, zwischen zwei Punkten begradigen
+- Karten auf Geometrie- und RTK-Probleme prüfen
+- lokale Versionsstände speichern und Änderungen rückgängig machen
+- bis zu 10 Karten auf dem Gerät verwalten
+- Karten als JSON-Backup oder als GeoJSON exportieren und wieder importieren
+- den Mäher während der Aufnahme manuell fahren
+- Demo-Modus zum Ausprobieren ohne Mäher
 
-- Ardumower per BLE verbinden
-- lokale Sunray-X/Y-Position und RTK-Status anzeigen
-- Perimeter, Ausschlussflächen und Dockpfad aufnehmen
-- vorhandene Karten korrigieren
-- Karten prüfen, versionieren und sichern
-- bis zu 10 Karten lokal verwalten
+Ein Upload der fertigen Karte zu Sunray gehört **nicht** zum Funktionsumfang. MapCreator erzeugt
+die Kartendatei, das Einspielen erfolgt mit deinem gewohnten Werkzeug.
 
-Ein Upload der Karte zu Sunray ist nicht Bestandteil der App.
+## Voraussetzungen
 
+- **Android mit Chrome** – empfohlen und getestet.
+- **Samsung Internet** funktioniert ebenfalls.
+- **Firefox** unterstützt kein Web Bluetooth und funktioniert nicht.
+- **iPhone/iPad** werden nicht unterstützt: Safari und die Chromium-Browser unter iOS/iPadOS
+  stellen Webseiten kein Web Bluetooth zur Verfügung.
+- Auf dem Ardumower muss der ESP32 mit BLE laufen und in Reichweite sein.
 
+## Erste Schritte
 
-## Neu in v15
+1. Die MapCreator-Seite in Chrome auf dem Android-Gerät öffnen.
+2. Bluetooth am Gerät einschalten.
+3. In den Reiter **Verbindung** wechseln und das **Sunray-Passwort** eintragen
+   (Standard ist `123456`).
+4. Auf **Gerät suchen & verbinden** tippen und den Ardumower aus der Liste auswählen.
+   Der Browser darf die Gerätesuche nur nach dieser Tippgeste starten.
+5. Sobald die Anzeige oben auf verbunden springt, erscheinen X/Y-Position und RTK-Status.
 
-- seitliche **Fahren-/Werkzeuge-Schieber repariert** (doppelte Event-Handler entfernt)
-- deutlich größere Touch-Flächen für beide seitlichen Schieber
-- **Rechtshänder/Linkshänder umschaltbar**
-  - Standard: Fahren rechts, Werkzeuge links
-  - Linkshänder: Fahren links, Werkzeuge rechts
-- Einstellung wird lokal gespeichert
-- Fahr- und Werkzeugfenster auf kleinen Displays nahezu vollbreit
-- Joystick und Bedienelemente vergrößert
-- Werkzeugfenster hat jetzt ebenfalls einen eigenen Schließen-Button
+Das Passwort bleibt nur für die laufende Sitzung im Speicher und wird nicht mit der Karte gespeichert.
 
-## Neu in v14
+## Karte aufnehmen
 
-- **Handy-first Kartenansicht:** GPS/RTK, X/Y und Akku sind deutlich kompakter; Akku sitzt jetzt direkt bei den GPS-Daten.
-- **Werkzeuge als rechter Schieber:** Die Mapping-Werkzeuge sind standardmäßig eingezogen und werden über den rechten Randgriff geöffnet. Dadurch bleibt die Karte fast vollständig frei.
-- **Fahrsteuerung als linker Schieber direkt auf der Karte:** Ein eigener Steuerungs-Reiter ist nicht mehr nötig.
-- **Großer analoger Rund-Joystick:** stufenlose Kombination aus linearer und angularer Geschwindigkeit erlaubt Geradeaus-, Rückwärts- und echte Kurvenfahrt. Loslassen sendet `AT+M,0,0`.
-- **Fahrgeschwindigkeit repariert:** Der Tempo-Regler ist auch ohne aktive BLE-Verbindung einstellbar und wird lokal gespeichert. Standard bleibt `0,15 m/s`.
-- **Mähmotor weiterhin im Fahr-Schieber:** Freigabe, PWM 0–255, 1,5-s-Halteaktion zum Einschalten und STOP ALLES bleiben vorhanden.
-- Linker und rechter Schieber schließen sich beim Öffnen gegenseitig, damit auf kleinen Displays maximal viel Kartenfläche sichtbar bleibt.
+1. Im Reiter **Karten** über **+ Neu** eine Karte anlegen.
+2. Zurück im Reiter **Aufnahme** den Modus wählen: Perimeter, Ausschluss oder Dock.
+3. Den Mäher an die gewünschte Stelle fahren und den großen Aufnahme-Button drücken.
+   - **Grün** bedeutet echter RTK FIX – nur dann ist der Punkt wirklich genau.
+   - Ist **„Nur bei RTK FIX"** aktiv, bleibt die Aufnahme bei FLOAT oder INVALID gesperrt.
+4. Für lange Strecken die **Auto-Aufnahme** einschalten: MapCreator setzt selbstständig Punkte,
+   auf geraden Abschnitten weniger, in Kurven dichter.
+5. Nähert sich der Mäher nach einem ausreichend langen Perimeter wieder dem Startpunkt, bietet
+   die App an, den Perimeter zu **schließen**.
+6. Für weitere Ausschlussflächen im Werkzeugbereich **+ Neu** antippen.
 
-## Neu in v13
+Der zuletzt gesetzte Punkt lässt sich jederzeit rückgängig machen.
 
-- Einstellbare Mähmotor-PWM von **0 bis 255** im eingeblendeten Fahrfenster.
-- Schieberegler plus Zahlenfeld und Prozentanzeige.
-- Der Wert wird lokal auf dem Gerät gespeichert und vor dem Einschalten an Sunray übertragen.
-- Bei PWM `0` wird der Mähmotor nicht gestartet; wird `0` bei laufendem Mähmotor übernommen, schaltet MapCreator den Mähmotor zuerst aus.
-- Sunray erhält die Einstellung über den `pwm`-Parameter von `AT+C`. Der Wert ist eine PWM-Obergrenze, **keine garantierte oder gemessene RPM-Drehzahl**.
+## Karte bearbeiten
 
-## Neu in v12
+Über **Punkte bearbeiten** einen vorhandenen Punkt direkt auf der Karte antippen. Dann kannst du
 
-### Mapping
+- den Punkt an der aktuellen Mäherposition **neu anlernen**,
+- ein ganzes **Teilstück** zwischen zwei Punkten neu abfahren und aufnehmen,
+- die Strecke zwischen zwei ausgewählten Punkten zu einer **Geraden** begradigen.
 
-- **Punktqualität:** Kartenpunkte werden anhand der bei der Aufnahme gespeicherten RTK-Lösung und Genauigkeit farblich bewertet.
-- **Intelligente Auto-Aufnahme:** Auf geraden Strecken werden weniger Punkte erzeugt; bei Richtungsänderungen wird dichter aufgenommen.
-- **Perimeter schließen:** Nähert sich der Mäher nach einem ausreichend langen Perimeter dem Startpunkt, bietet MapCreator das Schließen an. Bei Auto-Aufnahme kann der Perimeter automatisch geschlossen werden, ohne einen doppelten Startpunkt zu speichern.
-- **Messwerkzeug:** Zwei Stellen auf der Karte antippen und die lokale XY-Distanz in Metern anzeigen.
-- **Wake Lock:** Während Auto-/Teilstück-Aufnahme kann MapCreator den Bildschirm auf unterstützten Browsern wach halten.
-- **Kartensperre:** Fertige Karten können gegen versehentliche Bearbeitung gesperrt werden.
-- **Karten-Miniaturen:** Die bis zu 10 lokal gespeicherten Karten werden als kleine Geometrie-Vorschauen mit Fläche, Punktzahl und Änderungsdatum angezeigt.
+Der maximal erlaubte Abstand zwischen Mäher und ausgewähltem Punkt lässt sich einstellen, damit
+nicht versehentlich der falsche Punkt verschoben wird.
 
-### Manuelle Mähersteuerung
+Fertige Karten kannst du im Reiter **Karten** **sperren**, damit sie nicht mehr versehentlich
+verändert werden.
 
-Die eingeblendete **Fahrsteuerung in der Kartenansicht** verwendet die offizielle Sunray-Kommunikationsschicht:
+## Kartenansicht
 
-- `AT+M,linear,angular` für langsames manuelles Fahren
-- `AT+M,0,0` zum Stoppen der Fahrt
-- `AT+C,1,-1` zum Einschalten des Mähmotors, ohne die Operation bewusst zu ändern
-- `AT+C,0,-1` zum Ausschalten des Mähmotors
-- `AT+C,0,0` für **STOP ALLES**: Mähmotor aus + Sunray IDLE; Sunray behandelt `op=0` als besonderen Sicherheitsfall, der alle Motoren stoppt
+- Raster in 0,10 / 0,25 / 0,50 / 1 / 2 / 5 m oder automatisch
+- maßstäbliche Darstellung des Mähers, Standard 0,60 × 0,35 m, anpassbar
+- Fahrspur während der Aufnahme
+- farbliche Bewertung der Punktqualität nach RTK-Lösung und Genauigkeit
+- Live-Abstand zum Perimeter bzw. zum ausgewählten Punkt
+- Messwerkzeug: zwei Stellen antippen und die Distanz in Metern ablesen
+- Bildschirm-Wachhalten während längerer Aufnahmen
 
-Die Fahrsteuerung ist als **Totmannsteuerung** ausgelegt: den runden Joystick ziehen; beim Loslassen springt er in die Mitte und Stop wird gesendet. Durch gleichzeitigen Linear-/Angular-Anteil sind Kurvenfahrten möglich. Der Mähmotor lässt sich erst nach separater Freigabe und **1,5 Sekunden Halten** einschalten; Ausschalten erfolgt sofort.
+Fahrsteuerung und Werkzeuge liegen als seitliche Schieber direkt über der Karte und sind
+für Rechts- oder Linkshänder umschaltbar.
 
-**Wichtig:** Bei unterbrochener Bluetooth-Verbindung kann eine Webseite keinen neuen Stop-Befehl mehr übertragen. Die manuelle Steuerung deshalb nur bei Sichtkontakt verwenden und den physischen Stop/Not-Aus des Mähers erreichbar halten. Die Mähmotor-Anzeige in MapCreator zeigt den zuletzt von der App gesendeten Zustand und ist keine unabhängige Drehzahl-Rückmeldung.
+## Manuell fahren
 
-## Bereits enthalten
+Die Fahrsteuerung öffnet sich über den seitlichen Griff in der Kartenansicht.
 
-- BLE UART Service `FFE0` / Characteristic `FFE1`
-- Sunray `AT+V`-Handshake, Checksumme und Passwort-Verschlüsselung
-- Live `AT+S`: X, Y, RTK-Lösung, Genauigkeit, Satelliten, Batterie, Orientierung (`delta`)
-- technisches Dark-Layout
-- großes Kartenfenster; unten nur eine große kontextabhängige Mapping-Aktion
-- großer Aufnahme-Button grün nur bei echtem RTK FIX
-- Raster 0,10 / 0,25 / 0,50 / 1 / 2 / 5 m oder automatisch
-- maßstäbliche Mäheranzeige, Standard 0,60 × 0,35 m
-- Perimeter, mehrere Ausschlussflächen und Dockpunkte
-- Punkt neu anlernen
-- Teilstück neu anlernen
-- Gerade zwischen zwei ausgewählten Punkten
-- Fahrspur während Mapping
-- Live-Abstand zum Perimeter / ausgewählten Punkt
-- Kartenprüfung auf Geometrie-/RTK-Probleme
-- lokale Versionen und Undo
-- bis zu 10 Karten in IndexedDB
-- JSON Backup-Export/-Import
-- GeoJSON Export/-Import mit lokalem XY-Meter-Koordinatensystem
-- Hilfe/Systemcheck DE/EN
-- PWA/Offline-Service-Worker
-- Demo-Modus
+- Der runde **Joystick** kombiniert stufenlos Vorwärts/Rückwärts und Drehung, Kurvenfahrt
+  inklusive. Er ist als **Totmannsteuerung** ausgelegt: beim Loslassen springt er in die Mitte
+  zurück und der Mäher stoppt.
+- Die **Fahrgeschwindigkeit** ist über den Regler einstellbar, Standard 0,15 m/s.
+- Der **Mähmotor** lässt sich erst nach separater Freigabe und **1,5 Sekunden Halten** einschalten;
+  ausgeschaltet wird er sofort. Die PWM ist von 0 bis 255 einstellbar. Bei PWM 0 startet der
+  Mähmotor nicht.
+- **STOP ALLES** schaltet den Mähmotor ab und versetzt Sunray in den Ruhezustand.
 
-## Offline im Garten
+> **Sicherheitshinweis**
+> Bricht die Bluetooth-Verbindung ab, kann die Webseite keinen Stop-Befehl mehr senden.
+> Nutze die manuelle Steuerung deshalb nur bei Sichtkontakt und halte den physischen
+> Stop/Not-Aus des Mähers erreichbar. Die Mähmotor-Anzeige zeigt nur den zuletzt gesendeten
+> Zustand, sie ist keine unabhängige Rückmeldung vom Mäher.
 
-1. GitHub-Pages-Seite mindestens einmal **mit Internet** in Chrome öffnen.
-2. Warten, bis der Hilfe-Systemcheck den Offline-Cache als bereit meldet.
-3. Optional über Chrome als App/PWA installieren.
-4. Danach können die statischen App-Dateien aus dem Cache geladen werden, wenn WLAN/Internet im Garten abbricht.
+## Karten sichern und übertragen
 
-BLE, lokale Karten, Mapping, Bearbeitung und Datei-Export benötigen danach keine laufende Verbindung zu GitHub.
+Alle Karten liegen **lokal im Browser** dieses Geräts. Ein anderer Browser, ein anderes Profil oder
+gelöschte Website-Daten bedeuten: Karten sind weg.
 
-Das Löschen der Browser-/Website-Daten kann Offline-Cache und IndexedDB-Karten entfernen. Für wichtige Karten regelmäßig JSON-Backups erstellen.
+- **JSON-Export** ist das vollständige Backup einer Karte inklusive Metadaten und Versionsverlauf.
+- **GeoJSON-Export** eignet sich zur Weiterverarbeitung; die Koordinaten bleiben dabei im lokalen
+  XY-Meter-System von Sunray, es sind keine Geokoordinaten.
+- Beide Formate lassen sich wieder importieren.
 
-## Browser
+**Erstelle regelmäßig JSON-Backups deiner wichtigen Karten.**
 
-- **Android + Chrome:** empfohlen; Web Bluetooth in Chrome auf Android technisch ab Android 6.0 verfügbar. Aktuelles Android/Chrome empfohlen.
-- **Samsung Internet:** Web Bluetooth grundsätzlich unterstützt.
-- **Firefox / Firefox Android:** für BLE nicht geeignet, weil Web Bluetooth fehlt.
-- **iPhone/iPad:** Safari und Chromium-Browser unter iOS/iPadOS stellen der Webseite kein natives Web Bluetooth bereit; direkte Ardumower-BLE-Verbindung funktioniert dort nicht.
+## Ohne Internet im Garten arbeiten
 
-## GitHub Pages
+1. Die Seite mindestens einmal **mit Internet** in Chrome öffnen.
+2. Im Reiter **Hilfe** warten, bis der Systemcheck den Offline-Cache als bereit meldet.
+3. Optional über das Chrome-Menü als App installieren.
 
-1. Inhalt dieses Ordners in ein Repository kopieren.
-2. GitHub: **Settings → Pages**.
-3. **Deploy from a branch**, z. B. `main` und `/ (root)`.
-4. Die erzeugte HTTPS-Adresse in Chrome auf Android öffnen.
-5. Im Reiter **Verbindung** auf **Gerät suchen & verbinden** tippen.
+Danach starten die App-Dateien aus dem lokalen Cache. Bluetooth, Kartenaufnahme, Bearbeitung und
+Datei-Export brauchen ohnehin keine Internetverbindung.
 
-## Sunray-Passwort
+## Wenn etwas nicht funktioniert
 
-Das Eingabefeld startet mit `123456`. Das Passwort wird nicht in Karten oder Local Storage gespeichert; es bleibt nur in der aktuellen Browser-Sitzung.
+**Der Ardumower wird nicht gefunden.**
+Bluetooth am Gerät prüfen, aktuelles Chrome verwenden, Reichweite verringern und sicherstellen,
+dass der ESP32 tatsächlich sendet. Ist bereits eine andere App verbunden, diese zuerst trennen.
 
-## Tests
+**Der Aufnahme-Button wird nicht grün.**
+Grün bedeutet echter RTK FIX. Prüfe den RTK-Empfang und die Live-Daten. Mit aktivierter Option
+„Nur bei RTK FIX" bleibt die Aufnahme bei FLOAT oder INVALID bewusst gesperrt.
 
-```bash
-node tests/protocol-test.js
-node tests/app-core-test.js
-node --check app.js
-node --check protocol.js
-```
+**Die Bluetooth-Verbindung bricht ab.**
+MapCreator versucht nach einem unerwarteten Abbruch automatisch, sich wieder zu verbinden.
+Gelingt das nicht, einfach erneut auf **Gerät suchen & verbinden** tippen. Standby des Geräts,
+zu große Entfernung oder ein Browser-Neustart trennen die Verbindung immer.
 
-## BLE-Stabilität in v16
+**Die App startet ohne WLAN nicht.**
+Die Seite muss einmal mit Internet geöffnet worden sein und der Offline-Cache im Systemcheck
+bereit gemeldet haben.
 
-- GATT-Schreibvorgänge bevorzugen jetzt **Write With Response** statt `writeWithoutResponse`.
-- Mehrteilige BLE-Kommandos werden mit kurzem Abstand übertragen.
-- Fahr-Heartbeat wurde auf 650 ms reduziert. Sunray stoppt manuelle Fahrt nach 1000 ms ohne neues `AT+M`, daher bleibt die Totmann-Sicherheit erhalten.
-- `AT+S` wird nicht mehr direkt in laufende Fahr-Schreibvorgänge hineingequeued.
-- Diagnose protokolliert Verbindungsdauer sowie TX/RX-Zähler beim Disconnect.
-- Nach einem unerwarteten GATT-Abbruch versucht MapCreator automatisch mit Backoff wiederzuverbinden.
+**Meine Karten sind verschwunden.**
+Karten liegen nur lokal im Browser. Gelöschte Website-Daten, ein anderer Browser oder ein anderes
+Profil verwenden getrennte Speicher. Importiere dein letztes JSON-Backup.
 
-Wenn die Verbindung weiterhin reproduzierbar abbricht, ist als Nächstes die ESP32-Konfiguration zu prüfen. Die Sunray-Standardwerte `BLE_MIN_INTERVAL 2`, `BLE_MAX_INTERVAL 10`, `BLE_TIMEOUT 30` entsprechen sehr schnellen 2,5–12,5-ms-Intervallen und nur 300 ms Supervision Timeout. Je nach Android-Gerät kann eine weniger aggressive Einstellung stabiler sein.
+Im Reiter **Diagnose** siehst du das vollständige Protokoll der Bluetooth-Kommunikation. Es hilft,
+wenn du ein Problem melden möchtest.
+
+## Lizenz
+
+Siehe [LICENSE](LICENSE).
