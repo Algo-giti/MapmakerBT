@@ -10,14 +10,14 @@ Die Oberfläche lässt sich zwischen **Deutsch und Englisch** umschalten; Deutsc
 
 - Ardumower per Bluetooth verbinden
 - lokale Sunray-X/Y-Position, RTK-Status, Satelliten und Akkuspannung live anzeigen
-- **Perimeter**, mehrere **Ausschlussflächen** und **Dockpunkte** aufnehmen
-- vorhandene Karten nachträglich korrigieren: einzelne Punkte neu anlernen, Teilstücke neu
-  aufnehmen, zwischen zwei Punkten begradigen
+- **Perimeter**, mehrere **Ausschlussflächen**, **Wegpunkte** und **Dockpunkte** aufnehmen
+- vorhandene Karten nachträglich korrigieren: Punkt antippen, an die aktuelle Mäherposition
+  verschieben oder löschen
 - Karten auf Geometrie- und RTK-Probleme prüfen
 - lokale Versionsstände speichern und Änderungen rückgängig machen
 - bis zu 10 Karten auf dem Gerät verwalten
 - Karten als JSON-Backup oder als GeoJSON exportieren und wieder importieren
-- den Mäher während der Aufnahme manuell fahren
+- den Mäher während der Aufnahme mit dem Daumen-Joystick manuell fahren
 - Demo-Modus zum Ausprobieren ohne Mäher
 
 Ein Upload der fertigen Karte zu Sunray gehört **nicht** zum Funktionsumfang. MapCreator erzeugt
@@ -36,74 +36,91 @@ die Kartendatei, das Einspielen erfolgt mit deinem gewohnten Werkzeug.
 
 1. Die MapCreator-Seite in Chrome auf dem Android-Gerät öffnen.
 2. Bluetooth am Gerät einschalten.
-3. In den Reiter **Verbindung** wechseln und das **Sunray-Passwort** eintragen
-   (Standard ist `123456`).
+3. Oben links das **Menü** (☰) öffnen – oder direkt das Bluetooth-Symbol antippen – und unter
+   **Verbindung** das **Sunray-Passwort** eintragen (Standard ist `123456`).
 4. Auf **Gerät suchen & verbinden** tippen und den Ardumower aus der Liste auswählen.
    Der Browser darf die Gerätesuche nur nach dieser Tippgeste starten.
-5. Sobald die Anzeige oben auf verbunden springt, erscheinen X/Y-Position und RTK-Status.
+5. Zurück auf der Karte färbt sich das Bluetooth-Symbol grün, das **RTK-Feld** zeigt
+   „Fix / Float / No Fix“ mit den Satelliten als *Mäher/RTK-Station*, daneben steht die
+   Akkuspannung.
 
 Das Passwort bleibt nur für die laufende Sitzung im Speicher und wird nicht mit der Karte gespeichert.
 
+## Die Oberfläche
+
+Die App besteht aus drei Zonen:
+
+- **Kopfzeile** – Menü, Verbindungsstatus, Moduswahl, RTK-Status und Akku.
+- **Karte** – nimmt den größten Teil des Bildschirms ein und zeigt Mäherposition, aufgenommene
+  Punkte und deren Verbindungslinien.
+- **Fahrzone** unten – der Joystick für den Daumen.
+
+Alle Einstellungen liegen auf einer eigenen **Menüseite** (☰): Verbindung, Karten, Fahren,
+Ansicht & Maßstab, Aufnahme, Kartenprüfung, Diagnose und Hilfe.
+
 ## Karte aufnehmen
 
-1. Im Reiter **Karten** über **+ Neu** eine Karte anlegen.
-2. Zurück im Reiter **Aufnahme** den Modus wählen: Perimeter, Ausschluss oder Dock.
-3. Den Mäher an die gewünschte Stelle fahren und den großen Aufnahme-Button drücken.
+1. Im Menü unter **Karten** über **+ Neu** eine Karte anlegen.
+2. Auf der Karte den **Moduswahl-Button** in der Kopfzeile antippen; er schaltet der Reihe nach
+   durch **Perimeter → Ausschluss → Wegpunkt → Dock** und zeigt immer den aktiven Modus.
+3. Den Mäher an die gewünschte Stelle fahren und den großen Button unten rechts
+   **gedrückt halten**, bis der Ring einmal herumgelaufen ist. Das Halten verhindert, dass beim
+   Schieben oder Zoomen der Karte versehentlich Punkte entstehen.
    - **Grün** bedeutet echter RTK FIX – nur dann ist der Punkt wirklich genau.
    - Ist **„Nur bei RTK FIX"** aktiv, bleibt die Aufnahme bei FLOAT oder INVALID gesperrt.
-4. Für lange Strecken die **Auto-Aufnahme** einschalten: MapCreator setzt selbstständig Punkte,
-   auf geraden Abschnitten weniger, in Kurven dichter.
+4. Für lange Strecken im Menü unter **Aufnahme** die **Auto-Aufnahme** einschalten: MapCreator
+   setzt selbstständig Punkte, auf geraden Abschnitten weniger, in Kurven dichter.
 5. Nähert sich der Mäher nach einem ausreichend langen Perimeter wieder dem Startpunkt, bietet
    die App an, den Perimeter zu **schließen**.
-6. Für weitere Ausschlussflächen im Werkzeugbereich **+ Neu** antippen.
+6. Weitere Ausschlussflächen legst du im Menü unter **Aufnahme** mit **+ Neu** an.
 
-Der zuletzt gesetzte Punkt lässt sich jederzeit rückgängig machen.
+Der Button unten links macht den zuletzt gesetzten Punkt rückgängig – beliebig oft
+hintereinander.
 
-## Karte bearbeiten
+## Punkte korrigieren
 
-Über **Punkte bearbeiten** einen vorhandenen Punkt direkt auf der Karte antippen. Dann kannst du
+Tippe einen vorhandenen Punkt direkt auf der Karte an. Die Trefferfläche ist deutlich größer als
+der sichtbare Punkt, damit sie mit dem Daumen erreichbar bleibt. Der ausgewählte Punkt wird
+hervorgehoben, und
 
-- den Punkt an der aktuellen Mäherposition **neu anlernen**,
-- ein ganzes **Teilstück** zwischen zwei Punkten neu abfahren und aufnehmen,
-- die Strecke zwischen zwei ausgewählten Punkten zu einer **Geraden** begradigen.
+- der große Button unten rechts wird zum **Verschieben**-Button: ein einfacher Tipp setzt den
+  Punkt auf die aktuelle Mäherposition,
+- oben rechts erscheint das **Lösch-Werkzeug** für genau diesen Punkt.
 
-Der maximal erlaubte Abstand zwischen Mäher und ausgewähltem Punkt lässt sich einstellen, damit
-nicht versehentlich der falsche Punkt verschoben wird.
+Ein Tipp auf eine leere Stelle hebt die Auswahl wieder auf.
 
-Fertige Karten kannst du im Reiter **Karten** **sperren**, damit sie nicht mehr versehentlich
+Fertige Karten kannst du im Menü unter **Karten** **sperren**, damit sie nicht mehr versehentlich
 verändert werden.
 
 ## Kartenansicht
 
+- **Pinch-to-Zoom** und Verschieben mit dem Finger; die Karte lässt sich nicht aus dem Bild
+  schieben, und der Button oben rechts stellt die automatische Ansicht wieder her.
 - Raster in 0,10 / 0,25 / 0,50 / 1 / 2 / 5 m oder automatisch
-- maßstäbliche Darstellung des Mähers, Standard 0,60 × 0,35 m, anpassbar
+- maßstäbliche Darstellung des Mähers samt Ausrichtung, Standard 0,60 × 0,35 m, anpassbar
 - Fahrspur während der Aufnahme
 - farbliche Bewertung der Punktqualität nach RTK-Lösung und Genauigkeit
 - Live-Abstand zum Perimeter bzw. zum ausgewählten Punkt
-- Messwerkzeug: zwei Stellen antippen und die Distanz in Metern ablesen
 - Bildschirm-Wachhalten während längerer Aufnahmen
-
-Fahrsteuerung und Werkzeuge liegen als seitliche Schieber direkt über der Karte und sind
-für Rechts- oder Linkshänder umschaltbar.
 
 ## Manuell fahren
 
-Die Fahrsteuerung öffnet sich über den seitlichen Griff in der Kartenansicht.
+Der Joystick liegt fest unter der Karte und ist für die Bedienung mit dem Daumen ausgelegt.
 
-- Der runde **Joystick** kombiniert stufenlos Vorwärts/Rückwärts und Drehung, Kurvenfahrt
-  inklusive. Er ist als **Totmannsteuerung** ausgelegt: beim Loslassen springt er in die Mitte
-  zurück und der Mäher stoppt.
-- Die **Fahrgeschwindigkeit** ist über den Regler einstellbar, Standard 0,15 m/s.
-- Der **Mähmotor** lässt sich erst nach separater Freigabe und **1,5 Sekunden Halten** einschalten;
-  ausgeschaltet wird er sofort. Die PWM ist von 0 bis 255 einstellbar. Bei PWM 0 startet der
-  Mähmotor nicht.
-- **STOP ALLES** schaltet den Mähmotor ab und versetzt Sunray in den Ruhezustand.
+- Die **Richtung** der Auslenkung ist die Fahrtrichtung, die **Stärke** der Auslenkung die
+  Geschwindigkeit – wie bei einem RC-Fahrzeug. Ein separater Geschwindigkeitsregler entfällt.
+- **Minimale und maximale Geschwindigkeit** legst du im Menü unter **Fahren** fest; der volle
+  Ausschlag entspricht deinem Maximum.
+- Der Joystick ist eine **Totmannsteuerung**: beim Loslassen springt er in die Mitte zurück und
+  der Mäher stoppt sofort.
+
+Diese App steuert bewusst **kein Mähen**: kein Start, kein Stop, kein Docking und keine
+Mähmotor-Steuerung. Sie nimmt ausschließlich Karten auf.
 
 > **Sicherheitshinweis**
 > Bricht die Bluetooth-Verbindung ab, kann die Webseite keinen Stop-Befehl mehr senden.
 > Nutze die manuelle Steuerung deshalb nur bei Sichtkontakt und halte den physischen
-> Stop/Not-Aus des Mähers erreichbar. Die Mähmotor-Anzeige zeigt nur den zuletzt gesendeten
-> Zustand, sie ist keine unabhängige Rückmeldung vom Mäher.
+> Stop/Not-Aus des Mähers erreichbar.
 
 ## Karten sichern und übertragen
 
@@ -120,7 +137,7 @@ gelöschte Website-Daten bedeuten: Karten sind weg.
 ## Ohne Internet im Garten arbeiten
 
 1. Die Seite mindestens einmal **mit Internet** in Chrome öffnen.
-2. Im Reiter **Hilfe** warten, bis der Systemcheck den Offline-Cache als bereit meldet.
+2. Im Menü unter **Hilfe** warten, bis der Systemcheck den Offline-Cache als bereit meldet.
 3. Optional über das Chrome-Menü als App installieren.
 
 Danach starten die App-Dateien aus dem lokalen Cache. Bluetooth, Kartenaufnahme, Bearbeitung und
@@ -149,7 +166,7 @@ bereit gemeldet haben.
 Karten liegen nur lokal im Browser. Gelöschte Website-Daten, ein anderer Browser oder ein anderes
 Profil verwenden getrennte Speicher. Importiere dein letztes JSON-Backup.
 
-Im Reiter **Diagnose** siehst du das vollständige Protokoll der Bluetooth-Kommunikation. Es hilft,
+Im Menü unter **Diagnose** siehst du das vollständige Protokoll der Bluetooth-Kommunikation. Es hilft,
 wenn du ein Problem melden möchtest.
 
 ## Lizenz

@@ -3,7 +3,7 @@ const assert = require('assert');
 const { loadApp } = require('./app-harness.js');
 
 const { t } = loadApp({
-  exportNames: ['state', 'makeMap', 'normalizeMap', 'normalizedRange', 'polygonSelfIntersects', 'pointInPolygon',
+  exportNames: ['state', 'makeMap', 'normalizeMap', 'polygonSelfIntersects', 'pointInPolygon',
     'polygonEdgesIntersect', 'polygonsIntersect', 'polygonArea', 'pathLength', 'geometryForArea', 'mapToGeoJson',
     'validateActiveMap'],
 });
@@ -41,9 +41,11 @@ const legacy = t.normalizeMap({id:'old',name:'Old',perimeter:[],exclusions:[],do
 assert.strictEqual(legacy.version, 2);
 assert.ok(Array.isArray(legacy.history));
 
-t.state.activeMap = { perimeter: new Array(6).fill(0).map((_,i)=>({x:i,y:0})), exclusions:[], dockPoints:[] };
-t.state.rangeSelection = { start:{role:'perimeter',index:5,exclusionId:null}, end:{role:'perimeter',index:2,exclusionId:null} };
-const range = t.normalizedRange();
-assert.deepStrictEqual({start:range.start,end:range.end,reverse:range.reverse},{start:2,end:5,reverse:true});
+// Wegpunkte gehoeren seit dem UI-Umbau zum Kartenmodell.
+assert.strictEqual(map.waypoints.length, 0);
+assert.strictEqual(legacy.waypoints.length, 0);
+map.waypoints.push({x:1,y:1},{x:2,y:2});
+const geoWithWaypoints = t.mapToGeoJson(map);
+assert.ok(geoWithWaypoints.features.some((f)=>f.properties.role==='waypoints' && f.geometry.type==='LineString'));
 
 console.log('app core tests: OK');

@@ -3,7 +3,7 @@
 const { execFileSync } = require('child_process');
 const path = require('path');
 
-const files = ['protocol-test.js', 'app-core-test.js', 'ble-test.js'];
+const files = ['protocol-test.js', 'app-core-test.js', 'ble-test.js', 'ui-test.js'];
 let failed = 0;
 for (const file of files) {
   try {

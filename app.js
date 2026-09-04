@@ -16,6 +16,20 @@ const MAX_MAPS = 10;
 
 const I18N = {
   de: {
+    menu: 'Menü', backToMap: 'Zurück zur Karte', waypoints: 'Wegpunkte', waypoint: 'Wegpunkt',
+    rtkFix: 'Fix', rtkFloat: 'Float', rtkNone: 'No Fix', rtkNoData: 'Kein GPS',
+    movePoint: 'Verschieben', movePointHint: 'Tippen: Punkt springt auf die Mäherposition', holdToCapture: 'Zum Aufnehmen gedrückt halten',
+    deletePoint: 'Ausgewählten Punkt löschen', pointDeleted: 'Punkt {n} gelöscht.', fitView: 'Ansicht zurücksetzen',
+    driveSettings: 'Fahren', driveSpeedRange: 'Geschwindigkeit', driveSpeedRangeHint: 'Auslenkung des Joysticks regelt stufenlos zwischen Min und Max.',
+    driveSpeedMin: 'Minimum', driveSpeedMax: 'Maximum', driveTurnMax: 'Maximale Drehrate',
+    driveSafetyNote: 'Loslassen stoppt sofort. Sunray stoppt zusätzlich nach 1 s ohne neues Fahrkommando.',
+    captureSettings: 'Aufnahme',
+    helpWaypointTitle: 'Wegpunkte', helpWaypointText: 'Offene Punktfolge für Anfahrtswege innerhalb der Karte aufnehmen.',
+    driveHelpTitle: 'Manuell fahren',
+    driveHelp1: 'Der Joystick unten steuert wie bei einem RC-Fahrzeug: die Richtung der Auslenkung ist die Fahrtrichtung, die Stärke der Auslenkung die Geschwindigkeit. Loslassen sendet sofort Stop.',
+    driveHelp2: 'Minimale und maximale Geschwindigkeit werden im Menü unter „Fahren“ festgelegt und gelten für den vollen Ausschlag.',
+    driveHelp3: 'Wichtig: Bei Bluetooth-Funkverlust kann die Webseite keinen neuen Stop-Befehl mehr übertragen. Deshalb nur bei Sichtkontakt arbeiten und den physischen Stop/Not-Aus am Mäher erreichbar halten.',
+    driveHelp4: 'Diese App steuert bewusst kein Mähen: kein Start, kein Stop, kein Docking. Sie nimmt ausschließlich Karten auf.',
     appTitle: 'MapCreator für Ardumower',
     appDescription: 'MapCreator für Ardumower – mobile Kartenaufnahme über Web Bluetooth und Sunray.',
     languageToggleLabel: 'Auf Englisch umschalten',
@@ -111,7 +125,7 @@ const I18N = {
     offlineNeeds1: 'Der allererste Aufruf von GitHub Pages', offlineNeeds2: 'Ein neues App-Update herunterladen', offlineNeeds3: 'Neu laden, falls der Offline-Cache vorher gelöscht wurde',
     offlineWarning: 'Wichtig: Browserdaten/Website-Daten löschen kann sowohl Offline-Cache als auch lokal gespeicherte Karten entfernen. Regelmäßig JSON-Backups erstellen.',
     bluetoothHelpTitle: 'Bluetooth-Verbindung verstehen', bleHelp1: 'MapCreator nutzt Bluetooth Low Energy (BLE) und verbindet sich direkt mit dem Ardumower-ESP32 – nicht über das Internet.', bleHelp2: 'Der bekannte Ardumower-BLE-UART-Service verwendet FFE0/FFE1. Sunray-Kommandos werden über diese Verbindung übertragen.', bleHelp3: 'Die Gerätesuche darf ein Browser nur nach einer Benutzeraktion starten. Deshalb musst du den Verbindungsbutton antippen und den Ardumower auswählen.', bleHelp4: 'Das Sunray-Passwort wird nur für die laufende Sitzung verwendet und nicht mit der Karte gespeichert.', bleHelp5: 'Wenn die BLE-Verbindung durch Standby, Reichweite oder Browser-Neustart abbricht, einfach erneut „Gerät suchen & verbinden“ verwenden.',
-    mappingHelpTitle: 'Karten erstellen & korrigieren', helpPerimeterTitle: 'Perimeter', helpPerimeterText: 'Äußere Mähgrenze Punkt für Punkt oder automatisch nach Distanz aufnehmen.', helpExclusionTitle: 'Ausschlussflächen', helpExclusionText: 'Mehrere geschlossene Bereiche innerhalb des Perimeters anlegen, die nicht gemäht werden sollen.', helpDockTitle: 'Dockpfad', helpDockText: 'Offenen Punktpfad für den Dockbereich erfassen.', helpEditTitle: 'Punkte bearbeiten', helpEditText: 'Vorhandenen Punkt auswählen, Mäher in seine Nähe stellen und die Position neu anlernen.', helpSegmentTitle: 'Teilstück neu anlernen', helpSegmentText: 'Start- und Endpunkt wählen und nur den Abschnitt dazwischen neu aufnehmen.', helpStraightTitle: 'Gerade', helpStraightText: 'Zwei Punkte auswählen und dazwischenliegende Punkte auf einer Geraden verteilen.', helpValidationTitle: 'Kartenprüfung', helpValidationText: 'Sucht Selbstüberschneidungen, problematische Abstände, Ausschlüsse außerhalb des Perimeters und fehlende RTK-FIX-Punkte.', helpVersionsTitle: 'Versionen & Undo', helpVersionsText: 'Wichtige Änderungen werden lokal als Wiederherstellungspunkte gespeichert.',
+    mappingHelpTitle: 'Karten erstellen & korrigieren', helpPerimeterTitle: 'Perimeter', helpPerimeterText: 'Äußere Mähgrenze Punkt für Punkt oder automatisch nach Distanz aufnehmen.', helpExclusionTitle: 'Ausschlussflächen', helpExclusionText: 'Mehrere geschlossene Bereiche innerhalb des Perimeters anlegen, die nicht gemäht werden sollen.', helpDockTitle: 'Dockpfad', helpDockText: 'Offenen Punktpfad für den Dockbereich erfassen.', helpEditTitle: 'Punkte bearbeiten', helpEditText: 'Punkt auf der Karte antippen: der Hauptbutton wird zum Verschieben-Button, das Werkzeug oben rechts löscht ihn.', helpSegmentTitle: 'Teilstück neu anlernen', helpSegmentText: 'Start- und Endpunkt wählen und nur den Abschnitt dazwischen neu aufnehmen.', helpStraightTitle: 'Gerade', helpStraightText: 'Zwei Punkte auswählen und dazwischenliegende Punkte auf einer Geraden verteilen.', helpValidationTitle: 'Kartenprüfung', helpValidationText: 'Sucht Selbstüberschneidungen, problematische Abstände, Ausschlüsse außerhalb des Perimeters und fehlende RTK-FIX-Punkte.', helpVersionsTitle: 'Versionen & Undo', helpVersionsText: 'Wichtige Änderungen werden lokal als Wiederherstellungspunkte gespeichert.',
     formatsTitle: 'Speichern, JSON & GeoJSON', jsonHelp: 'Empfohlenes vollständiges Backup für MapCreator. Enthält Kartenstruktur, Punkte und zusätzliche Metadaten wie Aufnahme-/Editierinformationen.', geoJsonHelp: 'Für Geometrie-Austausch. Perimeter und Ausschlüsse werden als Polygone, der Dockpfad als LineString exportiert.', geoJsonXYWarning: 'Die Ardumower-Koordinaten sind lokale Sunray-X/Y-Werte in Metern. Sie sind keine GPS-Längen-/Breitengrade und werden deshalb im Export ausdrücklich als lokales metrisches Koordinatensystem gekennzeichnet.',
     troubleshootingTitle: 'Fehlerbehebung', faqDeviceTitle: 'Ardumower wird nicht gefunden', faqDeviceText: 'Prüfe Bluetooth am Tablet, aktuelle Chrome-Version, Reichweite und ob der ESP32 BLE sendet. Falls eine andere App bereits verbunden ist, diese Verbindung zuerst trennen. Danach Bluetooth-Gerätesuche erneut öffnen.', faqButtonTitle: 'Aufnahme-Button wird nicht grün', faqButtonText: 'Grün bedeutet echten RTK FIX. Prüfe RTK-Empfang und die Live-Daten. Wenn „Nur bei RTK FIX“ aktiv ist, bleibt die Aufnahme bei FLOAT/INVALID gesperrt.', faqOfflineTitle: 'Die App startet ohne WLAN nicht', faqOfflineText: 'Öffne die GitHub-Pages-Seite mindestens einmal mit Internet und warte, bis der Offline-Cache im Systemcheck als bereit angezeigt wird. Danach am besten als PWA installieren.', faqMapsGoneTitle: 'Meine Karten sind verschwunden', faqMapsGoneText: 'Karten liegen lokal im Browser. Gelöschte Website-Daten, ein anderer Browser oder ein anderes Benutzerprofil haben einen eigenen Speicher. Importiere dein letztes JSON-Backup.', faqIosTitle: 'Warum funktioniert es auf iPhone/iPad nicht?', faqIosText: 'Der MapCreator benötigt Web Bluetooth. Safari und Chrome auf iOS/iPadOS bieten diese Web-API derzeit nicht nativ an; deshalb kann die Webseite den Ardumower dort nicht direkt auswählen und verbinden.',
     privacyTitle: 'Daten & Privatsphäre', privacy1: 'GitHub Pages liefert nur die statische App aus. Deine aufgezeichneten Karten werden nicht automatisch zu GitHub hochgeladen.', privacy2: 'Karten und Versionen liegen lokal im Browser des verwendeten Geräts.', privacy3: 'Bluetooth-Kommunikation läuft direkt zwischen Browser und Ardumower-ESP32.', privacy4: 'Das Sunray-Passwort wird nicht in den Kartendaten gespeichert.', privacy5: 'Für wichtige Karten regelmäßig ein JSON-Backup auf einem zweiten Speicherort ablegen.',
@@ -119,7 +133,6 @@ const I18N = {
     historyClosePerimeter: 'Perimeter schließen/öffnen',
     autoCaptureMode: 'Aufnahmemodus', autoModeDistance: 'Distanz', autoModeSmart: 'Intelligent', smartAutoHint: 'Geraden sparsam · Kurven dichter',
     showPointQuality: 'Punktqualität anzeigen', keepAwake: 'Bildschirm beim Mapping wachhalten', wakeLockAuto: 'Wird bei aktiver Aufnahme automatisch verwendet.', wakeLockActive: 'Bildschirm bleibt wach.', wakeLockUnavailable: 'Wake Lock in diesem Browser nicht verfügbar.', wakeLockReleased: 'Wake Lock derzeit nicht aktiv.',
-    measurement: 'Messen', startMeasurement: 'Messung starten', stopMeasurement: 'Messmodus beenden', clearMeasurement: 'Messung löschen', measurementHint: 'Zwei Stellen auf der Karte antippen.', measurementFirst: 'Erster Messpunkt gesetzt · zweite Stelle antippen.', measurementResult: 'Distanz {distance} m',
     perimeterNearStart: 'Startpunkt erreicht · Abstand {distance} m', closePerimeter: 'Perimeter schließen', perimeterClosed: 'Perimeter geschlossen · kein doppelter Startpunkt gespeichert.', perimeterAlreadyClosed: 'Perimeter ist bereits geschlossen.', reopenPerimeter: 'Perimeter wieder öffnen', checkPerimeterOpen: 'Perimeter ist noch nicht als geschlossen markiert.',
     mapOverview: 'Kartenübersicht', lockCurrentMap: 'Karte sperren', unlockCurrentMap: 'Karte entsperren', mapLocked: 'Gesperrt', mapUnlocked: 'Bearbeitbar', mapLockedHint: 'Diese Karte ist gesperrt. Zum Bearbeiten zuerst entsperren.', mapCardArea: '{area} m²', mapCardPoints: '{points} Punkte', mapCardChanged: 'Geändert {date}', selectMap: 'Karte auswählen',
     controlOverline: 'MANUELL · BLE · SUNRAY', toolsOverline: 'KARTE · AUFNAHME', handedness: 'Bedienseite', rightHanded: 'Rechtshänder · Fahren rechts', leftHanded: 'Linkshänder · Fahren links', handednessHint: 'Fahrsteuerung auf der Daumenseite, Werkzeuge gegenüber.', controlTitle: 'Mähersteuerung', controlIntro: 'Direkte manuelle Fahrt über Sunray. Fahrbefehle funktionieren nur bei aktiver BLE-Verbindung.', controlConnection: 'Verbindung', tools: 'Werkzeuge', drive: 'Fahren', joystickHint: 'Kugel in Fahrtrichtung ziehen · Loslassen stoppt sofort.', closePanel: 'Fenster schließen',
@@ -132,6 +145,20 @@ const I18N = {
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   },
   en: {
+    menu: 'Menu', backToMap: 'Back to map', waypoints: 'Waypoints', waypoint: 'Waypoint',
+    rtkFix: 'Fix', rtkFloat: 'Float', rtkNone: 'No Fix', rtkNoData: 'No GPS',
+    movePoint: 'Move', movePointHint: 'Tap: the point jumps to the mower position', holdToCapture: 'Hold to capture',
+    deletePoint: 'Delete selected point', pointDeleted: 'Point {n} deleted.', fitView: 'Reset view',
+    driveSettings: 'Drive', driveSpeedRange: 'Speed', driveSpeedRangeHint: 'Joystick deflection scales steplessly between min and max.',
+    driveSpeedMin: 'Minimum', driveSpeedMax: 'Maximum', driveTurnMax: 'Maximum turn rate',
+    driveSafetyNote: 'Releasing stops immediately. Sunray also stops after 1 s without a new drive command.',
+    captureSettings: 'Capture',
+    helpWaypointTitle: 'Waypoints', helpWaypointText: 'Capture an open sequence of points for approach paths inside the map.',
+    driveHelpTitle: 'Manual driving',
+    driveHelp1: 'The joystick at the bottom works like an RC car: the direction of deflection is the direction of travel, the amount of deflection is the speed. Releasing sends stop immediately.',
+    driveHelp2: 'Minimum and maximum speed are set in the menu under “Drive” and apply across the full deflection.',
+    driveHelp3: 'Important: if the Bluetooth link is lost, the website cannot transmit a new stop command. Use only with line of sight and keep the mower’s physical stop/emergency control accessible.',
+    driveHelp4: 'This app deliberately does not control mowing: no start, no stop, no docking. It only captures maps.',
     appTitle: 'MapCreator für Ardumower',
     appDescription: 'MapCreator für Ardumower – mobile map recording via Web Bluetooth and Sunray.',
     languageToggleLabel: 'Switch to German',
@@ -235,7 +262,6 @@ const I18N = {
     historyClosePerimeter: 'Close/reopen perimeter',
     autoCaptureMode: 'Capture mode', autoModeDistance: 'Distance', autoModeSmart: 'Smart', smartAutoHint: 'Fewer points on straights · denser in curves',
     showPointQuality: 'Show point quality', keepAwake: 'Keep screen awake while mapping', wakeLockAuto: 'Used automatically while an active recording is running.', wakeLockActive: 'Screen will stay awake.', wakeLockUnavailable: 'Wake Lock is not available in this browser.', wakeLockReleased: 'Wake Lock is currently inactive.',
-    measurement: 'Measure', startMeasurement: 'Start measurement', stopMeasurement: 'Exit measuring', clearMeasurement: 'Clear measurement', measurementHint: 'Tap two locations on the map.', measurementFirst: 'First measurement point set · tap the second location.', measurementResult: 'Distance {distance} m',
     perimeterNearStart: 'Start point reached · distance {distance} m', closePerimeter: 'Close perimeter', perimeterClosed: 'Perimeter closed · no duplicate start point stored.', perimeterAlreadyClosed: 'Perimeter is already closed.', reopenPerimeter: 'Reopen perimeter', checkPerimeterOpen: 'Perimeter is not marked as closed yet.',
     mapOverview: 'Map overview', lockCurrentMap: 'Lock map', unlockCurrentMap: 'Unlock map', mapLocked: 'Locked', mapUnlocked: 'Editable', mapLockedHint: 'This map is locked. Unlock it before editing.', mapCardArea: '{area} m²', mapCardPoints: '{points} points', mapCardChanged: 'Changed {date}', selectMap: 'Select map',
     controlOverline: 'MANUAL · BLE · SUNRAY', toolsOverline: 'MAP · CAPTURE', handedness: 'Control side', rightHanded: 'Right-handed · drive right', leftHanded: 'Left-handed · drive left', handednessHint: 'Drive control stays on your thumb side; tools stay opposite.', controlTitle: 'Mower control', controlIntro: 'Direct manual driving through Sunray. Drive commands only work with an active BLE connection.', controlConnection: 'Connection', tools: 'Tools', drive: 'Drive', joystickHint: 'Drag the puck in the direction of travel · releasing stops immediately.', closePanel: 'Close panel',
@@ -279,27 +305,34 @@ function bleAdapter() {
 
 const $ = (id) => document.getElementById(id);
 const ui = {
-  connectionPill: $('connectionPill'), languageToggle: $('languageToggle'), browserWarning: $('browserWarning'), passwordInput: $('passwordInput'),
-  connectBtn: $('connectBtn'), disconnectBtn: $('disconnectBtn'), demoBtn: $('demoBtn'), connectionDetail: $('connectionDetail'),
-  xValue: $('xValue'), yValue: $('yValue'), solutionValue: $('solutionValue'), gpsDetail: $('gpsDetail'),
-  batteryValue: $('batteryValue'), firmwareValue: $('firmwareValue'), gpsBadge: $('gpsBadge'), gpsBadgeText: $('gpsBadgeText'),
-  activeMapName: $('activeMapName'), captureButtonTitle: $('captureButtonTitle'), captureButtonHint: $('captureButtonHint'),
-  mapSelect: $('mapSelect'), editMapSelect: $('editMapSelect'), newMapName: $('newMapName'),
-  newMapBtn: $('newMapBtn'), deleteMapBtn: $('deleteMapBtn'), exportJsonBtn: $('exportJsonBtn'), exportGeoJsonBtn: $('exportGeoJsonBtn'), importInput: $('importInput'),
-  saveState: $('saveState'), exclusionControls: $('exclusionControls'), exclusionSelect: $('exclusionSelect'),
-  newExclusionBtn: $('newExclusionBtn'), deleteExclusionBtn: $('deleteExclusionBtn'), fixOnly: $('fixOnly'),
-  addPointBtn: $('addPointBtn'), undoBtn: $('undoBtn'), undoButtonTitle: $('undoButtonTitle'), undoButtonHint: $('undoButtonHint'), clearModeBtn: $('clearModeBtn'), pointStatus: $('pointStatus'),
-  editModeBtn: $('editModeBtn'), editModeHint: $('editModeHint'), editControls: $('editControls'), editSelectedLabel: $('editSelectedLabel'), editSelectedCoords: $('editSelectedCoords'), editMaxDistanceInput: $('editMaxDistanceInput'), clearEditSelectionBtn: $('clearEditSelectionBtn'), cancelSegmentBtn: $('cancelSegmentBtn'),
+  // Kopfzeile
+  menuBtn: $('menuBtn'), bleStatusBtn: $('bleStatusBtn'), modeCycleBtn: $('modeCycleBtn'), modeChipLabel: $('modeChipLabel'),
+  rtkBadge: $('rtkBadge'), rtkText: $('rtkText'), rtkSats: $('rtkSats'), batteryChip: $('batteryChip'), batteryFill: $('batteryFill'), batteryValue: $('batteryValue'),
+  // Kartenbuehne
+  mapSvg: $('mapSvg'), gridLayer: $('gridLayer'), shapeLayer: $('shapeLayer'), robotLayer: $('robotLayer'),
+  deletePointBtn: $('deletePointBtn'), fitViewBtn: $('fitViewBtn'), undoBtn: $('undoBtn'), undoButtonTitle: $('undoButtonTitle'),
+  addPointBtn: $('addPointBtn'), captureProgress: $('captureProgress'), captureButtonTitle: $('captureButtonTitle'), captureButtonHint: $('captureButtonHint'),
+  mapSummary: $('mapSummary'), mapDistanceInfo: $('mapDistanceInfo'), pointStatus: $('pointStatus'), activeMapName: $('activeMapName'), saveState: $('saveState'),
+  // Fahren
+  driveJoystick: $('driveJoystick'), joystickKnob: $('joystickKnob'), driveState: $('driveState'),
+  driveSpeedMinInput: $('driveSpeedMinInput'), driveSpeedMaxInput: $('driveSpeedMaxInput'), driveTurnMaxInput: $('driveTurnMaxInput'), driveSpeedValue: $('driveSpeedValue'),
+  // Menueseite
+  menuPage: $('menuPage'), menuCloseBtn: $('menuCloseBtn'), languageToggle: $('languageToggle'),
+  connectionPill: $('connectionPill'), connectionDetail: $('connectionDetail'), browserWarning: $('browserWarning'), passwordInput: $('passwordInput'),
+  connectBtn: $('connectBtn'), disconnectBtn: $('disconnectBtn'), demoBtn: $('demoBtn'),
+  xValue: $('xValue'), yValue: $('yValue'), solutionValue: $('solutionValue'), gpsDetail: $('gpsDetail'), firmwareValue: $('firmwareValue'),
+  mapSelect: $('mapSelect'), newMapName: $('newMapName'), newMapBtn: $('newMapBtn'), deleteMapBtn: $('deleteMapBtn'), lockMapBtn: $('lockMapBtn'),
+  exportJsonBtn: $('exportJsonBtn'), exportGeoJsonBtn: $('exportGeoJsonBtn'), importInput: $('importInput'),
+  mapGallery: $('mapGallery'), mapCountBadge: $('mapCountBadge'), saveVersionBtn: $('saveVersionBtn'), historyList: $('historyList'),
+  historyUndoBtn: $('historyUndoBtn'), historyUndoHint: $('historyUndoHint'), recentPoints: $('recentPoints'),
+  exclusionControls: $('exclusionControls'), exclusionSelect: $('exclusionSelect'), newExclusionBtn: $('newExclusionBtn'), deleteExclusionBtn: $('deleteExclusionBtn'),
+  fixOnly: $('fixOnly'), clearModeBtn: $('clearModeBtn'),
   autoCaptureEnabled: $('autoCaptureEnabled'), autoCaptureDistanceInput: $('autoCaptureDistanceInput'), autoCaptureModeSelect: $('autoCaptureModeSelect'), autoCaptureState: $('autoCaptureState'),
-  historyUndoBtn: $('historyUndoBtn'), historyUndoHint: $('historyUndoHint'), validateMapBtn: $('validateMapBtn'), validationSummary: $('validationSummary'), validationList: $('validationList'), validationDrawer: $('validationDrawer'),
-  saveVersionBtn: $('saveVersionBtn'), historyList: $('historyList'), mapDistanceInfo: $('mapDistanceInfo'), showTrail: $('showTrail'), clearTrailBtn: $('clearTrailBtn'),
-  showPointQuality: $('showPointQuality'), keepAwake: $('keepAwake'), wakeLockStatus: $('wakeLockStatus'), measureModeBtn: $('measureModeBtn'), clearMeasurementBtn: $('clearMeasurementBtn'), measurementSummary: $('measurementSummary'),
-  mapSvg: $('mapSvg'), mapFrame: $('mapFrame'), gridLayer: $('gridLayer'), shapeLayer: $('shapeLayer'), robotLayer: $('robotLayer'),
   showGrid: $('showGrid'), gridStepSelect: $('gridStepSelect'), showMower: $('showMower'), mowerLengthInput: $('mowerLengthInput'), mowerWidthInput: $('mowerWidthInput'),
-  mapSummary: $('mapSummary'), recentPoints: $('recentPoints'), mapGallery: $('mapGallery'), mapCountBadge: $('mapCountBadge'), lockMapBtn: $('lockMapBtn'), requestVersionBtn: $('requestVersionBtn'),
-  requestStateBtn: $('requestStateBtn'), clearLogBtn: $('clearLogBtn'), debugLog: $('debugLog'),
+  showTrail: $('showTrail'), clearTrailBtn: $('clearTrailBtn'), showPointQuality: $('showPointQuality'), keepAwake: $('keepAwake'), wakeLockStatus: $('wakeLockStatus'),
+  validateMapBtn: $('validateMapBtn'), validationSummary: $('validationSummary'), validationList: $('validationList'), validationDrawer: $('validationDrawer'),
+  requestVersionBtn: $('requestVersionBtn'), requestStateBtn: $('requestStateBtn'), clearLogBtn: $('clearLogBtn'), debugLog: $('debugLog'),
   helpSecureStatus: $('helpSecureStatus'), helpBluetoothStatus: $('helpBluetoothStatus'), helpOfflineStatus: $('helpOfflineStatus'), helpNetworkStatus: $('helpNetworkStatus'),
-  controlConnectionStatus: $('controlConnectionStatus'), emergencyStopBtn: $('emergencyStopBtn'), driveSpeedSlider: $('driveSpeedSlider'), driveSpeedValue: $('driveSpeedValue'), driveStopBtn: $('driveStopBtn'), driveState: $('driveState'), driveJoystick: $('driveJoystick'), joystickKnob: $('joystickKnob'), controlDrawerToggle: $('controlDrawerToggle'), controlDrawerClose: $('controlDrawerClose'), mapControlPanel: $('mapControlPanel'), toolsDrawerToggle: $('toolsDrawerToggle'), toolsDrawerClose: $('toolsDrawerClose'), mapToolsPanel: $('mapToolsPanel'), mowArmCheckbox: $('mowArmCheckbox'), mowMotorBtn: $('mowMotorBtn'), mowMotorState: $('mowMotorState'), mowHoldProgress: $('mowHoldProgress'), mowPwmSlider: $('mowPwmSlider'), mowPwmNumber: $('mowPwmNumber'), mowPwmApplyBtn: $('mowPwmApplyBtn'), mowPwmReadout: $('mowPwmReadout'),
 };
 
 const state = {
@@ -333,17 +366,16 @@ const state = {
   bleRxLines: 0,
   lastBleRxAt: 0,
   mode: 'perimeter',
-  editMode: false,
-  editAction: 'point',
+  menuOpen: false,
   selectedPoint: null,
-  rangeSelection: { start: null, end: null },
-  segmentRecording: false,
-  segmentNewPoints: [],
+  // Nutzer-Zoom/-Verschiebung der Karte; solange custom=false folgt die Ansicht dem Auto-Fit.
+  viewport: { zoom: 1, dx: 0, dy: 0, custom: false, base: null },
+  gesture: null,
+  hitRadiusUnits: 26,
+  captureHold: null,
   autoCaptureRunning: false,
   autoCaptureBusy: false,
   autoCaptureCount: 0,
-  measurementMode: false,
-  measurementPoints: [],
   currentTransform: null,
   wakeLock: null,
   driveTimer: null,
@@ -351,11 +383,8 @@ const state = {
   driveVector: { linear: 0, angular: 0 },
   joystickPointerId: null,
   lastDriveSentAt: 0,
-  mowMotorOn: false,
+
   appliedMowPwm: null,
-  mowHoldTimer: null,
-  mowHoldStartedAt: 0,
-  currentTab: 'capture',
   trail: [],
   validationResult: null,
   maps: [],
@@ -379,6 +408,10 @@ function log(message, data = '') {
 }
 
 function refreshConnectionUi() {
+  const online = state.connected || state.demo;
+  ui.bleStatusBtn.classList.toggle('online', online);
+  ui.bleStatusBtn.classList.toggle('offline', !online);
+  ui.bleStatusBtn.classList.toggle('demo', state.demo);
   ui.connectionPill.textContent = tr(state.connectionStatusKey, state.connectionVars);
   ui.connectionDetail.textContent = tr(state.connectionDetailKey, state.connectionVars);
   ui.connectionPill.classList.toggle('online', state.connected);
@@ -391,51 +424,27 @@ function refreshConnectionUi() {
 }
 
 
+function driveSpeedLimits() {
+  const min = clampNumber(state.view.driveSpeedMin, 0.02, 0.34, 0.08);
+  const max = clampNumber(state.view.driveSpeedMax, min + 0.01, 0.50, Math.max(min + 0.02, 0.25));
+  const turn = clampNumber(state.view.driveTurnMax, 0.20, 2.00, 1.15);
+  return { min, max, turn };
+}
+
 function refreshControlUi() {
-  if (!ui.controlConnectionStatus) return;
   const available = state.connected && !state.demo && Boolean(state.characteristic);
-  ui.controlConnectionStatus.textContent = available ? tr('bleConnected') : (state.demo ? tr('demoActive') : tr('notConnected'));
-  ui.controlConnectionStatus.classList.toggle('online', available);
-  ui.emergencyStopBtn.disabled = !available;
-  document.querySelectorAll('[data-drive]').forEach((button) => { button.disabled = !available; });
-  ui.driveStopBtn.disabled = !available;
-  ui.driveSpeedSlider.disabled = false;
   if (ui.driveJoystick) ui.driveJoystick.classList.toggle('unavailable', !available);
-  const speed = clampNumber(ui.driveSpeedSlider?.value, 0.05, 0.35, state.view.driveSpeed ?? 0.15);
-  ui.driveSpeedValue.textContent = `${speed.toFixed(2).replace('.', state.language === 'de' ? ',' : '.')} m/s`;
+  const { min, max } = driveSpeedLimits();
+  const decimal = (v) => v.toFixed(2).replace('.', state.language === 'de' ? ',' : '.');
+  if (ui.driveSpeedValue) ui.driveSpeedValue.textContent = `${decimal(min)} – ${decimal(max)} m/s`;
   if (!available) {
     clearInterval(state.driveTimer);
     state.driveTimer = null;
     state.driveDirection = null;
     ui.driveState.textContent = tr('driveNeedConnection');
-    state.mowMotorOn = false;
-    ui.mowArmCheckbox.checked = false;
   } else if (!state.driveDirection) {
     ui.driveState.textContent = tr('driveIdle');
   }
-  ui.mowArmCheckbox.disabled = !available || state.mowMotorOn;
-  const mowPwm = getMowPwmValue();
-  const mowPercent = Math.round(mowPwm / 255 * 100);
-  if (ui.mowPwmReadout) ui.mowPwmReadout.textContent = `${mowPwm} · ${mowPercent}%`;
-  if (ui.mowPwmApplyBtn) ui.mowPwmApplyBtn.disabled = !available;
-  ui.mowMotorBtn.disabled = !available || (!state.mowMotorOn && (!ui.mowArmCheckbox.checked || mowPwm <= 0));
-  ui.mowMotorState.textContent = tr(state.mowMotorOn ? 'mowOn' : 'mowOff');
-  ui.mowMotorState.classList.toggle('on', state.mowMotorOn);
-  ui.mowMotorState.classList.toggle('off', !state.mowMotorOn);
-  const strong = ui.mowMotorBtn.querySelector('strong');
-  const small = ui.mowMotorBtn.querySelector('small');
-  if (strong) strong.textContent = tr(state.mowMotorOn ? 'mowTurnOff' : 'holdToStartMow');
-  if (small) small.textContent = tr(state.mowMotorOn ? 'mowTapOffHint' : (ui.mowArmCheckbox.checked ? 'mowArmedHint' : 'mowHoldHint'));
-}
-
-function driveValues(direction) {
-  const speed = clampNumber(ui.driveSpeedSlider?.value, 0.05, 0.35, state.view.driveSpeed ?? 0.15);
-  const turn = Math.min(1.2, Math.max(0.35, speed * 4.5));
-  if (direction === 'forward') return { linear: speed, angular: 0, key: 'driveForward', vars: { speed: speed.toFixed(2) } };
-  if (direction === 'reverse') return { linear: -speed, angular: 0, key: 'driveReverse', vars: { speed: speed.toFixed(2) } };
-  if (direction === 'left') return { linear: 0, angular: turn, key: 'driveLeft', vars: {} };
-  if (direction === 'right') return { linear: 0, angular: -turn, key: 'driveRight', vars: {} };
-  return { linear: 0, angular: 0, key: 'driveIdle', vars: {} };
 }
 
 async function sendDriveVector(linear, angular, { force = false } = {}) {
@@ -451,28 +460,6 @@ async function sendDriveVector(linear, angular, { force = false } = {}) {
     const fmt = (v, digits) => Number(v).toFixed(digits).replace('.', state.language === 'de' ? ',' : '.');
     ui.driveState.textContent = `v ${fmt(l, 2)} m/s · ω ${fmt(a, 2)} rad/s`;
   }
-}
-
-async function sendDriveCommand(direction) {
-  if (!state.connected || state.demo || !state.characteristic) return;
-  const v = driveValues(direction);
-  state.driveVector = { linear: v.linear, angular: v.angular };
-  await sendDriveVector(v.linear, v.angular, { force: true });
-}
-
-function beginDrive(direction) {
-  if (!state.connected || state.demo || !state.characteristic) {
-    ui.driveState.textContent = tr('driveNeedConnection');
-    return;
-  }
-  stopDrive({ send: false });
-  const v = driveValues(direction);
-  state.driveDirection = direction;
-  state.driveVector = { linear: v.linear, angular: v.angular };
-  sendDriveVector(v.linear, v.angular, { force: true }).catch((error) => log('DRIVE', error.message));
-  state.driveTimer = setInterval(() => {
-    if (state.driveDirection === direction) sendDriveVector(state.driveVector.linear, state.driveVector.angular, { force: true }).catch((error) => log('DRIVE', error.message));
-  }, DRIVE_HEARTBEAT_MS);
 }
 
 function resetJoystickVisual() {
@@ -491,12 +478,14 @@ function joystickVectorFromPointer(event) {
   const dead = 0.07;
   if (Math.abs(nx) < dead) nx = 0;
   if (Math.abs(ny) < dead) ny = 0;
-  const speed = clampNumber(ui.driveSpeedSlider?.value, 0.05, 0.35, state.view.driveSpeed ?? 0.15);
-  const maxTurn = 1.15;
+  // Auslenkung = Geschwindigkeit (RC-Prinzip): ab der Totzone sofort das eingestellte
+  // Minimum, am Anschlag das Maximum.
+  const { min, max, turn } = driveSpeedLimits();
+  const ramp = (value) => (value === 0 ? 0 : Math.sign(value) * (min + (max - min) * Math.min(1, Math.abs(value))));
   return {
     nx, ny,
-    linear: -ny * speed,
-    angular: -nx * maxTurn,
+    linear: -ramp(ny),
+    angular: -nx * turn,
     px: nx * radius,
     py: ny * radius,
   };
@@ -533,7 +522,6 @@ function stopDrive({ send = true } = {}) {
   state.driveDirection = null;
   state.joystickPointerId = null;
   state.driveVector = { linear: 0, angular: 0 };
-  document.querySelectorAll('[data-drive]').forEach((button) => button.classList.remove('pressed'));
   resetJoystickVisual();
   if (ui.driveState) ui.driveState.textContent = tr('driveIdle');
   if (send && state.connected && !state.demo && state.characteristic && wasDriving) {
@@ -541,95 +529,13 @@ function stopDrive({ send = true } = {}) {
   }
 }
 
-function cancelMowHold() {
-  if (state.mowHoldTimer) clearInterval(state.mowHoldTimer);
-  state.mowHoldTimer = null;
-  state.mowHoldStartedAt = 0;
-  if (ui.mowHoldProgress) ui.mowHoldProgress.style.width = '0%';
-}
-
-function getMowPwmValue() {
-  return Math.round(clampNumber(ui.mowPwmNumber?.value ?? ui.mowPwmSlider?.value ?? state.view.mowPwm, 0, 255, state.view.mowPwm ?? 255));
-}
-
-function syncMowPwmInputs(source = 'state') {
-  let value;
-  if (source === 'slider') value = Math.round(clampNumber(ui.mowPwmSlider.value, 0, 255, state.view.mowPwm));
-  else if (source === 'number') value = Math.round(clampNumber(ui.mowPwmNumber.value, 0, 255, state.view.mowPwm));
-  else value = Math.round(clampNumber(state.view.mowPwm, 0, 255, 255));
-  state.view.mowPwm = value;
-  if (ui.mowPwmSlider) ui.mowPwmSlider.value = String(value);
-  if (ui.mowPwmNumber) ui.mowPwmNumber.value = String(value);
-  saveViewPreferences();
-  refreshControlUi();
-  return value;
-}
-
-async function applyMowPwm({ announce = true } = {}) {
-  if (!state.connected || state.demo || !state.characteristic) throw new Error(tr('errorNotConnected'));
-  const pwm = syncMowPwmInputs('number');
-  if (pwm === 0 && state.mowMotorOn) await setMowMotor(false);
-  await sendSunray(`AT+C,-1,-1,-1,-1,-1,-1,-1,-1,${pwm}`);
-  state.appliedMowPwm = pwm;
-  if (announce) {
-    const percent = Math.round(pwm / 255 * 100);
-    ui.driveState.textContent = tr(pwm === 0 ? 'mowPwmZeroStopped' : 'mowPwmApplied', { pwm, percent });
-  }
-  refreshControlUi();
-  return pwm;
-}
-
-async function setMowMotor(enabled) {
-  if (!state.connected || state.demo || !state.characteristic) throw new Error(tr('errorNotConnected'));
-  cancelMowHold();
-  if (enabled) {
-    const pwm = getMowPwmValue();
-    if (pwm <= 0) throw new Error(tr('mowNeedPwm'));
-    await applyMowPwm({ announce: false });
-  }
-  await sendSunray(`AT+C,${enabled ? 1 : 0},-1`);
-  state.mowMotorOn = Boolean(enabled);
-  if (!enabled) ui.mowArmCheckbox.checked = false;
-  refreshControlUi();
-  ui.driveState.textContent = tr(enabled ? 'mowStarted' : 'mowStopped');
-}
-
-function beginMowHold() {
-  if (state.mowMotorOn) {
-    setMowMotor(false).catch((error) => log('MOW', error.message));
-    return;
-  }
-  if (!state.connected || state.demo || !state.characteristic || !ui.mowArmCheckbox.checked) {
-    ui.driveState.textContent = tr('mowNeedArm');
-    return;
-  }
-  if (getMowPwmValue() <= 0) {
-    ui.driveState.textContent = tr('mowNeedPwm');
-    return;
-  }
-  cancelMowHold();
-  state.mowHoldStartedAt = Date.now();
-  state.mowHoldTimer = setInterval(() => {
-    const elapsed = Date.now() - state.mowHoldStartedAt;
-    const pct = Math.min(100, elapsed / 1500 * 100);
-    ui.mowHoldProgress.style.width = `${pct}%`;
-    if (elapsed >= 1500) {
-      cancelMowHold();
-      setMowMotor(true).catch((error) => log('MOW', error.message));
-    }
-  }, 40);
-}
-
 async function emergencyStop() {
   stopDrive({ send: false });
-  cancelMowHold();
-  state.mowMotorOn = false;
-  ui.mowArmCheckbox.checked = false;
   refreshControlUi();
   if (!state.connected || state.demo || !state.characteristic) return;
   try { await sendSunray('AT+M,0,0'); } catch (error) { log('STOP DRIVE', error.message); }
   try { await sendSunray('AT+C,0,0'); } catch (error) { log('STOP ALL', error.message); }
-  ui.driveState.textContent = tr('stopEverythingDone');
+  if (ui.driveState) ui.driveState.textContent = tr('stopEverythingDone');
 }
 
 function setConnectionDetail(detailKey, vars = {}) {
@@ -665,17 +571,16 @@ function loadViewPreferences() {
     state.view.mowerLength = clampNumber(saved.mowerLength, 0.10, 3.00, 0.60);
     state.view.mowerWidth = clampNumber(saved.mowerWidth, 0.10, 3.00, 0.35);
     state.view.gridStep = saved.gridStep === 'auto' ? 'auto' : clampNumber(saved.gridStep, 0.10, 10.00, 0.50);
-    state.view.editMaxDistance = clampNumber(saved.editMaxDistance, 0.10, 10.00, 1.00);
     state.view.autoCaptureDistance = clampNumber(saved.autoCaptureDistance, 0.10, 5.00, 0.50);
     state.view.autoCaptureMode = saved.autoCaptureMode === 'smart' ? 'smart' : 'distance';
     state.view.showTrail = saved.showTrail !== false;
     state.view.showPointQuality = saved.showPointQuality !== false;
     state.view.keepAwake = saved.keepAwake !== false;
-    state.view.mowPwm = Math.round(clampNumber(saved.mowPwm, 0, 255, 255));
-    state.view.driveSpeed = clampNumber(saved.driveSpeed, 0.05, 0.35, 0.15);
-    state.view.handedness = saved.handedness === 'left' ? 'left' : 'right';
+    state.view.driveSpeedMin = clampNumber(saved.driveSpeedMin, 0.02, 0.34, 0.08);
+    state.view.driveSpeedMax = clampNumber(saved.driveSpeedMax, 0.03, 0.50, 0.25);
+    state.view.driveTurnMax = clampNumber(saved.driveTurnMax, 0.20, 2.00, 1.15);
   } catch (_) {
-    state.view = { showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, editMaxDistance: 1.00, autoCaptureDistance: 0.50, autoCaptureMode: 'distance', showTrail: true, showPointQuality: true, keepAwake: true, mowPwm: 255, driveSpeed: 0.15, handedness: 'right' };
+    state.view = { showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, autoCaptureDistance: 0.50, autoCaptureMode: 'distance', showTrail: true, showPointQuality: true, keepAwake: true, driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15 };
   }
 }
 
@@ -690,35 +595,15 @@ function applyViewPreferencesToUi() {
   if (!ui.gridStepSelect.value) ui.gridStepSelect.value = '0.5';
   ui.mowerLengthInput.value = state.view.mowerLength.toFixed(2);
   ui.mowerWidthInput.value = state.view.mowerWidth.toFixed(2);
-  ui.editMaxDistanceInput.value = state.view.editMaxDistance.toFixed(2);
   ui.autoCaptureDistanceInput.value = state.view.autoCaptureDistance.toFixed(2);
   ui.autoCaptureModeSelect.value = state.view.autoCaptureMode;
   ui.showTrail.checked = state.view.showTrail;
   ui.showPointQuality.checked = state.view.showPointQuality;
   ui.keepAwake.checked = state.view.keepAwake;
-  if (ui.driveSpeedSlider) ui.driveSpeedSlider.value = String(state.view.driveSpeed ?? 0.15);
-  if (ui.mowPwmSlider) ui.mowPwmSlider.value = String(state.view.mowPwm);
-  if (ui.mowPwmNumber) ui.mowPwmNumber.value = String(state.view.mowPwm);
-  applyHandednessLayout();
-}
-
-function applyHandednessLayout() {
-  const handedness = state.view.handedness === 'left' ? 'left' : 'right';
-  if (ui.mapFrame) ui.mapFrame.dataset.handedness = handedness;
-  document.querySelectorAll('[data-handedness]').forEach((button) => {
-    const active = button.dataset.handedness === handedness;
-    button.classList.toggle('active', active);
-    button.setAttribute('aria-pressed', active ? 'true' : 'false');
-  });
-}
-
-function setHandedness(handedness) {
-  const next = handedness === 'left' ? 'left' : 'right';
-  if (state.view.handedness === next) return;
-  closeMapDrawers();
-  state.view.handedness = next;
-  saveViewPreferences();
-  applyHandednessLayout();
+  const limits = driveSpeedLimits();
+  ui.driveSpeedMinInput.value = limits.min.toFixed(2);
+  ui.driveSpeedMaxInput.value = limits.max.toFixed(2);
+  ui.driveTurnMaxInput.value = limits.turn.toFixed(2);
 }
 
 function updateViewPreferencesFromUi() {
@@ -727,13 +612,16 @@ function updateViewPreferencesFromUi() {
   state.view.gridStep = ui.gridStepSelect.value === 'auto' ? 'auto' : clampNumber(ui.gridStepSelect.value, 0.10, 10.00, 0.50);
   state.view.mowerLength = clampNumber(ui.mowerLengthInput.value, 0.10, 3.00, state.view.mowerLength);
   state.view.mowerWidth = clampNumber(ui.mowerWidthInput.value, 0.10, 3.00, state.view.mowerWidth);
-  state.view.editMaxDistance = clampNumber(ui.editMaxDistanceInput.value, 0.10, 10.00, state.view.editMaxDistance);
   state.view.autoCaptureDistance = clampNumber(ui.autoCaptureDistanceInput.value, 0.10, 5.00, state.view.autoCaptureDistance);
   state.view.autoCaptureMode = ui.autoCaptureModeSelect.value === 'smart' ? 'smart' : 'distance';
   state.view.showTrail = ui.showTrail.checked;
   state.view.showPointQuality = ui.showPointQuality.checked;
   state.view.keepAwake = ui.keepAwake.checked;
+  state.view.driveSpeedMin = clampNumber(ui.driveSpeedMinInput.value, 0.02, 0.34, state.view.driveSpeedMin);
+  state.view.driveSpeedMax = clampNumber(ui.driveSpeedMaxInput.value, state.view.driveSpeedMin + 0.01, 0.50, state.view.driveSpeedMax);
+  state.view.driveTurnMax = clampNumber(ui.driveTurnMaxInput.value, 0.20, 2.00, state.view.driveTurnMax);
   saveViewPreferences();
+  refreshControlUi();
   renderMap();
 }
 
@@ -852,58 +740,9 @@ function refreshWakeLockStatus() {
   else ui.wakeLockStatus.textContent = state.view.keepAwake ? tr('wakeLockAuto') : tr('wakeLockReleased');
 }
 
-function measurementPointFromPointer(event) {
-  const trf = state.currentTransform;
-  const ctm = ui.mapSvg.getScreenCTM();
-  if (!trf || !ctm) return null;
-  const pt = ui.mapSvg.createSVGPoint();
-  pt.x = event.clientX; pt.y = event.clientY;
-  const local = pt.matrixTransform(ctm.inverse());
-  return { x: (local.x - trf.ox) / trf.scale, y: (trf.oy - local.y) / trf.scale };
-}
-
-function toggleMeasurementMode() {
-  state.measurementMode = !state.measurementMode;
-  if (state.measurementMode) {
-    if (state.editMode) toggleEditMode();
-    state.measurementPoints = [];
-    ui.measurementSummary.textContent = tr('measurementHint');
-  }
-  renderMeasurementUi();
-  renderMap();
-}
-
-function clearMeasurement() {
-  state.measurementPoints = [];
-  ui.measurementSummary.textContent = tr('measurementHint');
-  renderMap();
-}
-
-function renderMeasurementUi() {
-  if (!ui.measureModeBtn) return;
-  ui.measureModeBtn.textContent = tr(state.measurementMode ? 'stopMeasurement' : 'startMeasurement');
-  ui.measureModeBtn.classList.toggle('active', state.measurementMode);
-  ui.mapSvg.classList.toggle('measurement-mode', state.measurementMode);
-  if (state.measurementPoints.length === 1) ui.measurementSummary.textContent = tr('measurementFirst');
-  if (state.measurementPoints.length === 2) ui.measurementSummary.textContent = tr('measurementResult', { distance: xyDistance(state.measurementPoints[0], state.measurementPoints[1]).toFixed(2) });
-}
-
-function drawMeasurement(transform) {
-  const pts = state.measurementPoints;
-  if (!pts.length) return;
-  const screen = pts.map((p) => toScreen(p, transform));
-  if (pts.length === 2) {
-    ui.robotLayer.appendChild(svgEl('line', { x1: screen[0].x, y1: screen[0].y, x2: screen[1].x, y2: screen[1].y, class: 'measurement-line' }));
-    const mid = { x: (screen[0].x + screen[1].x) / 2, y: (screen[0].y + screen[1].y) / 2 };
-    const text = svgEl('text', { x: mid.x, y: mid.y - 10, class: 'measurement-label', 'text-anchor': 'middle' });
-    text.textContent = `${xyDistance(pts[0], pts[1]).toFixed(2)} m`;
-    ui.robotLayer.appendChild(text);
-  }
-  screen.forEach((p) => ui.robotLayer.appendChild(svgEl('circle', { cx: p.x, cy: p.y, r: 9, class: 'measurement-point' })));
-}
-
 function mapPointCount(map) {
-  return (map?.perimeter?.length || 0) + (map?.dockPoints?.length || 0) + (map?.exclusions || []).reduce((sum, ex) => sum + (ex.points?.length || 0), 0);
+  return (map?.perimeter?.length || 0) + (map?.dockPoints?.length || 0) + (map?.waypoints?.length || 0)
+    + (map?.exclusions || []).reduce((sum, ex) => sum + (ex.points?.length || 0), 0);
 }
 
 function mapNetArea(map) {
@@ -932,7 +771,7 @@ function refreshTelemetry() {
   if (Number.isFinite(t.age)) gpsBits.push(tr('age', { value: t.age.toFixed(2) }));
   if (Number.isFinite(t.visibleSatellites)) gpsBits.push(tr('satellites', { value: t.visibleSatellites }));
   ui.gpsDetail.textContent = gpsBits.length ? gpsBits.join(' · ') : tr('noExtraData');
-  ui.batteryValue.textContent = Number.isFinite(t.batteryVoltage) ? `${t.batteryVoltage.toFixed(2)} V` : '–';
+  updateBatteryChip();
   ui.firmwareValue.textContent = state.firmware ? `${state.firmware.firmware} ${state.firmware.version}` : 'Sunray';
   refreshCaptureState();
   renderMap();
@@ -944,6 +783,7 @@ function getSelectedPointArray() {
   if (!state.activeMap || !sel) return null;
   if (sel.role === 'perimeter') return state.activeMap.perimeter;
   if (sel.role === 'dock') return state.activeMap.dockPoints;
+  if (sel.role === 'waypoint') return state.activeMap.waypoints;
   if (sel.role === 'exclusion') {
     return state.activeMap.exclusions.find((e) => e.id === sel.exclusionId)?.points || null;
   }
@@ -961,6 +801,7 @@ function selectedPointLabel() {
   if (!sel) return tr('noPointSelected');
   let label = tr('perimeter');
   if (sel.role === 'dock') label = tr('dockPath');
+  if (sel.role === 'waypoint') label = tr('waypoints');
   if (sel.role === 'exclusion') {
     const exIndex = state.activeMap?.exclusions?.findIndex((e) => e.id === sel.exclusionId) ?? -1;
     const ex = exIndex >= 0 ? state.activeMap.exclusions[exIndex] : null;
@@ -979,98 +820,165 @@ function mowerDistanceToSelected() {
 
 function clearPointSelection({ render = true } = {}) {
   state.selectedPoint = null;
-  state.rangeSelection = { start: null, end: null };
-  if (!state.segmentRecording) state.segmentNewPoints = [];
   if (render) renderMap();
-  else renderEditControls();
+  refreshCaptureState();
 }
 
-function pointRefLabel(ref) {
-  if (!ref) return tr('noPointSelected');
-  let label = tr('perimeter');
-  if (ref.role === 'dock') label = tr('dockPath');
-  if (ref.role === 'exclusion') {
-    const exIndex = state.activeMap?.exclusions?.findIndex((e) => e.id === ref.exclusionId) ?? -1;
-    const ex = exIndex >= 0 ? state.activeMap.exclusions[exIndex] : null;
-    label = ex ? localizedExclusionName(ex, exIndex) : tr('exclusionArea');
+
+// --- Kopfzeile ------------------------------------------------------------
+function updateRtkBadge() {
+  const t = state.telemetry;
+  const fresh = telemetryIsFresh() && Number.isFinite(t.x) && Number.isFinite(t.y);
+  ui.rtkBadge.classList.remove('fix', 'float', 'nofix', 'no-data');
+  if (!fresh) {
+    ui.rtkBadge.classList.add('no-data');
+    ui.rtkText.textContent = tr('rtkNoData');
+  } else if (t.solution === 2) {
+    ui.rtkBadge.classList.add('fix');
+    ui.rtkText.textContent = tr('rtkFix');
+  } else if (t.solution === 1) {
+    ui.rtkBadge.classList.add('float');
+    ui.rtkText.textContent = tr('rtkFloat');
+  } else {
+    ui.rtkBadge.classList.add('nofix');
+    ui.rtkText.textContent = tr('rtkNone');
   }
-  return label;
+  // "Maeher/RTK-Station": sichtbare Satelliten des Rovers und der Basis.
+  const mower = Number.isFinite(t.visibleSatellites) ? t.visibleSatellites : null;
+  const station = Number.isFinite(t.visibleSatellitesDgps) ? t.visibleSatellitesDgps : null;
+  ui.rtkSats.textContent = fresh && (mower !== null || station !== null)
+    ? `${mower ?? '–'}/${station ?? '–'}`
+    : '–/–';
 }
 
-function samePointElement(a, b) {
-  return Boolean(a && b && a.role === b.role && (a.role !== 'exclusion' || a.exclusionId === b.exclusionId));
+function updateBatteryChip() {
+  const volts = state.telemetry.batteryVoltage;
+  ui.batteryValue.textContent = Number.isFinite(volts) ? `${volts.toFixed(1)} V` : '–';
+  // Grobe Fuellstandsanzeige fuer eine 7s-LiIon-/Blei-Bank: 22 V leer, 29 V voll.
+  const pct = Number.isFinite(volts) ? clampNumber((volts - 22) / 7 * 100, 0, 100, 0) : 0;
+  ui.batteryFill.style.width = `${pct.toFixed(0)}%`;
+  ui.batteryChip.classList.toggle('low', Number.isFinite(volts) && pct < 20);
+  ui.batteryChip.classList.toggle('unknown', !Number.isFinite(volts));
 }
 
-function rangePointArray() {
-  const ref = state.rangeSelection.start || state.rangeSelection.end;
-  if (!state.activeMap || !ref) return null;
-  if (ref.role === 'perimeter') return state.activeMap.perimeter;
-  if (ref.role === 'dock') return state.activeMap.dockPoints;
-  if (ref.role === 'exclusion') return state.activeMap.exclusions.find((e) => e.id === ref.exclusionId)?.points || null;
-  return null;
+// --- Menueseite -----------------------------------------------------------
+function setMenuOpen(open, { section = null } = {}) {
+  state.menuOpen = Boolean(open);
+  ui.menuPage.hidden = !state.menuOpen;
+  document.body.classList.toggle('menu-open', state.menuOpen);
+  if (state.menuOpen) {
+    stopDrive();
+    if (state.autoCaptureRunning) stopAutoCapture();
+    if (section) { const el = document.getElementById(section); if (el) el.open = true; }
+    ui.menuPage.scrollTop = 0;
+  } else {
+    renderMap();
+  }
 }
 
-function normalizedRange() {
-  const { start, end } = state.rangeSelection;
-  if (!samePointElement(start, end) || start.index === end.index) return null;
-  return { start: Math.min(start.index, end.index), end: Math.max(start.index, end.index), reverse: start.index > end.index, role: start.role, exclusionId: start.exclusionId || null };
+// --- Aufnahme-Button ------------------------------------------------------
+const CAPTURE_HOLD_MS = 550;
+
+function cancelCaptureHold() {
+  if (state.captureHold?.timer) clearInterval(state.captureHold.timer);
+  state.captureHold = null;
+  ui.addPointBtn.classList.remove('holding');
+  ui.captureProgress.style.setProperty('--capture-progress', '0');
 }
 
-function rangeEndpoint(which) {
-  const ref = state.rangeSelection[which];
-  const arr = rangePointArray();
-  return ref && arr ? arr[ref.index] || null : null;
+/** Aufnahme erfordert Halten, damit Wischen/Zoomen auf der Karte nichts ausloest. */
+function beginCaptureHold(event) {
+  if (ui.addPointBtn.disabled || state.selectedPoint) return;
+  event.preventDefault();
+  cancelCaptureHold();
+  try { ui.addPointBtn.setPointerCapture(event.pointerId); } catch (_) {}
+  ui.addPointBtn.classList.add('holding');
+  const startedAt = Date.now();
+  state.captureHold = {
+    pointerId: event.pointerId,
+    timer: setInterval(() => {
+      const ratio = Math.min(1, (Date.now() - startedAt) / CAPTURE_HOLD_MS);
+      ui.captureProgress.style.setProperty('--capture-progress', ratio.toFixed(3));
+      if (ratio >= 1) {
+        cancelCaptureHold();
+        addCurrentPoint().catch((error) => { ui.pointStatus.textContent = error.message; log('CAPTURE', error.message); });
+      }
+    }, 40),
+  };
 }
 
-function mowerDistanceToRangeEndpoint(which) {
-  const p = rangeEndpoint(which);
-  if (!p || !telemetryIsFresh()) return null;
-  return xyDistance(p, state.telemetry);
+/** Mit ausgewaehltem Punkt genuegt ein Tap: der Punkt wandert auf die Maeherposition. */
+function captureButtonTap() {
+  if (ui.addPointBtn.disabled || !state.selectedPoint) return;
+  addCurrentPoint().catch((error) => { ui.pointStatus.textContent = error.message; log('CAPTURE', error.message); });
 }
 
-function renderEditControls() {
-  ui.editModeBtn.classList.toggle('active', state.editMode);
-  ui.editModeBtn.setAttribute('aria-pressed', String(state.editMode));
-  ui.editControls.classList.toggle('hidden', !state.editMode);
-  ui.mapSvg.classList.toggle('edit-mode', state.editMode);
-  document.querySelectorAll('.edit-action-btn').forEach((button) => button.classList.toggle('active', button.dataset.editAction === state.editAction));
-  ui.cancelSegmentBtn.classList.toggle('hidden', !state.segmentRecording);
-  ui.editModeHint.textContent = tr(state.editMode ? 'editModeActive' : 'editPointsHint');
+// --- Karte: Tap, Verschieben, Pinch-Zoom ----------------------------------
+function gesturePointers() {
+  return state.gesture ? [...state.gesture.pointers.values()] : [];
+}
 
-  if (state.editAction === 'point') {
-    ui.clearEditSelectionBtn.disabled = !state.selectedPoint;
-    const p = getSelectedPoint();
-    if (p && state.selectedPoint) {
-      ui.editSelectedLabel.textContent = selectedPointLabel();
-      const distance = mowerDistanceToSelected();
-      const suffix = Number.isFinite(distance) ? ` · ${distance.toFixed(2)} m` : '';
-      ui.editSelectedCoords.textContent = `${tr('selectedPointCoords', { x: p.x.toFixed(2), y: p.y.toFixed(2) })}${suffix}`;
-    } else {
-      ui.editSelectedLabel.textContent = tr('noPointSelected');
-      ui.editSelectedCoords.textContent = tr('tapPointOnMap');
-    }
+function onMapPointerDown(event) {
+  if (!state.gesture) {
+    state.gesture = { pointers: new Map(), moved: false, startedAt: Date.now(), pinch: null, start: { x: event.clientX, y: event.clientY } };
+  }
+  state.gesture.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  try { ui.mapSvg.setPointerCapture(event.pointerId); } catch (_) {}
+  if (state.gesture.pointers.size === 2) {
+    const [a, b] = gesturePointers();
+    beginCustomViewport();
+    const mid = pointerToViewBox({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 });
+    state.gesture.moved = true;
+    state.gesture.pinch = {
+      distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+      zoom: state.viewport.zoom,
+      mid,
+      base: { x: (mid.x - state.viewport.dx) / state.viewport.zoom, y: (mid.y - state.viewport.dy) / state.viewport.zoom },
+    };
+  }
+}
+
+function onMapPointerMove(event) {
+  const gesture = state.gesture;
+  if (!gesture || !gesture.pointers.has(event.pointerId)) return;
+  const previous = gesture.pointers.get(event.pointerId);
+  gesture.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  const metrics = svgMetrics();
+
+  if (gesture.pointers.size >= 2 && gesture.pinch) {
+    const [a, b] = gesturePointers();
+    const distance = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
+    const mid = pointerToViewBox({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 });
+    state.viewport.zoom = clampNumber(gesture.pinch.zoom * (distance / gesture.pinch.distance), MIN_USER_ZOOM, MAX_USER_ZOOM, 1);
+    state.viewport.dx = mid.x - gesture.pinch.base.x * state.viewport.zoom;
+    state.viewport.dy = mid.y - gesture.pinch.base.y * state.viewport.zoom;
+    clampViewport();
+    renderMap();
     return;
   }
 
-  const a = state.rangeSelection.start;
-  const b = state.rangeSelection.end;
-  ui.clearEditSelectionBtn.disabled = !a && !b;
-  if (!a) {
-    ui.editSelectedLabel.textContent = tr('selectSegmentStart');
-    ui.editSelectedCoords.textContent = tr('tapPointOnMap');
-  } else if (!b) {
-    ui.editSelectedLabel.textContent = tr('segmentStartSelected', { label: pointRefLabel(a), n: a.index + 1 });
-    ui.editSelectedCoords.textContent = tr('selectSegmentEnd');
-  } else if (!samePointElement(a, b)) {
-    ui.editSelectedLabel.textContent = tr('segmentDifferentElement');
-    ui.editSelectedCoords.textContent = tr('selectSegmentStart');
-  } else {
-    const range = normalizedRange();
-    ui.editSelectedLabel.textContent = tr('segmentRangeSelected', { label: pointRefLabel(a), start: range.start + 1, end: range.end + 1 });
-    const endDistance = mowerDistanceToRangeEndpoint('end');
-    ui.editSelectedCoords.textContent = Number.isFinite(endDistance) ? tr('distanceToEnd', { distance: endDistance.toFixed(2) }) : tr('noCurrentXY');
+  if (!gesture.moved) {
+    // Erst ab 8 px Gesamtweg wird geschoben; darunter bleibt es ein Tap.
+    if (Math.hypot(event.clientX - gesture.start.x, event.clientY - gesture.start.y) < 8) return;
+    gesture.moved = true;
+    beginCustomViewport();
   }
+  state.viewport.dx += (event.clientX - previous.x) / metrics.scale;
+  state.viewport.dy += (event.clientY - previous.y) / metrics.scale;
+  clampViewport();
+  renderMap();
 }
+
+function onMapPointerUp(event) {
+  const gesture = state.gesture;
+  if (!gesture) return;
+  gesture.pointers.delete(event.pointerId);
+  if (gesture.pointers.size > 0) { gesture.pinch = null; return; }
+  const wasTap = !gesture.moved && Date.now() - gesture.startedAt < 500;
+  state.gesture = null;
+  if (wasTap && event.type === 'pointerup') handleMapTap(event);
+}
+
 
 function refreshCaptureState() {
   const t = state.telemetry;
@@ -1080,142 +988,75 @@ function refreshCaptureState() {
   const blockedByFixRule = ui.fixOnly.checked && !hasTrueFix;
   const hasMap = Boolean(state.activeMap);
   const mapLocked = Boolean(state.activeMap?.locked);
+  const selected = state.selectedPoint ? getSelectedPoint() : null;
 
-  ui.addPointBtn.classList.remove('capture-fix', 'capture-warning', 'capture-blocked', 'capture-idle', 'capture-stop');
-  ui.gpsBadge.classList.remove('fix', 'warning', 'no-data');
+  updateRtkBadge();
+  const button = ui.addPointBtn;
+  button.classList.remove('capture-fix', 'capture-warning', 'capture-blocked', 'capture-idle', 'capture-stop');
+  button.classList.toggle('move-mode', Boolean(selected));
+  ui.deletePointBtn.hidden = !selected || mapLocked;
+  // Im Verschieben-Zustand gibt es kein Halten: eine laufende Halteaktion wird verworfen.
+  // (Nicht umgekehrt: ein laufendes Halten darf nicht von der 2-s-Telemetrie abgebrochen werden.)
+  if (selected) cancelCaptureHold();
 
-  if (!fresh || !coords) {
-    ui.gpsBadge.classList.add('no-data');
-    ui.gpsBadgeText.textContent = tr('noGpsData');
-  } else if (hasTrueFix) {
-    ui.gpsBadge.classList.add('fix');
-    ui.gpsBadgeText.textContent = 'RTK FIX';
-  } else {
-    ui.gpsBadge.classList.add('warning');
-    ui.gpsBadgeText.textContent = solutionNameLocalized(t.solution);
-  }
+  const show = (cls, title, hint, status) => {
+    button.classList.add(cls);
+    ui.captureButtonTitle.textContent = title;
+    ui.captureButtonHint.textContent = hint;
+    if (status !== undefined) ui.pointStatus.textContent = status;
+  };
+  const solution = () => solutionNameLocalized(t.solution);
 
   if (mapLocked) {
-    ui.addPointBtn.disabled = true;
-    ui.addPointBtn.classList.add('capture-blocked');
-    ui.captureButtonTitle.textContent = tr('mapLocked');
-    ui.captureButtonHint.textContent = tr('mapLockedHint');
-    ui.pointStatus.textContent = tr('mapLockedHint');
-    renderEditControls();
+    button.disabled = true;
+    show('capture-blocked', tr('mapLocked'), tr('mapLockedHint'), tr('mapLockedHint'));
     return;
   }
 
-  if (!state.editMode && state.mode === 'perimeter' && state.activeMap?.perimeterClosed) {
-    ui.addPointBtn.disabled = false;
-    ui.addPointBtn.classList.add('capture-warning');
-    ui.captureButtonTitle.textContent = tr('reopenPerimeter');
-    ui.captureButtonHint.textContent = tr('perimeterAlreadyClosed');
-    ui.pointStatus.textContent = tr('perimeterAlreadyClosed');
+  // Ausgewaehlter Punkt: der Hauptbutton wird zum Verschieben-Button (ein Tap genuegt).
+  if (selected) {
+    const distance = mowerDistanceToSelected();
+    button.disabled = !fresh || !coords || blockedByFixRule;
+    const label = `${selectedPointLabel()}${Number.isFinite(distance) ? ` · ${distance.toFixed(2)} m` : ''}`;
+    if (!fresh || !coords) show('capture-idle', tr('movePoint'), tr('noCurrentXY'), label);
+    else if (blockedByFixRule) show('capture-blocked', tr('noRtkFix'), tr('captureBlocked', { solution: solution() }), label);
+    else show(hasTrueFix ? 'capture-fix' : 'capture-warning', tr('movePoint'), tr('movePointHint'), label);
     return;
   }
 
-  const closeCandidate = !state.editMode && state.mode === 'perimeter' ? perimeterClosureCandidate() : null;
+  if (state.mode === 'perimeter' && state.activeMap?.perimeterClosed) {
+    button.disabled = false;
+    show('capture-warning', tr('reopenPerimeter'), tr('perimeterAlreadyClosed'), tr('perimeterAlreadyClosed'));
+    return;
+  }
+
+  const closeCandidate = state.mode === 'perimeter' ? perimeterClosureCandidate() : null;
   if (closeCandidate && !state.autoCaptureRunning) {
-    ui.addPointBtn.disabled = false;
-    ui.addPointBtn.classList.add('capture-fix');
-    ui.captureButtonTitle.textContent = tr('closePerimeter');
-    ui.captureButtonHint.textContent = tr('perimeterNearStart', { distance: closeCandidate.distance.toFixed(2) });
-    ui.pointStatus.textContent = ui.captureButtonHint.textContent;
+    button.disabled = false;
+    const hint = tr('perimeterNearStart', { distance: closeCandidate.distance.toFixed(2) });
+    show('capture-fix', tr('closePerimeter'), hint, hint);
     return;
   }
 
-  if (state.segmentRecording) {
-    const distance = mowerDistanceToRangeEndpoint('end');
-    const withinRange = Number.isFinite(distance) && distance <= state.view.editMaxDistance;
-    ui.addPointBtn.disabled = !withinRange || blockedByFixRule;
-    if (withinRange && (hasTrueFix || !ui.fixOnly.checked)) {
-      ui.addPointBtn.classList.add(hasTrueFix ? 'capture-fix' : 'capture-warning');
-      ui.captureButtonTitle.textContent = tr('finishSegment');
-      ui.captureButtonHint.textContent = tr('finishSegmentHint', { distance: distance.toFixed(2) });
-    } else {
-      ui.addPointBtn.classList.add('capture-blocked');
-      ui.captureButtonTitle.textContent = tr('segmentEndTooFar');
-      ui.captureButtonHint.textContent = Number.isFinite(distance) ? tr('segmentEndDistance', { distance: distance.toFixed(2) }) : tr('noCurrentXY');
-    }
-    ui.pointStatus.textContent = tr('segmentRecordingHint', { count: state.segmentNewPoints.length });
-    ui.autoCaptureState.textContent = tr('segmentRecordingHint', { count: state.segmentNewPoints.length });
-    renderEditControls();
+  if (ui.autoCaptureEnabled.checked && state.autoCaptureRunning) {
+    button.disabled = false;
+    show('capture-stop', tr('stopAutoCapture'), tr('autoCaptureStopHint', { count: state.autoCaptureCount }));
+    ui.autoCaptureState.textContent = tr('autoCaptureRunning', { count: state.autoCaptureCount });
     return;
   }
 
-  if (state.editMode) {
-    if (state.editAction === 'point') {
-      const selected = getSelectedPoint();
-      const distance = mowerDistanceToSelected();
-      const withinRange = Number.isFinite(distance) && distance <= state.view.editMaxDistance;
-      ui.addPointBtn.disabled = !(hasMap && selected && fresh && coords && withinRange) || blockedByFixRule;
-      if (!hasMap) {
-        ui.addPointBtn.classList.add('capture-idle'); ui.captureButtonTitle.textContent = tr('noMapActive'); ui.captureButtonHint.textContent = tr('createMapFirst'); ui.pointStatus.textContent = tr('pleaseCreateMap');
-      } else if (!selected) {
-        ui.addPointBtn.classList.add('capture-idle'); ui.captureButtonTitle.textContent = tr('relearnSelectFirst'); ui.captureButtonHint.textContent = tr('tapPointOnMap'); ui.pointStatus.textContent = tr('editModeActive');
-      } else if (!fresh || !coords) {
-        ui.addPointBtn.classList.add('capture-idle'); ui.captureButtonTitle.textContent = tr('relearnNoPosition'); ui.captureButtonHint.textContent = tr('noCurrentXY'); ui.pointStatus.textContent = tr('noCurrentPosition');
-      } else if (!withinRange) {
-        ui.addPointBtn.classList.add('capture-blocked'); ui.captureButtonTitle.textContent = tr('moveCloser'); ui.captureButtonHint.textContent = tr('tooFarHint', { distance: distance.toFixed(2), max: state.view.editMaxDistance.toFixed(2) }); ui.pointStatus.textContent = `${selectedPointLabel()} · ${ui.captureButtonHint.textContent}`;
-      } else if (hasTrueFix) {
-        ui.addPointBtn.classList.add('capture-fix'); ui.captureButtonTitle.textContent = tr('relearnPoint'); ui.captureButtonHint.textContent = tr('relearnReady', { n: state.selectedPoint.index + 1, distance: distance.toFixed(2) }); ui.pointStatus.textContent = `${selectedPointLabel()} · RTK FIX`;
-      } else if (ui.fixOnly.checked) {
-        ui.addPointBtn.classList.add('capture-blocked'); ui.captureButtonTitle.textContent = tr('noRtkFix'); ui.captureButtonHint.textContent = tr('relearnBlocked', { solution: solutionNameLocalized(t.solution) }); ui.pointStatus.textContent = tr('pointBlocked', { solution: solutionNameLocalized(t.solution) });
-      } else {
-        ui.addPointBtn.disabled = false; ui.addPointBtn.classList.add('capture-warning'); ui.captureButtonTitle.textContent = tr('relearnWarning'); ui.captureButtonHint.textContent = `${selectedPointLabel()} · ${distance.toFixed(2)} m`; ui.pointStatus.textContent = tr('warningPoint', { solution: solutionNameLocalized(t.solution) });
-      }
-      renderEditControls(); return;
-    }
+  ui.autoCaptureState.textContent = ui.autoCaptureEnabled.checked
+    ? (state.view.autoCaptureMode === 'smart' ? tr('smartAutoHint') : tr('autoCaptureReady', { distance: state.view.autoCaptureDistance.toFixed(2) }))
+    : tr('autoCaptureOff');
 
-    const range = normalizedRange();
-    const startDistance = mowerDistanceToRangeEndpoint('start');
-    const readyStart = range && Number.isFinite(startDistance) && startDistance <= state.view.editMaxDistance;
-    if (!range) {
-      ui.addPointBtn.disabled = true; ui.addPointBtn.classList.add('capture-idle');
-      ui.captureButtonTitle.textContent = state.rangeSelection.start ? tr('selectSegmentEnd') : tr('selectSegmentStart');
-      ui.captureButtonHint.textContent = tr('tapPointOnMap');
-    } else if (state.editAction === 'straight') {
-      ui.addPointBtn.disabled = false; ui.addPointBtn.classList.add('capture-fix');
-      ui.captureButtonTitle.textContent = tr('straightenSegment');
-      ui.captureButtonHint.textContent = tr('straightenHint', { start: range.start + 1, end: range.end + 1 });
-    } else if (!fresh || !coords) {
-      ui.addPointBtn.disabled = true; ui.addPointBtn.classList.add('capture-idle'); ui.captureButtonTitle.textContent = tr('relearnNoPosition'); ui.captureButtonHint.textContent = tr('noCurrentXY');
-    } else if (!readyStart) {
-      ui.addPointBtn.disabled = true; ui.addPointBtn.classList.add('capture-blocked'); ui.captureButtonTitle.textContent = tr('moveCloser'); ui.captureButtonHint.textContent = Number.isFinite(startDistance) ? tr('tooFarHint', { distance: startDistance.toFixed(2), max: state.view.editMaxDistance.toFixed(2) }) : tr('noCurrentXY');
-    } else if (blockedByFixRule) {
-      ui.addPointBtn.disabled = true; ui.addPointBtn.classList.add('capture-blocked'); ui.captureButtonTitle.textContent = tr('noRtkFix'); ui.captureButtonHint.textContent = tr('relearnBlocked', { solution: solutionNameLocalized(t.solution) });
-    } else {
-      ui.addPointBtn.disabled = false; ui.addPointBtn.classList.add(hasTrueFix ? 'capture-fix' : 'capture-warning');
-      ui.captureButtonTitle.textContent = tr('startSegmentRelearn'); ui.captureButtonHint.textContent = tr('startSegmentHint');
-    }
-    renderEditControls(); return;
-  }
-
-  if (ui.autoCaptureEnabled.checked) {
-    if (state.autoCaptureRunning) {
-      ui.addPointBtn.disabled = false; ui.addPointBtn.classList.add('capture-stop');
-      ui.captureButtonTitle.textContent = tr('stopAutoCapture');
-      ui.captureButtonHint.textContent = tr('autoCaptureStopHint', { count: state.autoCaptureCount });
-      ui.autoCaptureState.textContent = tr('autoCaptureRunning', { count: state.autoCaptureCount });
-      return;
-    }
-    ui.addPointBtn.disabled = !(hasMap && fresh && coords) || blockedByFixRule;
-    if (!hasMap) { ui.addPointBtn.classList.add('capture-idle'); ui.captureButtonTitle.textContent = tr('noMapActive'); ui.captureButtonHint.textContent = tr('createMapFirst'); }
-    else if (!fresh || !coords) { ui.addPointBtn.classList.add('capture-idle'); ui.captureButtonTitle.textContent = tr('waitPosition'); ui.captureButtonHint.textContent = tr('noCurrentXY'); }
-    else if (blockedByFixRule) { ui.addPointBtn.classList.add('capture-blocked'); ui.captureButtonTitle.textContent = tr('noRtkFix'); ui.captureButtonHint.textContent = tr('captureBlocked', { solution: solutionNameLocalized(t.solution) }); }
-    else { ui.addPointBtn.classList.add(hasTrueFix ? 'capture-fix' : 'capture-warning'); ui.captureButtonTitle.textContent = tr('startAutoCapture'); ui.captureButtonHint.textContent = tr('autoCaptureStartHint', { distance: state.view.autoCaptureDistance.toFixed(2) }); }
-    ui.autoCaptureState.textContent = state.view.autoCaptureMode === 'smart' ? tr('smartAutoHint') : tr('autoCaptureReady', { distance: state.view.autoCaptureDistance.toFixed(2) });
-    renderEditControls(); return;
-  }
-
-  ui.autoCaptureState.textContent = tr('autoCaptureOff');
-  ui.addPointBtn.disabled = !(hasMap && fresh && coords) || blockedByFixRule;
-  if (!hasMap) { ui.addPointBtn.classList.add('capture-idle'); ui.captureButtonTitle.textContent = tr('noMapActive'); ui.captureButtonHint.textContent = tr('createMapFirst'); ui.pointStatus.textContent = tr('pleaseCreateMap'); }
-  else if (!fresh || !coords) { ui.addPointBtn.classList.add('capture-idle'); ui.captureButtonTitle.textContent = tr('waitPosition'); ui.captureButtonHint.textContent = tr('noCurrentXY'); ui.pointStatus.textContent = tr('noCurrentPosition'); }
-  else if (hasTrueFix) { ui.addPointBtn.classList.add('capture-fix'); ui.captureButtonTitle.textContent = tr('capturePoint'); ui.captureButtonHint.textContent = `RTK FIX · X ${t.x.toFixed(2)} · Y ${t.y.toFixed(2)}`; ui.pointStatus.textContent = tr('readyPoint', { x: t.x.toFixed(2), y: t.y.toFixed(2) }); }
-  else if (ui.fixOnly.checked) { ui.addPointBtn.classList.add('capture-blocked'); ui.captureButtonTitle.textContent = tr('noRtkFix'); ui.captureButtonHint.textContent = tr('captureBlocked', { solution: solutionNameLocalized(t.solution) }); ui.pointStatus.textContent = tr('pointBlocked', { solution: solutionNameLocalized(t.solution) }); }
-  else { ui.addPointBtn.classList.add('capture-warning'); ui.captureButtonTitle.textContent = tr('captureAnyway'); ui.captureButtonHint.textContent = tr('noTrueFix', { solution: solutionNameLocalized(t.solution) }); ui.pointStatus.textContent = tr('warningPoint', { solution: solutionNameLocalized(t.solution) }); }
-  renderEditControls();
+  const autoMode = ui.autoCaptureEnabled.checked;
+  button.disabled = !(hasMap && fresh && coords) || blockedByFixRule;
+  if (!hasMap) show('capture-idle', tr('noMapActive'), tr('createMapFirst'), tr('pleaseCreateMap'));
+  else if (!fresh || !coords) show('capture-idle', tr('waitPosition'), tr('noCurrentXY'), tr('noCurrentPosition'));
+  else if (blockedByFixRule) show('capture-blocked', tr('noRtkFix'), tr('captureBlocked', { solution: solution() }), tr('pointBlocked', { solution: solution() }));
+  else if (autoMode) show(hasTrueFix ? 'capture-fix' : 'capture-warning', tr('startAutoCapture'), tr('autoCaptureStartHint', { distance: state.view.autoCaptureDistance.toFixed(2) }), tr('readyPoint', { x: t.x.toFixed(2), y: t.y.toFixed(2) }));
+  else if (hasTrueFix) show('capture-fix', tr('capturePoint'), tr('holdToCapture'), tr('readyPoint', { x: t.x.toFixed(2), y: t.y.toFixed(2) }));
+  else show('capture-warning', tr('captureAnyway'), tr('noTrueFix', { solution: solution() }), tr('warningPoint', { solution: solution() }));
 }
 
 function handleLine(rawLine) {
@@ -1439,9 +1280,6 @@ function onDisconnected() {
   state.encryptionEnabled = false;
   state.encryptionKey = null;
   stopDrive({ send: false });
-  cancelMowHold();
-  state.mowMotorOn = false;
-  if (ui.mowArmCheckbox) ui.mowArmCheckbox.checked = false;
   setConnectionStatus(false, 'notConnected', 'bluetoothDisconnected');
   log(tr('bleDisconnectedLog'), `after ${duration}s · TX=${state.bleTxCommands} · RX=${state.bleRxLines}`);
   if (!state.manualDisconnect) scheduleReconnect(device);
@@ -1547,7 +1385,7 @@ function makeMap(name) {
   return {
     format: 'ardumower-web-map', generator: 'MapCreator für Ardumower', version: 2,
     id: newId(), name: name.trim(), coordinateSystem: 'sunray-local-xy-meters',
-    createdAt: now, updatedAt: now, locked: false, perimeterClosed: false, perimeter: [], exclusions: [], dockPoints: [], history: [],
+    createdAt: now, updatedAt: now, locked: false, perimeterClosed: false, perimeter: [], exclusions: [], waypoints: [], dockPoints: [], history: [],
   };
 }
 
@@ -1565,6 +1403,7 @@ function normalizeMap(map) {
     if (!Array.isArray(exclusion.points)) exclusion.points = [];
     if (!exclusion.name) exclusion.name = `Ausschluss ${index + 1}`;
   });
+  if (!Array.isArray(map.waypoints)) map.waypoints = [];
   if (!Array.isArray(map.dockPoints)) map.dockPoints = [];
   if (!Array.isArray(map.history)) map.history = [];
   return map;
@@ -1576,6 +1415,7 @@ function geometrySnapshot(map) {
     perimeterClosed: map.perimeterClosed === true,
     perimeter: structuredClone(map.perimeter || []),
     exclusions: structuredClone(map.exclusions || []),
+    waypoints: structuredClone(map.waypoints || []),
     dockPoints: structuredClone(map.dockPoints || []),
   };
 }
@@ -1606,6 +1446,7 @@ function applyGeometrySnapshot(snapshot) {
   state.activeMap.perimeterClosed = snapshot.perimeterClosed === true;
   state.activeMap.perimeter = structuredClone(snapshot.perimeter || []);
   state.activeMap.exclusions = structuredClone(snapshot.exclusions || []);
+  state.activeMap.waypoints = structuredClone(snapshot.waypoints || []);
   state.activeMap.dockPoints = structuredClone(snapshot.dockPoints || []);
   state.activeExclusionId = state.activeMap.exclusions[0]?.id || null;
   clearPointSelection({ render: false });
@@ -1698,7 +1539,7 @@ async function toggleMapLockById(mapId) {
   map.locked=!map.locked; map.updatedAt=new Date().toISOString();
   if(map.id===state.activeMap?.id){
     state.activeMap=map;
-    if(map.locked){ stopAutoCapture(); cancelSegmentRecording(false); state.editMode=false; clearPointSelection({render:false}); }
+    if(map.locked){ stopAutoCapture(); clearPointSelection({render:false}); }
   }
   await dbRequest('readwrite',store=>store.put(map));
   renderMapControls(); renderMap();
@@ -1706,7 +1547,6 @@ async function toggleMapLockById(mapId) {
 
 function renderMapControls() {
   populateMapSelect(ui.mapSelect);
-  populateMapSelect(ui.editMapSelect);
   renderMapGallery();
   const atMapLimit = state.maps.length >= MAX_MAPS;
   ui.newMapBtn.disabled = atMapLimit;
@@ -1723,7 +1563,6 @@ function renderMapControls() {
   const locked = Boolean(state.activeMap?.locked);
   ui.lockMapBtn.textContent = tr(locked ? 'unlockCurrentMap' : 'lockCurrentMap');
   ui.deleteMapBtn.disabled = locked;
-  ui.editModeBtn.disabled = locked;
   ui.clearModeBtn.disabled = locked;
   ui.newExclusionBtn.disabled = locked;
   renderExclusionControls();
@@ -1737,13 +1576,12 @@ function setActiveMapById(mapId) {
   const next = state.maps.find((m) => m.id === mapId);
   if (!next) return;
   stopAutoCapture();
-  cancelSegmentRecording(false);
   state.activeMap = normalizeMap(next);
   state.activeExclusionId = state.activeMap.exclusions?.[0]?.id || null;
   state.selectedPoint = null;
-  state.rangeSelection = { start: null, end: null };
   state.validationResult = null;
   state.trail = [];
+  resetViewport({ render: false });
   localStorage.setItem(ACTIVE_MAP_KEY, state.activeMap.id);
   renderMapControls();
   renderMap();
@@ -1773,7 +1611,6 @@ function renderExclusionControls() {
 
 async function createMapFromInput() {
   stopAutoCapture();
-  cancelSegmentRecording(false);
   if (state.maps.length >= MAX_MAPS) throw new Error(tr('mapLimitReached'));
   const name = ui.newMapName.value.trim() || tr('mapN', { n: state.maps.length + 1 });
   const map = makeMap(name);
@@ -1791,7 +1628,6 @@ async function createMapFromInput() {
 
 async function deleteActiveMap() {
   stopAutoCapture();
-  cancelSegmentRecording(false);
   if (!state.activeMap) return;
   if (state.activeMap.locked) { ui.pointStatus.textContent = tr('mapLockedHint'); return; }
   if (!confirm(tr('deleteMapConfirm', { name: localizedMapName(state.activeMap) }))) return;
@@ -1814,6 +1650,7 @@ function getActivePointArray() {
   if (!state.activeMap) return null;
   if (state.mode === 'perimeter') return state.activeMap.perimeter;
   if (state.mode === 'dock') return state.activeMap.dockPoints;
+  if (state.mode === 'waypoint') return state.activeMap.waypoints;
   if (state.mode === 'exclusion') {
     const exclusion = state.activeMap.exclusions.find((e) => e.id === state.activeExclusionId);
     return exclusion?.points || null;
@@ -1824,10 +1661,10 @@ function getActivePointArray() {
 function refreshUndoState() {
   const target = getActivePointArray();
   const count = Array.isArray(target) ? target.length : 0;
-  const label = state.mode === 'perimeter' ? tr('perimeter') : state.mode === 'dock' ? tr('dockPath') : tr('exclusionArea');
+  const label = modeLabel(state.mode);
   ui.undoBtn.disabled = count === 0 || Boolean(state.activeMap?.locked);
   ui.undoButtonTitle.textContent = tr('undoTitle');
-  ui.undoButtonHint.textContent = count ? tr('undoHintCount', { label, count }) : tr('undoHintEmpty', { label });
+  ui.undoBtn.title = count ? tr('undoHintCount', { label, count }) : tr('undoHintEmpty', { label });
 }
 
 async function createExclusion() {
@@ -1909,7 +1746,7 @@ async function appendCurrentPoint({ automatic = false, targetOverride = null, sa
 function stopAutoCapture() {
   state.autoCaptureRunning = false;
   state.autoCaptureBusy = false;
-  if (!state.segmentRecording) releaseWakeLock();
+  releaseWakeLock();
   refreshCaptureState();
 }
 
@@ -1935,20 +1772,7 @@ async function toggleAutoCapture() {
 
 async function maybeCaptureAutomatically() {
   if (state.autoCaptureBusy || !telemetryIsFresh()) return;
-  if (state.segmentRecording) {
-    if (ui.fixOnly.checked && !telemetryHasFix()) return;
-    const last = state.segmentNewPoints[state.segmentNewPoints.length - 1];
-    const shouldCapture = state.view.autoCaptureMode === 'smart'
-      ? shouldSmartCapture(state.segmentNewPoints, state.telemetry, state.view.autoCaptureDistance)
-      : (!last || xyDistance(last, state.telemetry) >= state.view.autoCaptureDistance);
-    if (shouldCapture) {
-      state.autoCaptureBusy = true;
-      try { state.segmentNewPoints.push(pointFromTelemetry()); renderMap(); refreshCaptureState(); }
-      finally { state.autoCaptureBusy = false; }
-    }
-    return;
-  }
-  if (!state.autoCaptureRunning || state.editMode || (ui.fixOnly.checked && !telemetryHasFix())) return;
+  if (!state.autoCaptureRunning || (ui.fixOnly.checked && !telemetryHasFix())) return;
   const target = getActivePointArray();
   const last = target?.[target.length - 1];
   if (!target || !last) return;
@@ -1973,98 +1797,30 @@ async function maybeCaptureAutomatically() {
   } finally { state.autoCaptureBusy = false; }
 }
 
-function cancelSegmentRecording(render = true) {
-  if (!state.segmentRecording && !state.segmentNewPoints.length) return;
-  state.segmentRecording = false;
-  state.segmentNewPoints = [];
-  if (!state.autoCaptureRunning) releaseWakeLock();
-  if (render) {
-    ui.pointStatus.textContent = tr('segmentCancelled');
-    renderMap(); refreshCaptureState();
-  }
-}
-
-async function startSegmentRecording() {
-  if (!ensureMapEditable()) return;
-  const range = normalizedRange();
-  if (!range || !telemetryIsFresh()) return;
-  const startDistance = mowerDistanceToRangeEndpoint('start');
-  if (!Number.isFinite(startDistance) || startDistance > state.view.editMaxDistance) return;
-  if (ui.fixOnly.checked && !telemetryHasFix()) return;
-  state.segmentRecording = true;
-  state.segmentNewPoints = [pointFromTelemetry()];
-  requestWakeLockIfNeeded();
-  ui.pointStatus.textContent = tr('segmentRecordingHint', { count: 1 });
-  renderMap(); refreshCaptureState();
-}
-
-async function finishSegmentRecording() {
-  if (!ensureMapEditable()) return;
-  const range = normalizedRange();
-  const target = rangePointArray();
-  if (!range || !target || !state.segmentRecording) return;
-  const endDistance = mowerDistanceToRangeEndpoint('end');
-  if (!Number.isFinite(endDistance) || endDistance > state.view.editMaxDistance) return;
-  if (ui.fixOnly.checked && !telemetryHasFix()) return;
-  const finalPoint = pointFromTelemetry();
-  const last = state.segmentNewPoints[state.segmentNewPoints.length - 1];
-  if (!last || xyDistance(last, finalPoint) >= 0.03) state.segmentNewPoints.push(finalPoint);
-  checkpointMap('segment');
-  const replacement = state.segmentNewPoints.map((p) => structuredClone(p));
-  if (range.reverse) replacement.reverse();
-  target.splice(range.start, range.end - range.start + 1, ...replacement);
-  const count = replacement.length;
-  state.segmentRecording = false;
-  state.segmentNewPoints = [];
-  releaseWakeLock();
-  state.rangeSelection = { start: null, end: null };
-  await saveActiveMap();
-  state.validationResult = null;
-  renderMap();
-  ui.pointStatus.textContent = tr('segmentRelearned', { start: range.start + 1, end: range.end + 1, count });
-}
-
-async function straightenSelectedRange() {
-  if (!ensureMapEditable()) return;
-  const range = normalizedRange();
-  const target = rangePointArray();
-  if (!range || !target) return;
-  const a = target[range.start];
-  const b = target[range.end];
-  if (!a || !b) return;
-  checkpointMap('straight');
-  const steps = range.end - range.start;
-  for (let i = 1; i < steps; i += 1) {
-    const ratio = i / steps;
-    const old = target[range.start + i];
-    target[range.start + i] = {
-      ...old,
-      x: Number((a.x + (b.x - a.x) * ratio).toFixed(3)),
-      y: Number((a.y + (b.y - a.y) * ratio).toFixed(3)),
-      editedAt: new Date().toISOString(),
-      previousPosition: { x: old.x, y: old.y },
-    };
-  }
-  await saveActiveMap();
-  state.validationResult = null;
-  renderMap();
-  ui.pointStatus.textContent = tr('segmentStraightened', { start: range.start + 1, end: range.end + 1 });
-}
-
 async function addCurrentPoint() {
   if (state.activeMap?.locked) { ensureMapEditable(); return; }
-  if (!state.editMode && state.mode === 'perimeter' && state.activeMap?.perimeterClosed) { await reopenPerimeter(); return; }
-  if (!state.editMode && state.mode === 'perimeter' && perimeterClosureCandidate()) { await closePerimeter(); return; }
-  if (state.segmentRecording) { await finishSegmentRecording(); return; }
-  if (state.editMode) {
-    if (state.editAction === 'point') await relearnSelectedPoint();
-    else if (state.editAction === 'segment') await startSegmentRecording();
-    else if (state.editAction === 'straight') await straightenSelectedRange();
-    return;
-  }
+  if (state.selectedPoint) { await relearnSelectedPoint(); clearPointSelection(); return; }
+  if (state.mode === 'perimeter' && state.activeMap?.perimeterClosed) { await reopenPerimeter(); return; }
+  if (state.mode === 'perimeter' && perimeterClosureCandidate()) { await closePerimeter(); return; }
   if (ui.autoCaptureEnabled.checked) { await toggleAutoCapture(); return; }
   await appendCurrentPoint();
   renderMap();
+}
+
+/** Loescht den aktuell ausgewaehlten Punkt (Werkzeug oben rechts auf der Karte). */
+async function deleteSelectedPoint() {
+  if (!ensureMapEditable()) return;
+  const target = getSelectedPointArray();
+  const sel = state.selectedPoint;
+  if (!target || !sel || !target[sel.index]) return;
+  checkpointMap('deletePoint');
+  target.splice(sel.index, 1);
+  if (sel.role === 'perimeter') state.activeMap.perimeterClosed = false;
+  state.selectedPoint = null;
+  state.validationResult = null;
+  await saveActiveMap();
+  renderMap();
+  ui.pointStatus.textContent = tr('pointDeleted', { n: sel.index + 1 });
 }
 
 async function undoPoint() {
@@ -2083,8 +1839,7 @@ async function clearCurrentElement() {
   if (!ensureMapEditable()) return;
   const target = getActivePointArray();
   if (!target?.length) return;
-  const label = state.mode === 'perimeter' ? tr('perimeter') : state.mode === 'dock' ? tr('dockPoints') : tr('exclusionArea');
-  if (!confirm(tr('clearConfirm', { label }))) return;
+  if (!confirm(tr('clearConfirm', { label: modeLabel(state.mode) }))) return;
   checkpointMap('clear');
   target.splice(0, target.length);
   if (state.mode === 'perimeter') state.activeMap.perimeterClosed = false;
@@ -2096,12 +1851,10 @@ async function clearCurrentElement() {
 function allMapPoints() {
   const points = [];
   if (state.activeMap) {
-    points.push(...state.activeMap.perimeter, ...state.activeMap.dockPoints);
+    points.push(...state.activeMap.perimeter, ...state.activeMap.dockPoints, ...state.activeMap.waypoints);
     state.activeMap.exclusions.forEach((e) => points.push(...e.points));
   }
   if (state.view.showTrail) points.push(...state.trail);
-  if (state.segmentRecording) points.push(...state.segmentNewPoints);
-  if (state.measurementPoints.length) points.push(...state.measurementPoints);
   const freshTelemetry = Number.isFinite(state.telemetry.x) && Number.isFinite(state.telemetry.y) && Date.now() - state.telemetry.receivedAt < 6000;
   if (freshTelemetry && state.view.showMower) {
     const radius = Math.hypot(state.view.mowerLength, state.view.mowerWidth) / 2;
@@ -2117,6 +1870,56 @@ function svgEl(name, attrs = {}) {
   const el = document.createElementNS('http://www.w3.org/2000/svg', name);
   Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, value));
   return el;
+}
+
+const MIN_USER_ZOOM = 0.6;
+const MAX_USER_ZOOM = 14;
+
+/** Pixel-Geometrie des SVG (viewBox 1000x680, preserveAspectRatio="xMidYMid meet"). */
+function svgMetrics() {
+  const rect = ui.mapSvg.getBoundingClientRect?.() || { left: 0, top: 0, width: 1000, height: 680 };
+  const scale = Math.min((rect.width || 1000) / 1000, (rect.height || 680) / 680) || 1;
+  return { rect, scale, offX: ((rect.width || 1000) - 1000 * scale) / 2, offY: ((rect.height || 680) - 680 * scale) / 2 };
+}
+
+function pointerToViewBox(event) {
+  const m = svgMetrics();
+  return { x: (event.clientX - m.rect.left - m.offX) / m.scale, y: (event.clientY - m.rect.top - m.offY) / m.scale };
+}
+
+function resetViewport({ render = true } = {}) {
+  state.viewport = { zoom: 1, dx: 0, dy: 0, custom: false, base: null };
+  if (ui.fitViewBtn) ui.fitViewBtn.hidden = true;
+  if (render) renderMap();
+}
+
+/** Verhindert, dass die Karte aus dem Bild geschoben wird. */
+function clampViewport() {
+  const vp = state.viewport;
+  vp.zoom = clampNumber(vp.zoom, MIN_USER_ZOOM, MAX_USER_ZOOM, 1);
+  vp.dx = clampNumber(vp.dx, 200 - 950 * vp.zoom, 800 - 50 * vp.zoom, 0);
+  vp.dy = clampNumber(vp.dy, 140 - 630 * vp.zoom, 540 - 50 * vp.zoom, 0);
+}
+
+/** Auto-Fit, solange der Nutzer nicht selbst gezoomt hat; danach eingefrorene Basis + Nutzer-Zoom. */
+function activeTransform() {
+  const vp = state.viewport;
+  if (!vp.custom) return computeTransform(allMapPoints());
+  const base = vp.base || computeTransform(allMapPoints());
+  const scale = base.scale * vp.zoom;
+  const ox = base.ox * vp.zoom + vp.dx;
+  const oy = base.oy * vp.zoom + vp.dy;
+  // Raster und Hilfslinien richten sich nach dem sichtbaren Ausschnitt, nicht nach dem Auto-Fit.
+  return { scale, ox, oy, minX: -ox / scale, maxX: (1000 - ox) / scale, minY: (oy - 680) / scale, maxY: oy / scale };
+}
+
+function beginCustomViewport() {
+  const vp = state.viewport;
+  if (vp.custom) return;
+  vp.base = computeTransform(allMapPoints());
+  vp.custom = true;
+  vp.zoom = 1; vp.dx = 0; vp.dy = 0;
+  if (ui.fitViewBtn) ui.fitViewBtn.hidden = false;
 }
 
 function computeTransform(points) {
@@ -2154,15 +1957,7 @@ function pointRefMatches(ref, meta, index) {
 }
 
 function isSelectedPoint(meta, index) {
-  if (!state.editMode) return false;
-  if (state.editAction === 'point') return pointRefMatches(state.selectedPoint, meta, index);
-  return pointRefMatches(state.rangeSelection.start, meta, index) || pointRefMatches(state.rangeSelection.end, meta, index);
-}
-
-function isPointInSelectedRange(meta, index) {
-  const range = normalizedRange();
-  if (!range || state.editAction === 'point') return false;
-  return range.role === meta.role && (range.role !== 'exclusion' || range.exclusionId === meta.exclusionId) && index >= range.start && index <= range.end;
+  return pointRefMatches(state.selectedPoint, meta, index);
 }
 
 function drawPoints(points, tr, className, meta) {
@@ -2176,29 +1971,23 @@ function drawPoints(points, tr, className, meta) {
     };
     if (meta.exclusionId) common['data-exclusion-id'] = meta.exclusionId;
 
-    if (state.editMode) {
-      const hit = svgEl('circle', {
-        cx: s.x, cy: s.y, r: 34, class: 'map-point-hit', tabindex: '0', role: 'button', ...common,
-      });
-      const hitTitle = svgEl('title');
-      hitTitle.textContent = `#${index + 1} X ${p.x.toFixed(2)} / Y ${p.y.toFixed(2)}`;
-      hit.appendChild(hitTitle);
-      ui.shapeLayer.appendChild(hit);
-    }
+    // Unsichtbares Touch-Ziel: mindestens 44x44 px, unabhaengig vom Zoom.
+    const hit = svgEl('circle', {
+      cx: s.x, cy: s.y, r: state.hitRadiusUnits, class: 'map-point-hit', tabindex: '0', role: 'button', ...common,
+    });
+    const hitTitle = svgEl('title');
+    hitTitle.textContent = `#${index + 1} X ${p.x.toFixed(2)} / Y ${p.y.toFixed(2)}`;
+    hit.appendChild(hitTitle);
+    ui.shapeLayer.appendChild(hit);
 
     const qualityClass = state.view.showPointQuality ? ` quality-${pointQuality(p)}` : '';
     const circle = svgEl('circle', {
-      cx: s.x, cy: s.y, r: selected ? 10 : 7,
-      class: `${className} map-point${qualityClass}${selected ? ' selected-map-point' : ''}${isPointInSelectedRange(meta, index) ? ' range-map-point' : ''}`,
-      tabindex: '-1', role: 'img', ...common,
+      cx: s.x, cy: s.y, r: selected ? 11 : 7,
+      class: `${className} map-point${qualityClass}${selected ? ' selected-map-point' : ''}`,
+      'pointer-events': 'none', role: 'img', ...common,
     });
-    const title = svgEl('title');
-    title.textContent = `#${index + 1} X ${p.x.toFixed(2)} / Y ${p.y.toFixed(2)}`;
-    circle.appendChild(title);
     ui.shapeLayer.appendChild(circle);
-    if (selected) {
-      ui.shapeLayer.appendChild(svgEl('circle', { cx: s.x, cy: s.y, r: 18, class: 'edit-selected-ring' }));
-    }
+    if (selected) ui.shapeLayer.appendChild(svgEl('circle', { cx: s.x, cy: s.y, r: 19, class: 'edit-selected-ring', 'pointer-events': 'none' }));
   });
 }
 
@@ -2291,12 +2080,6 @@ function drawMovementTrail(transform) {
   drawPolyline(state.trail, transform, 'movement-trail-shape', false);
 }
 
-function drawSegmentRecording(transform) {
-  if (state.segmentNewPoints.length < 1) return;
-  drawPolyline(state.segmentNewPoints, transform, 'segment-recording-shape', false);
-  drawPoints(state.segmentNewPoints, transform, 'point-segment-recording', { role: 'recording' });
-}
-
 function nearestPointOnSegment(p, a, b) {
   const dx = b.x - a.x; const dy = b.y - a.y;
   const len2 = dx * dx + dy * dy;
@@ -2331,10 +2114,8 @@ function refreshMapDistanceInfo() {
   const bits = [];
   const nearest = nearestBoundaryPoint();
   if (nearest) bits.push(tr('distanceToBoundary', { distance: nearest.distance.toFixed(2) }));
-  if (state.editAction === 'point' && state.selectedPoint) {
+  if (state.selectedPoint) {
     const d = mowerDistanceToSelected(); if (Number.isFinite(d)) bits.push(tr('distanceToPoint', { distance: d.toFixed(2) }));
-  } else if (state.rangeSelection.end) {
-    const d = mowerDistanceToRangeEndpoint('end'); if (Number.isFinite(d)) bits.push(tr('distanceToEnd', { distance: d.toFixed(2) }));
   }
   ui.mapDistanceInfo.textContent = bits.length ? bits.join(' · ') : '–';
 }
@@ -2347,9 +2128,9 @@ function recentArray() {
 function renderMap() {
   ui.shapeLayer.innerHTML = '';
   ui.robotLayer.innerHTML = '';
-  const points = allMapPoints();
-  const transform = computeTransform(points);
+  const transform = activeTransform();
   state.currentTransform = transform;
+  state.hitRadiusUnits = Math.max(22, 22 / svgMetrics().scale);
   drawGrid(transform);
   drawMovementTrail(transform);
 
@@ -2361,6 +2142,8 @@ function renderMap() {
       drawPolyline(exclusion.points, transform, 'exclusion-shape', true);
       drawPoints(exclusion.points, transform, 'point-exclusion', { role: 'exclusion', exclusionId: exclusion.id });
     });
+    drawPolyline(state.activeMap.waypoints, transform, 'waypoint-shape', false);
+    drawPoints(state.activeMap.waypoints, transform, 'point-waypoint', { role: 'waypoint' });
     drawPolyline(state.activeMap.dockPoints, transform, 'dock-shape', false);
     drawPoints(state.activeMap.dockPoints, transform, 'point-dock', { role: 'dock' });
 
@@ -2371,16 +2154,12 @@ function renderMap() {
     ui.mapSummary.textContent = tr('noMapLoaded');
   }
 
-  drawSegmentRecording(transform);
-  drawEditGuide(transform);
+  drawSelectionGuide(transform);
   drawDistanceGuide(transform);
-  drawMeasurement(transform);
   drawRobot(transform);
   refreshMapDistanceInfo();
-  renderMeasurementUi();
   refreshUndoState();
   refreshHistoryUndoState();
-  renderEditControls();
 
   ui.recentPoints.innerHTML = '';
   recentArray().forEach(({ point, index }) => {
@@ -2461,6 +2240,15 @@ function mapToGeoJson(map) {
         samples: sampleMetadata(map.perimeter),
       },
       geometry: perimeterGeometry,
+    });
+  }
+
+  const waypointGeometry = geometryForLine(map.waypoints || []);
+  if (waypointGeometry) {
+    features.push({
+      type: 'Feature',
+      properties: { role: 'waypoints', name: 'Waypoints', coordinateSystem: 'sunray-local-xy-meters', units: 'm', samples: sampleMetadata(map.waypoints) },
+      geometry: waypointGeometry,
     });
   }
 
@@ -2594,7 +2382,6 @@ function geoJsonToMap(data) {
 
 async function importMapFile(file) {
   stopAutoCapture();
-  cancelSegmentRecording(false);
   if (state.maps.length >= MAX_MAPS) throw new Error(tr('mapLimitReached'));
   const text = await file.text();
   const data = JSON.parse(text);
@@ -2782,6 +2569,7 @@ function applyLanguage() {
   ui.languageToggle.setAttribute('aria-label', tr('languageToggleLabel'));
   ui.languageToggle.setAttribute('title', tr('languageToggleLabel'));
   ui.demoBtn.textContent = state.demo ? tr('demoStop') : tr('demoStart');
+  ui.modeChipLabel.textContent = modeLabel(state.mode);
 
   refreshConnectionUi();
   browserCheck();
@@ -2801,140 +2589,77 @@ function toggleLanguage() {
   applyLanguage();
 }
 
+const CAPTURE_MODES = ['perimeter', 'exclusion', 'waypoint', 'dock'];
+
+function modeLabel(mode) {
+  if (mode === 'exclusion') return tr('exclusion');
+  if (mode === 'waypoint') return tr('waypoints');
+  if (mode === 'dock') return tr('dock');
+  return tr('perimeter');
+}
+
 function setMode(mode, { preserveSelection = false } = {}) {
+  if (!CAPTURE_MODES.includes(mode)) return;
   if (state.autoCaptureRunning) stopAutoCapture();
   state.mode = mode;
-  if (!preserveSelection && state.editMode) clearPointSelection({ render: false });
-  document.querySelectorAll('.mode-btn').forEach((button) => button.classList.toggle('active', button.dataset.mode === mode));
+  if (!preserveSelection) state.selectedPoint = null;
+  ui.modeChipLabel.textContent = modeLabel(mode);
+  ui.modeCycleBtn.dataset.mode = mode;
   ui.exclusionControls.classList.toggle('hidden', mode !== 'exclusion');
   renderMap();
   refreshCaptureState();
 }
 
-function toggleEditMode() {
-  if (state.activeMap?.locked) { ensureMapEditable(); return; }
-  if (state.segmentRecording) cancelSegmentRecording();
-  stopAutoCapture();
-  state.editMode = !state.editMode;
-  if (!state.editMode) clearPointSelection({ render: false });
-  renderMap(); refreshCaptureState();
-}
-
-function setEditAction(action) {
-  if (!['point','segment','straight'].includes(action)) return;
-  if (state.segmentRecording) cancelSegmentRecording(false);
-  state.editAction = action;
-  clearPointSelection({ render: false });
-  renderMap(); refreshCaptureState();
+function cycleMode() {
+  setMode(CAPTURE_MODES[(CAPTURE_MODES.indexOf(state.mode) + 1) % CAPTURE_MODES.length]);
 }
 
 function selectablePoints() {
   if (!state.activeMap) return [];
   const items = state.activeMap.perimeter.map((point, index) => ({ point, role: 'perimeter', index, exclusionId: null }));
   state.activeMap.exclusions.forEach((exclusion) => exclusion.points.forEach((point, index) => items.push({ point, role: 'exclusion', index, exclusionId: exclusion.id })));
+  state.activeMap.waypoints.forEach((point, index) => items.push({ point, role: 'waypoint', index, exclusionId: null }));
   state.activeMap.dockPoints.forEach((point, index) => items.push({ point, role: 'dock', index, exclusionId: null }));
   return items;
-}
-
-function chooseRangePoint(ref) {
-  if (!state.rangeSelection.start || state.rangeSelection.end) {
-    state.rangeSelection = { start: ref, end: null };
-  } else if (!samePointElement(state.rangeSelection.start, ref)) {
-    ui.pointStatus.textContent = tr('segmentDifferentElement');
-    state.rangeSelection = { start: ref, end: null };
-  } else if (state.rangeSelection.start.index === ref.index) {
-    ui.pointStatus.textContent = tr('segmentNeedOrder');
-  } else {
-    state.rangeSelection.end = ref;
-  }
 }
 
 function applyPointSelection(ref) {
   if (ref.role === 'exclusion' && ref.exclusionId) { state.activeExclusionId = ref.exclusionId; renderExclusionControls(); }
   setMode(ref.role, { preserveSelection: true });
-  if (state.editAction === 'point') state.selectedPoint = ref;
-  else chooseRangePoint(ref);
-  renderEditControls(); refreshCaptureState(); renderMap();
+  state.selectedPoint = ref;
+  refreshCaptureState(); renderMap();
 }
 
-function selectNearestPointFromPointer(event) {
-  if (!state.editMode || state.segmentRecording || !ui.mapSvg.getScreenCTM()) return;
-  const transform = computeTransform(allMapPoints()); let nearest = null; let nearestDistance = Infinity;
+/** Tap auf die Karte: naechstliegenden Punkt im Touch-Radius auswaehlen, sonst Auswahl aufheben. */
+function handleMapTap(event) {
+  const tap = pointerToViewBox(event);
+  const transform = state.currentTransform || activeTransform();
+  let nearest = null; let nearestDistance = Infinity;
   for (const item of selectablePoints()) {
-    const local = toScreen(item.point, transform); const svgPoint = ui.mapSvg.createSVGPoint(); svgPoint.x = local.x; svgPoint.y = local.y;
-    const screen = svgPoint.matrixTransform(ui.mapSvg.getScreenCTM()); const distance = Math.hypot(event.clientX - screen.x, event.clientY - screen.y);
+    const local = toScreen(item.point, transform);
+    const distance = Math.hypot(tap.x - local.x, tap.y - local.y);
     if (distance < nearestDistance) { nearestDistance = distance; nearest = item; }
   }
-  if (!nearest || nearestDistance > 34) return;
+  if (!nearest || nearestDistance > state.hitRadiusUnits) {
+    if (state.selectedPoint) clearPointSelection();
+    return;
+  }
   applyPointSelection({ role: nearest.role, index: nearest.index, exclusionId: nearest.exclusionId });
 }
 
 function selectPointElement(element) {
-  if (!state.editMode || state.segmentRecording || !element) return;
+  if (!element) return;
   const role = element.getAttribute('data-point-role'); const index = Number(element.getAttribute('data-point-index')); const exclusionId = element.getAttribute('data-exclusion-id') || null;
-  if (!['perimeter','exclusion','dock'].includes(role) || !Number.isInteger(index) || index < 0) return;
+  if (!['perimeter','exclusion','waypoint','dock'].includes(role) || !Number.isInteger(index) || index < 0) return;
   applyPointSelection({ role, index, exclusionId });
 }
 
-function drawEditGuide(transform) {
-  if (!state.editMode || !telemetryIsFresh()) return;
-  let point = null;
-  if (state.editAction === 'point') point = getSelectedPoint();
-  else point = rangeEndpoint(state.segmentRecording ? 'end' : (state.rangeSelection.end ? 'end' : 'start'));
+function drawSelectionGuide(transform) {
+  if (!state.selectedPoint || !telemetryIsFresh()) return;
+  const point = getSelectedPoint();
   if (!point) return;
   const selected = toScreen(point, transform); const mower = toScreen(state.telemetry, transform);
   ui.robotLayer.appendChild(svgEl('line', { x1: selected.x, y1: selected.y, x2: mower.x, y2: mower.y, class: 'edit-distance-line' }));
-}
-
-function setMapDrawer(which, open) {
-  const isControl = which === 'control';
-  const panel = isControl ? ui.mapControlPanel : ui.mapToolsPanel;
-  const toggle = isControl ? ui.controlDrawerToggle : ui.toolsDrawerToggle;
-  if (!panel || !toggle) return;
-  panel.classList.toggle('collapsed', !open);
-  toggle.classList.toggle('active', open);
-  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-  if (open) {
-    const otherPanel = isControl ? ui.mapToolsPanel : ui.mapControlPanel;
-    const otherToggle = isControl ? ui.toolsDrawerToggle : ui.controlDrawerToggle;
-    if (otherPanel) otherPanel.classList.add('collapsed');
-    if (otherToggle) { otherToggle.classList.remove('active'); otherToggle.setAttribute('aria-expanded', 'false'); }
-  }
-  if (isControl && !open) stopDrive();
-}
-
-function closeMapDrawers() {
-  if (ui.mapControlPanel) ui.mapControlPanel.classList.add('collapsed');
-  if (ui.mapToolsPanel) ui.mapToolsPanel.classList.add('collapsed');
-  [ui.controlDrawerToggle, ui.toolsDrawerToggle].forEach((toggle) => {
-    if (toggle) { toggle.classList.remove('active'); toggle.setAttribute('aria-expanded', 'false'); }
-  });
-  stopDrive();
-}
-
-function setTab(tab) {
-  if (state.currentTab === 'capture' && tab !== 'capture' && state.connected && !state.demo && (state.driveDirection || state.mowMotorOn)) {
-    emergencyStop().catch((error) => log('STOP', error.message));
-  }
-  if (tab !== 'capture') closeMapDrawers();
-  if (tab !== 'capture') {
-    if (state.autoCaptureRunning) stopAutoCapture();
-    if (state.segmentRecording) cancelSegmentRecording();
-  }
-  document.querySelectorAll('.tab-btn').forEach((button) => {
-    const active = button.dataset.tab === tab;
-    button.classList.toggle('active', active);
-    button.setAttribute('aria-selected', active ? 'true' : 'false');
-  });
-  document.querySelectorAll('.tab-panel').forEach((panel) => {
-    const active = panel.dataset.panel === tab;
-    panel.hidden = !active;
-    panel.classList.toggle('active', active);
-  });
-  state.currentTab = tab;
-  if (tab === 'capture') {
-    requestAnimationFrame(() => renderMap());
-  }
 }
 
 function setHelpStatus(element, text, stateClass) {
@@ -2970,45 +2695,19 @@ function browserCheck() {
 }
 
 function bindEvents() {
+  // Kopfzeile
+  ui.menuBtn.addEventListener('click', () => setMenuOpen(true));
+  ui.menuCloseBtn.addEventListener('click', () => setMenuOpen(false));
+  ui.bleStatusBtn.addEventListener('click', () => setMenuOpen(true, { section: 'menuConnection' }));
+  ui.modeCycleBtn.addEventListener('click', cycleMode);
   ui.languageToggle.addEventListener('click', toggleLanguage);
   window.addEventListener('online', updateHelpSystemStatus);
   window.addEventListener('offline', updateHelpSystemStatus);
-  document.querySelectorAll('.tab-btn').forEach((button) => button.addEventListener('click', () => setTab(button.dataset.tab)));
-  ui.connectBtn.addEventListener('click', () => connectBluetooth().catch((error) => {
-    setConnectionStatus(false, 'notConnected', 'connectionFailed', { message: error.message });
-    log(tr('bleError'), error.message);
-  }));
-  ui.disconnectBtn.addEventListener('click', disconnectBluetooth);
-  ui.demoBtn.addEventListener('click', () => state.demo ? stopDemo() : startDemo());
-  ui.fixOnly.addEventListener('change', refreshCaptureState);
-  ui.autoCaptureEnabled.addEventListener('change', () => { if (!ui.autoCaptureEnabled.checked) stopAutoCapture(); if (ui.autoCaptureEnabled.checked && state.editMode) toggleEditMode(); refreshCaptureState(); });
-  ui.autoCaptureDistanceInput.addEventListener('change', () => { updateViewPreferencesFromUi(); applyViewPreferencesToUi(); refreshCaptureState(); });
-  ui.editModeBtn.addEventListener('click', toggleEditMode);
-  document.querySelectorAll('.edit-action-btn').forEach((button) => button.addEventListener('click', () => setEditAction(button.dataset.editAction)));
-  ui.clearEditSelectionBtn.addEventListener('click', () => clearPointSelection());
-  ui.cancelSegmentBtn.addEventListener('click', () => cancelSegmentRecording());
-  ui.editMaxDistanceInput.addEventListener('change', () => { updateViewPreferencesFromUi(); applyViewPreferencesToUi(); refreshCaptureState(); });
-  ui.autoCaptureModeSelect.addEventListener('change', () => { updateViewPreferencesFromUi(); applyViewPreferencesToUi(); refreshCaptureState(); });
-  ui.showPointQuality.addEventListener('change', updateViewPreferencesFromUi);
-  ui.keepAwake.addEventListener('change', () => {
-    updateViewPreferencesFromUi();
-    if (state.view.keepAwake && (state.autoCaptureRunning || state.segmentRecording)) requestWakeLockIfNeeded();
-    else if (!state.view.keepAwake) releaseWakeLock();
-    refreshWakeLockStatus();
-  });
-  ui.measureModeBtn.addEventListener('click', toggleMeasurementMode);
-  ui.clearMeasurementBtn.addEventListener('click', clearMeasurement);
-  ui.mapSvg.addEventListener('click', (event) => {
-    if (state.measurementMode) {
-      const point = measurementPointFromPointer(event);
-      if (!point) return;
-      if (state.measurementPoints.length >= 2) state.measurementPoints = [];
-      state.measurementPoints.push(point);
-      renderMap();
-      return;
-    }
-    selectNearestPointFromPointer(event);
-  });
+
+  // Karte: Tap, Verschieben, Pinch-Zoom
+  ui.mapSvg.addEventListener('pointerdown', onMapPointerDown);
+  ui.mapSvg.addEventListener('pointermove', onMapPointerMove);
+  ['pointerup', 'pointercancel'].forEach((name) => ui.mapSvg.addEventListener(name, onMapPointerUp));
   ui.mapSvg.addEventListener('keydown', (event) => {
     if (event.key !== 'Enter' && event.key !== ' ') return;
     const point = event.target.closest?.('[data-map-point="1"]');
@@ -3016,22 +2715,53 @@ function bindEvents() {
     event.preventDefault();
     selectPointElement(point);
   });
-  ui.showGrid.addEventListener('change', updateViewPreferencesFromUi);
-  ui.gridStepSelect.addEventListener('change', updateViewPreferencesFromUi);
-  ui.showMower.addEventListener('change', updateViewPreferencesFromUi);
-  ui.showTrail.addEventListener('change', updateViewPreferencesFromUi);
-  ui.clearTrailBtn.addEventListener('click', () => { state.trail = []; renderMap(); ui.pointStatus.textContent = tr('trailCleared'); });
-  const commitMowerSize = () => {
+  ui.mapSvg.addEventListener('wheel', (event) => {
+    event.preventDefault();
+    beginCustomViewport();
+    const focus = pointerToViewBox(event);
+    const base = { x: (focus.x - state.viewport.dx) / state.viewport.zoom, y: (focus.y - state.viewport.dy) / state.viewport.zoom };
+    state.viewport.zoom = clampNumber(state.viewport.zoom * (event.deltaY < 0 ? 1.15 : 1 / 1.15), MIN_USER_ZOOM, MAX_USER_ZOOM, 1);
+    state.viewport.dx = focus.x - base.x * state.viewport.zoom;
+    state.viewport.dy = focus.y - base.y * state.viewport.zoom;
+    clampViewport();
+    renderMap();
+  }, { passive: false });
+  ui.fitViewBtn.addEventListener('click', () => resetViewport());
+
+  // Kartenwerkzeuge
+  ui.deletePointBtn.addEventListener('click', () => deleteSelectedPoint().catch((e) => alert(e.message)));
+  ui.undoBtn.addEventListener('click', () => undoPoint().catch((e) => alert(e.message)));
+  ui.addPointBtn.addEventListener('pointerdown', beginCaptureHold);
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach((name) => ui.addPointBtn.addEventListener(name, cancelCaptureHold));
+  ui.addPointBtn.addEventListener('click', captureButtonTap);
+
+  // Fahren
+  ui.driveJoystick.addEventListener('pointerdown', beginJoystick);
+  ui.driveJoystick.addEventListener('pointermove', (event) => updateJoystickFromPointer(event));
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((name) => ui.driveJoystick.addEventListener(name, (event) => {
+    if (state.joystickPointerId === null || event.pointerId === state.joystickPointerId) stopDrive();
+  }));
+  [ui.driveSpeedMinInput, ui.driveSpeedMaxInput, ui.driveTurnMaxInput].forEach((input) => input.addEventListener('change', () => {
     updateViewPreferencesFromUi();
     applyViewPreferencesToUi();
-  };
-  ui.mowerLengthInput.addEventListener('change', commitMowerSize);
-  ui.mowerWidthInput.addEventListener('change', commitMowerSize);
+  }));
+
+  // Verbindung
+  ui.connectBtn.addEventListener('click', () => connectBluetooth().catch((error) => {
+    setConnectionStatus(false, 'notConnected', 'connectionFailed', { message: error.message });
+    log(tr('bleError'), error.message);
+  }));
+  ui.disconnectBtn.addEventListener('click', disconnectBluetooth);
+  ui.demoBtn.addEventListener('click', () => state.demo ? stopDemo() : startDemo());
+  ui.requestVersionBtn.addEventListener('click', () => sendSunray('AT+V', { forcePlain: true }).catch((e) => log(tr('versionError'), e.message)));
+  ui.requestStateBtn.addEventListener('click', () => sendSunray('AT+S').catch((e) => log(tr('stateError'), e.message)));
+  ui.clearLogBtn.addEventListener('click', () => { ui.debugLog.textContent = ''; });
+
+  // Karten
   ui.newMapBtn.addEventListener('click', () => createMapFromInput().catch((e) => alert(e.message)));
   ui.newMapName.addEventListener('keydown', (e) => { if (e.key === 'Enter') createMapFromInput().catch((err) => alert(err.message)); });
   ui.deleteMapBtn.addEventListener('click', () => deleteActiveMap().catch((e) => alert(e.message)));
   ui.mapSelect.addEventListener('change', () => setActiveMapById(ui.mapSelect.value));
-  ui.editMapSelect.addEventListener('change', () => setActiveMapById(ui.editMapSelect.value));
   ui.mapGallery.addEventListener('click', (event) => {
     const lock = event.target.closest('[data-map-lock-id]');
     if (lock) { toggleMapLockById(lock.dataset.mapLockId).catch((e) => alert(e.message)); return; }
@@ -3039,17 +2769,6 @@ function bindEvents() {
     if (select) setActiveMapById(select.dataset.mapCardId);
   });
   ui.lockMapBtn.addEventListener('click', () => state.activeMap && toggleMapLockById(state.activeMap.id).catch((e) => alert(e.message)));
-  document.querySelectorAll('.mode-btn').forEach((button) => button.addEventListener('click', () => setMode(button.dataset.mode)));
-  ui.exclusionSelect.addEventListener('change', () => { state.activeExclusionId = ui.exclusionSelect.value || null; if (state.editMode) state.selectedPoint = null; renderMap(); refreshCaptureState(); });
-  ui.newExclusionBtn.addEventListener('click', () => createExclusion().catch((e) => alert(e.message)));
-  ui.deleteExclusionBtn.addEventListener('click', () => deleteExclusion().catch((e) => alert(e.message)));
-  ui.addPointBtn.addEventListener('click', () => addCurrentPoint().catch((e) => alert(e.message)));
-  ui.undoBtn.addEventListener('click', () => undoPoint().catch((e) => alert(e.message)));
-  ui.clearModeBtn.addEventListener('click', () => clearCurrentElement().catch((e) => alert(e.message)));
-  ui.historyUndoBtn.addEventListener('click', () => undoLastHistoryChange().catch((e) => alert(e.message)));
-  ui.validateMapBtn.addEventListener('click', validateActiveMap);
-  ui.saveVersionBtn.addEventListener('click', () => saveManualVersion().catch((e) => alert(e.message)));
-  ui.historyList.addEventListener('click', (event) => { const button = event.target.closest('[data-restore-history-id]'); if (button) restoreHistoryEntry(button.dataset.restoreHistoryId).catch((e) => alert(e.message)); });
   ui.exportJsonBtn.addEventListener('click', exportCurrentMapJson);
   ui.exportGeoJsonBtn.addEventListener('click', exportCurrentMapGeoJson);
   ui.importInput.addEventListener('change', () => {
@@ -3057,57 +2776,45 @@ function bindEvents() {
     if (file) importMapFile(file).catch((e) => alert(tr('importFailed', { message: e.message })));
     ui.importInput.value = '';
   });
-  ui.requestVersionBtn.addEventListener('click', () => sendSunray('AT+V', { forcePlain: true }).catch((e) => log(tr('versionError'), e.message)));
-  ui.requestStateBtn.addEventListener('click', () => sendSunray('AT+S').catch((e) => log(tr('stateError'), e.message)));
-  ui.driveSpeedSlider.addEventListener('input', () => { state.view.driveSpeed = clampNumber(ui.driveSpeedSlider.value, 0.05, 0.35, 0.15); saveViewPreferences(); refreshControlUi(); });
-  ui.mowPwmSlider.addEventListener('input', () => syncMowPwmInputs('slider'));
-  ui.mowPwmNumber.addEventListener('input', () => syncMowPwmInputs('number'));
-  ui.mowPwmApplyBtn.addEventListener('click', () => applyMowPwm().catch((e) => { ui.driveState.textContent = e.message; log('MOW PWM', e.message); }));
-  ui.controlDrawerToggle?.addEventListener('click', () => setMapDrawer('control', ui.mapControlPanel?.classList.contains('collapsed')));
-  ui.controlDrawerClose?.addEventListener('click', () => setMapDrawer('control', false));
-  ui.toolsDrawerToggle?.addEventListener('click', () => setMapDrawer('tools', ui.mapToolsPanel?.classList.contains('collapsed')));
-  ui.toolsDrawerClose?.addEventListener('click', () => setMapDrawer('tools', false));
-  document.querySelectorAll('[data-handedness]').forEach((button) => button.addEventListener('click', () => setHandedness(button.dataset.handedness)));
-  ui.driveJoystick?.addEventListener('pointerdown', beginJoystick);
-  ui.driveJoystick?.addEventListener('pointermove', (event) => updateJoystickFromPointer(event));
-  ['pointerup','pointercancel','lostpointercapture'].forEach((name) => ui.driveJoystick?.addEventListener(name, (event) => {
-    if (state.joystickPointerId === null || event.pointerId === state.joystickPointerId) stopDrive();
-  }));
-  document.querySelectorAll('[data-drive]').forEach((button) => {
-    button.addEventListener('pointerdown', (event) => {
-      event.preventDefault();
-      button.classList.add('pressed');
-      try { button.setPointerCapture(event.pointerId); } catch (_) {}
-      beginDrive(button.dataset.drive);
-    });
-    ['pointerup','pointercancel','lostpointercapture'].forEach((name) => button.addEventListener(name, () => stopDrive()));
+  ui.saveVersionBtn.addEventListener('click', () => saveManualVersion().catch((e) => alert(e.message)));
+  ui.historyList.addEventListener('click', (event) => { const button = event.target.closest('[data-restore-history-id]'); if (button) restoreHistoryEntry(button.dataset.restoreHistoryId).catch((e) => alert(e.message)); });
+  ui.historyUndoBtn.addEventListener('click', () => undoLastHistoryChange().catch((e) => alert(e.message)));
+  ui.validateMapBtn.addEventListener('click', validateActiveMap);
+
+  // Aufnahme-Einstellungen
+  ui.fixOnly.addEventListener('change', refreshCaptureState);
+  ui.autoCaptureEnabled.addEventListener('change', () => { if (!ui.autoCaptureEnabled.checked) stopAutoCapture(); refreshCaptureState(); });
+  ui.autoCaptureDistanceInput.addEventListener('change', () => { updateViewPreferencesFromUi(); applyViewPreferencesToUi(); refreshCaptureState(); });
+  ui.autoCaptureModeSelect.addEventListener('change', () => { updateViewPreferencesFromUi(); applyViewPreferencesToUi(); refreshCaptureState(); });
+  ui.exclusionSelect.addEventListener('change', () => { state.activeExclusionId = ui.exclusionSelect.value || null; state.selectedPoint = null; renderMap(); refreshCaptureState(); });
+  ui.newExclusionBtn.addEventListener('click', () => createExclusion().catch((e) => alert(e.message)));
+  ui.deleteExclusionBtn.addEventListener('click', () => deleteExclusion().catch((e) => alert(e.message)));
+  ui.clearModeBtn.addEventListener('click', () => clearCurrentElement().catch((e) => alert(e.message)));
+
+  // Ansicht
+  [ui.showGrid, ui.gridStepSelect, ui.showMower, ui.showTrail, ui.showPointQuality].forEach((input) => input.addEventListener('change', updateViewPreferencesFromUi));
+  [ui.mowerLengthInput, ui.mowerWidthInput].forEach((input) => input.addEventListener('change', () => { updateViewPreferencesFromUi(); applyViewPreferencesToUi(); }));
+  ui.clearTrailBtn.addEventListener('click', () => { state.trail = []; renderMap(); ui.pointStatus.textContent = tr('trailCleared'); });
+  ui.keepAwake.addEventListener('change', () => {
+    updateViewPreferencesFromUi();
+    if (state.view.keepAwake && state.autoCaptureRunning) requestWakeLockIfNeeded();
+    else if (!state.view.keepAwake) releaseWakeLock();
+    refreshWakeLockStatus();
   });
-  ui.driveStopBtn.addEventListener('click', () => {
-    stopDrive({ send: false });
-    if (state.connected && !state.demo) sendSunray('AT+M,0,0').catch((e) => log('DRIVE STOP', e.message));
-  });
-  ui.emergencyStopBtn.addEventListener('click', () => emergencyStop().catch((e) => log('STOP ALL', e.message)));
-  ui.mowArmCheckbox.addEventListener('change', () => { cancelMowHold(); refreshControlUi(); });
-  ui.mowMotorBtn.addEventListener('pointerdown', (event) => { event.preventDefault(); beginMowHold(); });
-  ['pointerup','pointercancel','pointerleave'].forEach((name) => ui.mowMotorBtn.addEventListener(name, () => { if (!state.mowMotorOn) cancelMowHold(); }));
+
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      stopDrive();
-      if (state.mowMotorOn && state.connected && !state.demo) setMowMotor(false).catch(() => {});
-      releaseWakeLock();
-    } else if (state.autoCaptureRunning || state.segmentRecording) requestWakeLockIfNeeded();
+    if (document.hidden) { stopDrive(); cancelCaptureHold(); releaseWakeLock(); }
+    else if (state.autoCaptureRunning) requestWakeLockIfNeeded();
   });
-  window.addEventListener('blur', () => {
-    stopDrive();
-    if (state.mowMotorOn && state.connected && !state.demo) setMowMotor(false).catch(() => {});
-  });
-  ui.clearLogBtn.addEventListener('click', () => { ui.debugLog.textContent = ''; });
+  window.addEventListener('blur', () => { stopDrive(); cancelCaptureHold(); });
+  window.addEventListener('resize', () => renderMap());
 }
 
 async function init() {
   loadViewPreferences();
   applyViewPreferencesToUi();
   bindEvents();
+  resetViewport({ render: false });
   state.db = await openDb();
   await loadMaps();
   setMode('perimeter');

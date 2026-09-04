@@ -2071,4 +2071,329 @@ footer {
 @media (prefers-reduced-motion: reduce) {
   .map-tools-panel, .map-control-panel, .joystick-knob { transition: none; }
 }
-\n\n/* v15 · reliable mobile drawers, larger touch rails, right/left-handed layout */\n.edge-drawer-toggle {\n  width: 54px;\n  min-width: 54px;\n  min-height: 138px;\n  padding: 12px 7px;\n  gap: 9px;\n  border-color: #426570;\n  background: rgba(8, 22, 26, .97);\n  box-shadow: 0 10px 32px rgba(0,0,0,.46), inset 0 0 20px rgba(67,205,223,.035);\n}\n.edge-drawer-toggle > span { font-size: 1.45rem; }\n.edge-drawer-toggle small { font-size: .66rem; letter-spacing: .09em; }\n.edge-drawer-toggle:active { background: #1a4048; }\n\n/* Right-handed is the default: drive on the right, tools on the left. */\n.map-frame[data-handedness="right"] .control-drawer-toggle { left: auto; right: 0; border-left: 1px solid #426570; border-right: 0; border-radius: 12px 0 0 12px; }\n.map-frame[data-handedness="right"] .tools-drawer-toggle { right: auto; left: 0; border-right: 1px solid #426570; border-left: 0; border-radius: 0 12px 12px 0; }\n.map-frame[data-handedness="right"] .map-control-panel { left: auto; right: 8px; }\n.map-frame[data-handedness="right"] .map-control-panel.collapsed { transform: translateX(calc(100% + 24px)); }\n.map-frame[data-handedness="right"] .map-tools-panel { right: auto; left: 8px; }\n.map-frame[data-handedness="right"] .map-tools-panel.collapsed { transform: translateX(calc(-100% - 24px)); }\n\n/* Left-handed mirrors the workspace. */\n.map-frame[data-handedness="left"] .control-drawer-toggle { right: auto; left: 0; border-right: 1px solid #426570; border-left: 0; border-radius: 0 12px 12px 0; }\n.map-frame[data-handedness="left"] .tools-drawer-toggle { left: auto; right: 0; border-left: 1px solid #426570; border-right: 0; border-radius: 12px 0 0 12px; }\n.map-frame[data-handedness="left"] .map-control-panel { right: auto; left: 8px; }\n.map-frame[data-handedness="left"] .map-control-panel.collapsed { transform: translateX(calc(-100% - 24px)); }\n.map-frame[data-handedness="left"] .map-tools-panel { left: auto; right: 8px; }\n.map-frame[data-handedness="left"] .map-tools-panel.collapsed { transform: translateX(calc(100% + 24px)); }\n\n.map-tools-panel,\n.map-control-panel {\n  width: min(440px, calc(100% - 18px));\n  max-height: calc(100% - 16px);\n}\n.map-tools-panel { padding: 11px; }\n.tools-drawer-head { margin-bottom: 2px; }\n\n.joystick-base { width: min(360px, 100%); }\n.joystick-knob { width: 90px; height: 90px; }\n.joystick-label { font-size: .68rem; }\n.drive-speed-field input[type="range"],\n.compact-mow-pwm .mow-pwm-slider { min-height: 48px; }\n\n.handedness-setting { display: grid; gap: 7px; }\n.field-label { color: #8fa4aa; font-size: .67rem; font-weight: 800; text-transform: uppercase; letter-spacing: .055em; }\n.handedness-segment { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }\n.handedness-btn {\n  min-height: 48px;\n  padding: 7px 8px;\n  border: 1px solid #293f46;\n  border-radius: 8px;\n  background: #101a1e;\n  color: #82979e;\n  font-size: .68rem;\n  font-weight: 800;\n  line-height: 1.2;\n}\n.handedness-btn.active { border-color: #3e7480; background: #17343b; color: #a7edf5; }\n\n@media (max-width: 760px) {\n  .edge-drawer-toggle { width: 52px; min-width: 52px; min-height: 132px; }\n  .map-tools-panel, .map-control-panel { top: 6px; width: calc(100% - 14px); max-height: calc(100% - 12px); }\n  .map-frame[data-handedness="right"] .map-control-panel { right: 7px; }\n  .map-frame[data-handedness="right"] .map-tools-panel { left: 7px; }\n  .map-frame[data-handedness="left"] .map-control-panel { left: 7px; }\n  .map-frame[data-handedness="left"] .map-tools-panel { right: 7px; }\n  .joystick-base { width: min(360px, calc(100vw - 58px)); }\n  .joystick-knob { width: 92px; height: 92px; }\n}\n\n@media (max-width: 430px) {\n  .edge-drawer-toggle { width: 50px; min-width: 50px; min-height: 124px; padding-inline: 6px; }\n  .edge-drawer-toggle small { font-size: .62rem; }\n  .map-control-panel, .map-tools-panel { padding: 10px; }\n  .joystick-base { width: min(330px, calc(100vw - 54px)); }\n  .joystick-knob { width: 88px; height: 88px; }\n  .handedness-segment { grid-template-columns: 1fr; }\n  .handedness-btn { min-height: 44px; }\n}\n
+
+
+/* ==========================================================================
+   v17 · Kartier-Oberflaeche: Kopfzeile, Vollbildkarte, Daumen-Joystick
+   Ersetzt Tab-Leiste, Schieber und Maehsteuerung.
+   ========================================================================== */
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.app-frame {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100dvh;
+  gap: 0;
+}
+body.menu-open .app-frame { visibility: hidden; }
+
+/* --- Kopfzeile ---------------------------------------------------------- */
+.appbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: calc(env(safe-area-inset-top, 0px) + 6px) 8px 6px;
+  background: #08151a;
+  border-bottom: 1px solid #22424b;
+}
+.appbar-icon-btn {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 42px; height: 42px;
+  padding: 0;
+  border: 1px solid #2c4b54;
+  border-radius: 11px;
+  background: #0d1c21;
+  color: #a9c6cd;
+}
+.appbar-icon-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.appbar-icon-btn:active { background: #14313a; }
+.ble-chip.offline { color: #d98d8d; border-color: #57302f; }
+.ble-chip.online { color: #6ce0a0; border-color: #2c6a48; background: #0d241a; }
+.ble-chip.demo { color: #e8c37a; border-color: #6a5726; background: #241d0d; }
+
+.mode-chip {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 42px;
+  padding: 0 10px;
+  border: 1px solid #2c4b54;
+  border-radius: 11px;
+  background: #0d1c21;
+  color: #d7ecf1;
+  font-size: .82rem;
+  font-weight: 800;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mode-chip:active { background: #14313a; }
+.mode-dot { width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto; background: var(--perimeter); }
+.mode-chip[data-mode="exclusion"] .mode-dot { background: var(--exclusion); }
+.mode-chip[data-mode="waypoint"] .mode-dot { background: var(--waypoint, #d7a24a); }
+.mode-chip[data-mode="dock"] .mode-dot { background: var(--dock); }
+
+.rtk-chip {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 42px;
+  padding: 0 9px;
+  border: 1px solid #2c4b54;
+  border-radius: 11px;
+  background: #0d1c21;
+  font-size: .74rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.rtk-chip strong { font-size: .78rem; }
+.rtk-chip svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; opacity: .85; }
+.rtk-chip.fix { color: #6ce0a0; border-color: #2c6a48; background: #0d241a; }
+.rtk-chip.float { color: #e8c37a; border-color: #6a5726; background: #241d0d; }
+.rtk-chip.nofix { color: #ef8f8f; border-color: #5d3130; background: #240f0f; }
+.rtk-chip.no-data { color: #7f959b; }
+
+.battery-chip {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 42px;
+  padding: 0 8px;
+  border: 1px solid #2c4b54;
+  border-radius: 11px;
+  background: #0d1c21;
+  color: #cfe4e9;
+  font-size: .72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.battery-glyph {
+  position: relative;
+  width: 24px; height: 12px;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  opacity: .85;
+}
+.battery-glyph::after {
+  content: ""; position: absolute; right: -4px; top: 3px;
+  width: 2.5px; height: 6px; border-radius: 0 2px 2px 0; background: currentColor;
+}
+.battery-glyph i { position: absolute; inset: 1.5px; width: 0; background: currentColor; border-radius: 1px; transition: width .3s ease; }
+.battery-chip.low { color: #ef8f8f; border-color: #5d3130; }
+.battery-chip.unknown { color: #7f959b; }
+
+/* --- Kartenbuehne ------------------------------------------------------- */
+.map-stage {
+  position: relative;
+  min-height: 0;
+  background: #081013;
+  overflow: hidden;
+}
+.map-stage #mapSvg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  border: 0;
+  border-radius: 0;
+}
+.map-point-hit { fill: transparent; stroke: none; cursor: pointer; }
+
+.map-hud {
+  position: absolute;
+  top: 8px; left: 10px;
+  display: grid;
+  gap: 2px;
+  max-width: min(58%, 420px);
+  pointer-events: none;
+  font-size: .66rem;
+  line-height: 1.3;
+  color: #cfe4e9;
+  text-shadow: 0 1px 3px rgba(0,0,0,.85);
+}
+.map-hud .hud-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-hud .hud-dim { color: #90a8ae; }
+
+.map-fab-stack { position: absolute; top: 8px; right: 10px; display: grid; gap: 8px; }
+.map-fab {
+  display: grid;
+  place-items: center;
+  width: 48px; height: 48px;
+  padding: 0;
+  border: 1px solid #2c4b54;
+  border-radius: 14px;
+  background: rgba(11, 26, 31, .93);
+  color: #b8d5dc;
+  box-shadow: 0 6px 18px rgba(0,0,0,.4);
+}
+.map-fab svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.map-fab:active { background: #14313a; }
+.map-fab[disabled] { opacity: .35; }
+.map-fab.danger-fab { color: #ef8f8f; border-color: #5d3130; background: rgba(36, 15, 15, .93); }
+.undo-fab { position: absolute; left: 12px; bottom: 12px; }
+
+.capture-fab {
+  position: absolute;
+  right: 12px; bottom: 12px;
+  display: grid;
+  place-items: center;
+  width: 104px; height: 104px;
+  padding: 0;
+  border: 2px solid #2c6a48;
+  border-radius: 50%;
+  background: #0f2a1e;
+  color: #b7f2cf;
+  box-shadow: 0 10px 28px rgba(0,0,0,.5);
+  overflow: hidden;
+}
+.capture-fab .capture-ring {
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: conic-gradient(#6ce0a0 calc(var(--capture-progress, 0) * 360deg), transparent 0);
+  opacity: .38;
+}
+.capture-fab .capture-fab-icon { position: relative; display: grid; place-items: center; }
+.capture-fab svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
+.capture-fab .icon-move { display: none; }
+.capture-fab.move-mode .icon-add { display: none; }
+.capture-fab.move-mode .icon-move { display: grid; }
+.capture-fab .capture-fab-label {
+  position: relative;
+  margin-top: 2px;
+  max-width: 92px;
+  font-size: .62rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+}
+.capture-fab.holding { transform: scale(.96); }
+.capture-fab[disabled] { opacity: .45; }
+.capture-fab.capture-warning { border-color: #6a5726; background: #241d0d; color: #f0d59a; }
+.capture-fab.capture-blocked { border-color: #5d3130; background: #240f0f; color: #efa9a9; }
+.capture-fab.capture-idle { border-color: #2c4b54; background: #0d1c21; color: #9db6bd; }
+.capture-fab.capture-stop { border-color: #5d3130; background: #2c1414; color: #ffbcbc; }
+.capture-fab.move-mode { border-color: #3a6fa8; background: #0d1f2f; color: #a9d0f5; }
+.capture-fab.move-mode .capture-ring { display: none; }
+
+/* --- Fahrzone ----------------------------------------------------------- */
+.drive-zone {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 8px 8px calc(env(safe-area-inset-bottom, 0px) + 8px);
+  background: #08151a;
+  border-top: 1px solid #22424b;
+}
+.drive-zone .joystick-base {
+  width: min(280px, 60vw, 30dvh);
+  height: auto;
+  aspect-ratio: 1;
+  margin: 0;
+  touch-action: none;
+}
+.drive-zone .joystick-knob { width: 76px; height: 76px; }
+.drive-meta { font-size: .68rem; font-weight: 700; color: #8fa9b0; min-height: 1.1em; }
+
+/* --- Menueseite --------------------------------------------------------- */
+.menu-page {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+.menu-page[hidden] { display: none; }
+.menu-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) 10px 8px;
+  background: #08151a;
+  border-bottom: 1px solid #22424b;
+}
+.menu-bar strong { flex: 1 1 auto; font-size: 1rem; letter-spacing: .04em; text-transform: uppercase; }
+.menu-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 10px calc(env(safe-area-inset-bottom, 0px) + 28px);
+  display: grid;
+  gap: 8px;
+}
+.menu-section {
+  border: 1px solid #22424b;
+  border-radius: 12px;
+  background: #0b171b;
+  overflow: hidden;
+}
+.menu-section > summary {
+  list-style: none;
+  padding: 14px 14px;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .84rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #cfe4e9;
+  cursor: pointer;
+}
+.menu-section > summary::-webkit-details-marker { display: none; }
+.menu-section > summary::after { content: "▾"; margin-left: auto; opacity: .6; }
+.menu-section[open] > summary::after { content: "▴"; }
+.menu-body { padding: 0 10px 12px; display: grid; gap: 8px; }
+.menu-body .card { margin: 0; }
+.menu-body .page-heading { display: none; }
+
+@media (max-width: 430px) {
+  .appbar { gap: 5px; padding-inline: 6px; }
+  .appbar-icon-btn { width: 38px; height: 38px; }
+  .mode-chip, .rtk-chip, .battery-chip { height: 38px; font-size: .68rem; }
+  .mode-chip { padding-inline: 8px; }
+  .capture-fab { width: 92px; height: 92px; }
+  .drive-zone .joystick-base { width: min(240px, 62vw, 28dvh); }
+  .drive-zone .joystick-knob { width: 68px; height: 68px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .joystick-knob, .battery-glyph i, .capture-fab { transition: none; }
+}
+
+/* Wegpunkte: offene Punktfolge, klar von Perimeter/Ausschluss/Dock unterscheidbar. */
+:root { --waypoint: #d7a24a; }
+.waypoint-shape {
+  fill: none;
+  stroke: var(--waypoint);
+  stroke-width: 4;
+  stroke-dasharray: 5 8;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 4px rgba(215,162,74,.14));
+}
+.point-waypoint { fill: #071012; stroke: var(--waypoint); stroke-width: 4; vector-effect: non-scaling-stroke; }
+.map-point.selected-map-point { stroke: #7fe4ff; stroke-width: 5; }

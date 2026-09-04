@@ -9,12 +9,21 @@ const path = require('path');
 function elementStub(id) {
   const el = {
     id, textContent: '', innerHTML: '', value: '', checked: true, disabled: false, hidden: false,
-    scrollTop: 0, scrollHeight: 0, style: {}, dataset: {}, children: [],
-    classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+    scrollTop: 0, scrollHeight: 0, dataset: {}, children: [],
+    style: { setProperty() {}, removeProperty() {}, getPropertyValue() { return ''; } },
+    classes: new Set(),
     setAttribute() {}, removeAttribute() {}, getAttribute() { return null; },
     addEventListener() {}, removeEventListener() {}, appendChild() {}, append() {}, remove() {},
     querySelector() { return null; }, querySelectorAll() { return []; }, closest() { return null; },
     focus() {}, blur() {}, getBoundingClientRect() { return { left: 0, top: 0, width: 300, height: 300 }; },
+    setPointerCapture() {}, releasePointerCapture() {},
+  };
+  // Echte Klassenliste: die UI-Tests pruefen Zustaende ueber CSS-Klassen.
+  el.classList = {
+    add(...names) { names.forEach((n) => el.classes.add(n)); },
+    remove(...names) { names.forEach((n) => el.classes.delete(n)); },
+    toggle(name, force) { const on = force === undefined ? !el.classes.has(name) : Boolean(force); if (on) el.classes.add(name); else el.classes.delete(name); return on; },
+    contains(name) { return el.classes.has(name); },
   };
   return el;
 }
@@ -30,7 +39,7 @@ function loadApp(options = {}) {
     createElement() { return elementStub(); },
     createElementNS() { return elementStub(); },
     addEventListener() {},
-    body: { appendChild() {} },
+    body: elementStub('body'),
     hidden: false,
   };
   const localStore = new Map();

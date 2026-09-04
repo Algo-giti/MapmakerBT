@@ -1,5 +1,5 @@
 'use strict';
-const CACHE = 'mapcreator-ardumower-v16-ble-stability';
+const CACHE = 'mapcreator-ardumower-v17-mapping-ui';
 const ASSETS = [
   './', './index.html', './styles.css', './protocol.js', './app.js',
   './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'
