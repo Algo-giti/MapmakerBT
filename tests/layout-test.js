@@ -1,0 +1,136 @@
+'use strict';
+// Regressionstest fuer die scrollbare Menueseite.
+//
+// Der Bug ist zweimal aufgetreten und hatte zwei verschiedene Ursachen:
+//   1. `.menu-scroll` fehlte `min-height: 0` — ein Flex-Kind waechst sonst auf Inhaltshoehe
+//      und laeuft unter `body { overflow: hidden }` ins Leere.
+//   2. `.menu-page` war ueber `inset: 0` an den Layout-Viewport gebunden. Auf Android Chrome
+//      ist das die Hoehe OHNE Adressleiste, also mehr als sichtbar ist: der untere Rand liegt
+//      hinter der Browserleiste, und knapp zu langer Inhalt wird abgeschnitten, ohne dass
+//      ueberhaupt gescrollt werden kann.
+//
+// Beides laesst sich ohne Browser pruefen: die Regeln stehen fest im Stylesheet, und die
+// Struktur (Scrollcontainer als direktes Kind der Seite) steht in index.html.
+
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+
+const root = path.join(__dirname, '..');
+const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+
+/** Alle Regeln in Dateireihenfolge, inklusive der in @media-Bloecken. */
+function parseRules(source) {
+  const clean = source.replace(/\/\*[\s\S]*?\*\//g, '');
+  const rules = [];
+  const stack = [];
+  let buffer = '';
+  for (const ch of clean) {
+    if (ch === '{') {
+      const head = buffer.trim();
+      buffer = '';
+      if (head.startsWith('@')) { stack.push(head); rules.push({ open: head }); }
+      else stack.push({ selector: head, media: stack.filter((s) => typeof s === 'string') });
+    } else if (ch === '}') {
+      const top = stack.pop();
+      if (top && typeof top === 'object') {
+        rules.push({ selectors: top.selector.split(',').map((s) => s.trim()), media: top.media.join(' '), body: buffer });
+      }
+      buffer = '';
+    } else {
+      buffer += ch;
+    }
+  }
+  return rules.filter((r) => r.selectors);
+}
+
+const rules = parseRules(css);
+
+/**
+ * Letzter gewinnender Wert einer Eigenschaft fuer einen exakten Selektor — beruecksichtigt
+ * spaetere Layer und @media-Bloecke, die eine frueher gesetzte Regel wieder aufheben.
+ */
+function resolve(selector, property) {
+  let value = null;
+  let where = null;
+  for (const rule of rules) {
+    if (!rule.selectors.includes(selector)) continue;
+    const match = [...rule.body.matchAll(new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+)`, 'g'))].pop();
+    if (match) { value = match[1].trim(); where = rule.media || 'ohne @media'; }
+  }
+  return { value, where };
+}
+
+const cases = [];
+const test = (name, fn) => cases.push({ name, fn });
+
+test('.menu-scroll bleibt ein echter Scrollcontainer', () => {
+  const minHeight = resolve('.menu-scroll', 'min-height');
+  assert.strictEqual(minHeight.value, '0', `min-height muss 0 sein (zuletzt gesetzt in: ${minHeight.where})`);
+  assert.strictEqual(resolve('.menu-scroll', 'overflow-y').value, 'auto');
+  const flex = resolve('.menu-scroll', 'flex').value;
+  assert.ok(flex && /^1\s/.test(flex), `flex muss wachsen duerfen, ist "${flex}"`);
+  // Eine feste Hoehe wuerde den Scrollcontainer wieder aushebeln.
+  assert.strictEqual(resolve('.menu-scroll', 'height').value, null, 'keine feste Hoehe am Scrollcontainer');
+});
+
+test('.menu-page haengt am sichtbaren Viewport, nicht am Layout-Viewport', () => {
+  assert.strictEqual(resolve('.menu-page', 'position').value, 'fixed');
+  assert.strictEqual(resolve('.menu-page', 'display').value, 'flex');
+  assert.strictEqual(resolve('.menu-page', 'flex-direction').value, 'column');
+  const height = resolve('.menu-page', 'height').value;
+  assert.ok(height && height.includes('dvh'), `Hoehe muss in dvh gemessen werden, ist "${height}"`);
+  // .app-frame macht es genauso — beide Vollbildebenen muessen dieselbe Bezugsgroesse nutzen.
+  assert.ok((resolve('.app-frame', 'height').value || '').includes('dvh'));
+});
+
+test('Overlays ueber der Karte nutzen dieselbe Bezugshoehe', () => {
+  const height = resolve('.modal-backdrop', 'height').value;
+  assert.ok(height && height.includes('dvh'), `Modal-Hoehe muss in dvh gemessen werden, ist "${height}"`);
+});
+
+test('Die verschachtelte Einstellungsebene erzeugt keinen zweiten Scrollcontainer', () => {
+  // Nur .menu-scroll darf scrollen; ein zweiter Container mit fester Hoehe wuerde
+  // geoeffnete Unterabschnitte erneut abschneiden.
+  for (const selector of ['.menu-subsections', '.menu-subsection', '.menu-body', '.menu-section']) {
+    const overflowY = resolve(selector, 'overflow-y').value;
+    assert.ok(overflowY === null || overflowY === 'visible', `${selector} darf nicht selbst scrollen (overflow-y: ${overflowY})`);
+    assert.strictEqual(resolve(selector, 'height').value, null, `${selector} darf keine feste Hoehe haben`);
+    assert.strictEqual(resolve(selector, 'max-height').value, null, `${selector} darf keine Hoehenbegrenzung haben`);
+  }
+});
+
+test('Struktur: der Scrollcontainer ist direktes Kind der Menueseite', () => {
+  const page = html.slice(html.indexOf('<section class="menu-page"'), html.indexOf('</section>', html.indexOf('<section class="menu-page"')));
+  const head = page.slice(0, page.indexOf('<div class="menu-scroll"'));
+  // Zwischen Seitenanfang und Scrollcontainer darf nur die Kopfzeile stehen (kein Wrapper,
+  // der die Flex-Kette unterbricht).
+  const openTags = [...head.matchAll(/<(section|div|main|form)\b/g)].map((m) => m[1]);
+  assert.deepStrictEqual(openTags, ['section'], `unerwartete Verschachtelung vor .menu-scroll: ${openTags.join(', ')}`);
+  assert.ok(head.includes('class="menu-bar"'), 'Kopfzeile fehlt');
+});
+
+test('Struktur: alle Menueabschnitte sind direkte Kinder ihres Akkordeon-Containers', () => {
+  // bindAccordion() arbeitet mit container.children — Abschnitte in einem Zwischen-DIV
+  // wuerden stillschweigend nicht mehr zuklappen.
+  const scroll = html.slice(html.indexOf('<div class="menu-scroll"'));
+  const topLevel = (scroll.match(/^<details class="menu-section"/gm) || []).length;
+  assert.strictEqual(topLevel, 6, `sechs Top-Level-Abschnitte erwartet, gefunden: ${topLevel}`);
+  const sub = (scroll.match(/^<details class="menu-subsection"/gm) || []).length;
+  assert.strictEqual(sub, 3, `drei Unterabschnitte erwartet, gefunden: ${sub}`);
+  const settings = scroll.slice(scroll.indexOf('id="menuSettings"'));
+  assert.ok(settings.indexOf('id="settingsSections"') < settings.indexOf('<details class="menu-subsection"'),
+    'die Unterabschnitte muessen in #settingsSections liegen');
+});
+
+let failed = 0;
+for (const c of cases) {
+  try { c.fn(); } catch (error) {
+    failed += 1;
+    console.error(`FAIL ${c.name}\n     ${error.message}`);
+    if (process.env.LAYOUT_TEST_STACK) console.error(error.stack);
+  }
+}
+if (failed) { console.error(`layout tests: ${failed}/${cases.length} FEHLGESCHLAGEN`); process.exit(1); }
+console.log(`layout tests: OK (${cases.length} Faelle)`);

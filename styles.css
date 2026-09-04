@@ -2338,6 +2338,13 @@ body.menu-open .app-frame { visibility: hidden; }
 .menu-page {
   position: fixed;
   inset: 0;
+  /* inset: 0 misst den Layout-Viewport — auf Android Chrome ist das die Hoehe OHNE
+     Adressleiste. Die Seite waere damit hoeher als der sichtbare Bereich: der untere
+     Rand liegt hinter der Browserleiste und .menu-scroll bekommt zu viel Hoehe, wodurch
+     knapp zu langer Inhalt abgeschnitten wird und gar nicht erst scrollt.
+     100dvh misst den tatsaechlich sichtbaren Viewport, wie schon bei .app-frame. */
+  height: 100dvh;
+  max-height: 100dvh;
   z-index: 60;
   display: flex;
   flex-direction: column;
@@ -2355,8 +2362,10 @@ body.menu-open .app-frame { visibility: hidden; }
 .menu-bar strong { flex: 1 1 auto; font-size: 1rem; letter-spacing: .04em; text-transform: uppercase; }
 .menu-scroll {
   flex: 1 1 auto;
+  /* min-height: 0 ist Pflicht: ohne das waechst das Flex-Kind auf Inhaltshoehe. */
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   padding: 10px 10px calc(env(safe-area-inset-bottom, 0px) + 28px);
   display: grid;
@@ -2540,6 +2549,7 @@ body.menu-open .app-frame { visibility: hidden; }
 .modal-backdrop {
   position: fixed;
   inset: 0;
+  height: 100dvh;
   z-index: 70;
   display: grid;
   place-items: center;
