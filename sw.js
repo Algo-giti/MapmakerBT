@@ -40,7 +40,10 @@ self.addEventListener('fetch', (event) => {
 
   if (isShellRequest(event.request)) {
     event.respondWith(
-      fetch(event.request)
+      // cache: 'no-cache' erzwingt eine Rueckfrage beim Server (If-None-Match). Ohne das
+      // liefert der HTTP-Cache des Browsers wegen GitHub Pages' max-age=600 bis zu zehn
+      // Minuten lang die alte Datei — auch bei network-first.
+      fetch(event.request, { cache: 'no-cache' })
         .then((response) => {
           const copy = response.clone();
           caches.open(CACHE).then((cache) => cache.put(event.request, copy));

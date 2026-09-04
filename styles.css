@@ -2777,3 +2777,22 @@ body.menu-open .app-frame { visibility: hidden; }
   :root:not([data-theme="dark"]) .edit-distance-line { stroke: var(--selection); }
   :root:not([data-theme="dark"]) .boundary-distance-line { stroke: #2f5f9e; }
 }
+
+/* Beschriftung und Erklaerung im Menue einheitlich: gleiche Schriftfamilie, klare
+   Abstufung nur ueber Groesse und Farbe. Vorher stand ein .75rem-Fettlabel direkt ueber
+   einem .62rem-Hinweis in Monospace und einer abweichenden Graustufe. */
+.menu-body .fix-switch {
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--shell-text);
+}
+.menu-body .view-note,
+.menu-body .auto-capture-state,
+.menu-body .field small {
+  display: block;
+  font-family: inherit;
+  font-size: .68rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--shell-muted);
+}

@@ -42,6 +42,8 @@ test('Die App-Dateien werden network-first ausgeliefert', () => {
   assert.ok(branch.indexOf('fetch(') < branch.indexOf('caches.match('),
     'network-first: erst fetch(), der Cache ist nur die Rueckfallebene');
   assert.ok(branch.includes('.catch('), 'ohne Netz muss der Cache einspringen (Offline-Betrieb)');
+  assert.ok(/fetch\(event\.request, \{ cache: 'no-cache' \}\)/.test(branch),
+    "ohne cache: 'no-cache' liefert der HTTP-Cache des Browsers bis zu max-age lang die alte Datei");
 });
 
 test('Der Cache wird beim Aufbau nicht aus dem HTTP-Cache befuellt', () => {

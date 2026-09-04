@@ -85,7 +85,7 @@ const I18N = {
     searchConnect: 'Gerät suchen & verbinden', disconnect: 'Verbindung trennen',
     sendVersion: 'AT+V senden', sendState: 'AT+S senden', clearLog: 'Log leeren', mapPreviewAria: 'Vorschau der aufgenommenen Mähkarte', exportMapAria: 'Karte exportieren',
     notConnected: 'Nicht verbunden', bleConnected: 'BLE verbunden', demoActive: 'Demo aktiv',
-    ready: 'Bereit.', readyConnect: 'Bereit. Tippe auf „Gerät suchen & verbinden“.', bluetoothDisconnected: 'Bluetooth-Verbindung getrennt.', noExtraData: 'keine Zusatzdaten', age: 'Alter {value} s', satellites: '{value} Sat',
+    ready: 'Bereit.', readyConnect: 'Bereit. Tippe auf „Gerät suchen & verbinden“.', bluetoothDisconnected: 'Bluetooth-Verbindung getrennt.', age: 'Alter {value} s',
     noMapActive: 'Keine Karte aktiv', createMapFirst: 'Im Reiter „Karten“ zuerst eine Karte anlegen', pleaseCreateMap: 'Bitte zuerst eine Karte anlegen.',
     waitPosition: 'Warte auf Position', noCurrentXY: 'Noch keine aktuellen X/Y-Daten', noCurrentPosition: 'Keine aktuelle Position vom Ardumower.',
     capturePoint: 'Punkt aufnehmen', readyPoint: 'Bereit: X {x} m · Y {y} m · RTK FIX', noRtkFix: 'Kein RTK FIX',
@@ -151,8 +151,8 @@ const I18N = {
     historyClosePerimeter: 'Perimeter schließen/öffnen',
     showPointQuality: 'Punktqualität anzeigen', keepAwake: 'Bildschirm beim Mapping wachhalten', wakeLockAuto: 'Wird bei aktiver Aufnahme automatisch verwendet.', wakeLockActive: 'Bildschirm bleibt wach.', wakeLockUnavailable: 'Wake Lock in diesem Browser nicht verfügbar.', wakeLockReleased: 'Wake Lock derzeit nicht aktiv.',
     perimeterNearStart: 'Startpunkt erreicht · Abstand {distance} m', closePerimeter: 'Perimeter schließen', perimeterClosed: 'Perimeter geschlossen · kein doppelter Startpunkt gespeichert.', perimeterAlreadyClosed: 'Perimeter ist bereits geschlossen.', reopenPerimeter: 'Perimeter wieder öffnen', checkPerimeterOpen: 'Perimeter ist noch nicht als geschlossen markiert.',
-    mapOverview: 'Kartenübersicht', lockCurrentMap: 'Karte sperren', unlockCurrentMap: 'Karte entsperren', mapLocked: 'Gesperrt', mapLockedHint: 'Diese Karte ist gesperrt. Zum Bearbeiten zuerst entsperren.', mapCardArea: '{area} m²', mapCardPoints: '{points} Punkte', mapCardChanged: 'Geändert {date}', selectMap: 'Karte auswählen', tools: 'Werkzeuge', drive: 'Fahren', stopEverythingDone: 'STOP gesendet · Fahrt 0 · Mähmotor AUS · IDLE',
-    manualDrive: 'Manuell fahren', driveSpeed: 'Tempo', forward: 'Vor', reverse: 'Zurück', left: 'Links', right: 'Rechts', stop: 'Stop', driveIdle: 'Fahrt gestoppt', driveNeedConnection: 'Für manuelle Fahrt zuerst per BLE verbinden.',
+    mapOverview: 'Kartenübersicht', lockCurrentMap: 'Karte sperren', unlockCurrentMap: 'Karte entsperren', mapLocked: 'Gesperrt', mapLockedHint: 'Diese Karte ist gesperrt. Zum Bearbeiten zuerst entsperren.', mapCardArea: '{area} m²', mapCardPoints: '{points} Punkte', mapCardChanged: 'Geändert {date}', selectMap: 'Karte auswählen', drive: 'Fahren', stopEverythingDone: 'STOP gesendet · Fahrt 0 · Mähmotor AUS · IDLE',
+    manualDrive: 'Manuell fahren', driveSpeed: 'Tempo', reverse: 'Zurück', left: 'Links', stop: 'Stop', driveIdle: 'Fahrt gestoppt', driveNeedConnection: 'Für manuelle Fahrt zuerst per BLE verbinden.',
     helpQualityTitle: 'Punktqualität', helpQualityText: 'Kartenpunkte können abhängig von RTK-Lösung und Genauigkeit farblich bewertet werden.', helpSmartAutoTitle: 'Intelligente Auto-Aufnahme', helpSmartAutoText: 'Auf Geraden werden weniger Punkte gesetzt, bei Richtungsänderungen automatisch dichter.', helpLockTitle: 'Kartensperre', helpLockText: 'Fertige Karten lassen sich gegen versehentliche Änderungen sperren.',
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   },
@@ -207,7 +207,7 @@ const I18N = {
     searchConnect: 'Find device & connect', disconnect: 'Disconnect',
     sendVersion: 'Send AT+V', sendState: 'Send AT+S', clearLog: 'Clear log', mapPreviewAria: 'Preview of the recorded mowing map', exportMapAria: 'Export map',
     notConnected: 'Not connected', bleConnected: 'BLE connected', demoActive: 'Demo active',
-    ready: 'Ready.', readyConnect: 'Ready. Tap “Find device & connect”.', bluetoothDisconnected: 'Bluetooth connection disconnected.', noExtraData: 'no additional data', age: 'Age {value} s', satellites: '{value} sat',
+    ready: 'Ready.', readyConnect: 'Ready. Tap “Find device & connect”.', bluetoothDisconnected: 'Bluetooth connection disconnected.', age: 'Age {value} s',
     noMapActive: 'No active map', createMapFirst: 'Create a map in the “Maps” tab first', pleaseCreateMap: 'Please create a map first.',
     waitPosition: 'Waiting for position', noCurrentXY: 'No current X/Y data yet', noCurrentPosition: 'No current position from the Ardumower.',
     capturePoint: 'Capture point', readyPoint: 'Ready: X {x} m · Y {y} m · RTK FIX', noRtkFix: 'No RTK FIX',
@@ -273,8 +273,8 @@ const I18N = {
     historyClosePerimeter: 'Close/reopen perimeter',
     showPointQuality: 'Show point quality', keepAwake: 'Keep screen awake while mapping', wakeLockAuto: 'Used automatically while an active recording is running.', wakeLockActive: 'Screen will stay awake.', wakeLockUnavailable: 'Wake Lock is not available in this browser.', wakeLockReleased: 'Wake Lock is currently inactive.',
     perimeterNearStart: 'Start point reached · distance {distance} m', closePerimeter: 'Close perimeter', perimeterClosed: 'Perimeter closed · no duplicate start point stored.', perimeterAlreadyClosed: 'Perimeter is already closed.', reopenPerimeter: 'Reopen perimeter', checkPerimeterOpen: 'Perimeter is not marked as closed yet.',
-    mapOverview: 'Map overview', lockCurrentMap: 'Lock map', unlockCurrentMap: 'Unlock map', mapLocked: 'Locked', mapLockedHint: 'This map is locked. Unlock it before editing.', mapCardArea: '{area} m²', mapCardPoints: '{points} points', mapCardChanged: 'Changed {date}', selectMap: 'Select map', tools: 'Tools', drive: 'Drive', stopEverythingDone: 'STOP sent · drive 0 · mowing motor OFF · IDLE',
-    manualDrive: 'Manual drive', driveSpeed: 'Speed', forward: 'Forward', reverse: 'Reverse', left: 'Left', right: 'Right', stop: 'Stop', driveIdle: 'Drive stopped', driveNeedConnection: 'Connect via BLE before using manual drive.',
+    mapOverview: 'Map overview', lockCurrentMap: 'Lock map', unlockCurrentMap: 'Unlock map', mapLocked: 'Locked', mapLockedHint: 'This map is locked. Unlock it before editing.', mapCardArea: '{area} m²', mapCardPoints: '{points} points', mapCardChanged: 'Changed {date}', selectMap: 'Select map', drive: 'Drive', stopEverythingDone: 'STOP sent · drive 0 · mowing motor OFF · IDLE',
+    manualDrive: 'Manual drive', driveSpeed: 'Speed', reverse: 'Reverse', left: 'Left', stop: 'Stop', driveIdle: 'Drive stopped', driveNeedConnection: 'Connect via BLE before using manual drive.',
     helpQualityTitle: 'Point quality', helpQualityText: 'Map points can be colour-coded based on RTK solution and recorded accuracy.', helpSmartAutoTitle: 'Smart auto capture', helpSmartAutoText: 'Uses fewer points on straight sections and automatically records more densely when direction changes.', helpLockTitle: 'Map lock', helpLockText: 'Finished maps can be locked against accidental changes.',
     solutionInvalid: 'INVALID', solutionUnknown: 'UNKNOWN', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   }
@@ -328,7 +328,7 @@ const ui = {
   menuCloseBtn: $('menuCloseBtn'), languageToggle: $('languageToggle'),
   connectionPill: $('connectionPill'), connectionDetail: $('connectionDetail'), browserWarning: $('browserWarning'), passwordInput: $('passwordInput'),
   connectBtn: $('connectBtn'), disconnectBtn: $('disconnectBtn'), demoBtn: $('demoBtn'),
-  xValue: $('xValue'), yValue: $('yValue'), solutionValue: $('solutionValue'), gpsDetail: $('gpsDetail'), firmwareValue: $('firmwareValue'),
+  firmwareValue: $('firmwareValue'),
   mapSelect: $('mapSelect'), newMapName: $('newMapName'), newMapBtn: $('newMapBtn'), deleteMapBtn: $('deleteMapBtn'), lockMapBtn: $('lockMapBtn'),
   exportJsonBtn: $('exportJsonBtn'), exportGeoJsonBtn: $('exportGeoJsonBtn'), importInput: $('importInput'),
   mapGallery: $('mapGallery'), mapCountBadge: $('mapCountBadge'), saveVersionBtn: $('saveVersionBtn'), historyList: $('historyList'),
@@ -765,14 +765,6 @@ function rememberTrailPoint() {
 function refreshTelemetry() {
   const t = state.telemetry;
   rememberTrailPoint();
-  ui.xValue.textContent = formatNumber(t.x);
-  ui.yValue.textContent = formatNumber(t.y);
-  ui.solutionValue.textContent = solutionNameLocalized(t.solution);
-  const gpsBits = [];
-  if (Number.isFinite(t.accuracy)) gpsBits.push(`± ${t.accuracy.toFixed(2)} m`);
-  if (Number.isFinite(t.age)) gpsBits.push(tr('age', { value: t.age.toFixed(2) }));
-  if (Number.isFinite(t.visibleSatellites)) gpsBits.push(tr('satellites', { value: t.visibleSatellites }));
-  ui.gpsDetail.textContent = gpsBits.length ? gpsBits.join(' · ') : tr('noExtraData');
   updateBatteryChip();
   ui.firmwareValue.textContent = state.firmware ? `${state.firmware.firmware} ${state.firmware.version}` : 'Sunray';
   refreshCaptureState();
