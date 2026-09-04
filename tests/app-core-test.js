@@ -1,45 +1,12 @@
 'use strict';
-const fs = require('fs');
-const vm = require('vm');
-const path = require('path');
 const assert = require('assert');
+const { loadApp } = require('./app-harness.js');
 
-function elementStub() {
-  return {
-    textContent: '', innerHTML: '', value: '', checked: true, disabled: false, hidden: false, dataset: {},
-    classList: { add(){}, remove(){}, toggle(){}, contains(){ return false; } },
-    setAttribute(){}, getAttribute(){ return null; }, addEventListener(){}, appendChild(){}, append(){},
-    querySelector(){ return null; }, closest(){ return null; }, focus(){},
-  };
-}
-const elements = new Map();
-const documentStub = {
-  documentElement: { lang: 'de' },
-  getElementById(id){ if(!elements.has(id)) elements.set(id, elementStub()); return elements.get(id); },
-  querySelector(){ return null; }, querySelectorAll(){ return []; },
-  createElement(){ return elementStub(); },
-  createElementNS(){ return elementStub(); },
-  body: { appendChild(){} },
-};
-const localStore = new Map();
-const sandbox = {
-  console, structuredClone, TextEncoder, TextDecoder, Blob,
-  crypto: require('crypto').webcrypto,
-  document: documentStub,
-  window: { isSecureContext: true },
-  navigator: { bluetooth: {} },
-  localStorage: { getItem:k=>localStore.get(k) ?? null, setItem:(k,v)=>localStore.set(k,String(v)) },
-  setTimeout, clearTimeout, setInterval, clearInterval,
-  URL: { createObjectURL(){ return 'blob:test'; }, revokeObjectURL(){} },
-  alert(){}, confirm(){ return true; },
-};
-sandbox.globalThis = sandbox;
-let source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
-source = source.replace(/init\(\)\.catch\([\s\S]*?\n\}\);\s*$/, '');
-source += `\n;globalThis.__test = { state, makeMap, normalizeMap, normalizedRange, polygonSelfIntersects, pointInPolygon, polygonEdgesIntersect, polygonsIntersect, polygonArea, pathLength, geometryForArea, mapToGeoJson, validateActiveMap };`;
-vm.createContext(sandbox);
-vm.runInContext(source, sandbox, { filename: 'app.js' });
-const t = sandbox.__test;
+const { t } = loadApp({
+  exportNames: ['state', 'makeMap', 'normalizeMap', 'normalizedRange', 'polygonSelfIntersects', 'pointInPolygon',
+    'polygonEdgesIntersect', 'polygonsIntersect', 'polygonArea', 'pathLength', 'geometryForArea', 'mapToGeoJson',
+    'validateActiveMap'],
+});
 
 const square = [{x:0,y:0},{x:4,y:0},{x:4,y:4},{x:0,y:4}];
 const bowtie = [{x:0,y:0},{x:4,y:4},{x:0,y:4},{x:4,y:0}];

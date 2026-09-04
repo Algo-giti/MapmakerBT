@@ -269,6 +269,14 @@ function solutionNameLocalized(solution) {
   return tr('solutionUnknown');
 }
 
+// Einzige Stelle, an der die App auf die Web-Bluetooth-Implementierung zugreift.
+// Im Browser ist das immer navigator.bluetooth; Tests haengen ueber
+// globalThis.__bleAdapter eine Fake-Implementierung ein (tests/fake-ble.js).
+function bleAdapter() {
+  if (globalThis.__bleAdapter) return globalThis.__bleAdapter;
+  return (typeof navigator === 'undefined' ? null : navigator.bluetooth) || null;
+}
+
 const $ = (id) => document.getElementById(id);
 const ui = {
   connectionPill: $('connectionPill'), languageToggle: $('languageToggle'), browserWarning: $('browserWarning'), passwordInput: $('passwordInput'),
@@ -375,7 +383,7 @@ function refreshConnectionUi() {
   ui.connectionDetail.textContent = tr(state.connectionDetailKey, state.connectionVars);
   ui.connectionPill.classList.toggle('online', state.connected);
   ui.connectionPill.classList.toggle('offline', !state.connected);
-  ui.connectBtn.disabled = state.connected || state.demo || !window.isSecureContext || !navigator.bluetooth;
+  ui.connectBtn.disabled = state.connected || state.demo || !window.isSecureContext || !bleAdapter();
   ui.disconnectBtn.disabled = !state.connected && !state.demo;
   ui.requestVersionBtn.disabled = !state.connected || state.demo;
   ui.requestStateBtn.disabled = !state.connected || state.demo;
@@ -1386,12 +1394,13 @@ async function establishGatt(device, { reconnecting = false } = {}) {
 }
 
 async function connectBluetooth() {
-  if (!navigator.bluetooth) throw new Error(tr('noWebBluetooth'));
+  const adapter = bleAdapter();
+  if (!adapter) throw new Error(tr('noWebBluetooth'));
   stopDemo();
   state.manualDisconnect = false;
   if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
   setConnectionDetail('openingPicker');
-  const device = await navigator.bluetooth.requestDevice({
+  const device = await adapter.requestDevice({
     filters: [{ services: [SERVICE_UUID] }],
     optionalServices: [SERVICE_UUID],
   });
@@ -2937,7 +2946,8 @@ function setHelpStatus(element, text, stateClass) {
 
 function updateHelpSystemStatus() {
   setHelpStatus(ui.helpSecureStatus, window.isSecureContext ? tr('statusSecure') : tr('statusInsecure'), window.isSecureContext ? 'ok' : 'bad');
-  setHelpStatus(ui.helpBluetoothStatus, navigator.bluetooth ? tr('statusAvailable') : tr('statusUnavailable'), navigator.bluetooth ? 'ok' : 'bad');
+  const bleAvailable = Boolean(bleAdapter());
+  setHelpStatus(ui.helpBluetoothStatus, bleAvailable ? tr('statusAvailable') : tr('statusUnavailable'), bleAvailable ? 'ok' : 'bad');
   const swSupported = 'serviceWorker' in navigator && window.isSecureContext;
   const offlineText = state.offlineCacheReady ? tr('statusReady') : (swSupported ? tr('statusPreparing') : tr('statusUnavailable'));
   setHelpStatus(ui.helpOfflineStatus, offlineText, state.offlineCacheReady ? 'ok' : (swSupported ? 'warn' : 'bad'));
@@ -2947,7 +2957,7 @@ function updateHelpSystemStatus() {
 function browserCheck() {
   state.browserWarningKey = null;
   if (!window.isSecureContext) state.browserWarningKey = 'insecureContext';
-  else if (!navigator.bluetooth) state.browserWarningKey = 'browserNoBluetooth';
+  else if (!bleAdapter()) state.browserWarningKey = 'browserNoBluetooth';
 
   if (state.browserWarningKey) {
     ui.browserWarning.textContent = tr(state.browserWarningKey);
