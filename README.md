@@ -1,4 +1,4 @@
-# MapCreator für Ardumower v13
+# MapCreator für Ardumower v16
 
 Mobile, statische PWA für **GitHub Pages** zur Kartenerstellung und Kartenpflege eines Ardumower/Sunray über **Web Bluetooth**. Die App läuft primär auf Android + Chrome, speichert Karten lokal in IndexedDB und kann nach dem ersten erfolgreichen Laden offline weiterverwendet werden.
 
@@ -18,9 +18,32 @@ MapCreator bleibt ein Werkzeug für:
 Ein Upload der Karte zu Sunray ist nicht Bestandteil der App.
 
 
+
+## Neu in v15
+
+- seitliche **Fahren-/Werkzeuge-Schieber repariert** (doppelte Event-Handler entfernt)
+- deutlich größere Touch-Flächen für beide seitlichen Schieber
+- **Rechtshänder/Linkshänder umschaltbar**
+  - Standard: Fahren rechts, Werkzeuge links
+  - Linkshänder: Fahren links, Werkzeuge rechts
+- Einstellung wird lokal gespeichert
+- Fahr- und Werkzeugfenster auf kleinen Displays nahezu vollbreit
+- Joystick und Bedienelemente vergrößert
+- Werkzeugfenster hat jetzt ebenfalls einen eigenen Schließen-Button
+
+## Neu in v14
+
+- **Handy-first Kartenansicht:** GPS/RTK, X/Y und Akku sind deutlich kompakter; Akku sitzt jetzt direkt bei den GPS-Daten.
+- **Werkzeuge als rechter Schieber:** Die Mapping-Werkzeuge sind standardmäßig eingezogen und werden über den rechten Randgriff geöffnet. Dadurch bleibt die Karte fast vollständig frei.
+- **Fahrsteuerung als linker Schieber direkt auf der Karte:** Ein eigener Steuerungs-Reiter ist nicht mehr nötig.
+- **Großer analoger Rund-Joystick:** stufenlose Kombination aus linearer und angularer Geschwindigkeit erlaubt Geradeaus-, Rückwärts- und echte Kurvenfahrt. Loslassen sendet `AT+M,0,0`.
+- **Fahrgeschwindigkeit repariert:** Der Tempo-Regler ist auch ohne aktive BLE-Verbindung einstellbar und wird lokal gespeichert. Standard bleibt `0,15 m/s`.
+- **Mähmotor weiterhin im Fahr-Schieber:** Freigabe, PWM 0–255, 1,5-s-Halteaktion zum Einschalten und STOP ALLES bleiben vorhanden.
+- Linker und rechter Schieber schließen sich beim Öffnen gegenseitig, damit auf kleinen Displays maximal viel Kartenfläche sichtbar bleibt.
+
 ## Neu in v13
 
-- Einstellbare Mähmotor-PWM von **0 bis 255** im Reiter „Steuerung“.
+- Einstellbare Mähmotor-PWM von **0 bis 255** im eingeblendeten Fahrfenster.
 - Schieberegler plus Zahlenfeld und Prozentanzeige.
 - Der Wert wird lokal auf dem Gerät gespeichert und vor dem Einschalten an Sunray übertragen.
 - Bei PWM `0` wird der Mähmotor nicht gestartet; wird `0` bei laufendem Mähmotor übernommen, schaltet MapCreator den Mähmotor zuerst aus.
@@ -40,7 +63,7 @@ Ein Upload der Karte zu Sunray ist nicht Bestandteil der App.
 
 ### Manuelle Mähersteuerung
 
-Der Reiter **Steuerung** verwendet die offizielle Sunray-Kommunikationsschicht:
+Die eingeblendete **Fahrsteuerung in der Kartenansicht** verwendet die offizielle Sunray-Kommunikationsschicht:
 
 - `AT+M,linear,angular` für langsames manuelles Fahren
 - `AT+M,0,0` zum Stoppen der Fahrt
@@ -48,7 +71,7 @@ Der Reiter **Steuerung** verwendet die offizielle Sunray-Kommunikationsschicht:
 - `AT+C,0,-1` zum Ausschalten des Mähmotors
 - `AT+C,0,0` für **STOP ALLES**: Mähmotor aus + Sunray IDLE; Sunray behandelt `op=0` als besonderen Sicherheitsfall, der alle Motoren stoppt
 
-Die Fahrsteuerung ist als **Totmannsteuerung** ausgelegt: Richtung gedrückt halten, beim Loslassen wird Stop gesendet. Der Mähmotor lässt sich erst nach separater Freigabe und **1,5 Sekunden Halten** einschalten; Ausschalten erfolgt sofort.
+Die Fahrsteuerung ist als **Totmannsteuerung** ausgelegt: den runden Joystick ziehen; beim Loslassen springt er in die Mitte und Stop wird gesendet. Durch gleichzeitigen Linear-/Angular-Anteil sind Kurvenfahrten möglich. Der Mähmotor lässt sich erst nach separater Freigabe und **1,5 Sekunden Halten** einschalten; Ausschalten erfolgt sofort.
 
 **Wichtig:** Bei unterbrochener Bluetooth-Verbindung kann eine Webseite keinen neuen Stop-Befehl mehr übertragen. Die manuelle Steuerung deshalb nur bei Sichtkontakt verwenden und den physischen Stop/Not-Aus des Mähers erreichbar halten. Die Mähmotor-Anzeige in MapCreator zeigt den zuletzt von der App gesendeten Zustand und ist keine unabhängige Drehzahl-Rückmeldung.
 
@@ -115,3 +138,14 @@ node tests/app-core-test.js
 node --check app.js
 node --check protocol.js
 ```
+
+## BLE-Stabilität in v16
+
+- GATT-Schreibvorgänge bevorzugen jetzt **Write With Response** statt `writeWithoutResponse`.
+- Mehrteilige BLE-Kommandos werden mit kurzem Abstand übertragen.
+- Fahr-Heartbeat wurde auf 650 ms reduziert. Sunray stoppt manuelle Fahrt nach 1000 ms ohne neues `AT+M`, daher bleibt die Totmann-Sicherheit erhalten.
+- `AT+S` wird nicht mehr direkt in laufende Fahr-Schreibvorgänge hineingequeued.
+- Diagnose protokolliert Verbindungsdauer sowie TX/RX-Zähler beim Disconnect.
+- Nach einem unerwarteten GATT-Abbruch versucht MapCreator automatisch mit Backoff wiederzuverbinden.
+
+Wenn die Verbindung weiterhin reproduzierbar abbricht, ist als Nächstes die ESP32-Konfiguration zu prüfen. Die Sunray-Standardwerte `BLE_MIN_INTERVAL 2`, `BLE_MAX_INTERVAL 10`, `BLE_TIMEOUT 30` entsprechen sehr schnellen 2,5–12,5-ms-Intervallen und nur 300 ms Supervision Timeout. Je nach Android-Gerät kann eine weniger aggressive Einstellung stabiler sein.

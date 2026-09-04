@@ -1770,3 +1770,305 @@ footer {
 .mow-pwm-apply { min-height: 44px; }
 .sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
 @media (max-width: 420px) { .mow-pwm-input-row { grid-template-columns: 1fr; } }
+
+/* v14 · mobile-first map workspace, slide-in tools and analog joystick */
+.tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.telemetry-strip {
+  grid-template-columns: minmax(74px,.75fr) minmax(74px,.75fr) minmax(170px,1.8fr);
+  gap: 5px;
+  margin-bottom: 7px;
+}
+.telemetry-item {
+  min-height: 46px;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+.telemetry-item strong { font-size: .9rem; }
+.telemetry-item > span { font-size: .6rem; }
+.gps-item {
+  grid-template-columns: auto auto minmax(0,1fr);
+  grid-template-rows: auto auto;
+  column-gap: 7px;
+  row-gap: 1px;
+}
+.gps-item > span:first-child { grid-row: 1 / 3; align-self: center; }
+.gps-item > #solutionValue { grid-column: 2; grid-row: 1; }
+.gps-meta {
+  grid-column: 2 / 4;
+  grid-row: 2;
+  display: flex;
+  min-width: 0;
+  gap: 5px;
+  align-items: center;
+}
+.gps-meta #gpsDetail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gps-meta .battery-inline { color: #b7c9cf; font-size: .69rem; font-weight: 800; text-align: left; }
+.telemetry-firmware { grid-column: 3; grid-row: 1; text-align: right; align-self: center; }
+.telemetry-dot { color: #36515a; }
+
+.mapping-stage { overflow: hidden; }
+.map-frame {
+  height: clamp(480px, 68dvh, 860px);
+  min-height: 480px;
+}
+
+.edge-drawer-toggle {
+  position: absolute;
+  z-index: 16;
+  top: 50%;
+  min-width: 38px;
+  width: 38px;
+  min-height: 104px;
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transform: translateY(-50%);
+  border: 1px solid #34525b;
+  background: rgba(11, 25, 29, .95);
+  color: #8de3ed;
+  box-shadow: 0 8px 28px rgba(0,0,0,.36);
+  backdrop-filter: blur(12px);
+  touch-action: manipulation;
+}
+.edge-drawer-toggle > span { font-size: 1.15rem; line-height: 1; }
+.edge-drawer-toggle small {
+  writing-mode: vertical-rl;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font: 800 .55rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.edge-drawer-toggle.active { background: #15343b; border-color: #4e8794; color: #b2f0f7; }
+.control-drawer-toggle { left: 0; border-left: 0; border-radius: 0 9px 9px 0; }
+.tools-drawer-toggle { right: 0; border-right: 0; border-radius: 9px 0 0 9px; }
+
+.map-tools-panel,
+.map-control-panel {
+  transition: transform .22s ease, opacity .18s ease, visibility .18s ease;
+  will-change: transform;
+}
+.map-tools-panel {
+  top: 8px;
+  right: 8px;
+  width: min(330px, calc(100% - 54px));
+  max-height: calc(100% - 16px);
+  z-index: 15;
+}
+.map-tools-panel.collapsed {
+  transform: translateX(calc(100% + 20px));
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.map-control-panel {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  z-index: 15;
+  width: min(390px, calc(100% - 54px));
+  max-height: calc(100% - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px;
+  border: 1px solid #2d4850;
+  border-radius: 11px;
+  background: rgba(7, 15, 18, .95);
+  box-shadow: 0 14px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.025);
+  backdrop-filter: blur(18px);
+  scrollbar-width: thin;
+}
+.map-control-panel.collapsed {
+  transform: translateX(calc(-100% - 20px));
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.map-control-panel::-webkit-scrollbar { width: 5px; }
+.map-control-panel::-webkit-scrollbar-thumb { background: #2c464e; border-radius: 999px; }
+.drawer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 1px 1px 8px;
+  border-bottom: 1px solid #24383f;
+}
+.drawer-head > div { display: grid; gap: 2px; }
+.drawer-head strong { color: #dce9ec; font-size: .92rem; }
+.drawer-close {
+  width: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0;
+  border: 1px solid #30464d;
+  border-radius: 8px;
+  background: #101a1e;
+  color: #94aab1;
+  font-size: 1.35rem;
+}
+.compact-status { margin: 8px 2px 7px; font-size: .72rem; }
+.compact-emergency {
+  min-height: 50px;
+  margin: 0 0 8px;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: 1fr;
+  padding: 7px 10px;
+}
+.compact-emergency > span { grid-row: auto; font-size: 1.1rem; }
+.compact-emergency strong { font-size: .85rem; }
+
+.joystick-section { padding: 5px 2px 0; }
+.joystick-head { align-items: center; }
+.joystick-head h3 { margin: 0 0 2px; font-size: .88rem; }
+.joystick-head p { max-width: 230px; font-size: .68rem; line-height: 1.25; }
+.drive-speed-field { margin: 7px 0 4px; gap: 3px; }
+.drive-speed-field > span { font-size: .64rem; }
+.drive-speed-field input[type="range"] { min-height: 34px; width: 100%; accent-color: #62d7e6; }
+.joystick-wrap { display: grid; place-items: center; padding: 4px 0 5px; }
+.joystick-base {
+  position: relative;
+  width: min(300px, 76vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  background:
+    radial-gradient(circle at center, rgba(72,185,201,.11) 0 23%, transparent 24%),
+    radial-gradient(circle at center, transparent 0 47%, rgba(69,128,139,.17) 48% 49%, transparent 50%),
+    radial-gradient(circle at 42% 37%, #122328 0, #0b171b 58%, #071014 100%);
+  border: 2px solid #365964;
+  box-shadow: inset 0 0 40px rgba(58,169,187,.07), 0 8px 24px rgba(0,0,0,.32);
+}
+.joystick-base.unavailable { opacity: .58; }
+.joystick-ring { position: absolute; left: 50%; top: 50%; border: 1px solid rgba(94,175,190,.25); border-radius: 50%; transform: translate(-50%,-50%); pointer-events: none; }
+.joystick-ring.ring-a { width: 72%; height: 72%; }
+.joystick-ring.ring-b { width: 42%; height: 42%; }
+.joystick-axis { position: absolute; pointer-events: none; background: rgba(95,179,191,.2); }
+.joystick-axis-x { left: 9%; right: 9%; top: 50%; height: 1px; }
+.joystick-axis-y { top: 9%; bottom: 9%; left: 50%; width: 1px; }
+.joystick-label { position: absolute; color: #617b84; font: 800 .57rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: .06em; pointer-events: none; }
+.joy-forward { top: 8px; left: 50%; transform: translateX(-50%); }
+.joy-reverse { bottom: 8px; left: 50%; transform: translateX(-50%); }
+.joy-left { left: 8px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+.joy-right { right: 8px; top: 50%; transform: translateY(-50%) rotate(90deg); }
+.joystick-knob {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 76px; height: 76px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: radial-gradient(circle at 36% 30%, #7fe9f4, #2c8998 45%, #15515c 72%);
+  border: 2px solid #a2f0f7;
+  box-shadow: 0 8px 22px rgba(0,0,0,.45), 0 0 22px rgba(89,214,230,.18), inset 0 1px 1px rgba(255,255,255,.35);
+  transition: transform .07s linear;
+}
+.joystick-dot { width: 13px; height: 13px; border-radius: 50%; background: #d8fbff; box-shadow: 0 0 13px rgba(216,251,255,.7); }
+.drive-stop-wide {
+  width: 100%;
+  min-height: 44px;
+  margin: 1px 0 6px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #654048;
+  border-radius: 8px;
+  background: #281318;
+  color: #ff9aa2;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.control-command-state { min-height: 34px; padding: 6px 8px; font-size: .68rem; }
+.inline-mow-panel { margin-top: 8px; border-top: 1px solid #263a41; }
+.inline-mow-panel > summary {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  color: #c3d3d7;
+  font-weight: 800;
+  list-style: none;
+}
+.inline-mow-panel > summary::-webkit-details-marker { display: none; }
+.inline-mow-body { padding: 0 1px 4px; }
+.compact-mow-pwm { padding: 8px; margin: 7px 0 9px; }
+.compact-mow-pwm .mow-pwm-slider { min-height: 36px; margin: 7px 0; }
+.compact-mow-pwm .mow-pwm-input-row { grid-template-columns: 92px 1fr; gap: 7px; }
+.compact-mow-pwm .compact-field input,
+.compact-mow-pwm .mow-pwm-apply { min-height: 40px; }
+.map-control-panel .mow-start-button { min-height: 62px; padding: 8px 10px; }
+.map-control-panel .mow-start-button strong { font-size: .86rem; }
+.map-control-panel .mow-start-button small { font-size: .67rem; }
+
+@media (max-width: 760px) {
+  .topbar { width: calc(100% - 16px); padding: 8px 0 6px; }
+  .brand-mark { width: 34px; height: 34px; border-radius: 9px; }
+  .topbar h1 { font-size: 1rem; }
+  .eyebrow { font-size: .54rem; }
+  .topbar-actions { gap: 5px; }
+  .pill { padding: 6px 8px; font-size: .65rem; }
+  .language-toggle { min-height: 36px; padding: 4px 6px; }
+  .tabs { width: calc(100% - 12px); margin-bottom: 7px; padding: 3px; }
+  .tab-btn { flex: 1 0 76px; min-height: 43px; font-size: .6rem; gap: 4px; }
+  .tab-icon { font-size: .9rem; }
+  .app-shell { width: calc(100% - 10px); padding-bottom: 20px; }
+  .capture-header { margin: 1px 2px 5px; }
+  .map-title-block .overline { font-size: .52rem; }
+  .map-title-block strong { font-size: .86rem; }
+  .gps-badge { min-height: 31px; padding: 5px 8px; font-size: .64rem; }
+  .telemetry-strip { grid-template-columns: .7fr .7fr 1.8fr; }
+  .telemetry-item { min-height: 42px; padding: 5px 6px; }
+  .telemetry-item strong { font-size: .78rem; }
+  .telemetry-item > span, .telemetry-item small { font-size: .55rem; }
+  .gps-meta { gap: 3px; }
+  .gps-meta .battery-inline { font-size: .58rem; }
+  .map-frame { height: clamp(470px, 70dvh, 760px); min-height: 470px; }
+  .map-tools-panel,
+  .map-control-panel { top: 6px; max-height: calc(100% - 12px); }
+  .map-tools-panel { right: 6px; width: min(318px, calc(100% - 48px)); }
+  .map-control-panel { left: 6px; width: min(380px, calc(100% - 48px)); }
+  .edge-drawer-toggle { width: 34px; min-width: 34px; min-height: 94px; }
+  .capture { min-height: 82px; }
+  .capture-copy strong { font-size: 1rem; }
+  .capture-copy small { font-size: .67rem; }
+}
+
+@media (max-width: 430px) {
+  .brand .eyebrow { display: none; }
+  .brand-mark { display: none; }
+  .topbar h1 { font-size: .9rem; }
+  .pill { max-width: 112px; overflow: hidden; text-overflow: ellipsis; }
+  .tabs { border-radius: 9px; }
+  .tab-btn { flex-basis: 68px; min-height: 40px; }
+  .tab-btn span:last-child { font-size: .55rem; }
+  .capture-header { gap: 6px; }
+  .gps-badge { max-width: 46%; overflow: hidden; }
+  .telemetry-strip { grid-template-columns: 66px 66px minmax(0,1fr); }
+  .telemetry-item { border-radius: 7px; }
+  .telemetry-item > small:not(.gps-meta):not(.telemetry-firmware) { display: none; }
+  .telemetry-firmware { display: none; }
+  .gps-item { grid-template-columns: auto auto minmax(0,1fr); }
+  .map-frame { height: clamp(500px, 72dvh, 720px); min-height: 500px; }
+  .map-tools-panel { width: calc(100% - 44px); padding: 7px; }
+  .map-control-panel { width: calc(100% - 44px); padding: 8px; }
+  .joystick-base { width: min(280px, 72vw); }
+  .joystick-knob { width: 70px; height: 70px; }
+  .joystick-head p { font-size: .63rem; }
+  .compact-mow-pwm .mow-pwm-input-row { grid-template-columns: 88px 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-tools-panel, .map-control-panel, .joystick-knob { transition: none; }
+}
+\n\n/* v15 · reliable mobile drawers, larger touch rails, right/left-handed layout */\n.edge-drawer-toggle {\n  width: 54px;\n  min-width: 54px;\n  min-height: 138px;\n  padding: 12px 7px;\n  gap: 9px;\n  border-color: #426570;\n  background: rgba(8, 22, 26, .97);\n  box-shadow: 0 10px 32px rgba(0,0,0,.46), inset 0 0 20px rgba(67,205,223,.035);\n}\n.edge-drawer-toggle > span { font-size: 1.45rem; }\n.edge-drawer-toggle small { font-size: .66rem; letter-spacing: .09em; }\n.edge-drawer-toggle:active { background: #1a4048; }\n\n/* Right-handed is the default: drive on the right, tools on the left. */\n.map-frame[data-handedness="right"] .control-drawer-toggle { left: auto; right: 0; border-left: 1px solid #426570; border-right: 0; border-radius: 12px 0 0 12px; }\n.map-frame[data-handedness="right"] .tools-drawer-toggle { right: auto; left: 0; border-right: 1px solid #426570; border-left: 0; border-radius: 0 12px 12px 0; }\n.map-frame[data-handedness="right"] .map-control-panel { left: auto; right: 8px; }\n.map-frame[data-handedness="right"] .map-control-panel.collapsed { transform: translateX(calc(100% + 24px)); }\n.map-frame[data-handedness="right"] .map-tools-panel { right: auto; left: 8px; }\n.map-frame[data-handedness="right"] .map-tools-panel.collapsed { transform: translateX(calc(-100% - 24px)); }\n\n/* Left-handed mirrors the workspace. */\n.map-frame[data-handedness="left"] .control-drawer-toggle { right: auto; left: 0; border-right: 1px solid #426570; border-left: 0; border-radius: 0 12px 12px 0; }\n.map-frame[data-handedness="left"] .tools-drawer-toggle { left: auto; right: 0; border-left: 1px solid #426570; border-right: 0; border-radius: 12px 0 0 12px; }\n.map-frame[data-handedness="left"] .map-control-panel { right: auto; left: 8px; }\n.map-frame[data-handedness="left"] .map-control-panel.collapsed { transform: translateX(calc(-100% - 24px)); }\n.map-frame[data-handedness="left"] .map-tools-panel { left: auto; right: 8px; }\n.map-frame[data-handedness="left"] .map-tools-panel.collapsed { transform: translateX(calc(100% + 24px)); }\n\n.map-tools-panel,\n.map-control-panel {\n  width: min(440px, calc(100% - 18px));\n  max-height: calc(100% - 16px);\n}\n.map-tools-panel { padding: 11px; }\n.tools-drawer-head { margin-bottom: 2px; }\n\n.joystick-base { width: min(360px, 100%); }\n.joystick-knob { width: 90px; height: 90px; }\n.joystick-label { font-size: .68rem; }\n.drive-speed-field input[type="range"],\n.compact-mow-pwm .mow-pwm-slider { min-height: 48px; }\n\n.handedness-setting { display: grid; gap: 7px; }\n.field-label { color: #8fa4aa; font-size: .67rem; font-weight: 800; text-transform: uppercase; letter-spacing: .055em; }\n.handedness-segment { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }\n.handedness-btn {\n  min-height: 48px;\n  padding: 7px 8px;\n  border: 1px solid #293f46;\n  border-radius: 8px;\n  background: #101a1e;\n  color: #82979e;\n  font-size: .68rem;\n  font-weight: 800;\n  line-height: 1.2;\n}\n.handedness-btn.active { border-color: #3e7480; background: #17343b; color: #a7edf5; }\n\n@media (max-width: 760px) {\n  .edge-drawer-toggle { width: 52px; min-width: 52px; min-height: 132px; }\n  .map-tools-panel, .map-control-panel { top: 6px; width: calc(100% - 14px); max-height: calc(100% - 12px); }\n  .map-frame[data-handedness="right"] .map-control-panel { right: 7px; }\n  .map-frame[data-handedness="right"] .map-tools-panel { left: 7px; }\n  .map-frame[data-handedness="left"] .map-control-panel { left: 7px; }\n  .map-frame[data-handedness="left"] .map-tools-panel { right: 7px; }\n  .joystick-base { width: min(360px, calc(100vw - 58px)); }\n  .joystick-knob { width: 92px; height: 92px; }\n}\n\n@media (max-width: 430px) {\n  .edge-drawer-toggle { width: 50px; min-width: 50px; min-height: 124px; padding-inline: 6px; }\n  .edge-drawer-toggle small { font-size: .62rem; }\n  .map-control-panel, .map-tools-panel { padding: 10px; }\n  .joystick-base { width: min(330px, calc(100vw - 54px)); }\n  .joystick-knob { width: 88px; height: 88px; }\n  .handedness-segment { grid-template-columns: 1fr; }\n  .handedness-btn { min-height: 44px; }\n}\n

@@ -2,7 +2,10 @@
 
 const SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
 const CHARACTERISTIC_UUID = '0000ffe1-0000-1000-8000-00805f9b34fb';
-const BLE_CHUNK_SIZE = 15; // official ESP32 bridge uses BLE_MTU 20 and sends payloads conservatively
+const BLE_CHUNK_SIZE = 15; // Sunray ESP32 BLE_MTU=20; payload <= 15 bytes
+const BLE_INTER_CHUNK_DELAY_MS = 12;
+const DRIVE_HEARTBEAT_MS = 650; // Sunray manual drive command times out after 1000 ms
+const DRIVE_POINTER_MIN_INTERVAL_MS = 160;
 const DB_NAME = 'ardumower-bt-mapper';
 const DB_VERSION = 1;
 const MAP_STORE = 'maps';
@@ -119,12 +122,12 @@ const I18N = {
     measurement: 'Messen', startMeasurement: 'Messung starten', stopMeasurement: 'Messmodus beenden', clearMeasurement: 'Messung löschen', measurementHint: 'Zwei Stellen auf der Karte antippen.', measurementFirst: 'Erster Messpunkt gesetzt · zweite Stelle antippen.', measurementResult: 'Distanz {distance} m',
     perimeterNearStart: 'Startpunkt erreicht · Abstand {distance} m', closePerimeter: 'Perimeter schließen', perimeterClosed: 'Perimeter geschlossen · kein doppelter Startpunkt gespeichert.', perimeterAlreadyClosed: 'Perimeter ist bereits geschlossen.', reopenPerimeter: 'Perimeter wieder öffnen', checkPerimeterOpen: 'Perimeter ist noch nicht als geschlossen markiert.',
     mapOverview: 'Kartenübersicht', lockCurrentMap: 'Karte sperren', unlockCurrentMap: 'Karte entsperren', mapLocked: 'Gesperrt', mapUnlocked: 'Bearbeitbar', mapLockedHint: 'Diese Karte ist gesperrt. Zum Bearbeiten zuerst entsperren.', mapCardArea: '{area} m²', mapCardPoints: '{points} Punkte', mapCardChanged: 'Geändert {date}', selectMap: 'Karte auswählen',
-    controlOverline: 'MANUELL · BLE · SUNRAY', controlTitle: 'Mähersteuerung', controlIntro: 'Direkte manuelle Fahrt über Sunray. Fahrbefehle funktionieren nur bei aktiver BLE-Verbindung.', controlConnection: 'Verbindung',
+    controlOverline: 'MANUELL · BLE · SUNRAY', toolsOverline: 'KARTE · AUFNAHME', handedness: 'Bedienseite', rightHanded: 'Rechtshänder · Fahren rechts', leftHanded: 'Linkshänder · Fahren links', handednessHint: 'Fahrsteuerung auf der Daumenseite, Werkzeuge gegenüber.', controlTitle: 'Mähersteuerung', controlIntro: 'Direkte manuelle Fahrt über Sunray. Fahrbefehle funktionieren nur bei aktiver BLE-Verbindung.', controlConnection: 'Verbindung', tools: 'Werkzeuge', drive: 'Fahren', joystickHint: 'Kugel in Fahrtrichtung ziehen · Loslassen stoppt sofort.', closePanel: 'Fenster schließen',
     controlSafetyTitle: 'Sicherheit', controlSafetyText: 'Nur bei freier Sicht zum Mäher verwenden. Der physische Not-Aus/Stop-Taster am Mäher bleibt die wichtigste Sicherheitsfunktion. Bei Funkverlust kann der Browser keinen Stop-Befehl mehr übertragen.',
     stopEverything: 'STOP ALLES', stopEverythingHint: 'Fahrt stoppen · Mähmotor aus · Sunray IDLE', stopEverythingDone: 'STOP gesendet · Fahrt 0 · Mähmotor AUS · IDLE',
     manualDrive: 'Manuell fahren', manualDriveHint: 'Richtung gedrückt halten. Beim Loslassen wird sofort AT+M,0,0 gesendet.', driveSpeed: 'Tempo', forward: 'Vor', reverse: 'Zurück', left: 'Links', right: 'Rechts', stop: 'Stop', driveIdle: 'Fahrt gestoppt', driveForward: 'Vorwärts {speed} m/s', driveReverse: 'Rückwärts {speed} m/s', driveLeft: 'Drehen links', driveRight: 'Drehen rechts', driveNeedConnection: 'Für manuelle Fahrt zuerst per BLE verbinden.',
     mowMotor: 'Mähmotor', mowMotorHint: 'Zum Einschalten zuerst freigeben und den Startknopf gedrückt halten. Ausschalten ist immer sofort möglich.', mowOff: 'AUS', mowOn: 'EIN', armMowMotor: 'Mähmotor-Steuerung freigeben', holdToStartMow: 'Zum Einschalten 1,5 s halten', mowHoldHint: 'Beim Einschalten dreht das Messerwerk an.', mowTurnOff: 'Mähmotor ausschalten', mowTapOffHint: 'Tippen zum sofortigen Ausschalten.', mowArmedHint: 'Freigegeben · Startknopf 1,5 s halten', mowNeedArm: 'Zuerst Mähmotor-Steuerung freigeben.', mowNeedPwm: 'PWM muss größer als 0 sein, bevor der Mähmotor eingeschaltet werden kann.', mowStateNote: 'Die Anzeige zeigt den zuletzt von MapCreator gesendeten Zustand, keine unabhängige Drehzahl-Rückmeldung.', mowStarted: 'Mähmotor EIN gesendet.', mowStopped: 'Mähmotor AUS gesendet.', mowPwmTitle: 'Mähmotor-Leistung (PWM)', mowPwmHint: '0 = aus · 255 = maximale in Sunray erlaubte PWM. Das ist keine gemessene Drehzahl.', mowPwmValue: 'PWM-Wert', mowPwmApply: 'PWM übernehmen', mowPwmApplied: 'Mähmotor-PWM auf {pwm}/255 ({percent} %) gesetzt.', mowPwmZeroStopped: 'PWM 0 gesetzt · Mähmotor AUS.',
-    controlHelpTitle: 'Manuelle Mähersteuerung', controlHelp1: 'Im Reiter „Steuerung“ wird der Mäher mit gedrückt gehaltenen Richtungstasten über Sunray AT+M bewegt. Loslassen sendet Stop.', controlHelp2: '„STOP ALLES“ sendet Fahrstopp, schaltet den Mähmotor aus und setzt Sunray auf IDLE.', controlHelp3: 'Der Mähmotor benötigt eine bewusste Freigabe und einen gehaltenen Startknopf. Ausschalten erfolgt mit einem Tipp.', controlHelp4: 'Wichtig: Bei Bluetooth-Funkverlust kann die Webseite keinen neuen Stop-Befehl mehr übertragen. Deshalb nur bei Sichtkontakt arbeiten und den physischen Stop/Not-Aus am Mäher erreichbar halten.', controlHelp5: 'Die Mähmotor-Leistung ist von 0 bis 255 einstellbar. Sunray verwendet den Wert als PWM-Obergrenze; er ist keine direkte RPM-Vorgabe oder unabhängige Drehzahlmessung.',
+    controlHelpTitle: 'Manuelle Mähersteuerung', controlHelp1: 'In der Kartenansicht öffnet „Fahren“ die große runde Joystick-Steuerung. Die Kugel kann stufenlos vor/zurück und seitlich gezogen werden; dadurch sind auch Kurvenfahrten möglich. Loslassen sendet sofort Stop.', controlHelp2: '„STOP ALLES“ sendet Fahrstopp, schaltet den Mähmotor aus und setzt Sunray auf IDLE.', controlHelp3: 'Der Mähmotor benötigt eine bewusste Freigabe und einen gehaltenen Startknopf. Ausschalten erfolgt mit einem Tipp.', controlHelp4: 'Wichtig: Bei Bluetooth-Funkverlust kann die Webseite keinen neuen Stop-Befehl mehr übertragen. Deshalb nur bei Sichtkontakt arbeiten und den physischen Stop/Not-Aus am Mäher erreichbar halten.', controlHelp5: 'Die Mähmotor-Leistung ist von 0 bis 255 einstellbar. Sunray verwendet den Wert als PWM-Obergrenze; er ist keine direkte RPM-Vorgabe oder unabhängige Drehzahlmessung.', controlHelp6: 'Unter „Ansicht & Maßstab“ kann zwischen Rechts- und Linkshänder-Bedienung gewechselt werden. Standard ist Fahren rechts und Werkzeuge links.',
     helpQualityTitle: 'Punktqualität', helpQualityText: 'Kartenpunkte können abhängig von RTK-Lösung und Genauigkeit farblich bewertet werden.', helpSmartAutoTitle: 'Intelligente Auto-Aufnahme', helpSmartAutoText: 'Auf Geraden werden weniger Punkte gesetzt, bei Richtungsänderungen automatisch dichter.', helpMeasureTitle: 'Messwerkzeug', helpMeasureText: 'Zwei Stellen antippen und die Distanz direkt in Metern ablesen.', helpLockTitle: 'Kartensperre', helpLockText: 'Fertige Karten lassen sich gegen versehentliche Änderungen sperren.',
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   },
@@ -235,12 +238,12 @@ const I18N = {
     measurement: 'Measure', startMeasurement: 'Start measurement', stopMeasurement: 'Exit measuring', clearMeasurement: 'Clear measurement', measurementHint: 'Tap two locations on the map.', measurementFirst: 'First measurement point set · tap the second location.', measurementResult: 'Distance {distance} m',
     perimeterNearStart: 'Start point reached · distance {distance} m', closePerimeter: 'Close perimeter', perimeterClosed: 'Perimeter closed · no duplicate start point stored.', perimeterAlreadyClosed: 'Perimeter is already closed.', reopenPerimeter: 'Reopen perimeter', checkPerimeterOpen: 'Perimeter is not marked as closed yet.',
     mapOverview: 'Map overview', lockCurrentMap: 'Lock map', unlockCurrentMap: 'Unlock map', mapLocked: 'Locked', mapUnlocked: 'Editable', mapLockedHint: 'This map is locked. Unlock it before editing.', mapCardArea: '{area} m²', mapCardPoints: '{points} points', mapCardChanged: 'Changed {date}', selectMap: 'Select map',
-    controlOverline: 'MANUAL · BLE · SUNRAY', controlTitle: 'Mower control', controlIntro: 'Direct manual driving through Sunray. Drive commands only work with an active BLE connection.', controlConnection: 'Connection',
+    controlOverline: 'MANUAL · BLE · SUNRAY', toolsOverline: 'MAP · CAPTURE', handedness: 'Control side', rightHanded: 'Right-handed · drive right', leftHanded: 'Left-handed · drive left', handednessHint: 'Drive control stays on your thumb side; tools stay opposite.', controlTitle: 'Mower control', controlIntro: 'Direct manual driving through Sunray. Drive commands only work with an active BLE connection.', controlConnection: 'Connection', tools: 'Tools', drive: 'Drive', joystickHint: 'Drag the puck in the direction of travel · releasing stops immediately.', closePanel: 'Close panel',
     controlSafetyTitle: 'Safety', controlSafetyText: 'Use only with a clear line of sight to the mower. The physical emergency stop/stop button on the mower remains the primary safety control. If radio contact is lost, the browser cannot transmit another stop command.',
     stopEverything: 'STOP ALL', stopEverythingHint: 'Stop drive · mowing motor off · Sunray IDLE', stopEverythingDone: 'STOP sent · drive 0 · mowing motor OFF · IDLE',
     manualDrive: 'Manual drive', manualDriveHint: 'Hold a direction button. Releasing it immediately sends AT+M,0,0.', driveSpeed: 'Speed', forward: 'Forward', reverse: 'Reverse', left: 'Left', right: 'Right', stop: 'Stop', driveIdle: 'Drive stopped', driveForward: 'Forward {speed} m/s', driveReverse: 'Reverse {speed} m/s', driveLeft: 'Turning left', driveRight: 'Turning right', driveNeedConnection: 'Connect via BLE before using manual drive.',
     mowMotor: 'Mowing motor', mowMotorHint: 'Arm it first, then hold the start button to switch on. Switching off is always immediate.', mowOff: 'OFF', mowOn: 'ON', armMowMotor: 'Arm mowing motor control', holdToStartMow: 'Hold 1.5 s to switch on', mowHoldHint: 'The cutting system starts rotating when enabled.', mowTurnOff: 'Switch mowing motor off', mowTapOffHint: 'Tap to switch off immediately.', mowArmedHint: 'Armed · hold start button for 1.5 s', mowNeedArm: 'Arm mowing motor control first.', mowNeedPwm: 'PWM must be greater than 0 before the mowing motor can be switched on.', mowStateNote: 'The indicator shows the last state sent by MapCreator, not an independent blade-speed confirmation.', mowStarted: 'Mowing motor ON sent.', mowStopped: 'Mowing motor OFF sent.', mowPwmTitle: 'Mowing motor power (PWM)', mowPwmHint: '0 = off · 255 = maximum PWM allowed by Sunray. This is not a measured RPM value.', mowPwmValue: 'PWM value', mowPwmApply: 'Apply PWM', mowPwmApplied: 'Mowing motor PWM set to {pwm}/255 ({percent}%).', mowPwmZeroStopped: 'PWM set to 0 · mowing motor OFF.',
-    controlHelpTitle: 'Manual mower control', controlHelp1: 'In the “Control” tab the mower is moved through Sunray AT+M while a direction button is held. Releasing it sends stop.', controlHelp2: '“STOP ALL” sends drive stop, switches the mowing motor off and puts Sunray into IDLE.', controlHelp3: 'The mowing motor requires deliberate arming and a held start button. Switching it off takes one tap.', controlHelp4: 'Important: if the Bluetooth link is lost, the website cannot transmit a new stop command. Use only with line of sight and keep the mower’s physical stop/emergency control accessible.', controlHelp5: 'Mowing motor power is adjustable from 0 to 255. Sunray uses this as the PWM ceiling; it is not a direct RPM command or independent speed measurement.',
+    controlHelpTitle: 'Manual mower control', controlHelp1: 'In the map view, “Drive” opens the large round joystick. Drag the puck continuously forward/back and sideways, allowing curved driving as well. Releasing it immediately sends stop.', controlHelp2: '“STOP ALL” sends drive stop, switches the mowing motor off and puts Sunray into IDLE.', controlHelp3: 'The mowing motor requires deliberate arming and a held start button. Switching it off takes one tap.', controlHelp4: 'Important: if the Bluetooth link is lost, the website cannot transmit a new stop command. Use only with line of sight and keep the mower’s physical stop/emergency control accessible.', controlHelp5: 'Mowing motor power is adjustable from 0 to 255. Sunray uses this as the PWM ceiling; it is not a direct RPM command or independent speed measurement.', controlHelp6: 'Under “View & scale” you can switch between right- and left-handed operation. The default is drive controls on the right and tools on the left.',
     helpQualityTitle: 'Point quality', helpQualityText: 'Map points can be colour-coded based on RTK solution and recorded accuracy.', helpSmartAutoTitle: 'Smart auto capture', helpSmartAutoText: 'Uses fewer points on straight sections and automatically records more densely when direction changes.', helpMeasureTitle: 'Measurement tool', helpMeasureText: 'Tap two locations and read the distance directly in metres.', helpLockTitle: 'Map lock', helpLockText: 'Finished maps can be locked against accidental changes.',
     solutionInvalid: 'INVALID', solutionUnknown: 'UNKNOWN', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   }
@@ -283,12 +286,12 @@ const ui = {
   historyUndoBtn: $('historyUndoBtn'), historyUndoHint: $('historyUndoHint'), validateMapBtn: $('validateMapBtn'), validationSummary: $('validationSummary'), validationList: $('validationList'), validationDrawer: $('validationDrawer'),
   saveVersionBtn: $('saveVersionBtn'), historyList: $('historyList'), mapDistanceInfo: $('mapDistanceInfo'), showTrail: $('showTrail'), clearTrailBtn: $('clearTrailBtn'),
   showPointQuality: $('showPointQuality'), keepAwake: $('keepAwake'), wakeLockStatus: $('wakeLockStatus'), measureModeBtn: $('measureModeBtn'), clearMeasurementBtn: $('clearMeasurementBtn'), measurementSummary: $('measurementSummary'),
-  mapSvg: $('mapSvg'), gridLayer: $('gridLayer'), shapeLayer: $('shapeLayer'), robotLayer: $('robotLayer'),
+  mapSvg: $('mapSvg'), mapFrame: $('mapFrame'), gridLayer: $('gridLayer'), shapeLayer: $('shapeLayer'), robotLayer: $('robotLayer'),
   showGrid: $('showGrid'), gridStepSelect: $('gridStepSelect'), showMower: $('showMower'), mowerLengthInput: $('mowerLengthInput'), mowerWidthInput: $('mowerWidthInput'),
   mapSummary: $('mapSummary'), recentPoints: $('recentPoints'), mapGallery: $('mapGallery'), mapCountBadge: $('mapCountBadge'), lockMapBtn: $('lockMapBtn'), requestVersionBtn: $('requestVersionBtn'),
   requestStateBtn: $('requestStateBtn'), clearLogBtn: $('clearLogBtn'), debugLog: $('debugLog'),
   helpSecureStatus: $('helpSecureStatus'), helpBluetoothStatus: $('helpBluetoothStatus'), helpOfflineStatus: $('helpOfflineStatus'), helpNetworkStatus: $('helpNetworkStatus'),
-  controlConnectionStatus: $('controlConnectionStatus'), emergencyStopBtn: $('emergencyStopBtn'), driveSpeedSlider: $('driveSpeedSlider'), driveSpeedValue: $('driveSpeedValue'), driveStopBtn: $('driveStopBtn'), driveState: $('driveState'), mowArmCheckbox: $('mowArmCheckbox'), mowMotorBtn: $('mowMotorBtn'), mowMotorState: $('mowMotorState'), mowHoldProgress: $('mowHoldProgress'), mowPwmSlider: $('mowPwmSlider'), mowPwmNumber: $('mowPwmNumber'), mowPwmApplyBtn: $('mowPwmApplyBtn'), mowPwmReadout: $('mowPwmReadout'),
+  controlConnectionStatus: $('controlConnectionStatus'), emergencyStopBtn: $('emergencyStopBtn'), driveSpeedSlider: $('driveSpeedSlider'), driveSpeedValue: $('driveSpeedValue'), driveStopBtn: $('driveStopBtn'), driveState: $('driveState'), driveJoystick: $('driveJoystick'), joystickKnob: $('joystickKnob'), controlDrawerToggle: $('controlDrawerToggle'), controlDrawerClose: $('controlDrawerClose'), mapControlPanel: $('mapControlPanel'), toolsDrawerToggle: $('toolsDrawerToggle'), toolsDrawerClose: $('toolsDrawerClose'), mapToolsPanel: $('mapToolsPanel'), mowArmCheckbox: $('mowArmCheckbox'), mowMotorBtn: $('mowMotorBtn'), mowMotorState: $('mowMotorState'), mowHoldProgress: $('mowHoldProgress'), mowPwmSlider: $('mowPwmSlider'), mowPwmNumber: $('mowPwmNumber'), mowPwmApplyBtn: $('mowPwmApplyBtn'), mowPwmReadout: $('mowPwmReadout'),
 };
 
 const state = {
@@ -314,6 +317,13 @@ const state = {
   pollTimer: null,
   demoTimer: null,
   sendBusy: false,
+  manualDisconnect: false,
+  reconnectTimer: null,
+  reconnectAttempts: 0,
+  bleConnectedAt: 0,
+  bleTxCommands: 0,
+  bleRxLines: 0,
+  lastBleRxAt: 0,
   mode: 'perimeter',
   editMode: false,
   editAction: 'point',
@@ -330,6 +340,9 @@ const state = {
   wakeLock: null,
   driveTimer: null,
   driveDirection: null,
+  driveVector: { linear: 0, angular: 0 },
+  joystickPointerId: null,
+  lastDriveSentAt: 0,
   mowMotorOn: false,
   appliedMowPwm: null,
   mowHoldTimer: null,
@@ -341,7 +354,7 @@ const state = {
   activeMap: null,
   activeExclusionId: null,
   view: {
-    showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, editMaxDistance: 1.00, autoCaptureDistance: 0.50, autoCaptureMode: 'distance', showTrail: true, showPointQuality: true, keepAwake: true, mowPwm: 255,
+    showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, editMaxDistance: 1.00, autoCaptureDistance: 0.50, autoCaptureMode: 'distance', showTrail: true, showPointQuality: true, keepAwake: true, mowPwm: 255, driveSpeed: 0.15, handedness: 'right',
   },
   telemetry: {
     x: null, y: null, delta: null, solution: null, age: null, accuracy: null,
@@ -378,8 +391,9 @@ function refreshControlUi() {
   ui.emergencyStopBtn.disabled = !available;
   document.querySelectorAll('[data-drive]').forEach((button) => { button.disabled = !available; });
   ui.driveStopBtn.disabled = !available;
-  ui.driveSpeedSlider.disabled = !available;
-  const speed = clampNumber(ui.driveSpeedSlider?.value, 0.05, 0.35, 0.15);
+  ui.driveSpeedSlider.disabled = false;
+  if (ui.driveJoystick) ui.driveJoystick.classList.toggle('unavailable', !available);
+  const speed = clampNumber(ui.driveSpeedSlider?.value, 0.05, 0.35, state.view.driveSpeed ?? 0.15);
   ui.driveSpeedValue.textContent = `${speed.toFixed(2).replace('.', state.language === 'de' ? ',' : '.')} m/s`;
   if (!available) {
     clearInterval(state.driveTimer);
@@ -407,7 +421,7 @@ function refreshControlUi() {
 }
 
 function driveValues(direction) {
-  const speed = clampNumber(ui.driveSpeedSlider.value, 0.05, 0.35, 0.15);
+  const speed = clampNumber(ui.driveSpeedSlider?.value, 0.05, 0.35, state.view.driveSpeed ?? 0.15);
   const turn = Math.min(1.2, Math.max(0.35, speed * 4.5));
   if (direction === 'forward') return { linear: speed, angular: 0, key: 'driveForward', vars: { speed: speed.toFixed(2) } };
   if (direction === 'reverse') return { linear: -speed, angular: 0, key: 'driveReverse', vars: { speed: speed.toFixed(2) } };
@@ -416,11 +430,26 @@ function driveValues(direction) {
   return { linear: 0, angular: 0, key: 'driveIdle', vars: {} };
 }
 
+async function sendDriveVector(linear, angular, { force = false } = {}) {
+  if (!state.connected || state.demo || !state.characteristic) return;
+  const now = performance.now();
+  if (!force && now - state.lastDriveSentAt < DRIVE_POINTER_MIN_INTERVAL_MS) return;
+  if (!force && state.sendBusy) return;
+  state.lastDriveSentAt = now;
+  const l = Math.abs(linear) < 0.005 ? 0 : linear;
+  const a = Math.abs(angular) < 0.01 ? 0 : angular;
+  await sendSunray(`AT+M,${l.toFixed(2)},${a.toFixed(2)}`, { skipIfBusy: !force });
+  if (ui.driveState) {
+    const fmt = (v, digits) => Number(v).toFixed(digits).replace('.', state.language === 'de' ? ',' : '.');
+    ui.driveState.textContent = `v ${fmt(l, 2)} m/s · ω ${fmt(a, 2)} rad/s`;
+  }
+}
+
 async function sendDriveCommand(direction) {
   if (!state.connected || state.demo || !state.characteristic) return;
   const v = driveValues(direction);
-  await sendSunray(`AT+M,${v.linear.toFixed(2)},${v.angular.toFixed(2)}`);
-  ui.driveState.textContent = tr(v.key, v.vars);
+  state.driveVector = { linear: v.linear, angular: v.angular };
+  await sendDriveVector(v.linear, v.angular, { force: true });
 }
 
 function beginDrive(direction) {
@@ -429,19 +458,75 @@ function beginDrive(direction) {
     return;
   }
   stopDrive({ send: false });
+  const v = driveValues(direction);
   state.driveDirection = direction;
-  sendDriveCommand(direction).catch((error) => log('DRIVE', error.message));
+  state.driveVector = { linear: v.linear, angular: v.angular };
+  sendDriveVector(v.linear, v.angular, { force: true }).catch((error) => log('DRIVE', error.message));
   state.driveTimer = setInterval(() => {
-    if (state.driveDirection === direction) sendDriveCommand(direction).catch((error) => log('DRIVE', error.message));
-  }, 350);
+    if (state.driveDirection === direction) sendDriveVector(state.driveVector.linear, state.driveVector.angular, { force: true }).catch((error) => log('DRIVE', error.message));
+  }, DRIVE_HEARTBEAT_MS);
+}
+
+function resetJoystickVisual() {
+  if (ui.joystickKnob) ui.joystickKnob.style.transform = 'translate(-50%, -50%)';
+}
+
+function joystickVectorFromPointer(event) {
+  const rect = ui.driveJoystick.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const radius = Math.max(20, Math.min(rect.width, rect.height) / 2 - 34);
+  let nx = (event.clientX - cx) / radius;
+  let ny = (event.clientY - cy) / radius;
+  const mag = Math.hypot(nx, ny);
+  if (mag > 1) { nx /= mag; ny /= mag; }
+  const dead = 0.07;
+  if (Math.abs(nx) < dead) nx = 0;
+  if (Math.abs(ny) < dead) ny = 0;
+  const speed = clampNumber(ui.driveSpeedSlider?.value, 0.05, 0.35, state.view.driveSpeed ?? 0.15);
+  const maxTurn = 1.15;
+  return {
+    nx, ny,
+    linear: -ny * speed,
+    angular: -nx * maxTurn,
+    px: nx * radius,
+    py: ny * radius,
+  };
+}
+
+function updateJoystickFromPointer(event, { forceSend = false } = {}) {
+  if (!ui.driveJoystick || state.joystickPointerId !== event.pointerId) return;
+  const v = joystickVectorFromPointer(event);
+  if (ui.joystickKnob) ui.joystickKnob.style.transform = `translate(-50%, -50%) translate(${v.px.toFixed(1)}px, ${v.py.toFixed(1)}px)`;
+  state.driveVector = { linear: v.linear, angular: v.angular };
+  sendDriveVector(v.linear, v.angular, { force: forceSend }).catch((error) => log('JOYSTICK', error.message));
+}
+
+function beginJoystick(event) {
+  event.preventDefault();
+  if (!state.connected || state.demo || !state.characteristic) {
+    if (ui.driveState) ui.driveState.textContent = tr('driveNeedConnection');
+    return;
+  }
+  stopDrive({ send: false });
+  state.joystickPointerId = event.pointerId;
+  state.driveDirection = 'joystick';
+  try { ui.driveJoystick.setPointerCapture(event.pointerId); } catch (_) {}
+  updateJoystickFromPointer(event, { forceSend: true });
+  state.driveTimer = setInterval(() => {
+    if (state.driveDirection === 'joystick') sendDriveVector(state.driveVector.linear, state.driveVector.angular, { force: true }).catch((error) => log('JOYSTICK', error.message));
+  }, DRIVE_HEARTBEAT_MS);
 }
 
 function stopDrive({ send = true } = {}) {
   if (state.driveTimer) clearInterval(state.driveTimer);
   state.driveTimer = null;
-  const wasDriving = Boolean(state.driveDirection);
+  const wasDriving = Boolean(state.driveDirection) || state.joystickPointerId !== null;
   state.driveDirection = null;
+  state.joystickPointerId = null;
+  state.driveVector = { linear: 0, angular: 0 };
   document.querySelectorAll('[data-drive]').forEach((button) => button.classList.remove('pressed'));
+  resetJoystickVisual();
   if (ui.driveState) ui.driveState.textContent = tr('driveIdle');
   if (send && state.connected && !state.demo && state.characteristic && wasDriving) {
     sendSunray('AT+M,0,0').catch((error) => log('DRIVE STOP', error.message));
@@ -579,8 +664,10 @@ function loadViewPreferences() {
     state.view.showPointQuality = saved.showPointQuality !== false;
     state.view.keepAwake = saved.keepAwake !== false;
     state.view.mowPwm = Math.round(clampNumber(saved.mowPwm, 0, 255, 255));
+    state.view.driveSpeed = clampNumber(saved.driveSpeed, 0.05, 0.35, 0.15);
+    state.view.handedness = saved.handedness === 'left' ? 'left' : 'right';
   } catch (_) {
-    state.view = { showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, editMaxDistance: 1.00, autoCaptureDistance: 0.50, autoCaptureMode: 'distance', showTrail: true, showPointQuality: true, keepAwake: true, mowPwm: 255 };
+    state.view = { showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, editMaxDistance: 1.00, autoCaptureDistance: 0.50, autoCaptureMode: 'distance', showTrail: true, showPointQuality: true, keepAwake: true, mowPwm: 255, driveSpeed: 0.15, handedness: 'right' };
   }
 }
 
@@ -601,8 +688,29 @@ function applyViewPreferencesToUi() {
   ui.showTrail.checked = state.view.showTrail;
   ui.showPointQuality.checked = state.view.showPointQuality;
   ui.keepAwake.checked = state.view.keepAwake;
+  if (ui.driveSpeedSlider) ui.driveSpeedSlider.value = String(state.view.driveSpeed ?? 0.15);
   if (ui.mowPwmSlider) ui.mowPwmSlider.value = String(state.view.mowPwm);
   if (ui.mowPwmNumber) ui.mowPwmNumber.value = String(state.view.mowPwm);
+  applyHandednessLayout();
+}
+
+function applyHandednessLayout() {
+  const handedness = state.view.handedness === 'left' ? 'left' : 'right';
+  if (ui.mapFrame) ui.mapFrame.dataset.handedness = handedness;
+  document.querySelectorAll('[data-handedness]').forEach((button) => {
+    const active = button.dataset.handedness === handedness;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
+function setHandedness(handedness) {
+  const next = handedness === 'left' ? 'left' : 'right';
+  if (state.view.handedness === next) return;
+  closeMapDrawers();
+  state.view.handedness = next;
+  saveViewPreferences();
+  applyHandednessLayout();
 }
 
 function updateViewPreferencesFromUi() {
@@ -1104,6 +1212,7 @@ function refreshCaptureState() {
 
 function handleLine(rawLine) {
   const line = rawLine.trim();
+  if (line) { state.bleRxLines += 1; state.lastBleRxAt = Date.now(); }
   if (!line) return;
   log('RX', line);
 
@@ -1161,23 +1270,33 @@ function onNotification(event) {
   lines.forEach(handleLine);
 }
 
+async function sleepMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function writeBytes(bytes) {
   if (!state.characteristic) throw new Error(tr('errorNoCharacteristic'));
   for (let i = 0; i < bytes.length; i += BLE_CHUNK_SIZE) {
     const chunk = bytes.slice(i, i + BLE_CHUNK_SIZE);
-    if (typeof state.characteristic.writeValueWithoutResponse === 'function' && state.characteristic.properties.writeWithoutResponse) {
-      await state.characteristic.writeValueWithoutResponse(chunk);
-    } else if (typeof state.characteristic.writeValueWithResponse === 'function') {
+    // Web Bluetooth + ESP32 is substantially more stable when each GATT write is acknowledged.
+    // The Sunray FFE1 characteristic supports WRITE and WRITE_NR, so prefer WRITE here.
+    if (typeof state.characteristic.writeValueWithResponse === 'function' && state.characteristic.properties.write) {
       await state.characteristic.writeValueWithResponse(chunk);
-    } else {
+    } else if (typeof state.characteristic.writeValue === 'function' && state.characteristic.properties.write) {
       await state.characteristic.writeValue(chunk);
+    } else if (typeof state.characteristic.writeValueWithoutResponse === 'function' && state.characteristic.properties.writeWithoutResponse) {
+      await state.characteristic.writeValueWithoutResponse(chunk);
+    } else {
+      throw new Error('BLE characteristic is not writable');
     }
+    if (i + BLE_CHUNK_SIZE < bytes.length) await sleepMs(BLE_INTER_CHUNK_DELAY_MS);
   }
 }
 
-async function sendSunray(command, { forcePlain = false, useChecksum = true } = {}) {
+async function sendSunray(command, { forcePlain = false, useChecksum = true, skipIfBusy = false } = {}) {
   if (!state.connected || !state.characteristic) throw new Error(tr('errorNotConnected'));
-  while (state.sendBusy) await new Promise((resolve) => setTimeout(resolve, 8));
+  if (skipIfBusy && state.sendBusy) return false;
+  while (state.sendBusy) await sleepMs(8);
   state.sendBusy = true;
   try {
     let payload = useChecksum ? SunrayProtocol.withChecksum(command) : command;
@@ -1190,6 +1309,8 @@ async function sendSunray(command, { forcePlain = false, useChecksum = true } = 
     }
     const bytes = new TextEncoder().encode(`${payload}\n`);
     await writeBytes(bytes);
+    state.bleTxCommands += 1;
+    return true;
   } finally {
     state.sendBusy = false;
   }
@@ -1228,7 +1349,12 @@ async function initializeSunrayHandshake() {
 
 function startPolling() {
   stopPolling();
-  const poll = () => sendSunray('AT+S').catch((error) => log(tr('stateError'), error.message));
+  const poll = () => {
+    if (!state.connected || !state.characteristic) return;
+    // Do not queue status requests directly on top of manual-drive traffic.
+    if (state.sendBusy || (performance.now() - state.lastDriveSentAt < 220)) return;
+    sendSunray('AT+S', { skipIfBusy: true }).catch((error) => log(tr('stateError'), error.message));
+  };
   poll();
   state.pollTimer = setInterval(poll, 2000);
 }
@@ -1238,9 +1364,32 @@ function stopPolling() {
   state.pollTimer = null;
 }
 
+async function establishGatt(device, { reconnecting = false } = {}) {
+  state.server = await device.gatt.connect();
+  const service = await state.server.getPrimaryService(SERVICE_UUID);
+  state.characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+  await state.characteristic.startNotifications();
+  state.characteristic.addEventListener('characteristicvaluechanged', onNotification);
+  state.rxBuffer = '';
+  state.sendBusy = false;
+  state.bleConnectedAt = Date.now();
+  state.bleTxCommands = 0;
+  state.bleRxLines = 0;
+  state.lastBleRxAt = 0;
+  setConnectionStatus(true, 'bleConnected', 'connectedWith', { name: device.name || 'Ardumower' });
+  const props = state.characteristic.properties;
+  log('BLE', `GATT ready · write=${Boolean(props.write)} · writeNR=${Boolean(props.writeWithoutResponse)} · mode=${props.write ? 'with-response' : 'without-response'}`);
+  await initializeSunrayHandshake();
+  startPolling();
+  state.reconnectAttempts = 0;
+  if (reconnecting) log('BLE', 'automatic reconnect successful');
+}
+
 async function connectBluetooth() {
   if (!navigator.bluetooth) throw new Error(tr('noWebBluetooth'));
   stopDemo();
+  state.manualDisconnect = false;
+  if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
   setConnectionDetail('openingPicker');
   const device = await navigator.bluetooth.requestDevice({
     filters: [{ services: [SERVICE_UUID] }],
@@ -1249,22 +1398,35 @@ async function connectBluetooth() {
   device.addEventListener('gattserverdisconnected', onDisconnected);
   state.device = device;
   setConnectionDetail('connectingDevice', { name: device.name || tr('bleDevice') });
-  state.server = await device.gatt.connect();
-  const service = await state.server.getPrimaryService(SERVICE_UUID);
-  state.characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
-  await state.characteristic.startNotifications();
-  state.characteristic.addEventListener('characteristicvaluechanged', onNotification);
-  state.rxBuffer = '';
-  setConnectionStatus(true, 'bleConnected', 'connectedWith', { name: device.name || 'Ardumower' });
-  await initializeSunrayHandshake();
-  startPolling();
+  await establishGatt(device);
+}
+
+function scheduleReconnect(device) {
+  if (state.manualDisconnect || !device || state.reconnectTimer) return;
+  const delays = [1000, 2500, 5000, 10000, 15000];
+  const attempt = Math.min(state.reconnectAttempts, delays.length - 1);
+  const delay = delays[attempt];
+  state.reconnectAttempts += 1;
+  log('BLE', `reconnect attempt ${state.reconnectAttempts} in ${delay} ms`);
+  state.reconnectTimer = setTimeout(async () => {
+    state.reconnectTimer = null;
+    if (state.manualDisconnect || state.connected) return;
+    try {
+      await establishGatt(device, { reconnecting: true });
+    } catch (error) {
+      log('BLE reconnect', error.message);
+      if (state.reconnectAttempts < 8) scheduleReconnect(device);
+    }
+  }, delay);
 }
 
 function onDisconnected() {
+  const device = state.device;
+  const duration = state.bleConnectedAt ? Math.round((Date.now() - state.bleConnectedAt) / 1000) : 0;
   stopPolling();
   state.characteristic = null;
   state.server = null;
-  state.device = null;
+  state.sendBusy = false;
   state.encryptionEnabled = false;
   state.encryptionKey = null;
   stopDrive({ send: false });
@@ -1272,7 +1434,9 @@ function onDisconnected() {
   state.mowMotorOn = false;
   if (ui.mowArmCheckbox) ui.mowArmCheckbox.checked = false;
   setConnectionStatus(false, 'notConnected', 'bluetoothDisconnected');
-  log(tr('bleDisconnectedLog'));
+  log(tr('bleDisconnectedLog'), `after ${duration}s · TX=${state.bleTxCommands} · RX=${state.bleRxLines}`);
+  if (!state.manualDisconnect) scheduleReconnect(device);
+  else state.device = null;
 }
 
 async function disconnectBluetooth() {
@@ -1280,10 +1444,15 @@ async function disconnectBluetooth() {
     stopDemo();
     return;
   }
+  state.manualDisconnect = true;
+  if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
   if (state.device?.gatt?.connected) {
     await emergencyStop().catch(() => {});
     state.device.gatt.disconnect();
-  } else onDisconnected();
+  } else {
+    state.device = null;
+    onDisconnected();
+  }
 }
 
 function startDemo() {
@@ -2708,10 +2877,37 @@ function drawEditGuide(transform) {
   ui.robotLayer.appendChild(svgEl('line', { x1: selected.x, y1: selected.y, x2: mower.x, y2: mower.y, class: 'edit-distance-line' }));
 }
 
+function setMapDrawer(which, open) {
+  const isControl = which === 'control';
+  const panel = isControl ? ui.mapControlPanel : ui.mapToolsPanel;
+  const toggle = isControl ? ui.controlDrawerToggle : ui.toolsDrawerToggle;
+  if (!panel || !toggle) return;
+  panel.classList.toggle('collapsed', !open);
+  toggle.classList.toggle('active', open);
+  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) {
+    const otherPanel = isControl ? ui.mapToolsPanel : ui.mapControlPanel;
+    const otherToggle = isControl ? ui.toolsDrawerToggle : ui.controlDrawerToggle;
+    if (otherPanel) otherPanel.classList.add('collapsed');
+    if (otherToggle) { otherToggle.classList.remove('active'); otherToggle.setAttribute('aria-expanded', 'false'); }
+  }
+  if (isControl && !open) stopDrive();
+}
+
+function closeMapDrawers() {
+  if (ui.mapControlPanel) ui.mapControlPanel.classList.add('collapsed');
+  if (ui.mapToolsPanel) ui.mapToolsPanel.classList.add('collapsed');
+  [ui.controlDrawerToggle, ui.toolsDrawerToggle].forEach((toggle) => {
+    if (toggle) { toggle.classList.remove('active'); toggle.setAttribute('aria-expanded', 'false'); }
+  });
+  stopDrive();
+}
+
 function setTab(tab) {
-  if (state.currentTab === 'control' && tab !== 'control' && state.connected && !state.demo) {
+  if (state.currentTab === 'capture' && tab !== 'capture' && state.connected && !state.demo && (state.driveDirection || state.mowMotorOn)) {
     emergencyStop().catch((error) => log('STOP', error.message));
   }
+  if (tab !== 'capture') closeMapDrawers();
   if (tab !== 'capture') {
     if (state.autoCaptureRunning) stopAutoCapture();
     if (state.segmentRecording) cancelSegmentRecording();
@@ -2730,7 +2926,6 @@ function setTab(tab) {
   if (tab === 'capture') {
     requestAnimationFrame(() => renderMap());
   }
-  if (tab === 'control') refreshControlUi();
 }
 
 function setHelpStatus(element, text, stateClass) {
@@ -2854,10 +3049,20 @@ function bindEvents() {
   });
   ui.requestVersionBtn.addEventListener('click', () => sendSunray('AT+V', { forcePlain: true }).catch((e) => log(tr('versionError'), e.message)));
   ui.requestStateBtn.addEventListener('click', () => sendSunray('AT+S').catch((e) => log(tr('stateError'), e.message)));
-  ui.driveSpeedSlider.addEventListener('input', refreshControlUi);
+  ui.driveSpeedSlider.addEventListener('input', () => { state.view.driveSpeed = clampNumber(ui.driveSpeedSlider.value, 0.05, 0.35, 0.15); saveViewPreferences(); refreshControlUi(); });
   ui.mowPwmSlider.addEventListener('input', () => syncMowPwmInputs('slider'));
   ui.mowPwmNumber.addEventListener('input', () => syncMowPwmInputs('number'));
   ui.mowPwmApplyBtn.addEventListener('click', () => applyMowPwm().catch((e) => { ui.driveState.textContent = e.message; log('MOW PWM', e.message); }));
+  ui.controlDrawerToggle?.addEventListener('click', () => setMapDrawer('control', ui.mapControlPanel?.classList.contains('collapsed')));
+  ui.controlDrawerClose?.addEventListener('click', () => setMapDrawer('control', false));
+  ui.toolsDrawerToggle?.addEventListener('click', () => setMapDrawer('tools', ui.mapToolsPanel?.classList.contains('collapsed')));
+  ui.toolsDrawerClose?.addEventListener('click', () => setMapDrawer('tools', false));
+  document.querySelectorAll('[data-handedness]').forEach((button) => button.addEventListener('click', () => setHandedness(button.dataset.handedness)));
+  ui.driveJoystick?.addEventListener('pointerdown', beginJoystick);
+  ui.driveJoystick?.addEventListener('pointermove', (event) => updateJoystickFromPointer(event));
+  ['pointerup','pointercancel','lostpointercapture'].forEach((name) => ui.driveJoystick?.addEventListener(name, (event) => {
+    if (state.joystickPointerId === null || event.pointerId === state.joystickPointerId) stopDrive();
+  }));
   document.querySelectorAll('[data-drive]').forEach((button) => {
     button.addEventListener('pointerdown', (event) => {
       event.preventDefault();
