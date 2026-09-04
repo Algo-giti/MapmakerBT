@@ -1,10 +1,7 @@
 'use strict';
 // BLE-Tests gegen den Fake-Stack aus tests/fake-ble.js — kein Browser, kein echtes Geraet.
-//
-//   test(...)  = harte Zusicherung, laesst den Lauf bei Abweichung fehlschlagen.
-//   probe(...) = Beobachtung zu einem in CLAUDE.md dokumentierten Verdachtsfall.
-//                Probes schlagen nie fehl, sie protokollieren nur den Ist-Zustand,
-//                damit sichtbar wird, ob ein bekannter Mangel noch besteht.
+// Alle vier in CLAUDE.md dokumentierten App-Verdachtsfaelle (10, 11, 13 und die App-Reaktion
+// auf ESP32-Punkt 4) sind hier als harte Zusicherungen abgedeckt, nicht mehr als Beobachtung.
 
 const assert = require('assert');
 const { loadApp } = require('./app-harness.js');
@@ -34,8 +31,7 @@ async function connect(ctx, budgetMs = 2000) {
 
 // ---------------------------------------------------------------------------
 const cases = [];
-const test = (name, fn) => cases.push({ name, fn, kind: 'test' });
-const probe = (name, fn) => cases.push({ name, fn, kind: 'probe' });
+const test = (name, fn) => cases.push({ name, fn });
 
 // === 1. Normaler Verbindungsaufbau =========================================
 test('Verbindungsaufbau: Handshake, Firmware und Schluessel', async () => {
@@ -163,36 +159,88 @@ test('Abgerissene Notify-Kette: Teilpaket bleibt im rxBuffer, Rest im TX-Puffer 
   assert.ok(ctx.sim.pendingTxBytes() > bufferBefore, 'der Rest staut sich im ESP32-TX-Puffer');
 });
 
-probe('RX-Watchdog: reagiert die App auf einen stillen, aber "verbundenen" Link?', async () => {
+test('RX-Watchdog trennt einen stillen Link und laesst den Reconnect anlaufen', async () => {
   const ctx = await connect(setup());
-  const lastRx = ctx.t.state.lastBleRxAt;
-  ctx.sim.silent = true;
-  await ctx.clock.runFor(60000);
-  const silenceMs = ctx.clock.now() - ctx.t.state.lastBleRxAt;
-  assert.ok(silenceMs >= 59000, 'Fake muss wirklich still sein');
-  assert.ok(ctx.t.state.lastBleRxAt === lastRx);
-  assert.ok(ctx.sim.commands.filter((c) => c.startsWith('AT+S')).length > 20, 'App pollt weiter ins Leere');
-  if (ctx.t.state.connected) {
-    return `OFFEN: nach ${Math.round(silenceMs / 1000)} s ohne RX gilt der Link weiter als verbunden `
-      + '(state.lastBleRxAt wird gepflegt, aber nie ausgewertet) — CLAUDE.md App-Punkt 10.';
-  }
-  return 'BEHOBEN: die App erkennt den stillen Link und trennt/reconnectet.';
+  ctx.sim.silent = true;          // Firmware empfaengt weiter, antwortet aber nicht mehr
+  ctx.sim.connectFailures = 999;  // Reconnect soll die Zustandspruefung nicht ueberholen
+  await ctx.clock.runFor(12000);
+  assert.strictEqual(ctx.t.state.connected, false, 'stiller Link darf nicht "verbunden" bleiben');
+  assert.strictEqual(ctx.sim.gatt.connected, false, 'GATT wurde aktiv getrennt');
+  assert.ok(ctx.t.state.reconnectAttempts >= 1, 'Reconnect wurde angestossen');
+  assert.strictEqual(ctx.disconnectEvents(), 1, 'genau ein Disconnect-Durchlauf');
+  assert.ok(['bleLinkStalled', 'bleNoAnswer'].includes(ctx.t.state.connectionDetailKey), 'Grund wird gemeldet');
+  assert.ok(/RX watchdog|status requests unanswered/.test(ctx.logText()), 'Grund steht im Diagnoseprotokoll');
 });
 
-probe('Abgerissene Notify-Kette: bemerkt die App den wachsenden Rueckstau?', async () => {
+test('RX-Watchdog haelt eine Karenzzeit ein und schlaegt nicht sofort zu', async () => {
+  const ctx = await connect(setup());
+  ctx.sim.silent = true;
+  ctx.sim.connectFailures = 999;
+  await ctx.clock.runFor(6000);
+  assert.strictEqual(ctx.t.state.connected, true, 'kurze Stille loest noch nichts aus');
+  await ctx.clock.runFor(6000);
+  assert.strictEqual(ctx.t.state.connected, false, 'nach der Karenzzeit wird getrennt');
+});
+
+test('RX-Watchdog: nach dem Trennen faengt sich die App selbst wieder', async () => {
+  const ctx = await connect(setup());
+  ctx.sim.silent = true;
+  await ctx.clock.runFor(11000);
+  assert.ok(ctx.sim.stats.connectCalls >= 2, 'Reconnect wurde versucht');
+  ctx.sim.silent = false; // Gegenstelle antwortet wieder
+  await ctx.clock.runFor(20000);
+  assert.strictEqual(ctx.t.state.connected, true, 'App ist danach wieder verbunden');
+  assert.ok(ctx.t.state.telemetry.receivedAt > 0, 'Telemetrie laeuft weiter');
+});
+
+test('RX-Watchdog schlaegt bei laufendem Empfang nicht an', async () => {
+  const ctx = await connect(setup());
+  await ctx.clock.runFor(30000); // Polling wird beantwortet -> Dauerempfang
+  assert.strictEqual(ctx.t.state.connected, true);
+  assert.strictEqual(ctx.sim.stats.connectCalls, 1, 'kein unnoetiger Reconnect');
+});
+
+test('Unbeantwortete AT+S werden erkannt, auch wenn noch Daten eintrudeln', async () => {
+  const ctx = await connect(setup());
+  ctx.sim.connectFailures = 999; // Reconnect soll den Endzustand nicht ueberschreiben
+  ctx.sim.silent = true;         // keine Antworten mehr auf AT+S
+  // Bruchstuecke halten lastBleRxAt frisch: der reine Stille-Watchdog wuerde hier nie
+  // anschlagen — genau die Lage bei abgerissener Notify-Kette (CLAUDE.md ESP32-Punkt 4).
+  for (let i = 0; i < 14 && ctx.t.state.connected; i += 1) {
+    ctx.sim.inject('X\r\n');
+    await ctx.clock.runFor(1000);
+  }
+  assert.strictEqual(ctx.t.state.connected, false, 'ausbleibende Antworten muessen auffallen');
+  assert.strictEqual(ctx.t.state.connectionDetailKey, 'bleNoAnswer', 'eigener Fehlergrund, nicht nur "getrennt"');
+  assert.ok(ctx.logText().includes('status requests unanswered'));
+  assert.ok(ctx.t.state.reconnectAttempts >= 1, 'Reconnect laeuft an');
+});
+
+test('Abgerissene Notify-Kette endet nicht mehr im stillen "verbunden"', async () => {
   const ctx = setup({ notifyAck: false });
   await connect(ctx, 4200);
-  await ctx.clock.runFor(60000);
-  // Je Antwort verlaesst nur ein 15-Byte-Paket den ESP32; der Rest bleibt liegen. Die App bekommt
-  // dadurch stark verzoegerte, teils veraltete Zeilen — merkt davon aber nichts.
-  const backlog = ctx.sim.pendingTxBytes();
-  if (ctx.t.state.connected && backlog > 200) {
-    const polls = ctx.sim.commands.filter((c) => c.startsWith('AT+S')).length;
-    return `OFFEN: ${polls} AT+S gesendet, nur ${ctx.t.state.bleRxLines} Zeilen zurueck, `
-      + `${backlog} Byte Rueckstau im ESP32-TX-Puffer — die App pollt weiter und meldet "verbunden" `
-      + '— CLAUDE.md ESP32-Punkt 4 + App-Punkt 10.';
-  }
-  return `BEHOBEN: die App bemerkt die abgerissene Notify-Kette (Rueckstau ${backlog} Byte).`;
+  ctx.sim.connectFailures = 999;
+  await ctx.clock.runFor(30000);
+  assert.strictEqual(ctx.t.state.connected, false);
+  assert.ok(['bleNoAnswer', 'bleLinkStalled'].includes(ctx.t.state.connectionDetailKey));
+});
+
+test('Bleibt das Disconnect-Event aus, raeumt die App selbst auf', async () => {
+  const ctx = setup({ suppressDisconnectEvent: true });
+  await connect(ctx);
+  ctx.sim.silent = true;
+  ctx.sim.connectFailures = 999;
+  await ctx.clock.runFor(15000);
+  assert.strictEqual(ctx.sim.gatt.connected, false, 'GATT wurde getrennt');
+  assert.strictEqual(ctx.t.state.connected, false, 'Sicherheitsnetz greift ohne Event');
+  assert.strictEqual(ctx.disconnectEvents(), 1, 'trotzdem nur ein Aufraeum-Durchlauf');
+});
+
+test('Ein gesunder Link setzt den Zaehler der offenen Abfragen zurueck', async () => {
+  const ctx = await connect(setup());
+  await ctx.clock.runFor(20000);
+  assert.ok(ctx.t.state.pendingStateReplies <= 1, 'jede Abfrage wird beantwortet');
+  assert.strictEqual(ctx.t.state.connected, true);
 });
 
 // === 5. Mehrfache characteristicvaluechanged-Listener ======================
@@ -228,30 +276,35 @@ test('Reconnect auf demselben Characteristic-Objekt: keine Doppelverarbeitung', 
 });
 
 // === 6. Erschoepfter Reconnect =============================================
-test('Nach 8 erfolglosen Versuchen laufen keine Timer mehr', async () => {
+test('Nach 8 erfolglosen Versuchen endet der Reconnect in einem sauberen Zustand', async () => {
   const ctx = await connect(setup());
   ctx.sim.connectFailures = 999;
   ctx.sim.dropLink();
   await ctx.clock.runFor(120000); // Backoff 1+2,5+5+10+15+15+15+15 s = 78,5 s
-  assert.strictEqual(ctx.t.state.reconnectAttempts, 8);
-  assert.strictEqual(ctx.sim.stats.connectCalls, 9, '1 Erstverbindung + 8 Versuche');
+  assert.strictEqual(ctx.sim.stats.connectCalls, 9, '1 Erstverbindung + 8 Versuche, danach Schluss');
   assert.strictEqual(ctx.t.state.reconnectTimer, null);
   assert.strictEqual(ctx.clock.pendingTimers(), 0, 'keine verwaisten Timer');
   assert.strictEqual(ctx.t.state.connected, false);
+  assert.strictEqual(ctx.t.state.device, null, 'Geraet wird losgelassen');
+  assert.strictEqual(ctx.t.state.characteristic, null);
+  assert.strictEqual(ctx.t.state.connectionDetailKey, 'reconnectGaveUp', 'klare Ansage statt stiller Haenger');
+  assert.strictEqual(ctx.t.state.reconnectAttempts, 0, 'Zaehler ist fuer einen neuen Anlauf zurueckgesetzt');
+  assert.strictEqual(ctx.elements.get('connectBtn').disabled, false, 'manueller Neuversuch ist moeglich');
+  await ctx.clock.runFor(60000);
+  assert.strictEqual(ctx.sim.stats.connectCalls, 9, 'kein Endlos-Retry im Hintergrund');
 });
 
-probe('Endzustand nach erschoepftem Reconnect', async () => {
+test('Manueller Neuversuch nach dem Aufgeben funktioniert', async () => {
   const ctx = await connect(setup());
   ctx.sim.connectFailures = 999;
   ctx.sim.dropLink();
   await ctx.clock.runFor(120000);
-  const deadDevice = Boolean(ctx.t.state.device) && !ctx.t.state.connected && !ctx.t.state.manualDisconnect;
-  const detail = ctx.t.state.connectionDetailKey;
-  if (deadDevice && detail === 'bluetoothDisconnected') {
-    return 'OFFEN: state.device bleibt gesetzt, der Status haengt auf "bluetoothDisconnected" — der Nutzer '
-      + 'erfaehrt nicht, dass die App aufgegeben hat — CLAUDE.md App-Punkt 11.';
-  }
-  return `BEHOBEN: Endzustand device=${ctx.t.state.device ? 'gesetzt' : 'null'}, detail=${detail}.`;
+  assert.strictEqual(ctx.t.state.device, null);
+  ctx.sim.connectFailures = 0;
+  await connect(ctx, 3000); // entspricht dem Tippen auf "Gerät suchen & verbinden"
+  assert.strictEqual(ctx.t.state.connected, true);
+  assert.strictEqual(ctx.t.state.reconnectAttempts, 0);
+  assert.ok(ctx.t.state.device, 'Geraet ist wieder gebunden');
 });
 
 // === 7. rxBuffer ===========================================================
@@ -265,34 +318,65 @@ test('rxBuffer erholt sich nach Muell, sobald ein \\n kommt', async () => {
   assert.strictEqual(ctx.t.state.telemetry.x, 3.25);
 });
 
-probe('rxBuffer ohne Zeilenende waechst unbegrenzt', async () => {
+test('rxBuffer ist gedeckelt: Muell ohne Zeilenende wird verworfen', async () => {
+  const ctx = await connect(setup());
+  ctx.t.stopPolling();
+  ctx.sim.silent = true;
+  ctx.sim.inject('A'.repeat(200000));
+  await ctx.clock.runFor(50);
+  assert.ok(ctx.t.state.rxBuffer.length <= 4096, `rxBuffer blieb bei ${ctx.t.state.rxBuffer.length} Zeichen`);
+  assert.ok(ctx.logText().includes('RX buffer overflow'), 'Ueberlauf wird als Protokollfehler protokolliert');
+});
+
+test('Nach dem Ueberlauf wird der Datenstrom wieder korrekt ausgewertet', async () => {
+  const ctx = await connect(setup());
+  ctx.t.stopPolling();
+  ctx.sim.silent = true;
+  ctx.sim.telemetry.x = 7.5;
+  ctx.sim.inject('B'.repeat(9000));           // ein Ueberlauf
+  ctx.sim.inject(`\n${ctx.sim.stateLine()}\r\n`);
+  await ctx.clock.runFor(50);
+  assert.strictEqual(ctx.t.state.telemetry.x, 7.5, 'die naechste gueltige Zeile kommt wieder an');
+  assert.strictEqual(ctx.t.state.rxBuffer, '');
+  assert.strictEqual(ctx.t.state.connected, true, 'ein einzelner Ueberlauf trennt nicht');
+});
+
+test('Lange, aber gueltige Zeilen werden nicht abgeschnitten', async () => {
+  const ctx = await connect(setup());
+  ctx.t.stopPolling();
+  const before = ctx.t.state.bleRxLines;
+  ctx.sim.telemetry.x = 1.25;
+  // Deutlich laenger als jede echte Sunray-Zeile, aber unterhalb des Limits.
+  ctx.sim.inject(`${'#'.repeat(3000)}\n${ctx.sim.stateLine()}\r\n`);
+  await ctx.clock.runFor(50);
+  assert.strictEqual(ctx.t.state.bleRxLines - before, 2, 'beide Zeilen werden verarbeitet');
+  assert.strictEqual(ctx.t.state.telemetry.x, 1.25);
+  assert.ok(!ctx.logText().includes('RX buffer overflow'), 'kein Fehlalarm');
+});
+
+test('Wiederholter Ueberlauf gilt als kaputter Datenstrom und trennt die Verbindung', async () => {
   const ctx = await connect(setup());
   ctx.sim.silent = true;
-  const bytes = 200000;
-  ctx.sim.inject('A'.repeat(bytes));
-  await ctx.clock.runFor(50);
-  if (ctx.t.state.rxBuffer.length >= bytes) {
-    return `OFFEN: ${ctx.t.state.rxBuffer.length} Zeichen ohne \\n werden ungebremst gepuffert, `
-      + 'kein Limit und keine Warnung — CLAUDE.md App-Punkt 13.';
-  }
-  return `BEHOBEN: rxBuffer ist auf ${ctx.t.state.rxBuffer.length} Zeichen begrenzt.`;
+  ctx.sim.connectFailures = 999;
+  for (let i = 0; i < 3; i += 1) ctx.sim.inject('C'.repeat(9000));
+  await ctx.clock.runFor(100);
+  assert.strictEqual(ctx.t.state.connected, false);
+  assert.strictEqual(ctx.t.state.connectionDetailKey, 'bleProtocolError');
+  assert.ok(ctx.t.state.reconnectAttempts >= 1, 'Reconnect laeuft an');
 });
 
 // ---------------------------------------------------------------------------
 (async () => {
   let failed = 0;
-  const findings = [];
   for (const c of cases) {
     try {
-      const verdict = await c.fn();
-      if (c.kind === 'probe') findings.push(`  · ${c.name}\n    ${verdict}`);
+      await c.fn();
     } catch (error) {
       failed += 1;
-      console.error(`FAIL [${c.kind}] ${c.name}\n     ${error.message}`);
+      console.error(`FAIL ${c.name}\n     ${error.message}`);
       if (process.env.BLE_TEST_STACK) console.error(error.stack);
     }
   }
-  if (findings.length) console.log(`\nBefunde zu den dokumentierten Verdachtsfaellen:\n${findings.join('\n')}\n`);
   if (failed) { console.error(`ble tests: ${failed}/${cases.length} FEHLGESCHLAGEN`); process.exit(1); }
   console.log(`ble tests: OK (${cases.length} Faelle)`);
 })();

@@ -5,6 +5,19 @@ const CHARACTERISTIC_UUID = '0000ffe1-0000-1000-8000-00805f9b34fb';
 const BLE_CHUNK_SIZE = 15; // Sunray ESP32 BLE_MTU=20; payload <= 15 bytes
 const BLE_INTER_CHUNK_DELAY_MS = 12;
 const DRIVE_HEARTBEAT_MS = 650; // Sunray manual drive command times out after 1000 ms
+// RX-Watchdog: Sunray antwortet auf jedes AT+S. Bleiben drei Abfragen in Folge unbeantwortet,
+// gilt der Link als tot, auch wenn Chrome ihn weiter als "connected" fuehrt.
+const BLE_RX_TIMEOUT_MS = 8000;
+const BLE_RX_CHECK_INTERVAL_MS = 1000;
+const BLE_MAX_RECONNECT_ATTEMPTS = 8;
+// Eine Sunray-Zeile ist rund 120 Zeichen lang; 4 KB lassen genug Luft fuer stark
+// zerstueckelte Antworten und begrenzen trotzdem Muell ohne Zeilenende.
+const BLE_RX_BUFFER_LIMIT = 4096;
+const BLE_RX_OVERFLOW_LIMIT = 3;
+// Sunray beantwortet jedes AT+S. Bleiben vier Abfragen in Folge ohne verwertbare Antwort
+// (rund 8 s), ist die Antwortkette gestoert — auch wenn noch Bruchstuecke eintrudeln und
+// der reine Stille-Watchdog deshalb nicht anschlaegt.
+const BLE_UNANSWERED_POLL_LIMIT = 4;
 const DRIVE_POINTER_MIN_INTERVAL_MS = 160;
 const DB_NAME = 'ardumower-bt-mapper';
 const DB_VERSION = 1;
@@ -16,6 +29,10 @@ const MAX_MAPS = 10;
 
 const I18N = {
   de: {
+    bleLinkStalled: 'Keine Daten mehr vom Mäher – Verbindung wird neu aufgebaut.',
+    reconnectGaveUp: 'Verbindung fehlgeschlagen – bitte erneut verbinden.',
+    bleProtocolError: 'Gestörte Daten vom Mäher – Verbindung wird neu aufgebaut.',
+    bleNoAnswer: 'Der Mäher antwortet nicht mehr – Verbindung wird neu aufgebaut.',
     menu: 'Menü', backToMap: 'Zurück zur Karte', waypoints: 'Wegpunkte', waypoint: 'Wegpunkt',
     rtkFix: 'Fix', rtkFloat: 'Float', rtkNone: 'No Fix', rtkNoData: 'Kein GPS',
     movePoint: 'Verschieben', movePointHint: 'Tippen: Punkt springt auf die Mäherposition', holdToCapture: 'Zum Aufnehmen gedrückt halten',
@@ -145,6 +162,10 @@ const I18N = {
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   },
   en: {
+    bleLinkStalled: 'No more data from the mower – reconnecting.',
+    reconnectGaveUp: 'Connection failed – please reconnect.',
+    bleProtocolError: 'Corrupted data from the mower – reconnecting.',
+    bleNoAnswer: 'The mower stopped answering – reconnecting.',
     menu: 'Menu', backToMap: 'Back to map', waypoints: 'Waypoints', waypoint: 'Waypoint',
     rtkFix: 'Fix', rtkFloat: 'Float', rtkNone: 'No Fix', rtkNoData: 'No GPS',
     movePoint: 'Move', movePointHint: 'Tap: the point jumps to the mower position', holdToCapture: 'Hold to capture',
@@ -356,6 +377,10 @@ const state = {
   firmware: null,
   rxBuffer: '',
   pollTimer: null,
+  rxWatchdogTimer: null,
+  disconnectReasonKey: null,
+  rxOverflows: 0,
+  pendingStateReplies: 0,
   demoTimer: null,
   sendBusy: false,
   manualDisconnect: false,
@@ -1069,6 +1094,7 @@ function handleLine(rawLine) {
     const parsed = SunrayProtocol.parseVersion(line);
     if (!parsed) return;
     state.firmware = parsed;
+    state.pendingStateReplies = 0;
     state.encryptionEnabled = parsed.encryptionEnabled;
     state.encryptionChallenge = parsed.challenge;
     if (parsed.encryptionEnabled) {
@@ -1094,6 +1120,7 @@ function handleLine(rawLine) {
   if (line.startsWith('S,')) {
     const parsed = SunrayProtocol.parseState(line);
     if (!parsed) return;
+    state.pendingStateReplies = 0;
     state.telemetry = {
       x: parsed.x,
       y: parsed.y,
@@ -1114,6 +1141,18 @@ function handleLine(rawLine) {
 function onNotification(event) {
   const text = new TextDecoder().decode(event.target.value);
   state.rxBuffer += text;
+  if (state.rxBuffer.length > BLE_RX_BUFFER_LIMIT) {
+    // Daten ohne Zeilenende liessen den Puffer frueher unbegrenzt wachsen. Der Rest wird
+    // verworfen; die Auswertung faengt sich beim naechsten \n von selbst wieder.
+    state.rxOverflows += 1;
+    log('BLE', `RX buffer overflow #${state.rxOverflows}: ${state.rxBuffer.length} bytes without a line break, discarding`);
+    state.rxBuffer = '';
+    if (state.rxOverflows >= BLE_RX_OVERFLOW_LIMIT) {
+      // Wiederholter Ueberlauf heisst: der Datenstrom ist kaputt, nicht nur einmal gestoert.
+      dropStaleLink('bleProtocolError');
+    }
+    return;
+  }
   const lines = state.rxBuffer.split(/\r?\n/);
   state.rxBuffer = lines.pop() || '';
   lines.forEach(handleLine);
@@ -1202,8 +1241,11 @@ function startPolling() {
     if (!state.connected || !state.characteristic) return;
     // Do not queue status requests directly on top of manual-drive traffic.
     if (state.sendBusy || (performance.now() - state.lastDriveSentAt < 220)) return;
-    sendSunray('AT+S', { skipIfBusy: true }).catch((error) => log(tr('stateError'), error.message));
+    sendSunray('AT+S', { skipIfBusy: true })
+      .then((sent) => { if (sent !== false) state.pendingStateReplies += 1; })
+      .catch((error) => log(tr('stateError'), error.message));
   };
+  state.pendingStateReplies = 0;
   poll();
   state.pollTimer = setInterval(poll, 2000);
 }
@@ -1213,6 +1255,57 @@ function stopPolling() {
   state.pollTimer = null;
 }
 
+// --- RX-Watchdog ----------------------------------------------------------
+// Ein GATT-Link kann "connected" melden und trotzdem nichts mehr liefern (ESP32-Reboot,
+// abgerissene Notify-Kette, Supervision-Timeout, den Chrome noch nicht gemeldet hat).
+// state.lastBleRxAt wurde bisher nur gepflegt, aber nie ausgewertet.
+
+function startRxWatchdog() {
+  stopRxWatchdog();
+  state.lastBleRxAt = Date.now();
+  state.rxWatchdogTimer = setInterval(checkRxWatchdog, BLE_RX_CHECK_INTERVAL_MS);
+}
+
+function stopRxWatchdog() {
+  if (state.rxWatchdogTimer) clearInterval(state.rxWatchdogTimer);
+  state.rxWatchdogTimer = null;
+}
+
+function checkRxWatchdog() {
+  if (!state.connected || state.demo || !state.characteristic) return;
+  if (state.pendingStateReplies >= BLE_UNANSWERED_POLL_LIMIT) {
+    log('BLE', `${state.pendingStateReplies} status requests unanswered, dropping link`);
+    dropStaleLink('bleNoAnswer');
+    return;
+  }
+  const silenceMs = Date.now() - state.lastBleRxAt;
+  if (silenceMs < BLE_RX_TIMEOUT_MS) return;
+  log('BLE', `RX watchdog: ${Math.round(silenceMs / 1000)}s without data, dropping link`);
+  dropStaleLink('bleLinkStalled');
+}
+
+/**
+ * Trennt einen Link, der faktisch tot ist. Der Abbau laeuft ueber denselben Pfad wie ein
+ * echter Funkabriss: gatt.disconnect() feuert gattserverdisconnected -> onDisconnected().
+ * Nur wenn kein GATT mehr haengt, wird onDisconnected() direkt aufgerufen.
+ */
+function dropStaleLink(reasonKey) {
+  stopRxWatchdog();
+  stopPolling();
+  state.disconnectReasonKey = reasonKey;
+  const device = state.device;
+  if (device?.gatt?.connected) {
+    try { device.gatt.disconnect(); } catch (error) { log('BLE', error.message); }
+    // Sicherheitsnetz: bleibt gattserverdisconnected wider Erwarten aus, raeumen wir selbst auf.
+    // Die Bedingung schliesst aus, dass ein inzwischen gelungener Reconnect getroffen wird.
+    setTimeout(() => {
+      if (state.connected && state.device === device && !device.gatt?.connected) onDisconnected();
+    }, 500);
+    return;
+  }
+  onDisconnected();
+}
+
 async function establishGatt(device, { reconnecting = false } = {}) {
   state.server = await device.gatt.connect();
   const service = await state.server.getPrimaryService(SERVICE_UUID);
@@ -1220,6 +1313,8 @@ async function establishGatt(device, { reconnecting = false } = {}) {
   await state.characteristic.startNotifications();
   state.characteristic.addEventListener('characteristicvaluechanged', onNotification);
   state.rxBuffer = '';
+  state.rxOverflows = 0;
+  state.pendingStateReplies = 0;
   state.sendBusy = false;
   state.bleConnectedAt = Date.now();
   state.bleTxCommands = 0;
@@ -1230,6 +1325,7 @@ async function establishGatt(device, { reconnecting = false } = {}) {
   log('BLE', `GATT ready · write=${Boolean(props.write)} · writeNR=${Boolean(props.writeWithoutResponse)} · mode=${props.write ? 'with-response' : 'without-response'}`);
   await initializeSunrayHandshake();
   startPolling();
+  startRxWatchdog();
   state.reconnectAttempts = 0;
   if (reconnecting) log('BLE', 'automatic reconnect successful');
 }
@@ -1239,6 +1335,7 @@ async function connectBluetooth() {
   if (!adapter) throw new Error(tr('noWebBluetooth'));
   stopDemo();
   state.manualDisconnect = false;
+  state.reconnectAttempts = 0;
   if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
   setConnectionDetail('openingPicker');
   const device = await adapter.requestDevice({
@@ -1253,6 +1350,7 @@ async function connectBluetooth() {
 
 function scheduleReconnect(device) {
   if (state.manualDisconnect || !device || state.reconnectTimer) return;
+  if (state.reconnectAttempts >= BLE_MAX_RECONNECT_ATTEMPTS) { giveUpReconnect(device); return; }
   const delays = [1000, 2500, 5000, 10000, 15000];
   const attempt = Math.min(state.reconnectAttempts, delays.length - 1);
   const delay = delays[attempt];
@@ -1265,22 +1363,46 @@ function scheduleReconnect(device) {
       await establishGatt(device, { reconnecting: true });
     } catch (error) {
       log('BLE reconnect', error.message);
-      if (state.reconnectAttempts < 8) scheduleReconnect(device);
+      scheduleReconnect(device);
     }
   }, delay);
+}
+
+/**
+ * Endzustand nach erschoepften Reconnect-Versuchen: alles loesen, klar melden und die
+ * Wiederverbindung dem Nutzer ueberlassen. Vorher blieb state.device gesetzt und die
+ * Oberflaeche haengte still auf "Bluetooth getrennt".
+ */
+function giveUpReconnect(device) {
+  if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
+  stopPolling();
+  stopRxWatchdog();
+  const target = device || state.device;
+  if (target?.removeEventListener) {
+    try { target.removeEventListener('gattserverdisconnected', onDisconnected); } catch (error) { log('BLE', error.message); }
+  }
+  state.device = null;
+  state.server = null;
+  state.characteristic = null;
+  state.reconnectAttempts = 0;
+  log('BLE', `giving up after ${BLE_MAX_RECONNECT_ATTEMPTS} reconnect attempts`);
+  setConnectionStatus(false, 'notConnected', 'reconnectGaveUp');
 }
 
 function onDisconnected() {
   const device = state.device;
   const duration = state.bleConnectedAt ? Math.round((Date.now() - state.bleConnectedAt) / 1000) : 0;
+  const reasonKey = state.disconnectReasonKey || 'bluetoothDisconnected';
+  state.disconnectReasonKey = null;
   stopPolling();
+  stopRxWatchdog();
   state.characteristic = null;
   state.server = null;
   state.sendBusy = false;
   state.encryptionEnabled = false;
   state.encryptionKey = null;
   stopDrive({ send: false });
-  setConnectionStatus(false, 'notConnected', 'bluetoothDisconnected');
+  setConnectionStatus(false, 'notConnected', reasonKey);
   log(tr('bleDisconnectedLog'), `after ${duration}s · TX=${state.bleTxCommands} · RX=${state.bleRxLines}`);
   if (!state.manualDisconnect) scheduleReconnect(device);
   else state.device = null;
@@ -2803,8 +2925,11 @@ function bindEvents() {
   });
 
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { stopDrive(); cancelCaptureHold(); releaseWakeLock(); }
-    else if (state.autoCaptureRunning) requestWakeLockIfNeeded();
+    if (document.hidden) { stopDrive(); cancelCaptureHold(); releaseWakeLock(); return; }
+    // Chrome drosselt Timer im Hintergrund: nach der Rueckkehr braucht der Link eine
+    // Karenzzeit, sonst meldet der RX-Watchdog eine Stille, die nur vom Throttling kam.
+    if (state.connected) state.lastBleRxAt = Date.now();
+    if (state.autoCaptureRunning) requestWakeLockIfNeeded();
   });
   window.addEventListener('blur', () => { stopDrive(); cancelCaptureHold(); });
   window.addEventListener('resize', () => renderMap());

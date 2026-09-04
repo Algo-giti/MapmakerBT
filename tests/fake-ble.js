@@ -131,6 +131,8 @@ function createFakeBluetooth(options = {}) {
     connectFailures: options.connectFailures ?? 0,
     /** Antwortet die Firmware ueberhaupt auf AT+V? */
     answerVersion: options.answerVersion !== false,
+    /** true = der Link faellt weg, ohne dass gattserverdisconnected feuert (Browser-Sonderfall). */
+    suppressDisconnectEvent: Boolean(options.suppressDisconnectEvent),
     telemetry: { battery: 28.6, x: 15.15, y: -10.24, delta: 2.02, solution: 2, accuracy: 0.02, sats: 49, satsDgps: 48 },
 
     // --- Beobachtung --------------------------------------------------------
@@ -249,7 +251,7 @@ function createFakeBluetooth(options = {}) {
     sim.stats.disconnects += 1;
     sim._txBuf = '';
     sim._notifyBusy = false;
-    clock.globals.setTimeout(() => device._fireDisconnected(), 0);
+    if (!sim.suppressDisconnectEvent) clock.globals.setTimeout(() => device._fireDisconnected(), 0);
   };
 
   /** Plotzlicher Linkverlust (Supervision-Timeout, ESP32-Reboot, ...). */
