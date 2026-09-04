@@ -101,6 +101,28 @@ test('Die verschachtelte Einstellungsebene erzeugt keinen zweiten Scrollcontaine
   }
 });
 
+test('Die Abschnittsstapel koennen ihre Kinder nicht zusammendruecken', () => {
+  // In einem Spalten-Flexcontainer schrumpfen Kinder (flex-shrink: 1) auf die Containerhoehe,
+  // in einem Grid koennen Zeilen von der Containerhoehe abhaengen. Beides fuehrt dazu, dass ein
+  // aufgeklappter Abschnitt abgeschnitten wird, statt den Scrollcontainer zu verlaengern.
+  for (const selector of ['.menu-scroll', '.menu-subsections', '.menu-body']) {
+    const display = resolve(selector, 'display').value;
+    assert.strictEqual(display, 'block', `${selector} muss Blocklayout nutzen, ist "${display}"`);
+  }
+});
+
+test('Aufgeklappte Abschnitte werden nicht beschnitten', () => {
+  // overflow: hidden am <details> schneidet aufgeklappten Inhalt ab, sobald die Hoehe aus
+  // irgendeinem Grund nicht mitwaechst — der Inhalt verschwindet dann hinter dem Folgeabschnitt.
+  for (const selector of ['.menu-section', '.menu-subsection']) {
+    const overflow = resolve(selector, 'overflow').value;
+    assert.ok(overflow === null || overflow === 'visible', `${selector} darf nicht clippen (overflow: ${overflow})`);
+    assert.strictEqual(resolve(`${selector}[open]`, 'overflow').value, 'visible',
+      `${selector}[open] muss overflow: visible absichern`);
+    assert.strictEqual(resolve(`${selector}[open]`, 'height').value, 'auto');
+  }
+});
+
 test('Struktur: der Scrollcontainer ist direktes Kind der Menueseite', () => {
   const page = html.slice(html.indexOf('<section class="menu-page"'), html.indexOf('</section>', html.indexOf('<section class="menu-page"')));
   const head = page.slice(0, page.indexOf('<div class="menu-scroll"'));

@@ -1,5 +1,8 @@
 'use strict';
 
+// Muss zur Version in sw.js passen (tests/sw-test.js prueft das) und steht beim Start
+// im Diagnoseprotokoll — so laesst sich auf dem Geraet ablesen, welcher Stand laeuft.
+const APP_VERSION = 'v19';
 const SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
 const CHARACTERISTIC_UUID = '0000ffe1-0000-1000-8000-00805f9b34fb';
 const BLE_CHUNK_SIZE = 15; // Sunray ESP32 BLE_MTU=20; payload <= 15 bytes
@@ -3120,7 +3123,7 @@ async function init() {
     state.offlineCacheReady = false;
     updateHelpSystemStatus();
   }
-  log(tr('appStarted'));
+  log(tr('appStarted'), APP_VERSION);
 }
 
 init().catch((error) => {

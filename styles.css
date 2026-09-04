@@ -2368,14 +2368,16 @@ body.menu-open .app-frame { visibility: hidden; }
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   padding: 10px 10px calc(env(safe-area-inset-bottom, 0px) + 28px);
-  display: grid;
-  gap: 8px;
+  /* Bewusst Blocklayout: ein Grid- oder Flex-Stapel kann seine Kinder auf die
+     Containerhoehe zusammenstauchen, ein aufgeklappter Abschnitt wird dann
+     abgeschnitten statt den Container zu verlaengern. */
+  display: block;
 }
+.menu-scroll > * + * { margin-top: 8px; }
 .menu-section {
   border: 1px solid var(--shell-border-soft);
   border-radius: 12px;
   background: var(--shell-panel-2);
-  overflow: hidden;
 }
 .menu-section > summary {
   list-style: none;
@@ -2394,7 +2396,11 @@ body.menu-open .app-frame { visibility: hidden; }
 .menu-section > summary::-webkit-details-marker { display: none; }
 .menu-section > summary::after { content: "▾"; margin-left: auto; opacity: .6; }
 .menu-section[open] > summary::after { content: "▴"; }
-.menu-body { padding: 0 10px 12px; display: grid; gap: 8px; }
+.menu-body { padding: 0 10px 12px; display: block; }
+.menu-body > * + * { margin-top: 8px; }
+/* Sicherheitsnetz: aufgeklappter Inhalt bestimmt die Hoehe seines Abschnitts, nie umgekehrt. */
+.menu-section[open], .menu-subsection[open] { height: auto; min-height: 0; overflow: visible; }
+.menu-section[open] > .menu-body, .menu-subsection[open] > .menu-body { height: auto; overflow: visible; }
 .menu-body .card { margin: 0; }
 .menu-body .page-heading { display: none; }
 
@@ -2591,12 +2597,12 @@ body.menu-open .app-frame { visibility: hidden; }
 .mode-option.active { border-color: var(--shell-ok-border); background: var(--shell-ok-bg); color: var(--shell-ok); }
 
 /* --- Menue: Unterabschnitte und Themenwahl ------------------------------- */
-.menu-subsections { display: grid; gap: 8px; }
+.menu-subsections { display: block; }
+.menu-subsections > * + * { margin-top: 8px; }
 .menu-subsection {
   border: 1px solid var(--shell-border-soft);
   border-radius: 10px;
   background: var(--shell-panel-2);
-  overflow: hidden;
 }
 .menu-subsection > summary {
   list-style: none;
