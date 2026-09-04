@@ -386,6 +386,8 @@ const state = {
   // Nutzer-Zoom/-Verschiebung der Karte; solange custom=false folgt die Ansicht dem Auto-Fit.
   viewport: { zoom: 1, dx: 0, dy: 0, custom: false, base: null },
   gesture: null,
+  // Der viewBox der Karte folgt der tatsaechlichen Flaeche in CSS-Pixeln (siehe updateViewBox).
+  viewBox: { w: 1000, h: 680 },
   hitRadiusUnits: 26,
   captureHold: null,
   autoCaptureRunning: false,
@@ -2069,14 +2071,33 @@ function svgEl(name, attrs = {}) {
   return el;
 }
 
+const MAP_PADDING = 24; // Rand um die Karte in viewBox-Einheiten (= CSS-Pixel)
 const MIN_USER_ZOOM = 0.6;
 const MAX_USER_ZOOM = 14;
 
-/** Pixel-Geometrie des SVG (viewBox 1000x680, preserveAspectRatio="xMidYMid meet"). */
+/**
+ * Der viewBox war fest auf 1000x680. Auf einem hochkant gehaltenen Telefon passt dieses
+ * Seitenverhaeltnis nicht zur Kartenflaeche, und "meet" legt oben und unten breite leere
+ * Streifen an — die Karte nutzte nur ein Band in der Mitte. Deshalb folgt der viewBox jetzt
+ * der gemessenen Flaeche: eine viewBox-Einheit ist genau ein CSS-Pixel.
+ */
+function updateViewBox() {
+  const rect = ui.mapSvg.getBoundingClientRect?.() || { width: 1000, height: 680 };
+  const w = Math.max(200, Math.round(rect.width || 1000));
+  const h = Math.max(200, Math.round(rect.height || 680));
+  if (w === state.viewBox.w && h === state.viewBox.h) return state.viewBox;
+  state.viewBox = { w, h };
+  ui.mapSvg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  // Eine eingefrorene Basisansicht passt nicht mehr zur neuen Flaeche.
+  if (state.viewport.custom) state.viewport.base = null;
+  return state.viewBox;
+}
+
 function svgMetrics() {
-  const rect = ui.mapSvg.getBoundingClientRect?.() || { left: 0, top: 0, width: 1000, height: 680 };
-  const scale = Math.min((rect.width || 1000) / 1000, (rect.height || 680) / 680) || 1;
-  return { rect, scale, offX: ((rect.width || 1000) - 1000 * scale) / 2, offY: ((rect.height || 680) - 680 * scale) / 2 };
+  const rect = ui.mapSvg.getBoundingClientRect?.() || { left: 0, top: 0, width: state.viewBox.w, height: state.viewBox.h };
+  const { w, h } = state.viewBox;
+  const scale = Math.min((rect.width || w) / w, (rect.height || h) / h) || 1;
+  return { rect, scale, offX: ((rect.width || w) - w * scale) / 2, offY: ((rect.height || h) - h * scale) / 2 };
 }
 
 function pointerToViewBox(event) {
@@ -2093,9 +2114,14 @@ function resetViewport({ render = true } = {}) {
 /** Verhindert, dass die Karte aus dem Bild geschoben wird. */
 function clampViewport() {
   const vp = state.viewport;
+  const { w, h } = state.viewBox;
+  const pad = MAP_PADDING;
+  // Mindestens ein Fuenftel der Flaeche muss Karte zeigen, sonst verirrt man sich im Leeren.
+  const keepX = w * 0.2;
+  const keepY = h * 0.2;
   vp.zoom = clampNumber(vp.zoom, MIN_USER_ZOOM, MAX_USER_ZOOM, 1);
-  vp.dx = clampNumber(vp.dx, 200 - 950 * vp.zoom, 800 - 50 * vp.zoom, 0);
-  vp.dy = clampNumber(vp.dy, 140 - 630 * vp.zoom, 540 - 50 * vp.zoom, 0);
+  vp.dx = clampNumber(vp.dx, keepX - (w - pad) * vp.zoom, (w - keepX) - pad * vp.zoom, 0);
+  vp.dy = clampNumber(vp.dy, keepY - (h - pad) * vp.zoom, (h - keepY) - pad * vp.zoom, 0);
 }
 
 /** Auto-Fit, solange der Nutzer nicht selbst gezoomt hat; danach eingefrorene Basis + Nutzer-Zoom. */
@@ -2120,7 +2146,16 @@ function beginCustomViewport() {
 }
 
 function computeTransform(points) {
-  if (!points.length) return { scale: 80, ox: 500, oy: 340, minX: -5, maxX: 5, minY: -3.5, maxY: 3.5 };
+  const { w, h } = state.viewBox;
+  const inner = { w: w - 2 * MAP_PADDING, h: h - 2 * MAP_PADDING };
+  if (!points.length) {
+    // Leere Karte: rund 10 m Breite zeigen, Rest ergibt sich aus dem Seitenverhaeltnis.
+    const scale = inner.w / 10;
+    return {
+      scale, ox: w / 2, oy: h / 2,
+      minX: -w / 2 / scale, maxX: w / 2 / scale, minY: -h / 2 / scale, maxY: h / 2 / scale,
+    };
+  }
   let minX = Math.min(...points.map((p) => p.x));
   let maxX = Math.max(...points.map((p) => p.x));
   let minY = Math.min(...points.map((p) => p.y));
@@ -2129,11 +2164,9 @@ function computeTransform(points) {
   if (maxY - minY < 2) { minY -= 1; maxY += 1; }
   const pad = Math.max(maxX - minX, maxY - minY) * 0.12 + 0.5;
   minX -= pad; maxX += pad; minY -= pad; maxY += pad;
-  const sx = 900 / (maxX - minX);
-  const sy = 580 / (maxY - minY);
-  const scale = Math.min(sx, sy);
-  const ox = 50 - minX * scale + (900 - (maxX - minX) * scale) / 2;
-  const oy = 50 + maxY * scale + (580 - (maxY - minY) * scale) / 2;
+  const scale = Math.min(inner.w / (maxX - minX), inner.h / (maxY - minY));
+  const ox = MAP_PADDING - minX * scale + (inner.w - (maxX - minX) * scale) / 2;
+  const oy = MAP_PADDING + maxY * scale + (inner.h - (maxY - minY) * scale) / 2;
   return { scale, ox, oy, minX, maxX, minY, maxY };
 }
 
@@ -2328,6 +2361,7 @@ function recentArray() {
 }
 
 function renderMap() {
+  updateViewBox();
   ui.shapeLayer.innerHTML = '';
   ui.robotLayer.innerHTML = '';
   const transform = activeTransform();
