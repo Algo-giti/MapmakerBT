@@ -24,8 +24,11 @@ self.addEventListener('install', (event) => {
       // cache: 'reload' umgeht den HTTP-Cache des Browsers, sonst landet beim Neuaufbau
       // womoeglich wieder eine alte Datei im Service-Worker-Cache.
       .then((cache) => cache.addAll(ASSETS.map((url) => new Request(url, { cache: 'reload' }))))
-      .then(() => self.skipWaiting())
   );
+  // Kein skipWaiting() hier: die neue Fassung bleibt im Wartestand, bis der Nutzer den
+  // Hinweis auf der Hauptseite antippt. Sonst wuerde die Seite mitten in der Aufnahme
+  // unter dem Nutzer weg neu laden — oder schlimmer: die Seite laeuft mit altem Code
+  // weiter, waehrend der neue Worker schon neue Dateien ausliefert.
 });
 
 self.addEventListener('activate', (event) => {
@@ -33,6 +36,10 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'skipWaiting') self.skipWaiting();
 });
 
 self.addEventListener('fetch', (event) => {

@@ -16,6 +16,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'toggleAutoCapture', 'startAutoCapture', 'stopAutoCapture', 'refreshDeleteButton', 'bindAccordion',
   'setTheme', 'applyTheme', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine', 'lockIcon',
   'askConfirm', 'confirmDialogRespond', 'showNotice', 'reportError', 'reportBleError',
+  'showUpdateBar', 'applyUpdate', 'offerToCloseContour',
   'deleteSelectedPoint', 'handleMapTap', 'applyPointSelection', 'clearPointSelection', 'refreshCaptureState',
   'renderMap', 'resetViewport', 'clampViewport', 'activeTransform', 'toScreen', 'svgMetrics', 'beginCustomViewport',
   'updateRtkBadge', 'setMenuOpen', 'onMapPointerDown', 'onMapPointerMove', 'onMapPointerUp', 'beginCaptureHold', 'cancelCaptureHold', 'driveSpeedLimits', 'joystickVectorFromPointer', 'makeMap', 'normalizeMap',
@@ -535,6 +536,29 @@ test('Gesperrte und offene Karten sind am Schloss klar unterscheidbar', () => {
   assert.notStrictEqual(shackle(closed), shackle(open), 'die Form muss sich unterscheiden');
 });
 
+test('Update-Hinweis steht auf der Hauptseite und uebergibt an die wartende Fassung', () => {
+  const { t } = setup();
+  t.ui.updateBar.hidden = true; // im echten Markup steht hidden bereits am Element
+  const messages = [];
+  const registration = { waiting: { postMessage: (m) => messages.push(m) } };
+  t.showUpdateBar(registration);
+  assert.strictEqual(t.ui.updateBar.hidden, false);
+  t.applyUpdate();
+  assert.strictEqual(t.ui.updateBar.hidden, true, 'Leiste verschwindet nach dem Tippen');
+  assert.strictEqual(messages.length, 1, 'genau eine Nachricht an die wartende Fassung');
+  assert.strictEqual(messages[0].type, 'skipWaiting');
+});
+
+test('Die Kontur-Rueckfrage sagt in den Knoepfen, was passiert', async () => {
+  const { t, sandbox } = setup();
+  t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }];
+  sandbox.__confirmAnswer = false;
+  await t.offerToCloseContour('perimeter');
+  assert.strictEqual(sandbox.__lastConfirmRequest.confirmLabel, 'Kontur automatisch schließen');
+  assert.strictEqual(sandbox.__lastConfirmRequest.cancelLabel, 'Kontur NOCH NICHT schließen');
+  assert.strictEqual(t.state.activeMap.perimeterClosed, false, '"noch nicht" laesst sie offen');
+});
+
 test('Akkordeon: das Oeffnen eines Abschnitts schliesst die anderen', () => {
   const { t, sandbox } = setup();
   const make = () => {
@@ -570,7 +594,7 @@ test('Gesperrte Karte blockiert Aufnahme und Loeschwerkzeug', () => {
 test('Ein fehlendes Bedienelement legt die Karten nicht lahm', async () => {
   // Halb aktualisierter Cache: app.js ist neu, index.html noch alt. Frueher warf bindEvents(),
   // init() brach vor dem Oeffnen der Datenbank ab — und alle Karten schienen verschwunden.
-  const { t, sandbox, clock } = setup({ missingIds: ['clearLogBtn', 'checkUpdateBtn'] });
+  const { t, sandbox, clock } = setup({ missingIds: ['clearLogBtn', 'updateBar'] });
   t.state.activeMap = null;
   t.state.maps = [];
   sandbox.indexedDB = {
@@ -586,7 +610,7 @@ test('Ein fehlendes Bedienelement legt die Karten nicht lahm', async () => {
   assert.ok(t.state.db, 'die Datenbank wird trotzdem geoeffnet');
   assert.ok(t.state.activeMap, 'und eine Karte steht bereit');
   const logText = sandbox.document.getElementById('debugLog').textContent;
-  assert.ok(logText.includes('clearLogBtn') && logText.includes('checkUpdateBtn'),
+  assert.ok(logText.includes('clearLogBtn') && logText.includes('updateBar'),
     'die fehlenden Elemente stehen im Diagnoseprotokoll');
 });
 

@@ -58,8 +58,7 @@ test('Alle von index.html geladenen Dateien stehen in ASSETS', () => {
 test('Alter Cache-Bestand wird beim Aktivieren entfernt', () => {
   assert.ok(sw.includes('caches.keys()') && sw.includes('caches.delete('),
     'sonst sammeln sich Caches der Vorversionen an');
-  assert.ok(sw.includes('skipWaiting') && sw.includes('clients.claim'),
-    'neue Version soll ohne zweiten Neustart uebernehmen');
+  assert.ok(sw.includes('clients.claim'), 'die aktivierte Fassung soll offene Seiten uebernehmen');
 });
 
 test('Die Version bleibt intern und taucht nirgends im UI auf', () => {
@@ -70,11 +69,23 @@ test('Die Version bleibt intern und taucht nirgends im UI auf', () => {
   assert.ok(!/\bv\d+\b/.test(html.replace(/<!--[\s\S]*?-->/g, '')), 'keine sichtbare Versionsangabe im Markup');
 });
 
-test('Die App bietet einen Knopf, der die neueste Fassung holt', () => {
-  assert.ok(/id="checkUpdateBtn"/.test(html), 'Knopf fehlt in der Diagnose-Sektion');
-  const fn = app.slice(app.indexOf('async function checkForUpdate('), app.indexOf('function browserCheck('));
-  assert.ok(fn.includes('registration.update()'), 'muss den Service Worker aktualisieren');
-  assert.ok(fn.includes('location?.reload?.()'), 'und danach neu laden');
+test('Ein Update wird auf der Hauptseite angeboten, nicht in der Diagnose', () => {
+  assert.ok(/id="updateBar"/.test(html), 'Hinweisleiste fehlt');
+  const bar = html.slice(html.indexOf('id="updateBar"'), html.indexOf('<header class="appbar">'));
+  assert.ok(bar.includes('data-i18n="updateAvailable"'), 'Leiste braucht einen erklaerenden Text');
+  assert.ok(!/checkUpdateBtn/.test(html), 'der Knopf in der Diagnose ist entfallen');
+  assert.ok(app.includes('function watchForUpdates('), 'die App muss auf neue Fassungen horchen');
+  assert.ok(app.includes("postMessage({ type: 'skipWaiting' })"), 'Tippen uebergibt an die wartende Fassung');
+});
+
+test('Die neue Fassung uebernimmt erst auf Tastendruck', () => {
+  // Kommentare raus: dort steht bewusst, warum kein skipWaiting im install steht.
+  const code = sw.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  const install = code.slice(code.indexOf("addEventListener('install'"), code.indexOf("addEventListener('activate'"));
+  assert.ok(!install.includes('skipWaiting'),
+    'ohne Wartestand wuerde die Seite ungefragt neu laden, mitten in der Aufnahme');
+  assert.ok(/addEventListener\('message'[\s\S]*skipWaiting/.test(sw),
+    'der Worker muss auf die Nachricht der App reagieren');
 });
 
 test('Ein Wechsel des Service Workers laedt die Seite einmal neu', () => {

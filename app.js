@@ -35,12 +35,14 @@ const MAX_MAPS = 10;
 
 const I18N = {
   de: {
+    updateAvailable: 'Neue Version verfügbar – zum Aktualisieren tippen',
+    closeContourYes: 'Kontur automatisch schließen', closeContourNo: 'Kontur NOCH NICHT schließen',
+    closeContoursYes: 'Konturen automatisch schließen',
     lockedBadge: 'Gesperrt',
-    checkForUpdate: 'Nach Updates suchen', updateSearching: 'Suche nach einer neueren Fassung …',
     bleWriteFailedTitle: 'Senden fehlgeschlagen', bleWriteFailedShort: 'Senden fehlgeschlagen: {message}',
     bleWriteFailed: 'Der Befehl {context} konnte nicht an den Mäher gesendet werden.\n\n{message}',
     errorTitle: 'Fehler', okUnderstood: 'Verstanden',
-    deleteExclusionTitle: 'Ausschlussfläche löschen', clearNow: 'Leeren', closeNow: 'Schließen',
+    deleteExclusionTitle: 'Ausschlussfläche löschen', clearNow: 'Leeren',
     closeContourTitle: 'Kontur schließen',
     chooseMode: 'Aufnahmemodus wählen', cancel: 'Abbrechen',
     closeContourQuestion: 'Soll {label} geschlossen werden? Der letzte Punkt wird mit dem ersten verbunden.',
@@ -158,12 +160,14 @@ const I18N = {
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   },
   en: {
+    updateAvailable: 'New version available – tap to update',
+    closeContourYes: 'Close contour automatically', closeContourNo: 'Do NOT close the contour yet',
+    closeContoursYes: 'Close contours automatically',
     lockedBadge: 'Locked',
-    checkForUpdate: 'Check for updates', updateSearching: 'Looking for a newer version …',
     bleWriteFailedTitle: 'Sending failed', bleWriteFailedShort: 'Sending failed: {message}',
     bleWriteFailed: 'The command {context} could not be sent to the mower.\n\n{message}',
     errorTitle: 'Error', okUnderstood: 'Got it',
-    deleteExclusionTitle: 'Delete exclusion area', clearNow: 'Clear', closeNow: 'Close',
+    deleteExclusionTitle: 'Delete exclusion area', clearNow: 'Clear',
     closeContourTitle: 'Close contour',
     chooseMode: 'Choose capture mode', cancel: 'Cancel',
     closeContourQuestion: 'Close {label}? The last point will be connected to the first one.',
@@ -370,8 +374,8 @@ const ui = {
   showGrid: $('showGrid'), gridStepSelect: $('gridStepSelect'), showMower: $('showMower'), mowerLengthInput: $('mowerLengthInput'), mowerWidthInput: $('mowerWidthInput'),
   showTrail: $('showTrail'), clearTrailBtn: $('clearTrailBtn'), showPointQuality: $('showPointQuality'), keepAwake: $('keepAwake'), wakeLockStatus: $('wakeLockStatus'),
   validateMapBtn: $('validateMapBtn'), validationSummary: $('validationSummary'), validationList: $('validationList'), validationDrawer: $('validationDrawer'),
-  requestVersionBtn: $('requestVersionBtn'), requestStateBtn: $('requestStateBtn'), clearLogBtn: $('clearLogBtn'),
-  checkUpdateBtn: $('checkUpdateBtn'), debugLog: $('debugLog'),
+  updateBar: $('updateBar'),
+  requestVersionBtn: $('requestVersionBtn'), requestStateBtn: $('requestStateBtn'), clearLogBtn: $('clearLogBtn'), debugLog: $('debugLog'),
   helpSecureStatus: $('helpSecureStatus'), helpBluetoothStatus: $('helpBluetoothStatus'), helpOfflineStatus: $('helpOfflineStatus'), helpNetworkStatus: $('helpNetworkStatus'),
 };
 
@@ -412,6 +416,7 @@ const state = {
   mode: 'perimeter',
   menuOpen: false,
   pendingConfirm: null,
+  pendingUpdate: null,
   lastBleErrorNoticeAt: 0,
   reloadingForUpdate: false,
   selectedPoint: null,
@@ -958,9 +963,9 @@ function setTheme(theme) {
  * gibt ein Promise<boolean> zurueck. Tests haengen ueber globalThis.__confirmAdapter eine
  * automatische Antwort ein — dieselbe Konvention wie bleAdapter() beim Bluetooth-Zugriff.
  */
-function askConfirm({ title, message, confirmLabel, tone = 'neutral', singleButton = false }) {
+function askConfirm({ title, message, confirmLabel, cancelLabel, tone = 'neutral', singleButton = false }) {
   if (typeof globalThis.__confirmAdapter === 'function') {
-    return Promise.resolve(Boolean(globalThis.__confirmAdapter({ title, message, confirmLabel, tone, singleButton })));
+    return Promise.resolve(Boolean(globalThis.__confirmAdapter({ title, message, confirmLabel, cancelLabel, tone, singleButton })));
   }
   // Eine noch offene Rueckfrage gilt als abgelehnt, damit kein Promise haengen bleibt.
   if (state.pendingConfirm) confirmDialogRespond(false);
@@ -968,7 +973,7 @@ function askConfirm({ title, message, confirmLabel, tone = 'neutral', singleButt
     state.pendingConfirm = resolve;
     ui.confirmDialogTitle.textContent = title;
     ui.confirmDialogText.textContent = message;
-    ui.confirmDialogCancel.textContent = tr('cancel');
+    ui.confirmDialogCancel.textContent = cancelLabel || tr('cancel');
     ui.confirmDialogCancel.hidden = singleButton;
     ui.confirmDialogActions.classList.toggle('single', singleButton);
     ui.confirmDialogAccept.textContent = confirmLabel;
@@ -2943,7 +2948,8 @@ async function offerToCloseContour(role) {
   const confirmed = await askConfirm({
     title: tr('closeContourTitle'),
     message: tr('closeContourQuestion', { label: entry.label }),
-    confirmLabel: tr('closeNow'),
+    confirmLabel: tr('closeContourYes'),
+    cancelLabel: tr('closeContourNo'),
   });
   if (!confirmed) return;
   await closeContour(entry);
@@ -2956,7 +2962,8 @@ async function closeAllOpenContours() {
   const confirmed = await askConfirm({
     title: tr('closeOpenContours'),
     message: tr('closeContoursConfirm', { count: open.length }),
-    confirmLabel: tr('closeNow'),
+    confirmLabel: tr('closeContoursYes'),
+    cancelLabel: tr('closeContourNo'),
   });
   if (!confirmed) return;
   for (const entry of open) await closeContour(entry);
@@ -3044,18 +3051,35 @@ function updateHelpSystemStatus() {
 }
 
 /**
- * Holt die neueste Fassung vom Server. registration.update() umgeht den HTTP-Cache und laedt
- * einen geaenderten Service Worker; der anschliessende Neuladevorgang holt die App-Dateien
- * ohnehin network-first. Ohne diesen Knopf bleibt Nutzern nur das Loeschen der Website-Daten.
+ * Update-Anzeige. Der Service Worker ruft kein skipWaiting() mehr von sich aus; eine neue
+ * Fassung bleibt im Wartestand, bis der Nutzer die Leiste auf der Hauptseite antippt. So laedt
+ * die Seite nie ungefragt mitten in der Aufnahme neu, und die Leiste steht dort, wo der Nutzer
+ * ohnehin hinschaut — in die Diagnose sieht kaum jemand.
  */
-async function checkForUpdate() {
-  log('UPDATE', tr('updateSearching'));
-  try {
-    const registration = await globalThis.navigator?.serviceWorker?.getRegistration?.();
-    if (registration) await registration.update();
-  } catch (error) {
-    log('UPDATE', error.message);
-  }
+function showUpdateBar(registration) {
+  state.pendingUpdate = registration;
+  ui.updateBar.hidden = false;
+  log('UPDATE', tr('updateAvailable'));
+}
+
+function watchForUpdates(registration) {
+  if (!registration) return;
+  if (registration.waiting && globalThis.navigator?.serviceWorker?.controller) showUpdateBar(registration);
+  registration.addEventListener?.('updatefound', () => {
+    const installing = registration.installing;
+    if (!installing) return;
+    installing.addEventListener('statechange', () => {
+      // Ohne Controller ist es die Erstinstallation — dann gibt es nichts zu melden.
+      if (installing.state === 'installed' && globalThis.navigator?.serviceWorker?.controller) showUpdateBar(registration);
+    });
+  });
+}
+
+/** Tippen auf die Leiste: wartende Fassung uebernehmen lassen, controllerchange laedt neu. */
+function applyUpdate() {
+  const registration = state.pendingUpdate;
+  ui.updateBar.hidden = true;
+  if (registration?.waiting) { registration.waiting.postMessage({ type: 'skipWaiting' }); return; }
   globalThis.location?.reload?.();
 }
 
@@ -3153,7 +3177,7 @@ function bindEvents() {
   ui.requestVersionBtn.addEventListener('click', () => sendSunray('AT+V', { forcePlain: true }).catch((e) => reportBleError('AT+V', e, { immediate: true })));
   ui.requestStateBtn.addEventListener('click', () => sendSunray('AT+S').catch((e) => reportBleError('AT+S', e, { immediate: true })));
   ui.clearLogBtn.addEventListener('click', () => { ui.debugLog.textContent = ''; });
-  ui.checkUpdateBtn.addEventListener('click', () => { checkForUpdate().catch(reportError); });
+  ui.updateBar.addEventListener('click', applyUpdate);
 
   // Karten
   ui.newMapBtn.addEventListener('click', () => createMapFromInput().catch(reportError));
@@ -3244,7 +3268,15 @@ async function init() {
       });
     }
     navigator.serviceWorker.register('./sw.js')
-      .then((registration) => { registration.update().catch(() => {}); return navigator.serviceWorker.ready; })
+      .then((registration) => {
+        watchForUpdates(registration);
+        registration.update().catch(() => {});
+        // Beim Zurueckkehren zur App nachsehen, ob inzwischen etwas Neues bereitsteht.
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) registration.update().catch(() => {});
+        });
+        return navigator.serviceWorker.ready;
+      })
       .then(() => { state.offlineCacheReady = true; updateHelpSystemStatus(); })
       .catch((error) => { state.offlineCacheReady = false; updateHelpSystemStatus(); log('Service Worker', error.message); });
   } else {

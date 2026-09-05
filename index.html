@@ -14,6 +14,10 @@
 <body>
 <div class="app-frame" id="appFrame">
 
+<button class="update-bar" hidden="" id="updateBar" type="button">
+<span data-i18n="updateAvailable">Neue Version verfügbar – zum Aktualisieren tippen</span>
+</button>
+
 <header class="appbar">
 <button aria-label="Menü" class="appbar-icon-btn" data-i18n-aria-label="menu" id="menuBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
 <button aria-label="Verbindung" class="appbar-icon-btn ble-chip offline" data-i18n-aria-label="tabConnection" id="bleStatusBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 7.5 16 16.5 12 20.5V3.5l4 4L8 16.5"/></svg></button>
@@ -291,7 +295,6 @@
 <button class="secondary" data-i18n="sendVersion" disabled="" id="requestVersionBtn" type="button">AT+V senden</button>
 <button class="secondary" data-i18n="sendState" disabled="" id="requestStateBtn" type="button">AT+S senden</button>
 <button class="ghost" data-i18n="clearLog" id="clearLogBtn" type="button">Log leeren</button>
-<button class="secondary" data-i18n="checkForUpdate" id="checkUpdateBtn" type="button">Nach Updates suchen</button>
 </div>
 <pre aria-live="polite" id="debugLog"></pre>
 </section>

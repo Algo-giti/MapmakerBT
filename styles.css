@@ -2089,7 +2089,8 @@ body {
 
 .app-frame {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* Update-Leiste, Kopfzeile, Karte, Fahrzone */
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   height: 100dvh;
   gap: 0;
 }
@@ -2817,8 +2818,10 @@ body.menu-open .app-frame { visibility: hidden; }
   line-height: 1.45;
 }
 .modal-actions {
+  /* Untereinander statt nebeneinander: die Beschriftungen sagen, was der Knopf tut
+     („Kontur automatisch schließen“), dafuer reicht eine halbe Dialogbreite nicht. */
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 8px;
 }
 .modal-actions button { min-height: 48px; font-weight: 800; }
@@ -2843,3 +2846,20 @@ body.menu-open .app-frame { visibility: hidden; }
 .map-card-lock.active .lock-icon .lock-body { fill: currentColor; stroke: currentColor; }
 .map-card-lock.active .lock-icon { width: 24px; height: 24px; }
 .map-gallery-card.locked { border-color: var(--shell-warn-border); border-style: solid; }
+
+/* Update-Hinweis ganz oben, über der Kopfzeile: hier schaut der Nutzer ohnehin hin.
+   Ausgeblendet nimmt er dank [hidden] keinen Platz in der Grid-Zeile ein. */
+.update-bar {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--shell-ok-border);
+  border-radius: 0;
+  background: var(--shell-ok-bg);
+  color: var(--shell-ok);
+  font-size: .74rem;
+  font-weight: 800;
+  text-align: center;
+}
+.update-bar:active { background: var(--shell-ok-border); }
