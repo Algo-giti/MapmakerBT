@@ -1429,16 +1429,6 @@ footer {
   align-items: flex-start;
   margin-bottom: 14px;
 }
-.help-version {
-  flex: 0 0 auto;
-  padding: 5px 8px;
-  border: 1px solid #28515b;
-  border-radius: 7px;
-  background: #102b31;
-  color: #7bdce8;
-  font: 800 .72rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  letter-spacing: .08em;
-}
 .help-status-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

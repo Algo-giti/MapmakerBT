@@ -1,8 +1,5 @@
 'use strict';
 
-// Muss zur Version in sw.js passen (tests/sw-test.js prueft das) und steht beim Start
-// im Diagnoseprotokoll — so laesst sich auf dem Geraet ablesen, welcher Stand laeuft.
-const APP_VERSION = 'v19';
 const SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
 const CHARACTERISTIC_UUID = '0000ffe1-0000-1000-8000-00805f9b34fb';
 const BLE_CHUNK_SIZE = 15; // Sunray ESP32 BLE_MTU=20; payload <= 15 bytes
@@ -125,9 +122,8 @@ const I18N = {
     mapCheck: 'Kartenprüfung', checkNow: 'Jetzt prüfen', notCheckedYet: 'Noch nicht geprüft.', mapCheckOk: 'Karte plausibel · Fläche {area} m² · Umfang {perimeter} m · RTK FIX {fix}/{points}', mapCheckIssues: '{errors} Fehler · {warnings} Hinweise · Fläche {area} m²',
     checkPerimeterTooFew: 'Perimeter hat weniger als 3 Punkte.', checkAreaTooFew: '{label} hat weniger als 3 Punkte.', checkSelfIntersection: '{label} überschneidet sich selbst.', checkExclusionOutside: '{label} liegt nicht vollständig innerhalb des Perimeters.', checkExclusionOverlap: '{a} und {b} überschneiden sich.',
     checkClosePoints: '{label}: {count} sehr kurze Punktabstände unter 5 cm.', checkLongSegments: '{label}: {count} Strecken sind länger als 5 m.', checkNonFixPoints: '{count} von {points} Punkten wurden nicht mit RTK FIX aufgenommen.', checkDockEmpty: 'Kein Dockpfad vorhanden (optional).',
-    versionsHistory: 'Versionen & Verlauf', versionsDescription: 'Wichtige Bearbeitungen werden lokal als Wiederherstellungspunkte gespeichert.', saveVersionNow: 'Version jetzt speichern', noVersions: 'Noch keine Versionen gespeichert.', restoreVersion: 'Wiederherstellen', versionSaved: 'Version gespeichert.',
-    undoLastChange: 'Letzte Änderung zurück', noChangeToUndo: 'Noch keine Änderung im Verlauf', undoChangeHint: '{reason} · {time}', restoreConfirm: 'Version vom {time} wirklich wiederherstellen?', restoredVersion: 'Version vom {time} wiederhergestellt.',
-    historyManual: 'Manuelle Version', historyAddPoint: 'Punkt aufgenommen', historyAutoCapture: 'Auto-Aufnahme', historyDeletePoint: 'Punkt gelöscht', historyRelearnPoint: 'Punkt neu angelernt', historyClear: 'Element geleert', historyDeleteExclusion: 'Ausschluss gelöscht', historyCreateExclusion: 'Ausschluss angelegt', historyRestore: 'Vor Wiederherstellung',
+    undoLastChange: 'Letzte Änderung zurück', noChangeToUndo: 'Noch keine Änderung im Verlauf', undoChangeHint: '{reason} · {time}',
+    historyManual: 'Manuelle Version', historyAddPoint: 'Punkt aufgenommen', historyAutoCapture: 'Auto-Aufnahme', historyDeletePoint: 'Punkt gelöscht', historyRelearnPoint: 'Punkt neu angelernt', historyClear: 'Element geleert', historyDeleteExclusion: 'Ausschluss gelöscht', historyCreateExclusion: 'Ausschluss angelegt',
     systemCheckTitle: 'Systemcheck auf diesem Gerät', systemCheckText: 'Hier siehst du sofort, ob die technischen Voraussetzungen für den Einsatz im Garten passen.',
     secureContextLabel: 'HTTPS / sicherer Kontext', webBluetoothLabel: 'Web Bluetooth', offlineCacheLabel: 'Offline-Cache', internetStatusLabel: 'Browser-Netzwerkstatus', compatibilityDate: 'Kompatibilitätsstand: August 2026.', networkStatusNote: 'Der Online/Offline-Wert ist ein Browser-Netzwerksignal und kein aktiver Test zu GitHub.',
     statusReady: 'Bereit', statusAvailable: 'Verfügbar', statusUnavailable: 'Nicht verfügbar', statusOnline: 'Online', statusOffline: 'Offline', statusSecure: 'Sicher', statusInsecure: 'Nicht sicher', statusPreparing: 'Wird vorbereitet …',
@@ -147,14 +143,14 @@ const I18N = {
     compatDesktop: 'Mit unterstütztem Chromium-Browser kann Web Bluetooth ebenfalls funktionieren. Die Oberfläche ist jedoch primär für Android-Handys und -Tablets ausgelegt.',
     androidMinTitle: 'Android-Version:', androidMinText: 'Google dokumentiert Web Bluetooth für Chrome auf Android ab Android 6.0. Da alte Geräte und Browser-Versionen stark variieren, ist ein aktuelles Android mit aktuellem Chrome klar empfehlenswert.', androidPermissionTitle: 'Bluetooth-Berechtigungen:', androidPermissionText: 'Falls die Gerätesuche blockiert ist, prüfe die Android-App-Berechtigungen von Chrome. Ab Android 12 gibt es dafür die Berechtigungsgruppe „Geräte in der Nähe“.',
     offlineTitle: 'Offline im Garten', offlineWorksTitle: 'Das funktioniert ohne Internet', offlineNeedsTitle: 'Dafür wird Internet benötigt',
-    offlineWorks1: 'Bluetooth-Verbindung zum Ardumower', offlineWorks2: 'Live-X/Y, RTK-Status und Kartenaufnahme', offlineWorks3: 'Auto-Aufnahme, Punkt-/Teilstück-Bearbeitung und Kartenprüfung', offlineWorks4: 'Bis zu 10 Karten in IndexedDB, Versionen und Undo', offlineWorks5: 'JSON- und GeoJSON-Export',
+    offlineWorks1: 'Bluetooth-Verbindung zum Ardumower', offlineWorks2: 'Live-X/Y, RTK-Status und Kartenaufnahme', offlineWorks3: 'Automatik-Aufnahme, Punktbearbeitung und Kartenprüfung', offlineWorks4: 'Bis zu 10 Karten in IndexedDB, inklusive Rückgängig-Funktion', offlineWorks5: 'JSON- und GeoJSON-Export',
     offlineNeeds1: 'Der allererste Aufruf von GitHub Pages', offlineNeeds2: 'Ein neues App-Update herunterladen', offlineNeeds3: 'Neu laden, falls der Offline-Cache vorher gelöscht wurde',
     offlineWarning: 'Wichtig: Browserdaten/Website-Daten löschen kann sowohl Offline-Cache als auch lokal gespeicherte Karten entfernen. Regelmäßig JSON-Backups erstellen.',
     bluetoothHelpTitle: 'Bluetooth-Verbindung verstehen', bleHelp1: 'MapCreator nutzt Bluetooth Low Energy (BLE) und verbindet sich direkt mit dem Ardumower-ESP32 – nicht über das Internet.', bleHelp2: 'Der bekannte Ardumower-BLE-UART-Service verwendet FFE0/FFE1. Sunray-Kommandos werden über diese Verbindung übertragen.', bleHelp3: 'Die Gerätesuche darf ein Browser nur nach einer Benutzeraktion starten. Deshalb musst du den Verbindungsbutton antippen und den Ardumower auswählen.', bleHelp4: 'Das Sunray-Passwort wird nur für die laufende Sitzung verwendet und nicht mit der Karte gespeichert.', bleHelp5: 'Wenn die BLE-Verbindung durch Standby, Reichweite oder Browser-Neustart abbricht, einfach erneut „Gerät suchen & verbinden“ verwenden.',
-    mappingHelpTitle: 'Karten erstellen & korrigieren', helpPerimeterTitle: 'Perimeter', helpPerimeterText: 'Äußere Mähgrenze Punkt für Punkt oder automatisch nach Distanz aufnehmen.', helpExclusionTitle: 'Ausschlussflächen', helpExclusionText: 'Mehrere geschlossene Bereiche innerhalb des Perimeters anlegen, die nicht gemäht werden sollen.', helpDockTitle: 'Dockpfad', helpDockText: 'Offenen Punktpfad für den Dockbereich erfassen.', helpEditTitle: 'Punkte bearbeiten', helpEditText: 'Punkt auf der Karte antippen: der Hauptbutton wird zum Verschieben-Button, das Werkzeug oben rechts löscht ihn.', helpValidationTitle: 'Kartenprüfung', helpValidationText: 'Sucht Selbstüberschneidungen, problematische Abstände, Ausschlüsse außerhalb des Perimeters und fehlende RTK-FIX-Punkte.', helpVersionsTitle: 'Versionen & Undo', helpVersionsText: 'Wichtige Änderungen werden lokal als Wiederherstellungspunkte gespeichert.',
+    mappingHelpTitle: 'Karten erstellen & korrigieren', helpPerimeterTitle: 'Perimeter', helpPerimeterText: 'Äußere Mähgrenze Punkt für Punkt oder automatisch nach Distanz aufnehmen.', helpExclusionTitle: 'Ausschlussflächen', helpExclusionText: 'Mehrere geschlossene Bereiche innerhalb des Perimeters anlegen, die nicht gemäht werden sollen.', helpDockTitle: 'Dockpfad', helpDockText: 'Offenen Punktpfad für den Dockbereich erfassen.', helpEditTitle: 'Punkte bearbeiten', helpEditText: 'Punkt auf der Karte antippen: der Hauptbutton wird zum Verschieben-Button, das Werkzeug oben rechts löscht ihn.', helpValidationTitle: 'Kartenprüfung', helpValidationText: 'Sucht Selbstüberschneidungen, problematische Abstände, Ausschlüsse außerhalb des Perimeters und fehlende RTK-FIX-Punkte.', helpVersionsTitle: 'Änderung zurücknehmen', helpVersionsText: 'Die letzte Änderung an der Karte lässt sich im Menü unter „Karten“ rückgängig machen.',
     formatsTitle: 'Speichern, JSON & GeoJSON', jsonHelp: 'Empfohlenes vollständiges Backup für MapCreator. Enthält Kartenstruktur, Punkte und zusätzliche Metadaten wie Aufnahme-/Editierinformationen.', geoJsonHelp: 'Für Geometrie-Austausch. Perimeter und Ausschlüsse werden als Polygone, der Dockpfad als LineString exportiert.', geoJsonXYWarning: 'Die Ardumower-Koordinaten sind lokale Sunray-X/Y-Werte in Metern. Sie sind keine GPS-Längen-/Breitengrade und werden deshalb im Export ausdrücklich als lokales metrisches Koordinatensystem gekennzeichnet.',
     troubleshootingTitle: 'Fehlerbehebung', faqDeviceTitle: 'Ardumower wird nicht gefunden', faqDeviceText: 'Prüfe Bluetooth am Tablet, aktuelle Chrome-Version, Reichweite und ob der ESP32 BLE sendet. Falls eine andere App bereits verbunden ist, diese Verbindung zuerst trennen. Danach Bluetooth-Gerätesuche erneut öffnen.', faqButtonTitle: 'Aufnahme-Button wird nicht grün', faqButtonText: 'Grün bedeutet echten RTK FIX. Prüfe RTK-Empfang und die Live-Daten. Wenn „Nur bei RTK FIX“ aktiv ist, bleibt die Aufnahme bei FLOAT/INVALID gesperrt.', faqOfflineTitle: 'Die App startet ohne WLAN nicht', faqOfflineText: 'Öffne die GitHub-Pages-Seite mindestens einmal mit Internet und warte, bis der Offline-Cache im Systemcheck als bereit angezeigt wird. Danach am besten als PWA installieren.', faqMapsGoneTitle: 'Meine Karten sind verschwunden', faqMapsGoneText: 'Karten liegen lokal im Browser. Gelöschte Website-Daten, ein anderer Browser oder ein anderes Benutzerprofil haben einen eigenen Speicher. Importiere dein letztes JSON-Backup.', faqIosTitle: 'Warum funktioniert es auf iPhone/iPad nicht?', faqIosText: 'Der MapCreator benötigt Web Bluetooth. Safari und Chrome auf iOS/iPadOS bieten diese Web-API derzeit nicht nativ an; deshalb kann die Webseite den Ardumower dort nicht direkt auswählen und verbinden.',
-    privacyTitle: 'Daten & Privatsphäre', privacy1: 'GitHub Pages liefert nur die statische App aus. Deine aufgezeichneten Karten werden nicht automatisch zu GitHub hochgeladen.', privacy2: 'Karten und Versionen liegen lokal im Browser des verwendeten Geräts.', privacy3: 'Bluetooth-Kommunikation läuft direkt zwischen Browser und Ardumower-ESP32.', privacy4: 'Das Sunray-Passwort wird nicht in den Kartendaten gespeichert.', privacy5: 'Für wichtige Karten regelmäßig ein JSON-Backup auf einem zweiten Speicherort ablegen.',
+    privacyTitle: 'Daten & Privatsphäre', privacy1: 'GitHub Pages liefert nur die statische App aus. Deine aufgezeichneten Karten werden nicht automatisch zu GitHub hochgeladen.', privacy2: 'Karten liegen lokal im Browser des verwendeten Geräts.', privacy3: 'Bluetooth-Kommunikation läuft direkt zwischen Browser und Ardumower-ESP32.', privacy4: 'Das Sunray-Passwort wird nicht in den Kartendaten gespeichert.', privacy5: 'Für wichtige Karten regelmäßig ein JSON-Backup auf einem zweiten Speicherort ablegen.',
     historyCloseContour: 'Kontur geschlossen',
     historyClosePerimeter: 'Perimeter schließen/öffnen',
     showPointQuality: 'Punktqualität anzeigen', keepAwake: 'Bildschirm beim Mapping wachhalten', wakeLockAuto: 'Wird bei aktiver Aufnahme automatisch verwendet.', wakeLockActive: 'Bildschirm bleibt wach.', wakeLockUnavailable: 'Wake Lock in diesem Browser nicht verfügbar.', wakeLockReleased: 'Wake Lock derzeit nicht aktiv.',
@@ -252,9 +248,8 @@ const I18N = {
     mapCheck: 'Map check', checkNow: 'Check now', notCheckedYet: 'Not checked yet.', mapCheckOk: 'Map looks plausible · area {area} m² · perimeter {perimeter} m · RTK FIX {fix}/{points}', mapCheckIssues: '{errors} errors · {warnings} notes · area {area} m²',
     checkPerimeterTooFew: 'Perimeter has fewer than 3 points.', checkAreaTooFew: '{label} has fewer than 3 points.', checkSelfIntersection: '{label} intersects itself.', checkExclusionOutside: '{label} is not fully inside the perimeter.', checkExclusionOverlap: '{a} and {b} overlap.',
     checkClosePoints: '{label}: {count} very short point gaps below 5 cm.', checkLongSegments: '{label}: {count} segments are longer than 5 m.', checkNonFixPoints: '{count} of {points} points were not captured with RTK FIX.', checkDockEmpty: 'No dock path present (optional).',
-    versionsHistory: 'Versions & history', versionsDescription: 'Important edits are stored locally as restore points.', saveVersionNow: 'Save version now', noVersions: 'No versions saved yet.', restoreVersion: 'Restore', versionSaved: 'Version saved.',
-    undoLastChange: 'Undo last change', noChangeToUndo: 'No change in history yet', undoChangeHint: '{reason} · {time}', restoreConfirm: 'Restore version from {time}?', restoredVersion: 'Version from {time} restored.',
-    historyManual: 'Manual version', historyAddPoint: 'Point captured', historyAutoCapture: 'Auto capture', historyDeletePoint: 'Point deleted', historyRelearnPoint: 'Point relearned', historyClear: 'Element cleared', historyDeleteExclusion: 'Exclusion deleted', historyCreateExclusion: 'Exclusion created', historyRestore: 'Before restore',
+    undoLastChange: 'Undo last change', noChangeToUndo: 'No change in history yet', undoChangeHint: '{reason} · {time}',
+    historyManual: 'Manual version', historyAddPoint: 'Point captured', historyAutoCapture: 'Auto capture', historyDeletePoint: 'Point deleted', historyRelearnPoint: 'Point relearned', historyClear: 'Element cleared', historyDeleteExclusion: 'Exclusion deleted', historyCreateExclusion: 'Exclusion created',
     systemCheckTitle: 'System check on this device', systemCheckText: 'See immediately whether the technical requirements for garden use are met.',
     secureContextLabel: 'HTTPS / secure context', webBluetoothLabel: 'Web Bluetooth', offlineCacheLabel: 'Offline cache', internetStatusLabel: 'Browser network status', compatibilityDate: 'Compatibility status: August 2026.', networkStatusNote: 'The online/offline value is a browser network signal, not an active test against GitHub.',
     statusReady: 'Ready', statusAvailable: 'Available', statusUnavailable: 'Unavailable', statusOnline: 'Online', statusOffline: 'Offline', statusSecure: 'Secure', statusInsecure: 'Not secure', statusPreparing: 'Preparing …',
@@ -274,14 +269,14 @@ const I18N = {
     compatDesktop: 'Web Bluetooth can also work in a supported Chromium browser. The interface is primarily designed for Android phones and tablets.',
     androidMinTitle: 'Android version:', androidMinText: 'Google documents Web Bluetooth for Chrome on Android starting with Android 6.0. Because old devices and browser versions vary widely, a current Android device with current Chrome is strongly recommended.', androidPermissionTitle: 'Bluetooth permissions:', androidPermissionText: 'If device discovery is blocked, check Chrome’s Android app permissions. Starting with Android 12, nearby Bluetooth access is grouped under the “Nearby devices” permission.',
     offlineTitle: 'Offline in the garden', offlineWorksTitle: 'Works without internet', offlineNeedsTitle: 'Internet is needed for',
-    offlineWorks1: 'Bluetooth connection to the Ardumower', offlineWorks2: 'Live X/Y, RTK status and map recording', offlineWorks3: 'Auto capture, point/section editing and map checks', offlineWorks4: 'Up to 10 maps in IndexedDB, versions and undo', offlineWorks5: 'JSON and GeoJSON export',
+    offlineWorks1: 'Bluetooth connection to the Ardumower', offlineWorks2: 'Live X/Y, RTK status and map recording', offlineWorks3: 'Automatic capture, point editing and map checks', offlineWorks4: 'Up to 10 maps in IndexedDB, including undo', offlineWorks5: 'JSON and GeoJSON export',
     offlineNeeds1: 'The very first GitHub Pages load', offlineNeeds2: 'Downloading a new app update', offlineNeeds3: 'Reloading after the offline cache has been cleared',
     offlineWarning: 'Important: clearing browser/site data can remove both the offline cache and locally stored maps. Create JSON backups regularly.',
     bluetoothHelpTitle: 'Understanding the Bluetooth connection', bleHelp1: 'MapCreator uses Bluetooth Low Energy (BLE) and connects directly to the Ardumower ESP32 – not through the internet.', bleHelp2: 'The known Ardumower BLE UART service uses FFE0/FFE1. Sunray commands are transported through this connection.', bleHelp3: 'A browser may start device discovery only after a user action. You therefore have to tap the connect button and select the Ardumower.', bleHelp4: 'The Sunray password is used only for the current session and is not stored with the map.', bleHelp5: 'If BLE disconnects because of standby, range or a browser restart, simply use “Find device & connect” again.',
-    mappingHelpTitle: 'Creating & correcting maps', helpPerimeterTitle: 'Perimeter', helpPerimeterText: 'Record the outer mowing boundary point by point or automatically by distance.', helpExclusionTitle: 'Exclusion areas', helpExclusionText: 'Create multiple closed areas inside the perimeter that must not be mowed.', helpDockTitle: 'Dock path', helpDockText: 'Record an open point path for the docking area.', helpEditTitle: 'Edit points', helpEditText: 'Select an existing point, move the mower close to it and relearn its position.', helpValidationTitle: 'Map check', helpValidationText: 'Finds self-intersections, problematic spacing, exclusions outside the perimeter and points captured without RTK FIX.', helpVersionsTitle: 'Versions & undo', helpVersionsText: 'Important changes are stored locally as restore points.',
+    mappingHelpTitle: 'Creating & correcting maps', helpPerimeterTitle: 'Perimeter', helpPerimeterText: 'Record the outer mowing boundary point by point or automatically by distance.', helpExclusionTitle: 'Exclusion areas', helpExclusionText: 'Create multiple closed areas inside the perimeter that must not be mowed.', helpDockTitle: 'Dock path', helpDockText: 'Record an open point path for the docking area.', helpEditTitle: 'Edit points', helpEditText: 'Tap a point on the map: the main button turns into the move button, the tool at the top right deletes it.', helpValidationTitle: 'Map check', helpValidationText: 'Finds self-intersections, problematic spacing, exclusions outside the perimeter and points captured without RTK FIX.', helpVersionsTitle: 'Undo a change', helpVersionsText: 'The last change to a map can be undone in the menu under “Maps”.',
     formatsTitle: 'Saving, JSON & GeoJSON', jsonHelp: 'Recommended complete MapCreator backup. Contains the map structure, points and extra metadata such as capture/edit information.', geoJsonHelp: 'For geometry exchange. Perimeter and exclusions are exported as polygons and the dock path as a LineString.', geoJsonXYWarning: 'Ardumower coordinates are local Sunray X/Y values in metres. They are not GPS longitude/latitude values, so the export explicitly marks them as a local metric coordinate system.',
     troubleshootingTitle: 'Troubleshooting', faqDeviceTitle: 'Ardumower is not found', faqDeviceText: 'Check Bluetooth on the tablet, a current Chrome version, range and whether the ESP32 is advertising BLE. If another app is already connected, disconnect it first. Then open Bluetooth device discovery again.', faqButtonTitle: 'Capture button does not turn green', faqButtonText: 'Green means a real RTK FIX. Check RTK reception and the live data. With “RTK FIX only” enabled, capture remains blocked for FLOAT/INVALID.', faqOfflineTitle: 'The app does not start without Wi-Fi', faqOfflineText: 'Open the GitHub Pages site at least once with internet and wait until the system check shows the offline cache as ready. Installing it as a PWA is recommended.', faqMapsGoneTitle: 'My maps are gone', faqMapsGoneText: 'Maps are stored locally in the browser. Cleared site data, a different browser or a different browser profile use separate storage. Import your latest JSON backup.', faqIosTitle: 'Why does it not work on iPhone/iPad?', faqIosText: 'MapCreator requires Web Bluetooth. Safari and Chrome on iOS/iPadOS currently do not provide this Web API natively, so the website cannot directly select and connect to the Ardumower there.',
-    privacyTitle: 'Data & privacy', privacy1: 'GitHub Pages only serves the static app. Your recorded maps are not automatically uploaded to GitHub.', privacy2: 'Maps and versions stay in the browser storage of the device being used.', privacy3: 'Bluetooth communication runs directly between the browser and the Ardumower ESP32.', privacy4: 'The Sunray password is not stored in map data.', privacy5: 'For important maps, regularly keep a JSON backup in a second location.',
+    privacyTitle: 'Data & privacy', privacy1: 'GitHub Pages only serves the static app. Your recorded maps are not automatically uploaded to GitHub.', privacy2: 'Maps stay in the browser storage of the device being used.', privacy3: 'Bluetooth communication runs directly between the browser and the Ardumower ESP32.', privacy4: 'The Sunray password is not stored in map data.', privacy5: 'For important maps, regularly keep a JSON backup in a second location.',
     historyCloseContour: 'Contour closed',
     historyClosePerimeter: 'Close/reopen perimeter',
     showPointQuality: 'Show point quality', keepAwake: 'Keep screen awake while mapping', wakeLockAuto: 'Used automatically while an active recording is running.', wakeLockActive: 'Screen will stay awake.', wakeLockUnavailable: 'Wake Lock is not available in this browser.', wakeLockReleased: 'Wake Lock is currently inactive.',
@@ -346,7 +341,7 @@ const ui = {
   firmwareValue: $('firmwareValue'),
   mapSelect: $('mapSelect'), newMapName: $('newMapName'), newMapBtn: $('newMapBtn'), deleteMapBtn: $('deleteMapBtn'), lockMapBtn: $('lockMapBtn'),
   exportJsonBtn: $('exportJsonBtn'), exportGeoJsonBtn: $('exportGeoJsonBtn'), importInput: $('importInput'),
-  mapGallery: $('mapGallery'), mapCountBadge: $('mapCountBadge'), saveVersionBtn: $('saveVersionBtn'), historyList: $('historyList'),
+  mapGallery: $('mapGallery'), mapCountBadge: $('mapCountBadge'),
   historyUndoBtn: $('historyUndoBtn'), historyUndoHint: $('historyUndoHint'), recentPoints: $('recentPoints'),
   exclusionControls: $('exclusionControls'), exclusionSelect: $('exclusionSelect'), newExclusionBtn: $('newExclusionBtn'), deleteExclusionBtn: $('deleteExclusionBtn'),
   fixOnly: $('fixOnly'), clearModeBtn: $('clearModeBtn'),
@@ -1680,7 +1675,7 @@ function historyReason(entry) {
   const keyMap = {
     manual: 'historyManual', addPoint: 'historyAddPoint', autoCapture: 'historyAutoCapture', deletePoint: 'historyDeletePoint', relearnPoint: 'historyRelearnPoint',
     clear: 'historyClear', deleteExclusion: 'historyDeleteExclusion', createExclusion: 'historyCreateExclusion',
-    closePerimeter: 'historyClosePerimeter', closeContour: 'historyCloseContour', restore: 'historyRestore',
+    closePerimeter: 'historyClosePerimeter', closeContour: 'historyCloseContour',
   };
   return tr(keyMap[entry?.reasonKey] || 'historyManual');
 }
@@ -1726,7 +1721,6 @@ async function saveActiveMap() {
   state.saving = false;
   state.lastSavedAt = new Date();
   ui.saveState.textContent = tr('savedAt', { time: state.lastSavedAt.toLocaleTimeString(localeCode(), { hour: '2-digit', minute: '2-digit' }) });
-  renderHistory();
   refreshHistoryUndoState();
   renderMapGallery();
 }
@@ -1811,7 +1805,6 @@ function renderMapControls() {
   ui.clearModeBtn.disabled = locked;
   ui.newExclusionBtn.disabled = locked;
   renderExclusionControls();
-  renderHistory();
   refreshHistoryUndoState();
   renderValidation();
   refreshCaptureState();
@@ -2858,37 +2851,6 @@ function refreshHistoryUndoState() {
   ui.historyUndoHint.textContent=entry ? tr('undoChangeHint',{reason:historyReason(entry),time:new Date(entry.createdAt).toLocaleTimeString(localeCode(),{hour:'2-digit',minute:'2-digit'})}) : tr('noChangeToUndo');
 }
 
-function renderHistory() {
-  if(!ui.historyList)return;
-  ui.historyList.innerHTML='';
-  if(!state.activeMap){ui.historyList.textContent=tr('noVersions');return;}
-  normalizeMap(state.activeMap);
-  const entries=[...state.activeMap.history].reverse().slice(0,20);
-  if(!entries.length){ui.historyList.textContent=tr('noVersions');return;}
-  entries.forEach((entry)=>{
-    const row=document.createElement('div');row.className='history-entry';
-    const meta=document.createElement('div');meta.innerHTML=`<strong>${historyReason(entry)}</strong><small>${new Date(entry.createdAt).toLocaleString(localeCode(),{dateStyle:'short',timeStyle:'short'})}</small>`;
-    const button=document.createElement('button');button.type='button';button.className='ghost compact-btn';button.textContent=tr('restoreVersion');button.dataset.restoreHistoryId=entry.id;button.disabled=Boolean(state.activeMap?.locked);
-    row.append(meta,button);ui.historyList.appendChild(row);
-  });
-}
-
-async function saveManualVersion() {
-  if(!state.activeMap)return; checkpointMap('manual',{beforeChange:false}); await saveActiveMap(); renderHistory(); refreshHistoryUndoState(); ui.pointStatus.textContent=tr('versionSaved');
-}
-
-async function restoreHistoryEntry(id) {
-  if(!state.activeMap || !ensureMapEditable())return; normalizeMap(state.activeMap); const entry=state.activeMap.history.find((h)=>h.id===id); if(!entry)return;
-  const time=new Date(entry.createdAt).toLocaleString(localeCode(),{dateStyle:'short',timeStyle:'short'});
-  const confirmed = await askConfirm({
-    title: tr('restoreVersion'),
-    message: tr('restoreConfirm', { time }),
-    confirmLabel: tr('restoreVersion'),
-  });
-  if (!confirmed) return;
-  checkpointMap('restore',{beforeChange:true}); applyGeometrySnapshot(entry.snapshot); await saveActiveMap(); state.validationResult=null; renderMapControls(); renderMap(); ui.pointStatus.textContent=tr('restoredVersion',{time});
-}
-
 async function undoLastHistoryChange() {
   if(!state.activeMap || !ensureMapEditable())return; normalizeMap(state.activeMap); let index=-1; for(let i=state.activeMap.history.length-1;i>=0;i-=1){if(state.activeMap.history[i].beforeChange){index=i;break;}}
   if(index<0)return; const entry=state.activeMap.history[index]; applyGeometrySnapshot(entry.snapshot); state.activeMap.history.splice(index,1); await saveActiveMap(); state.validationResult=null; renderMapControls(); renderMap();
@@ -2930,7 +2892,6 @@ function applyLanguage() {
   refreshTelemetry();
   renderMapControls();
   renderMap();
-  renderHistory();
   renderValidation();
   refreshSaveState();
   refreshWakeLockStatus();
@@ -3231,8 +3192,6 @@ function bindEvents() {
     if (file) importMapFile(file).catch((e) => showNotice({ title: tr('errorTitle'), message: tr('importFailed', { message: e.message }), tone: 'danger' }));
     ui.importInput.value = '';
   });
-  ui.saveVersionBtn.addEventListener('click', () => saveManualVersion().catch(reportError));
-  ui.historyList.addEventListener('click', (event) => { const button = event.target.closest('[data-restore-history-id]'); if (button) restoreHistoryEntry(button.dataset.restoreHistoryId).catch(reportError); });
   ui.historyUndoBtn.addEventListener('click', () => undoLastHistoryChange().catch(reportError));
   ui.validateMapBtn.addEventListener('click', validateActiveMap);
 
@@ -3296,7 +3255,7 @@ async function init() {
     state.offlineCacheReady = false;
     updateHelpSystemStatus();
   }
-  log(tr('appStarted'), APP_VERSION);
+  log(tr('appStarted'));
 }
 
 init().catch((error) => {

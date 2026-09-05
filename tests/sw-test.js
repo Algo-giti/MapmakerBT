@@ -19,14 +19,11 @@ const cases = [];
 const test = (name, fn) => cases.push({ name, fn });
 
 const swVersion = (sw.match(/const APP_VERSION = '([^']+)'/) || [])[1];
-const appVersion = (app.match(/const APP_VERSION = '([^']+)'/) || [])[1];
 const assets = (sw.match(/const ASSETS = \[([^\]]*)\]/s) || [])[1] || '';
 const shell = (sw.match(/const SHELL = \[([^\]]*)\]/s) || [])[1] || '';
 
-test('Version steht in sw.js und app.js und stimmt ueberein', () => {
+test('Die Cache-Version steht an genau einer Stelle in sw.js', () => {
   assert.ok(swVersion, 'sw.js braucht APP_VERSION');
-  assert.ok(appVersion, 'app.js braucht APP_VERSION');
-  assert.strictEqual(swVersion, appVersion, 'sonst laeuft der Cache-Name der App davon');
   assert.ok(sw.includes('const CACHE = `mapcreator-ardumower-${APP_VERSION}`'),
     'der Cache-Name muss aus APP_VERSION gebildet werden, sonst wird das Erhoehen wieder vergessen');
 });
@@ -65,6 +62,14 @@ test('Alter Cache-Bestand wird beim Aktivieren entfernt', () => {
     'neue Version soll ohne zweiten Neustart uebernehmen');
 });
 
+test('Die Version bleibt intern und taucht nirgends im UI auf', () => {
+  // Bewusste Entscheidung des Nutzers: in der App ist keine Versionsnummer sichtbar.
+  // Der Cache-Name in sw.js bleibt davon unberuehrt.
+  assert.ok(!/APP_VERSION/.test(app), 'app.js darf keine Versionskonstante mehr fuehren');
+  assert.ok(!/help-version/.test(html), 'kein Versions-Abzeichen in der Hilfe');
+  assert.ok(!/\bv\d+\b/.test(html.replace(/<!--[\s\S]*?-->/g, '')), 'keine sichtbare Versionsangabe im Markup');
+});
+
 test('Ein Wechsel des Service Workers laedt die Seite einmal neu', () => {
   // Ohne das zeigt der erste Neuladevorgang nach einem Deploy noch die Dateien des alten,
   // cache-first arbeitenden Workers — der Nutzer muesste von Hand ein zweites Mal neu laden.
@@ -72,11 +77,6 @@ test('Ein Wechsel des Service Workers laedt die Seite einmal neu', () => {
   assert.ok(app.includes('state.reloadingForUpdate'), 'ohne Merker droht eine Neulade-Schleife');
   assert.ok(/if \(navigator\.serviceWorker\.controller\)/.test(app),
     'beim allerersten Besuch gibt es noch keinen Controller — dann darf nicht neu geladen werden');
-});
-
-test('Die laufende Version steht im Diagnoseprotokoll', () => {
-  assert.ok(/log\(tr\('appStarted'\), APP_VERSION\)/.test(app),
-    'sonst laesst sich auf dem Geraet nicht ablesen, welcher Stand laeuft');
 });
 
 let failed = 0;

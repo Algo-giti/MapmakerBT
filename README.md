@@ -14,7 +14,7 @@ Die Oberfläche lässt sich zwischen **Deutsch und Englisch** umschalten; Deutsc
 - vorhandene Karten nachträglich korrigieren: Punkt antippen, an die aktuelle Mäherposition
   verschieben oder löschen
 - Karten auf Geometrie- und RTK-Probleme prüfen
-- lokale Versionsstände speichern und Änderungen rückgängig machen
+- die letzte Änderung an einer Karte rückgängig machen
 - bis zu 10 Karten auf dem Gerät verwalten
 - Karten als JSON-Backup oder als GeoJSON exportieren und wieder importieren
 - den Mäher während der Aufnahme mit dem Daumen-Joystick manuell fahren
@@ -151,7 +151,7 @@ Mähmotor-Steuerung. Sie nimmt ausschließlich Karten auf.
 Alle Karten liegen **lokal im Browser** dieses Geräts. Ein anderer Browser, ein anderes Profil oder
 gelöschte Website-Daten bedeuten: Karten sind weg.
 
-- **JSON-Export** ist das vollständige Backup einer Karte inklusive Metadaten und Versionsverlauf.
+- **JSON-Export** ist das vollständige Backup einer Karte inklusive Metadaten.
 - **GeoJSON-Export** eignet sich zur Weiterverarbeitung; die Koordinaten bleiben dabei im lokalen
   XY-Meter-System von Sunray, es sind keine Geokoordinaten.
 - Beide Formate lassen sich wieder importieren.

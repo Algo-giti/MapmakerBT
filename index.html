@@ -181,16 +181,6 @@
 <button class="danger" data-i18n="deleteCurrentMap" id="deleteMapBtn" type="button">Aktuelle Karte löschen</button>
 </div>
 </section>
-<section class="card history-card">
-<div class="history-card-head">
-<div>
-<h3 data-i18n="versionsHistory">Versionen &amp; Verlauf</h3>
-<p data-i18n="versionsDescription">Wichtige Bearbeitungen werden lokal als Wiederherstellungspunkte gespeichert.</p>
-</div>
-<button class="secondary" data-i18n="saveVersionNow" id="saveVersionBtn" type="button">Version jetzt speichern</button>
-</div>
-<div class="history-list" id="historyList"></div>
-</section>
 <section class="card">
 <div class="exclusion-controls hidden" id="exclusionControls">
 <label class="field compact grow"><span data-i18n="exclusionArea">Ausschlussfläche</span><select id="exclusionSelect"></select></label>
@@ -319,7 +309,6 @@
 <h3 data-i18n="systemCheckTitle">Systemcheck auf diesem Gerät</h3>
 <p data-i18n="systemCheckText">Hier siehst du sofort, ob die technischen Voraussetzungen für den Einsatz im Garten passen.</p>
 </div>
-<span class="help-version">v16</span>
 </div>
 <div class="help-status-grid">
 <div class="help-status-row"><span data-i18n="secureContextLabel">HTTPS / sicherer Kontext</span><strong class="status-value" id="helpSecureStatus">–</strong></div>
@@ -361,8 +350,8 @@
 <ul class="help-list">
 <li data-i18n="offlineWorks1">Bluetooth-Verbindung zum Ardumower</li>
 <li data-i18n="offlineWorks2">Live-X/Y, RTK-Status und Kartenaufnahme</li>
-<li data-i18n="offlineWorks3">Auto-Aufnahme, Punkt-/Teilstück-Bearbeitung und Kartenprüfung</li>
-<li data-i18n="offlineWorks4">Bis zu 10 Karten in IndexedDB, Versionen und Undo</li>
+<li data-i18n="offlineWorks3">Automatik-Aufnahme, Punktbearbeitung und Kartenprüfung</li>
+<li data-i18n="offlineWorks4">Bis zu 10 Karten in IndexedDB, inklusive Rückgängig-Funktion</li>
 <li data-i18n="offlineWorks5">JSON- und GeoJSON-Export</li>
 </ul>
 </div>
@@ -396,7 +385,7 @@
 <div><strong data-i18n="helpDockTitle">Dockpfad</strong><span data-i18n="helpDockText">Offenen Punktpfad für den Dockbereich erfassen.</span></div>
 <div><strong data-i18n="helpEditTitle">Punkte bearbeiten</strong><span data-i18n="helpEditText">Punkt auf der Karte antippen: der Hauptbutton wird zum Verschieben-Button, das Werkzeug oben rechts löscht ihn.</span></div>
 <div><strong data-i18n="helpValidationTitle">Kartenprüfung</strong><span data-i18n="helpValidationText">Sucht Selbstüberschneidungen, problematische Abstände, Ausschlüsse außerhalb des Perimeters und fehlende RTK-FIX-Punkte.</span></div>
-<div><strong data-i18n="helpVersionsTitle">Versionen &amp; Undo</strong><span data-i18n="helpVersionsText">Wichtige Änderungen werden lokal als Wiederherstellungspunkte gespeichert.</span></div>
+<div><strong data-i18n="helpVersionsTitle">Änderung zurücknehmen</strong><span data-i18n="helpVersionsText">Die letzte Änderung an der Karte lässt sich im Menü unter „Karten“ rückgängig machen.</span></div>
 <div><strong data-i18n="helpQualityTitle">Punktqualität</strong><span data-i18n="helpQualityText">Kartenpunkte können abhängig von RTK-Lösung und Genauigkeit farblich bewertet werden.</span></div>
 <div><strong data-i18n="helpSmartAutoTitle">Intelligente Auto-Aufnahme</strong><span data-i18n="helpSmartAutoText">Auf Geraden werden weniger Punkte gesetzt, bei Richtungsänderungen automatisch dichter.</span></div>
 <div><strong data-i18n="helpLockTitle">Kartensperre</strong><span data-i18n="helpLockText">Fertige Karten lassen sich gegen versehentliche Änderungen sperren.</span></div>
@@ -433,7 +422,7 @@
 <h3 data-i18n="privacyTitle">Daten &amp; Privatsphäre</h3>
 <ul class="help-list">
 <li data-i18n="privacy1">GitHub Pages liefert nur die statische App aus. Deine aufgezeichneten Karten werden nicht automatisch zu GitHub hochgeladen.</li>
-<li data-i18n="privacy2">Karten und Versionen liegen lokal im Browser des verwendeten Geräts.</li>
+<li data-i18n="privacy2">Karten liegen lokal im Browser des verwendeten Geräts.</li>
 <li data-i18n="privacy3">Bluetooth-Kommunikation läuft direkt zwischen Browser und Ardumower-ESP32.</li>
 <li data-i18n="privacy4">Das Sunray-Passwort wird nicht in den Kartendaten gespeichert.</li>
 <li data-i18n="privacy5">Für wichtige Karten regelmäßig ein JSON-Backup auf einem zweiten Speicherort ablegen.</li>
