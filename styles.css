@@ -2312,12 +2312,17 @@ body.menu-open .app-frame { visibility: hidden; }
 
 /* --- Fahrzone ----------------------------------------------------------- */
 .drive-zone {
+  /* Drei Spalten: der Joystick bleibt mittig, die Statusanzeige belegt eine der
+     Aussenspalten — so verdeckt der bedienende Daumen sie nicht. */
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
   justify-items: center;
   /* Nicht auseinanderziehen: die Zone soll genau so hoch sein wie ihr Inhalt,
      der ganze Rest gehoert der Karte. */
   align-content: center;
-  gap: 4px;
+  column-gap: 10px;
+  row-gap: 4px;
   padding: 8px 8px calc(env(safe-area-inset-bottom, 0px) + 8px);
   background: var(--shell-bar);
   border-top: 1px solid var(--shell-border-soft);
@@ -2326,18 +2331,37 @@ body.menu-open .app-frame { visibility: hidden; }
   /* Feste Groesse statt height:auto + aspect-ratio: als Grid-Kind wurde der Joystick sonst
      auf die Zeilenhoehe gestreckt, die Zeile wuchs mit — und die Fahrzone nahm den halben
      Bildschirm ein. align-self verhindert das Strecken zusaetzlich. */
-  /* Anteilig zur Bildschirmhoehe: die Fahrzone belegt damit rund ein Viertel des
-     Bildschirms, egal wie gross das Geraet ist. Grenzen halten sie bedienbar. */
-  width: clamp(130px, 25dvh, 240px);
-  height: clamp(130px, 25dvh, 240px);
+  /* Anteilig zur Bildschirmhoehe (Standard rund 30 % der Zone), zusaetzlich skalierbar
+     ueber --joystick-scale aus den Einstellungen. Die Obergrenze in dvh sorgt dafuer, dass
+     auch die groesste Stufe der Karte genug Platz laesst. */
+  --joystick-size: clamp(110px, calc(25dvh * var(--joystick-scale, 1)),
+    min(calc(240px * var(--joystick-scale, 1)), 38dvh));
+  grid-column: 2;
+  width: var(--joystick-size);
+  height: var(--joystick-size);
   aspect-ratio: auto;
   align-self: center;
   justify-self: center;
   margin: 0;
   touch-action: none;
 }
-.drive-zone .joystick-knob { width: 88px; height: 88px; }
-.drive-meta { font-size: .68rem; font-weight: 700; color: var(--shell-muted); min-height: 1.1em; }
+/* Kugel anteilig zur Basis: skaliert automatisch mit jeder Groessenstufe mit. */
+.drive-zone .joystick-knob { width: 41%; height: 41%; }
+.drive-meta {
+  grid-column: 1;
+  justify-self: end;
+  min-width: 0;
+  text-align: right;
+  font-size: .68rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--shell-muted);
+}
+.drive-zone[data-label-side="right"] .drive-meta {
+  grid-column: 3;
+  justify-self: start;
+  text-align: left;
+}
 
 /* --- Menueseite --------------------------------------------------------- */
 .menu-page {
@@ -2415,7 +2439,7 @@ body.menu-open .app-frame { visibility: hidden; }
   .mode-chip, .rtk-chip, .battery-chip { height: 38px; font-size: .68rem; }
   .mode-chip { padding-inline: 8px; }
   .capture-fab { width: 92px; height: 92px; }
-  .drive-zone .joystick-knob { width: 62px; height: 62px; }
+
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2951,9 +2975,7 @@ body.menu-open .app-frame { visibility: hidden; }
 }
 
 /* Fahrzone an die Bildschirmhöhe anpassen — sie bleibt trotzdem immer inhaltshoch. */
-@media (max-height: 720px) {
-  .drive-zone .joystick-knob { width: 56px; height: 56px; }
-}
+
 
 /* --- Breite Fenster: Fahrzone neben die Karte statt darunter ---------------
    Die Bereiche sind benannt, damit die meist ausgeblendete Update-Leiste die
@@ -2977,11 +2999,18 @@ body.menu-open .app-frame { visibility: hidden; }
     border-top: 0;
     border-left: 1px solid var(--shell-border-soft);
   }
+  /* Schmale Seitenspalte: Statusanzeige wieder unter den Joystick. */
+  .drive-zone { grid-template-columns: minmax(0, 1fr); row-gap: 8px; }
   .drive-zone .joystick-base {
-    width: clamp(150px, 18vw, 280px);
-    height: clamp(150px, 18vw, 280px);
+    grid-column: 1;
+    --joystick-size: clamp(150px, calc(18vw * var(--joystick-scale, 1)), calc(280px * var(--joystick-scale, 1)));
   }
-  .drive-zone .joystick-knob { width: 84px; height: 84px; }
+  .drive-meta,
+  .drive-zone[data-label-side="right"] .drive-meta {
+    grid-column: 1;
+    justify-self: center;
+    text-align: center;
+  }
   /* Der Modus-Chip soll auf breiten Schirmen nicht über die halbe Leiste wandern. */
   .mode-chip { flex: 0 1 auto; max-width: 260px; }
   .rtk-chip { margin-left: auto; }

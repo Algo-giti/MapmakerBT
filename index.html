@@ -79,7 +79,7 @@
 </div>
 </main>
 
-<section aria-label="Fahrsteuerung" class="drive-zone" data-i18n-aria-label="manualDrive">
+<section aria-label="Fahrsteuerung" class="drive-zone" data-i18n-aria-label="manualDrive" data-label-side="left" id="driveZone">
 <div aria-label="Manuell fahren" class="joystick-base" data-i18n-aria-label="manualDrive" id="driveJoystick" role="application" tabindex="0">
 <span class="joystick-ring ring-a"></span><span class="joystick-ring ring-b"></span>
 <span class="joystick-axis joystick-axis-x"></span><span class="joystick-axis joystick-axis-y"></span>
@@ -212,6 +212,22 @@
 <label class="field compact"><span data-i18n="driveSpeedMax">Maximum</span><div class="unit-input"><input id="driveSpeedMaxInput" inputmode="decimal" max="0.50" min="0.03" step="0.01" type="number" value="0.25"/><span>m/s</span></div></label>
 </div>
 <label class="field compact"><span data-i18n="driveTurnMax">Maximale Drehrate</span><div class="unit-input"><input id="driveTurnMaxInput" inputmode="decimal" max="2" min="0.2" step="0.05" type="number" value="1.15"/><span>rad/s</span></div></label>
+<div class="view-divider"></div>
+<label class="field compact"><span data-i18n="joystickSize">Größe des Joysticks</span>
+<select id="joystickSizeSelect">
+<option data-i18n="joystickSmall" value="0.75">Klein</option>
+<option data-i18n="joystickMedium" selected="" value="1">Mittel</option>
+<option data-i18n="joystickLarge" value="1.25">Groß</option>
+<option data-i18n="joystickXLarge" value="1.5">Sehr groß</option>
+</select>
+</label>
+<small class="view-note" data-i18n="joystickSizeHint">„Mittel“ passt sich der Bildschirmhöhe an. Größer heißt mehr Trefferfläche, kleiner mehr Karte.</small>
+<label class="field compact"><span data-i18n="driveLabelSide">Statusanzeige neben dem Joystick</span>
+<select id="driveLabelSideSelect">
+<option data-i18n="sideLeft" selected="" value="left">Links (Rechtshänder)</option>
+<option data-i18n="sideRight" value="right">Rechts (Linkshänder)</option>
+</select>
+</label>
 <small class="view-note" data-i18n="driveSafetyNote">Loslassen stoppt sofort. Sunray stoppt zusätzlich nach 1 s ohne neues Fahrkommando.</small>
 </section>
 </div>

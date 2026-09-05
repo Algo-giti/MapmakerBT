@@ -45,6 +45,15 @@ function loadApp(options = {}) {
       const attrs = new Map();
       return {
         lang: 'de',
+        style: (() => {
+          const props = new Map();
+          return {
+            props,
+            setProperty(name, value) { props.set(name, String(value)); },
+            getPropertyValue(name) { return props.get(name) ?? ''; },
+            removeProperty(name) { props.delete(name); },
+          };
+        })(),
         setAttribute(name, value) { attrs.set(name, String(value)); },
         getAttribute(name) { return attrs.has(name) ? attrs.get(name) : null; },
         removeAttribute(name) { attrs.delete(name); },

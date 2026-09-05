@@ -16,7 +16,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'toggleAutoCapture', 'startAutoCapture', 'stopAutoCapture', 'refreshDeleteButton', 'bindAccordion',
   'mapElements', 'renderElementList', 'deleteElement', 'activateElement',
   'canCloseAndStartNew', 'closeAndStartNewExclusion', 'currentExclusion',
-  'setTheme', 'applyTheme', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine', 'lockIcon', 'toggleLanguage',
+  'setTheme', 'applyTheme', 'applyDriveZonePreferences', 'applyViewPreferencesToUi', 'updateViewPreferencesFromUi', 'JOYSTICK_SCALES', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine', 'lockIcon', 'toggleLanguage',
   'askConfirm', 'confirmDialogRespond', 'showNotice', 'reportError', 'reportBleError',
   'showUpdateBar', 'applyUpdate', 'offerToCloseContour',
   'deleteSelectedPoint', 'handleMapTap', 'applyPointSelection', 'clearPointSelection', 'refreshCaptureState',
@@ -715,6 +715,43 @@ test('Das Aufnahmesymbol im Automatik-Knopf ist ein abgerundetes Quadrat', () =>
   assert.ok(icon.includes('<rect'), 'Kassettenrekorder-Aufnahme ist eckig, kein Punkt');
   assert.ok(/rx="[\d.]+"/.test(icon), 'mit abgerundeten Ecken');
   assert.ok(!icon.includes('<circle'), 'der gefuellte Kreis ist ersetzt');
+});
+
+test('Statusanzeige steht links oder rechts vom Joystick, je nach Einstellung', () => {
+  const { t } = setup();
+  // Standard: links — der Joystick sitzt mittig, der rechte Daumen kommt von rechts.
+  assert.strictEqual(t.state.view.driveLabelSide, 'left');
+  t.applyDriveZonePreferences();
+  assert.strictEqual(t.ui.driveZone.dataset.labelSide, 'left');
+
+  t.ui.driveLabelSideSelect.value = 'right';
+  t.updateViewPreferencesFromUi();
+  assert.strictEqual(t.state.view.driveLabelSide, 'right');
+  assert.strictEqual(t.ui.driveZone.dataset.labelSide, 'right');
+
+  t.ui.driveLabelSideSelect.value = 'bogus';
+  t.updateViewPreferencesFromUi();
+  assert.strictEqual(t.state.view.driveLabelSide, 'left', 'unbekannte Werte fallen auf links zurueck');
+});
+
+test('Joystick-Groesse ist einstellbar und wirkt ueber die CSS-Variable', () => {
+  const { t, sandbox } = setup();
+  const scaleVar = () => sandbox.document.documentElement.style.getPropertyValue('--joystick-scale');
+  assert.strictEqual(t.state.view.joystickScale, '1', 'Standard bleibt die bisherige Groesse');
+  t.applyDriveZonePreferences();
+  assert.strictEqual(scaleVar(), '1');
+
+  for (const step of ['0.75', '1.25', '1.5']) {
+    t.ui.joystickSizeSelect.value = step;
+    t.updateViewPreferencesFromUi();
+    assert.strictEqual(t.state.view.joystickScale, step);
+    assert.strictEqual(scaleVar(), step, `Stufe ${step} muss ankommen`);
+  }
+  assert.strictEqual([...t.JOYSTICK_SCALES].join(','), '0.75,1,1.25,1.5');
+
+  t.ui.joystickSizeSelect.value = '99';
+  t.updateViewPreferencesFromUi();
+  assert.strictEqual(t.state.view.joystickScale, '1', 'unbekannte Stufen fallen auf Standard zurueck');
 });
 
 test('Akkordeon: das Oeffnen eines Abschnitts schliesst die anderen', () => {

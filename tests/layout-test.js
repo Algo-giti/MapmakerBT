@@ -177,10 +177,13 @@ test('Die Fahrzone bleibt inhaltshoch, die Karte bekommt den Rest', () => {
   const drive = resolve('.app-frame > .drive-zone', 'flex').value || '';
   assert.ok(drive.startsWith('0 0'), `die Fahrzone darf weder wachsen noch schrumpfen, hat "${drive}"`);
   // Die Groesse haengt an der Bildschirmhoehe, ist aber nach oben und unten begrenzt.
-  const height = resolve('.drive-zone .joystick-base', 'height').value || '';
-  assert.ok(height.startsWith('clamp('), `Joystick-Hoehe muss anteilig begrenzt sein, ist "${height}"`);
-  assert.ok(/dvh|vh|vw/.test(height), 'ohne Viewport-Einheit passt sich die Zone nicht an');
-  assert.notStrictEqual(height, 'auto');
+  const size = (resolve('.drive-zone .joystick-base', '--joystick-size').value || '').replace(/\s+/g, ' ');
+  assert.ok(size.startsWith('clamp('), `Joystick-Groesse muss anteilig begrenzt sein, ist "${size}"`);
+  assert.ok(/dvh|vh|vw/.test(size), 'ohne Viewport-Einheit passt sich die Zone nicht an');
+  assert.ok(size.includes('--joystick-scale'), 'die Einstellung muss einfliessen');
+  // Selbst die groesste Stufe darf die Karte nicht verdraengen.
+  assert.ok(size.includes('38dvh'), `harte Obergrenze in dvh fehlt: "${size}"`);
+  assert.strictEqual(resolve('.drive-zone .joystick-base', 'height').value, 'var(--joystick-size)');
   assert.strictEqual(resolve('.drive-zone .joystick-base', 'align-self').value, 'center',
     'ohne align-self streckt das Grid den Joystick');
   assert.strictEqual(resolve('.drive-zone', 'align-content').value, 'center',
@@ -216,6 +219,21 @@ test('Punkte tragen die Farbe ihres Elements, die Fuellung die RTK-Qualitaet', (
       `${quality} darf den Rand nicht ueberschreiben`);
     assert.ok(resolve(`.map-point.${quality}`, 'fill').value, `${quality} faerbt die Fuellung`);
   }
+});
+
+test('Statusanzeige und Joystick ueberlappen in keiner Groessenstufe', () => {
+  // Drei Spalten: der Joystick sitzt fest in der Mitte, die Anzeige in einer Aussenspalte.
+  const columns = (resolve('.drive-zone', 'grid-template-columns').value || '').replace(/\s+/g, ' ');
+  assert.strictEqual(columns, 'minmax(0, 1fr) auto minmax(0, 1fr)');
+  assert.strictEqual(resolve('.drive-zone .joystick-base', 'grid-column').value, '2');
+  assert.strictEqual(resolve('.drive-meta', 'grid-column').value, '1', 'Standard: Anzeige links');
+  assert.strictEqual(resolve('.drive-zone[data-label-side="right"] .drive-meta', 'grid-column').value, '3');
+  // Die Aussenspalten duerfen den Joystick nicht wegdruecken.
+  assert.strictEqual(resolve('.drive-meta', 'min-width').value, '0');
+  // Auf schmalen Seitenspalten (breites Fenster) steht die Anzeige wieder darunter.
+  const wide = { media: 'min-width: 760px' };
+  assert.strictEqual((resolve('.drive-zone', 'grid-template-columns', wide).value || '').trim(), 'minmax(0, 1fr)');
+  assert.strictEqual(resolve('.drive-zone .joystick-base', 'grid-column', wide).value, '1');
 });
 
 test('Struktur: der Scrollcontainer ist direktes Kind der Menueseite', () => {

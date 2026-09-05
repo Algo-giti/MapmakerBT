@@ -35,6 +35,9 @@ const MAX_MAPS = 10;
 
 const I18N = {
   de: {
+    joystickSize: 'Größe des Joysticks', joystickSmall: 'Klein', joystickMedium: 'Mittel', joystickLarge: 'Groß', joystickXLarge: 'Sehr groß',
+    joystickSizeHint: '„Mittel“ passt sich der Bildschirmhöhe an. Größer heißt mehr Trefferfläche, kleiner mehr Karte.',
+    driveLabelSide: 'Statusanzeige neben dem Joystick', sideLeft: 'Links (Rechtshänder)', sideRight: 'Rechts (Linkshänder)',
     closeAndNewShort: 'Schließen & neu',
     closeAndNew: 'Fläche schließen & neue beginnen', closedAndStartedNew: 'Fläche geschlossen · neue Fläche begonnen.',
     unlockedBadge: 'Offen', mapLockedNote: '🔒 Karte gesperrt – keine Änderungen möglich',
@@ -165,6 +168,9 @@ const I18N = {
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   },
   en: {
+    joystickSize: 'Joystick size', joystickSmall: 'Small', joystickMedium: 'Medium', joystickLarge: 'Large', joystickXLarge: 'Extra large',
+    joystickSizeHint: '“Medium” adapts to the screen height. Larger means a bigger target, smaller leaves more map.',
+    driveLabelSide: 'Status next to the joystick', sideLeft: 'Left (right-handed)', sideRight: 'Right (left-handed)',
     closeAndNewShort: 'Close & new',
     closeAndNew: 'Close area & start a new one', closedAndStartedNew: 'Area closed · new area started.',
     unlockedBadge: 'Open', mapLockedNote: '🔒 Map locked – no changes possible',
@@ -368,7 +374,8 @@ const ui = {
   captureFabWrap: $('captureFabWrap'), addPointBtn: $('addPointBtn'), captureProgress: $('captureProgress'), captureButtonTitle: $('captureButtonTitle'), captureButtonHint: $('captureButtonHint'),
   mapSummary: $('mapSummary'), mapDistanceInfo: $('mapDistanceInfo'), pointStatus: $('pointStatus'), activeMapName: $('activeMapName'), saveState: $('saveState'),
   // Fahren
-  driveJoystick: $('driveJoystick'), joystickKnob: $('joystickKnob'), driveState: $('driveState'),
+  driveZone: $('driveZone'), driveJoystick: $('driveJoystick'), joystickKnob: $('joystickKnob'), driveState: $('driveState'),
+  joystickSizeSelect: $('joystickSizeSelect'), driveLabelSideSelect: $('driveLabelSideSelect'),
   driveSpeedMinInput: $('driveSpeedMinInput'), driveSpeedMaxInput: $('driveSpeedMaxInput'), driveTurnMaxInput: $('driveTurnMaxInput'), driveSpeedValue: $('driveSpeedValue'),
   // Menueseite
   menuPage: $('menuPage'), menuScroll: $('menuScroll'), settingsSections: $('settingsSections'),
@@ -462,6 +469,7 @@ const state = {
     showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35,
     autoCaptureIntervalS: 5, showTrail: true, showPointQuality: true, keepAwake: true,
     driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
+    joystickScale: '1', driveLabelSide: 'left',
   },
   telemetry: {
     x: null, y: null, delta: null, solution: null, age: null, accuracy: null,
@@ -650,8 +658,11 @@ function loadViewPreferences() {
     state.view.driveSpeedMin = clampNumber(saved.driveSpeedMin, 0.02, 0.34, 0.08);
     state.view.driveSpeedMax = clampNumber(saved.driveSpeedMax, 0.03, 0.50, 0.25);
     state.view.driveTurnMax = clampNumber(saved.driveTurnMax, 0.20, 2.00, 1.15);
+    state.view.joystickScale = JOYSTICK_SCALES.includes(String(saved.joystickScale)) ? String(saved.joystickScale) : '1';
+    state.view.driveLabelSide = saved.driveLabelSide === 'right' ? 'right' : 'left';
   } catch (_) {
-    state.view = { showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, autoCaptureIntervalS: 5, showTrail: true, showPointQuality: true, keepAwake: true, driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system' };
+    state.view = { showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, autoCaptureIntervalS: 5, showTrail: true, showPointQuality: true, keepAwake: true, driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
+      joystickScale: '1', driveLabelSide: 'left' };
   }
 }
 
@@ -675,6 +686,9 @@ function applyViewPreferencesToUi() {
   ui.driveSpeedMinInput.value = limits.min.toFixed(2);
   ui.driveSpeedMaxInput.value = limits.max.toFixed(2);
   ui.driveTurnMaxInput.value = limits.turn.toFixed(2);
+  ui.joystickSizeSelect.value = state.view.joystickScale;
+  ui.driveLabelSideSelect.value = state.view.driveLabelSide;
+  applyDriveZonePreferences();
 }
 
 function updateViewPreferencesFromUi() {
@@ -690,6 +704,9 @@ function updateViewPreferencesFromUi() {
   state.view.driveSpeedMin = clampNumber(ui.driveSpeedMinInput.value, 0.02, 0.34, state.view.driveSpeedMin);
   state.view.driveSpeedMax = clampNumber(ui.driveSpeedMaxInput.value, state.view.driveSpeedMin + 0.01, 0.50, state.view.driveSpeedMax);
   state.view.driveTurnMax = clampNumber(ui.driveTurnMaxInput.value, 0.20, 2.00, state.view.driveTurnMax);
+  state.view.joystickScale = JOYSTICK_SCALES.includes(ui.joystickSizeSelect.value) ? ui.joystickSizeSelect.value : '1';
+  state.view.driveLabelSide = ui.driveLabelSideSelect.value === 'right' ? 'right' : 'left';
+  applyDriveZonePreferences();
   saveViewPreferences();
   refreshControlUi();
   renderMap();
@@ -948,6 +965,19 @@ function bindAccordion(container) {
 
 // --- Hell/Dunkel ----------------------------------------------------------
 const THEMES = ['system', 'light', 'dark'];
+// Groessenstufen des Joysticks. '1' ist die bisherige, an die Bildschirmhoehe angepasste Groesse.
+const JOYSTICK_SCALES = ['0.75', '1', '1.25', '1.5'];
+
+/**
+ * Groesse und Seite der Statusanzeige aus den Einstellungen anwenden. Die Groesse laeuft ueber
+ * die CSS-Variable --joystick-scale, damit die vorhandene, bildschirmabhaengige Berechnung
+ * erhalten bleibt und nur skaliert wird.
+ */
+function applyDriveZonePreferences() {
+  const scale = JOYSTICK_SCALES.includes(state.view.joystickScale) ? state.view.joystickScale : '1';
+  document.documentElement.style.setProperty('--joystick-scale', scale);
+  ui.driveZone.dataset.labelSide = state.view.driveLabelSide === 'right' ? 'right' : 'left';
+}
 
 function applyTheme() {
   const theme = THEMES.includes(state.view.theme) ? state.view.theme : 'system';
@@ -3252,7 +3282,7 @@ function bindEvents() {
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((name) => ui.driveJoystick.addEventListener(name, (event) => {
     if (state.joystickPointerId === null || event.pointerId === state.joystickPointerId) stopDrive();
   }));
-  [ui.driveSpeedMinInput, ui.driveSpeedMaxInput, ui.driveTurnMaxInput].forEach((input) => input.addEventListener('change', () => {
+  [ui.driveSpeedMinInput, ui.driveSpeedMaxInput, ui.driveTurnMaxInput, ui.joystickSizeSelect, ui.driveLabelSideSelect].forEach((input) => input.addEventListener('change', () => {
     updateViewPreferencesFromUi();
     applyViewPreferencesToUi();
   }));
