@@ -35,6 +35,7 @@ const MAX_MAPS = 10;
 
 const I18N = {
   de: {
+    closeAndNew: 'Fläche schließen & neue beginnen', closedAndStartedNew: 'Fläche geschlossen · neue Fläche begonnen.',
     unlockedBadge: 'Offen', mapLockedNote: '🔒 Karte gesperrt – keine Änderungen möglich',
     mapElements: 'Elemente der Karte', elementPoints: '{count} Punkte',
     deleteElement: '{label} löschen', deleteElementConfirm: '{label} mit {count} Punkten wirklich löschen?',
@@ -163,6 +164,7 @@ const I18N = {
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   },
   en: {
+    closeAndNew: 'Close area & start a new one', closedAndStartedNew: 'Area closed · new area started.',
     unlockedBadge: 'Open', mapLockedNote: '🔒 Map locked – no changes possible',
     mapElements: 'Map elements', elementPoints: '{count} points',
     deleteElement: 'Delete {label}', deleteElementConfirm: 'Really delete {label} with {count} points?',
@@ -352,6 +354,7 @@ const $ = (id) => {
 const ui = {
   // Kopfzeile
   menuBtn: $('menuBtn'), bleStatusBtn: $('bleStatusBtn'), modeCycleBtn: $('modeCycleBtn'), modeChipLabel: $('modeChipLabel'),
+  closeAndNewBtn: $('closeAndNewBtn'),
   modeDialog: $('modeDialog'), modeDialogCancel: $('modeDialogCancel'), closeContoursBtn: $('closeContoursBtn'),
   confirmDialog: $('confirmDialog'), confirmDialogTitle: $('confirmDialogTitle'), confirmDialogText: $('confirmDialogText'),
   confirmDialogActions: $('confirmDialogActions'), confirmDialogCancel: $('confirmDialogCancel'), confirmDialogAccept: $('confirmDialogAccept'),
@@ -1177,6 +1180,7 @@ function refreshCaptureState() {
   // hat in diesem Zustand nichts zu suchen.
   ui.autoFabWrap.hidden = Boolean(selected) || areaSelected;
   refreshDeleteButton();
+  ui.closeAndNewBtn.hidden = !canCloseAndStartNew();
   // Im Verschieben-Zustand gibt es kein Halten: eine laufende Halteaktion wird verworfen.
   // (Nicht umgekehrt: ein laufendes Halten darf nicht von der 2-s-Telemetrie abgebrochen werden.)
   if (selected || auto) cancelCaptureHold();
@@ -2149,6 +2153,7 @@ async function addCurrentPoint() {
   if (state.mode === 'perimeter' && perimeterClosureCandidate()) { await closePerimeter(); return; }
   await appendCurrentPoint();
   renderMap();
+  refreshCaptureState();
 }
 
 /** Loescht den aktuell ausgewaehlten Punkt (Werkzeug oben rechts auf der Karte). */
@@ -2990,6 +2995,38 @@ async function closeContour(entry) {
   renderMap();
 }
 
+/** Die gerade bearbeitete Ausschlussflaeche, falls es eine gibt. */
+function currentExclusion() {
+  if (!state.activeMap) return null;
+  return state.activeMap.exclusions.find((e) => e.id === state.activeExclusionId) || null;
+}
+
+/**
+ * Schnellzugriff fuer Reihen kleiner Flaechen (Baeume): nur sichtbar, wenn im
+ * Ausschluss-Modus die laufende Kontur mindestens drei Punkte hat.
+ */
+function canCloseAndStartNew() {
+  if (!state.activeMap || state.activeMap.locked) return false;
+  if (state.mode !== 'exclusion') return false;
+  const exclusion = currentExclusion();
+  return Boolean(exclusion && exclusion.points.length >= 3);
+}
+
+/**
+ * Schliesst die laufende Ausschlusskontur und beginnt sofort eine neue — ohne Rueckfrage,
+ * weil der Knopf ausschliesslich dafuer da ist. Nutzt dieselbe Schliess-Logik wie der
+ * Moduswechsel (closeContour), damit es nur eine Stelle gibt.
+ */
+async function closeAndStartNewExclusion() {
+  if (!canCloseAndStartNew()) return;
+  const exclusion = currentExclusion();
+  const index = state.activeMap.exclusions.indexOf(exclusion);
+  await closeContour({ role: 'exclusion', id: exclusion.id, label: localizedExclusionName(exclusion, index) });
+  await createExclusion();
+  refreshCaptureState();
+  ui.pointStatus.textContent = tr('closedAndStartedNew');
+}
+
 async function offerToCloseContour(role) {
   if (!state.activeMap || state.activeMap.locked) return;
   const entry = openContours().find((c) => c.role === role
@@ -3157,6 +3194,7 @@ function bindEvents() {
   ui.menuCloseBtn.addEventListener('click', () => setMenuOpen(false));
   ui.bleStatusBtn.addEventListener('click', () => setMenuOpen(true, { section: 'menuConnection' }));
   ui.modeCycleBtn.addEventListener('click', openModeDialog);
+  ui.closeAndNewBtn.addEventListener('click', () => closeAndStartNewExclusion().catch(reportError));
   ui.modeDialogCancel.addEventListener('click', closeModeDialog);
   ui.confirmDialogAccept.addEventListener('click', () => confirmDialogRespond(true));
   ui.confirmDialogCancel.addEventListener('click', () => confirmDialogRespond(false));

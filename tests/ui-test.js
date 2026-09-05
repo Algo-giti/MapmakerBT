@@ -15,6 +15,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'deleteAction', 'deleteSelectedArea', 'selectedExclusion', 'createExclusion', 'validateActiveMap',
   'toggleAutoCapture', 'startAutoCapture', 'stopAutoCapture', 'refreshDeleteButton', 'bindAccordion',
   'mapElements', 'renderElementList', 'deleteElement', 'activateElement',
+  'canCloseAndStartNew', 'closeAndStartNewExclusion', 'currentExclusion',
   'setTheme', 'applyTheme', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine', 'lockIcon',
   'askConfirm', 'confirmDialogRespond', 'showNotice', 'reportError', 'reportBleError',
   'showUpdateBar', 'applyUpdate', 'offerToCloseContour',
@@ -619,6 +620,68 @@ test('Tippen auf eine Zeile macht das Element zum Aufnahmeziel', async () => {
   t.activateElement('exclusion', exclusionId);
   assert.strictEqual(t.state.mode, 'exclusion');
   assert.strictEqual(t.state.activeExclusionId, exclusionId);
+});
+
+test('Schnellzugriff „schließen & neue“ erscheint erst ab drei Punkten', async () => {
+  const { t } = setup();
+  t.setMode('exclusion');
+  await t.createExclusion();
+  const exclusion = t.currentExclusion();
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.closeAndNewBtn.hidden, true, 'ohne Punkte kein Schnellzugriff');
+
+  exclusion.points.push({ x: 0, y: 0 }, { x: 1, y: 0 });
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.closeAndNewBtn.hidden, true, 'bei zwei Punkten noch nicht');
+
+  exclusion.points.push({ x: 1, y: 1 });
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.closeAndNewBtn.hidden, false, 'ab drei Punkten sichtbar');
+  assert.strictEqual(t.canCloseAndStartNew(), true);
+});
+
+test('Schnellzugriff schließt die Fläche und beginnt ohne Rückfrage eine neue', async () => {
+  const { t, sandbox } = setup();
+  t.setMode('exclusion');
+  await t.createExclusion();
+  const first = t.currentExclusion();
+  first.points.push({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 });
+  t.refreshCaptureState();
+
+  sandbox.__lastConfirmRequest = null;
+  await t.closeAndStartNewExclusion();
+  assert.strictEqual(sandbox.__lastConfirmRequest, null, 'bewusste Aktion, keine Rueckfrage');
+  assert.strictEqual(first.closed, true, 'die alte Flaeche ist geschlossen');
+  assert.strictEqual(t.state.activeMap.exclusions.length, 2, 'eine neue Flaeche kam dazu');
+  const second = t.currentExclusion();
+  assert.notStrictEqual(second.id, first.id, 'die neue ist jetzt aktiv');
+  assert.strictEqual(second.points.length, 0, 'und leer');
+  assert.strictEqual(second.closed, false);
+  assert.strictEqual(t.state.mode, 'exclusion', 'der Modus bleibt');
+  assert.strictEqual(t.ui.closeAndNewBtn.hidden, true, 'Knopf verschwindet nach dem Zuruecksetzen');
+
+  // Erst die naechsten drei Punkte bringen ihn zurueck.
+  second.points.push({ x: 5, y: 5 }, { x: 6, y: 5 }, { x: 6, y: 6 });
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.closeAndNewBtn.hidden, false);
+});
+
+test('Schnellzugriff bleibt in anderen Modi und bei gesperrter Karte verborgen', async () => {
+  const { t } = setup();
+  t.setMode('exclusion');
+  await t.createExclusion();
+  t.currentExclusion().points.push({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 });
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.closeAndNewBtn.hidden, false);
+
+  t.setMode('perimeter');
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.closeAndNewBtn.hidden, true, 'nur im Ausschluss-Modus');
+
+  t.setMode('exclusion');
+  t.state.activeMap.locked = true;
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.closeAndNewBtn.hidden, true, 'gesperrte Karte laesst nichts schliessen');
 });
 
 test('Akkordeon: das Oeffnen eines Abschnitts schliesst die anderen', () => {

@@ -2983,3 +2983,12 @@ body.menu-open .app-frame { visibility: hidden; }
   .mode-chip { flex: 0 1 auto; max-width: 260px; }
   .rtk-chip { margin-left: auto; }
 }
+
+/* Schnellzugriff „Fläche schließen & neue“ — nur im Ausschluss-Modus ab drei Punkten sichtbar,
+   deshalb in der Farbe der Ausschlussflächen statt neutral. */
+.quick-close-btn {
+  color: var(--exclusion);
+  border-color: var(--shell-danger-border);
+  background: var(--shell-danger-bg);
+}
+.quick-close-btn svg { stroke-width: 2.2; }
