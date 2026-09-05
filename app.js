@@ -21,6 +21,9 @@ const BLE_RX_OVERFLOW_LIMIT = 3;
 // (rund 8 s), ist die Antwortkette gestoert — auch wenn noch Bruchstuecke eintrudeln und
 // der reine Stille-Watchdog deshalb nicht anschlaegt.
 const BLE_UNANSWERED_POLL_LIMIT = 4;
+// Fehlgeschlagene Schreibvorgaenge wiederholen sich im Sekundentakt (Fahr-Heartbeat, Polling).
+// Der Kurzhinweis erscheint jedes Mal, der Dialog hoechstens alle 20 s.
+const BLE_ERROR_NOTICE_INTERVAL_MS = 20000;
 // Manuelle Aufnahme mittelt die letzten Fixes, statt den Nutzer warten zu lassen.
 const POSITION_SMOOTHING_WINDOW_MS = 2000;
 const POSITION_SMOOTHING_MAX_SAMPLES = 10;
@@ -35,6 +38,8 @@ const MAX_MAPS = 10;
 
 const I18N = {
   de: {
+    bleWriteFailedTitle: 'Senden fehlgeschlagen', bleWriteFailedShort: 'Senden fehlgeschlagen: {message}',
+    bleWriteFailed: 'Der Befehl {context} konnte nicht an den Mäher gesendet werden.\n\n{message}',
     errorTitle: 'Fehler', okUnderstood: 'Verstanden',
     deleteExclusionTitle: 'Ausschlussfläche löschen', clearNow: 'Leeren', closeNow: 'Schließen',
     closeContourTitle: 'Kontur schließen',
@@ -160,6 +165,8 @@ const I18N = {
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   },
   en: {
+    bleWriteFailedTitle: 'Sending failed', bleWriteFailedShort: 'Sending failed: {message}',
+    bleWriteFailed: 'The command {context} could not be sent to the mower.\n\n{message}',
     errorTitle: 'Error', okUnderstood: 'Got it',
     deleteExclusionTitle: 'Delete exclusion area', clearNow: 'Clear', closeNow: 'Close',
     closeContourTitle: 'Close contour',
@@ -388,6 +395,7 @@ const state = {
   mode: 'perimeter',
   menuOpen: false,
   pendingConfirm: null,
+  lastBleErrorNoticeAt: 0,
   reloadingForUpdate: false,
   selectedPoint: null,
   selectedArea: null,
@@ -525,7 +533,7 @@ function updateJoystickFromPointer(event, { forceSend = false } = {}) {
   const v = joystickVectorFromPointer(event);
   if (ui.joystickKnob) ui.joystickKnob.style.transform = `translate(-50%, -50%) translate(${v.px.toFixed(1)}px, ${v.py.toFixed(1)}px)`;
   state.driveVector = { linear: v.linear, angular: v.angular };
-  sendDriveVector(v.linear, v.angular, { force: forceSend }).catch((error) => log('JOYSTICK', error.message));
+  sendDriveVector(v.linear, v.angular, { force: forceSend }).catch((error) => reportBleError('AT+M', error));
 }
 
 function beginJoystick(event) {
@@ -540,7 +548,7 @@ function beginJoystick(event) {
   try { ui.driveJoystick.setPointerCapture(event.pointerId); } catch (_) {}
   updateJoystickFromPointer(event, { forceSend: true });
   state.driveTimer = setInterval(() => {
-    if (state.driveDirection === 'joystick') sendDriveVector(state.driveVector.linear, state.driveVector.angular, { force: true }).catch((error) => log('JOYSTICK', error.message));
+    if (state.driveDirection === 'joystick') sendDriveVector(state.driveVector.linear, state.driveVector.angular, { force: true }).catch((error) => reportBleError('AT+M', error));
   }, DRIVE_HEARTBEAT_MS);
 }
 
@@ -554,7 +562,8 @@ function stopDrive({ send = true } = {}) {
   resetJoystickVisual();
   if (ui.driveState) ui.driveState.textContent = tr('driveIdle');
   if (send && state.connected && !state.demo && state.characteristic && wasDriving) {
-    sendSunray('AT+M,0,0').catch((error) => log('DRIVE STOP', error.message));
+    // Ein nicht angekommener Stopp ist sicherheitsrelevant: immer sofort melden.
+    sendSunray('AT+M,0,0').catch((error) => reportBleError('AT+M,0,0', error, { immediate: true }));
   }
 }
 
@@ -562,8 +571,8 @@ async function emergencyStop() {
   stopDrive({ send: false });
   refreshControlUi();
   if (!state.connected || state.demo || !state.characteristic) return;
-  try { await sendSunray('AT+M,0,0'); } catch (error) { log('STOP DRIVE', error.message); }
-  try { await sendSunray('AT+C,0,0'); } catch (error) { log('STOP ALL', error.message); }
+  try { await sendSunray('AT+M,0,0'); } catch (error) { reportBleError('AT+M,0,0', error, { immediate: true }); }
+  try { await sendSunray('AT+C,0,0'); } catch (error) { reportBleError('AT+C,0,0', error, { immediate: true }); }
   if (ui.driveState) ui.driveState.textContent = tr('stopEverythingDone');
 }
 
@@ -960,6 +969,24 @@ function showNotice({ title, message, tone = 'neutral' }) {
     .then(() => undefined);
 }
 
+/**
+ * Fehlgeschlagener Funkbefehl. Der Kurzhinweis steht immer sofort in der Kartenzeile (und bei
+ * laufender Fahrt in der Fahrzeile); der Dialog kommt bei wiederkehrenden Fehlern nur alle
+ * BLE_ERROR_NOTICE_INTERVAL_MS, sonst wuerde der 650-ms-Fahr-Heartbeat den Nutzer zuschuetten.
+ * immediate = true erzwingt ihn — fuer Not-Halt und ausdrueckliche Tastendrucke.
+ */
+function reportBleError(context, error, { immediate = false } = {}) {
+  const message = error?.message || String(error);
+  log(context, message);
+  const short = tr('bleWriteFailedShort', { message });
+  if (ui.pointStatus) ui.pointStatus.textContent = short;
+  if (ui.driveState && state.driveDirection) ui.driveState.textContent = short;
+  const now = Date.now();
+  if (!immediate && now - state.lastBleErrorNoticeAt < BLE_ERROR_NOTICE_INTERVAL_MS) return;
+  state.lastBleErrorNoticeAt = now;
+  showNotice({ title: tr('bleWriteFailedTitle'), message: tr('bleWriteFailed', { context, message }), tone: 'danger' });
+}
+
 /** Sammelstelle fuer Fehler aus Nutzeraktionen: sichtbare Meldung statt stiller Konsole. */
 function reportError(error) {
   log('FEHLER', error?.message || String(error));
@@ -1335,7 +1362,7 @@ function startPolling() {
     if (state.sendBusy || (performance.now() - state.lastDriveSentAt < 220)) return;
     sendSunray('AT+S', { skipIfBusy: true })
       .then((sent) => { if (sent !== false) state.pendingStateReplies += 1; })
-      .catch((error) => log(tr('stateError'), error.message));
+      .catch((error) => reportBleError('AT+S', error));
   };
   state.pendingStateReplies = 0;
   poll();
@@ -1407,6 +1434,7 @@ async function establishGatt(device, { reconnecting = false } = {}) {
   state.rxBuffer = '';
   state.rxOverflows = 0;
   state.pendingStateReplies = 0;
+  state.lastBleErrorNoticeAt = 0; // neue Verbindung: der erste Fehler wird wieder gezeigt
   state.sendBusy = false;
   state.bleConnectedAt = Date.now();
   state.bleTxCommands = 0;
@@ -2035,7 +2063,11 @@ async function startAutoCapture() {
   requestWakeLockIfNeeded();
   await autoCaptureTick();
   const intervalMs = Math.max(1, state.view.autoCaptureIntervalS) * 1000;
-  state.autoCaptureTimer = setInterval(() => { autoCaptureTick().catch((error) => log('AUTO', error.message)); }, intervalMs);
+  state.autoCaptureTimer = setInterval(() => {
+    // Eine still weiterlaufende, aber fehlschlagende Automatik waere das Schlimmste:
+    // anhalten und den Grund zeigen.
+    autoCaptureTick().catch((error) => { stopAutoCapture(); reportError(error); });
+  }, intervalMs);
   renderMap(); refreshCaptureState();
 }
 
@@ -3176,8 +3208,8 @@ function bindEvents() {
   }));
   ui.disconnectBtn.addEventListener('click', disconnectBluetooth);
   ui.demoBtn.addEventListener('click', () => state.demo ? stopDemo() : startDemo());
-  ui.requestVersionBtn.addEventListener('click', () => sendSunray('AT+V', { forcePlain: true }).catch((e) => log(tr('versionError'), e.message)));
-  ui.requestStateBtn.addEventListener('click', () => sendSunray('AT+S').catch((e) => log(tr('stateError'), e.message)));
+  ui.requestVersionBtn.addEventListener('click', () => sendSunray('AT+V', { forcePlain: true }).catch((e) => reportBleError('AT+V', e, { immediate: true })));
+  ui.requestStateBtn.addEventListener('click', () => sendSunray('AT+S').catch((e) => reportBleError('AT+S', e, { immediate: true })));
   ui.clearLogBtn.addEventListener('click', () => { ui.debugLog.textContent = ''; });
 
   // Karten

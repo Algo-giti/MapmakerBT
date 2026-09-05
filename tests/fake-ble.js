@@ -133,6 +133,8 @@ function createFakeBluetooth(options = {}) {
     answerVersion: options.answerVersion !== false,
     /** true = der Link faellt weg, ohne dass gattserverdisconnected feuert (Browser-Sonderfall). */
     suppressDisconnectEvent: Boolean(options.suppressDisconnectEvent),
+    /** true = jeder Schreibvorgang wird abgewiesen, obwohl der Link steht. */
+    failWrites: Boolean(options.failWrites),
     telemetry: { battery: 28.6, x: 15.15, y: -10.24, delta: 2.02, solution: 2, accuracy: 0.02, sats: 49, satsDgps: 48 },
 
     // --- Beobachtung --------------------------------------------------------
@@ -171,6 +173,7 @@ function createFakeBluetooth(options = {}) {
   sim._appWrote = (chunk) => {
     const bytes = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk.buffer || chunk);
     if (!sim.gatt.connected) throw new Error('GATT Server is disconnected.');
+    if (sim.failWrites) throw new Error('GATT operation failed for unknown reason.');
     sim.writes.push(bytes.byteLength);
     sim.stats.maxWriteChunk = Math.max(sim.stats.maxWriteChunk, bytes.byteLength);
     sim._rxLine += decoder.decode(bytes);

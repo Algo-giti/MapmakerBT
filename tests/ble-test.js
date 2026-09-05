@@ -15,10 +15,10 @@ const EXPORTS = ['state', 'ui', 'bleAdapter', 'connectBluetooth', 'disconnectBlu
 function setup(fakeOptions = {}) {
   const clock = createClock();
   const fake = createFakeBluetooth({ clock, ...fakeOptions });
-  const { t, elements } = loadApp({ clock, bleAdapter: fake.adapter, exportNames: EXPORTS });
+  const { t, elements, sandbox } = loadApp({ clock, bleAdapter: fake.adapter, exportNames: EXPORTS });
   elements.get('passwordInput').value = '123456';
   const logText = () => elements.get('debugLog').textContent;
-  return { clock, fake, sim: fake.sim, t, elements, logText, disconnectEvents: () => (logText().match(/· TX=/g) || []).length };
+  return { clock, fake, sim: fake.sim, t, elements, sandbox, logText, disconnectEvents: () => (logText().match(/· TX=/g) || []).length };
 }
 
 /** Verbindet die App mit dem Fake und wartet den Handshake ab. */
@@ -191,6 +191,22 @@ test('RX-Watchdog: nach dem Trennen faengt sich die App selbst wieder', async ()
   await ctx.clock.runFor(20000);
   assert.strictEqual(ctx.t.state.connected, true, 'App ist danach wieder verbunden');
   assert.ok(ctx.t.state.telemetry.receivedAt > 0, 'Telemetrie laeuft weiter');
+});
+
+test('Fehlgeschlagene Schreibvorgaenge werden dem Nutzer gemeldet', async () => {
+  const ctx = await connect(setup());
+  ctx.sim.failWrites = true;
+  await ctx.clock.runFor(2500); // die naechste Statusabfrage scheitert
+  assert.ok(ctx.logText().includes('GATT operation failed'), 'Fehler steht im Diagnoseprotokoll');
+  assert.ok(ctx.elements.get('pointStatus').textContent.includes('Senden fehlgeschlagen'),
+    'Kurzhinweis erscheint auf der Karte');
+  assert.ok(ctx.sandbox.__lastConfirmRequest, 'der erste Fehler wird als Meldung gezeigt');
+  assert.strictEqual(ctx.sandbox.__lastConfirmRequest.singleButton, true);
+
+  // Der 2-s-Poll darf den Nutzer nicht mit Dialogen zuschuetten.
+  ctx.sandbox.__lastConfirmRequest = null;
+  await ctx.clock.runFor(6000);
+  assert.strictEqual(ctx.sandbox.__lastConfirmRequest, null, 'kein Dialog je fehlgeschlagenem Poll');
 });
 
 test('RX-Watchdog schlaegt bei laufendem Empfang nicht an', async () => {

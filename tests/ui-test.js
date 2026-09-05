@@ -15,7 +15,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'deleteAction', 'deleteSelectedArea', 'selectedExclusion', 'createExclusion', 'validateActiveMap',
   'toggleAutoCapture', 'startAutoCapture', 'stopAutoCapture', 'refreshDeleteButton', 'bindAccordion',
   'setTheme', 'applyTheme', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine',
-  'askConfirm', 'confirmDialogRespond', 'showNotice', 'reportError',
+  'askConfirm', 'confirmDialogRespond', 'showNotice', 'reportError', 'reportBleError',
   'deleteSelectedPoint', 'handleMapTap', 'applyPointSelection', 'clearPointSelection', 'refreshCaptureState',
   'renderMap', 'resetViewport', 'clampViewport', 'activeTransform', 'toScreen', 'svgMetrics', 'beginCustomViewport',
   'updateRtkBadge', 'setMenuOpen', 'onMapPointerDown', 'onMapPointerMove', 'onMapPointerUp', 'beginCaptureHold', 'cancelCaptureHold', 'driveSpeedLimits', 'joystickVectorFromPointer', 'makeMap', 'normalizeMap',
@@ -488,6 +488,31 @@ test('Loeschen einer Flaeche fragt mit eigener Beschriftung nach', async () => {
   assert.strictEqual(sandbox.__lastConfirmRequest.confirmLabel, 'Löschen');
   assert.strictEqual(sandbox.__lastConfirmRequest.tone, 'danger');
   assert.ok(sandbox.__lastConfirmRequest.title);
+});
+
+test('Fehlgeschlagener Funkbefehl: Kurzhinweis immer, Dialog nur gedrosselt', async () => {
+  const { t, sandbox, clock, elements } = setup();
+  await t.reportBleError('AT+M', new Error('GATT operation failed'));
+  assert.ok(elements.get('pointStatus').textContent.includes('Senden fehlgeschlagen'), 'Kurzhinweis auf der Karte');
+  assert.ok(elements.get('debugLog').textContent.includes('GATT operation failed'), 'und im Protokoll');
+  assert.ok(sandbox.__lastConfirmRequest, 'erster Fehler wird gezeigt');
+  assert.strictEqual(sandbox.__lastConfirmRequest.tone, 'danger');
+
+  sandbox.__lastConfirmRequest = null;
+  elements.get('pointStatus').textContent = '';
+  await t.reportBleError('AT+M', new Error('zweiter Fehler'));
+  assert.ok(elements.get('pointStatus').textContent.includes('zweiter Fehler'), 'Kurzhinweis kommt trotzdem');
+  assert.strictEqual(sandbox.__lastConfirmRequest, null, 'kein zweiter Dialog innerhalb der Sperrzeit');
+
+  // Not-Halt und Tastendruck erzwingen die Meldung sofort.
+  await t.reportBleError('AT+M,0,0', new Error('Stopp kam nicht an'), { immediate: true });
+  assert.ok(sandbox.__lastConfirmRequest.message.includes('Stopp kam nicht an'));
+
+  // Nach der Sperrzeit wieder.
+  sandbox.__lastConfirmRequest = null;
+  await clock.runFor(21000);
+  await t.reportBleError('AT+S', new Error('spaeter Fehler'));
+  assert.ok(sandbox.__lastConfirmRequest, 'nach 20 s wird wieder gemeldet');
 });
 
 test('Akkordeon: das Oeffnen eines Abschnitts schliesst die anderen', () => {
