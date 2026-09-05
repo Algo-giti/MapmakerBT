@@ -260,6 +260,9 @@ test('Tap in eine Ausschlussflaeche waehlt die ganze Flaeche aus und loescht sie
   assert.strictEqual(t.state.selectedPoint, null, 'kein Einzelpunkt');
   assert.strictEqual(t.ui.deleteBtnLabel.textContent, 'Fläche löschen');
   assert.ok(t.ui.deletePointBtn.classList.contains('delete-area'));
+  assert.strictEqual(t.ui.captureFabWrap.hidden, true, 'bei Flaechenauswahl kein Aufnahmeknopf');
+  assert.strictEqual(t.ui.autoFabWrap.hidden, true, 'und keine Automatik');
+  assert.strictEqual(t.ui.deleteFabWrap.hidden, false, 'nur der Papierkorb bleibt');
 
   sandbox.__confirmAnswer = false;
   await t.deleteAction();
@@ -268,6 +271,8 @@ test('Tap in eine Ausschlussflaeche waehlt die ganze Flaeche aus und loescht sie
   await t.deleteAction();
   assert.strictEqual(t.state.activeMap.exclusions.length, 0);
   assert.strictEqual(t.state.selectedArea, null);
+  assert.strictEqual(t.ui.captureFabWrap.hidden, false, 'danach ist der Aufnahmeknopf zurueck');
+  assert.strictEqual(t.ui.autoFabWrap.hidden, false);
 });
 
 test('Tap in den Perimeter waehlt keine Flaeche aus', () => {

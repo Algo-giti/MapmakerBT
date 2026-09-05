@@ -883,6 +883,7 @@ async function deleteSelectedArea() {
   renderExclusionControls();
   await saveActiveMap();
   renderMap();
+  refreshCaptureState();
   ui.pointStatus.textContent = tr('areaDeleted');
 }
 
@@ -1154,6 +1155,7 @@ function refreshCaptureState() {
   const hasMap = Boolean(state.activeMap);
   const mapLocked = Boolean(state.activeMap?.locked);
   const selected = state.selectedPoint ? getSelectedPoint() : null;
+  const areaSelected = Boolean(selectedExclusion());
 
   updateRtkBadge();
   const auto = state.autoCaptureRunning;
@@ -1163,13 +1165,15 @@ function refreshCaptureState() {
   // Automatik ersetzt den manuellen Knopf, statt neben ihm zu stehen.
   ui.captureCluster.classList.toggle('auto-active', auto);
   // Der ganze Block inklusive Beschriftung verschwindet, nicht nur der Knopf.
-  ui.captureFabWrap.hidden = auto;
+  // Bei ausgewaehlter Flaeche bleibt nur der Papierkorb stehen: aufnehmen laesst sich in
+  // diesem Zustand nichts, es geht ausschliesslich um die Flaeche.
+  ui.captureFabWrap.hidden = auto || areaSelected;
   ui.autoCaptureLabel.textContent = tr(auto ? 'autoCaptureOn' : 'autoCapture');
   ui.autoCaptureBtn.setAttribute('aria-pressed', String(auto));
   ui.autoCaptureBtn.disabled = mapLocked || (!auto && !(hasMap && fresh && coords && !blockedByFixRule));
   // Mit ausgewaehltem Punkt geht es ums Verschieben, nicht ums Aufnehmen: die Automatik
   // hat in diesem Zustand nichts zu suchen.
-  ui.autoFabWrap.hidden = Boolean(selected);
+  ui.autoFabWrap.hidden = Boolean(selected) || areaSelected;
   refreshDeleteButton();
   // Im Verschieben-Zustand gibt es kein Halten: eine laufende Halteaktion wird verworfen.
   // (Nicht umgekehrt: ein laufendes Halten darf nicht von der 2-s-Telemetrie abgebrochen werden.)
@@ -2150,6 +2154,7 @@ async function deleteSelectedPoint() {
   state.validationResult = null;
   await saveActiveMap();
   renderMap();
+  refreshCaptureState();
   ui.pointStatus.textContent = tr('pointDeleted', { n: sel.index + 1 });
 }
 
@@ -2163,6 +2168,7 @@ async function undoPoint() {
   state.selectedPoint = null;
   await saveActiveMap();
   renderMap();
+  refreshCaptureState();
 }
 
 async function clearCurrentElement() {
