@@ -201,6 +201,23 @@ test('Auf breiten Fenstern steht die Fahrzone neben der Karte', () => {
   assert.ok(/minmax\(0,\s*1fr\)/.test(columns), 'die Karte bekommt die freie Breite');
 });
 
+test('Punkte tragen die Farbe ihres Elements, die Fuellung die RTK-Qualitaet', () => {
+  // Die Qualitaetsregeln setzten frueher auch stroke mit !important — dadurch sahen Punkte
+  // von Perimeter, Ausschluss, Wegpunkten und Dock voellig gleich aus.
+  const strokes = {};
+  for (const cls of ['point-perimeter', 'point-exclusion', 'point-waypoint', 'point-dock']) {
+    const value = resolve(`.${cls}`, 'stroke').value;
+    assert.ok(value, `${cls} braucht eine eigene Randfarbe`);
+    strokes[cls] = value;
+  }
+  assert.strictEqual(new Set(Object.values(strokes)).size, 4, `Randfarben muessen sich unterscheiden: ${JSON.stringify(strokes)}`);
+  for (const quality of ['quality-excellent', 'quality-good', 'quality-warning', 'quality-bad']) {
+    assert.strictEqual(resolve(`.map-point.${quality}`, 'stroke').value, null,
+      `${quality} darf den Rand nicht ueberschreiben`);
+    assert.ok(resolve(`.map-point.${quality}`, 'fill').value, `${quality} faerbt die Fuellung`);
+  }
+});
+
 test('Struktur: der Scrollcontainer ist direktes Kind der Menueseite', () => {
   const page = html.slice(html.indexOf('<section class="menu-page"'), html.indexOf('</section>', html.indexOf('<section class="menu-page"')));
   const head = page.slice(0, page.indexOf('<div class="menu-scroll"'));

@@ -35,6 +35,7 @@ const MAX_MAPS = 10;
 
 const I18N = {
   de: {
+    closeAndNewShort: 'Schließen & neu',
     closeAndNew: 'Fläche schließen & neue beginnen', closedAndStartedNew: 'Fläche geschlossen · neue Fläche begonnen.',
     unlockedBadge: 'Offen', mapLockedNote: '🔒 Karte gesperrt – keine Änderungen möglich',
     mapElements: 'Elemente der Karte', elementPoints: '{count} Punkte',
@@ -164,6 +165,7 @@ const I18N = {
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   },
   en: {
+    closeAndNewShort: 'Close & new',
     closeAndNew: 'Close area & start a new one', closedAndStartedNew: 'Area closed · new area started.',
     unlockedBadge: 'Open', mapLockedNote: '🔒 Map locked – no changes possible',
     mapElements: 'Map elements', elementPoints: '{count} points',
@@ -354,14 +356,14 @@ const $ = (id) => {
 const ui = {
   // Kopfzeile
   menuBtn: $('menuBtn'), bleStatusBtn: $('bleStatusBtn'), modeCycleBtn: $('modeCycleBtn'), modeChipLabel: $('modeChipLabel'),
-  closeAndNewBtn: $('closeAndNewBtn'),
   modeDialog: $('modeDialog'), modeDialogCancel: $('modeDialogCancel'), closeContoursBtn: $('closeContoursBtn'),
   confirmDialog: $('confirmDialog'), confirmDialogTitle: $('confirmDialogTitle'), confirmDialogText: $('confirmDialogText'),
   confirmDialogActions: $('confirmDialogActions'), confirmDialogCancel: $('confirmDialogCancel'), confirmDialogAccept: $('confirmDialogAccept'),
   rtkBadge: $('rtkBadge'), rtkText: $('rtkText'), rtkSats: $('rtkSats'), batteryChip: $('batteryChip'), batteryFill: $('batteryFill'), batteryValue: $('batteryValue'),
   // Kartenbuehne
   mapSvg: $('mapSvg'), gridLayer: $('gridLayer'), shapeLayer: $('shapeLayer'), robotLayer: $('robotLayer'),
-  deletePointBtn: $('deletePointBtn'), deleteFabWrap: $('deleteFabWrap'), deleteBtnLabel: $('deleteBtnLabel'), fitViewBtn: $('fitViewBtn'),
+  deletePointBtn: $('deletePointBtn'), deleteFabWrap: $('deleteFabWrap'), deleteBtnLabel: $('deleteBtnLabel'),
+  closeAndNewWrap: $('closeAndNewWrap'), closeAndNewBtn: $('closeAndNewBtn'), fitViewBtn: $('fitViewBtn'),
   captureCluster: $('captureCluster'), autoFabWrap: $('autoFabWrap'), autoCaptureBtn: $('autoCaptureBtn'), autoCaptureLabel: $('autoCaptureLabel'),
   captureFabWrap: $('captureFabWrap'), addPointBtn: $('addPointBtn'), captureProgress: $('captureProgress'), captureButtonTitle: $('captureButtonTitle'), captureButtonHint: $('captureButtonHint'),
   mapSummary: $('mapSummary'), mapDistanceInfo: $('mapDistanceInfo'), pointStatus: $('pointStatus'), activeMapName: $('activeMapName'), saveState: $('saveState'),
@@ -1180,7 +1182,7 @@ function refreshCaptureState() {
   // hat in diesem Zustand nichts zu suchen.
   ui.autoFabWrap.hidden = Boolean(selected) || areaSelected;
   refreshDeleteButton();
-  ui.closeAndNewBtn.hidden = !canCloseAndStartNew();
+  ui.closeAndNewWrap.hidden = !canCloseAndStartNew();
   // Im Verschieben-Zustand gibt es kein Halten: eine laufende Halteaktion wird verworfen.
   // (Nicht umgekehrt: ein laufendes Halten darf nicht von der 2-s-Telemetrie abgebrochen werden.)
   if (selected || auto) cancelCaptureHold();

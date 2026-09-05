@@ -628,15 +628,15 @@ test('Schnellzugriff „schließen & neue“ erscheint erst ab drei Punkten', as
   await t.createExclusion();
   const exclusion = t.currentExclusion();
   t.refreshCaptureState();
-  assert.strictEqual(t.ui.closeAndNewBtn.hidden, true, 'ohne Punkte kein Schnellzugriff');
+  assert.strictEqual(t.ui.closeAndNewWrap.hidden, true, 'ohne Punkte kein Schnellzugriff');
 
   exclusion.points.push({ x: 0, y: 0 }, { x: 1, y: 0 });
   t.refreshCaptureState();
-  assert.strictEqual(t.ui.closeAndNewBtn.hidden, true, 'bei zwei Punkten noch nicht');
+  assert.strictEqual(t.ui.closeAndNewWrap.hidden, true, 'bei zwei Punkten noch nicht');
 
   exclusion.points.push({ x: 1, y: 1 });
   t.refreshCaptureState();
-  assert.strictEqual(t.ui.closeAndNewBtn.hidden, false, 'ab drei Punkten sichtbar');
+  assert.strictEqual(t.ui.closeAndNewWrap.hidden, false, 'ab drei Punkten sichtbar');
   assert.strictEqual(t.canCloseAndStartNew(), true);
 });
 
@@ -658,12 +658,12 @@ test('Schnellzugriff schließt die Fläche und beginnt ohne Rückfrage eine neue
   assert.strictEqual(second.points.length, 0, 'und leer');
   assert.strictEqual(second.closed, false);
   assert.strictEqual(t.state.mode, 'exclusion', 'der Modus bleibt');
-  assert.strictEqual(t.ui.closeAndNewBtn.hidden, true, 'Knopf verschwindet nach dem Zuruecksetzen');
+  assert.strictEqual(t.ui.closeAndNewWrap.hidden, true, 'Knopf verschwindet nach dem Zuruecksetzen');
 
   // Erst die naechsten drei Punkte bringen ihn zurueck.
   second.points.push({ x: 5, y: 5 }, { x: 6, y: 5 }, { x: 6, y: 6 });
   t.refreshCaptureState();
-  assert.strictEqual(t.ui.closeAndNewBtn.hidden, false);
+  assert.strictEqual(t.ui.closeAndNewWrap.hidden, false);
 });
 
 test('Schnellzugriff bleibt in anderen Modi und bei gesperrter Karte verborgen', async () => {
@@ -672,16 +672,16 @@ test('Schnellzugriff bleibt in anderen Modi und bei gesperrter Karte verborgen',
   await t.createExclusion();
   t.currentExclusion().points.push({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 });
   t.refreshCaptureState();
-  assert.strictEqual(t.ui.closeAndNewBtn.hidden, false);
+  assert.strictEqual(t.ui.closeAndNewWrap.hidden, false);
 
   t.setMode('perimeter');
   t.refreshCaptureState();
-  assert.strictEqual(t.ui.closeAndNewBtn.hidden, true, 'nur im Ausschluss-Modus');
+  assert.strictEqual(t.ui.closeAndNewWrap.hidden, true, 'nur im Ausschluss-Modus');
 
   t.setMode('exclusion');
   t.state.activeMap.locked = true;
   t.refreshCaptureState();
-  assert.strictEqual(t.ui.closeAndNewBtn.hidden, true, 'gesperrte Karte laesst nichts schliessen');
+  assert.strictEqual(t.ui.closeAndNewWrap.hidden, true, 'gesperrte Karte laesst nichts schliessen');
 });
 
 test('Das Automatik-Label traegt das Intervall in beiden Sprachen und ohne Platzhalterrest', async () => {

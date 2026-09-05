@@ -1564,10 +1564,13 @@ footer {
 /* v12 · mapping quality, gallery and manual mower control */
 .tabs { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 
-.map-point.quality-excellent { fill: #4cf59a !important; stroke: #07130d !important; }
-.map-point.quality-good { fill: #74ddea !important; stroke: #071217 !important; }
-.map-point.quality-warning { fill: #f3c963 !important; stroke: #1a1405 !important; }
-.map-point.quality-bad { fill: #ef6670 !important; stroke: #19070a !important; }
+/* Nur die Fuellung zeigt die RTK-Qualitaet. Der Rand bleibt der Elementfarbe vorbehalten
+   (Perimeter/Ausschluss/Wegpunkt/Dock) — vorher ueberschrieb die Qualitaet auch den Rand
+   mit !important, dadurch sahen Punkte aller Elemente identisch aus. */
+.map-point.quality-excellent { fill: #4cf59a !important; }
+.map-point.quality-good { fill: #74ddea !important; }
+.map-point.quality-warning { fill: #f3c963 !important; }
+.map-point.quality-bad { fill: #ef6670 !important; }
 
 .measurement-line {
   stroke: #f3c963;
@@ -2984,11 +2987,19 @@ body.menu-open .app-frame { visibility: hidden; }
   .rtk-chip { margin-left: auto; }
 }
 
-/* Schnellzugriff „Fläche schließen & neue“ — nur im Ausschluss-Modus ab drei Punkten sichtbar,
-   deshalb in der Farbe der Ausschlussflächen statt neutral. */
-.quick-close-btn {
+/* Schnellzugriff „Fläche schließen & neue“ — steht unter dem Papierkorb und erscheint nur im
+   Ausschluss-Modus ab drei Punkten, deshalb in der Farbe der Ausschlussflächen statt neutral. */
+.close-new-fab {
   color: var(--exclusion);
   border-color: var(--shell-danger-border);
   background: var(--shell-danger-bg);
 }
-.quick-close-btn svg { stroke-width: 2.2; }
+.close-new-fab svg { stroke-width: 2.2; }
+
+/* Elementfarbe deutlich am Punktrand: kräftigerer Rand und je Art eine eigene Farbe.
+   Die Füllung bleibt der RTK-Qualität vorbehalten. */
+.map-point { stroke-width: 5; }
+.point-perimeter { stroke: var(--perimeter); }
+.point-exclusion { stroke: var(--exclusion); }
+.point-waypoint { stroke: var(--waypoint); }
+.point-dock { stroke: var(--dock); }
