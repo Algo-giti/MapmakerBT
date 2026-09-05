@@ -1,10 +1,23 @@
 # MapCreator für Ardumower
 
+Direkter Link:
+https://algo-giti.github.io/MapmakerBT/
+
 MapCreator ist eine mobile Web-App, mit der du die Mähkarte deines Ardumower/Sunray direkt im
 Garten aufnimmst und pflegst. Die App verbindet sich per **Bluetooth Low Energy** direkt mit dem
 Ardumower-ESP32 – ohne Internet, ohne Server, ohne Konto.
 
 Die Oberfläche lässt sich zwischen **Deutsch und Englisch** umschalten; Deutsch ist voreingestellt.
+
+Screenshots:
+https://github.com/Algo-giti/MapmakerBT/blob/main/screenshots/menu_connection.jpg?raw=true
+
+
+
+
+
+
+
 
 ## Was die App kann
 
