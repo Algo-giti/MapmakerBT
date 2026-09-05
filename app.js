@@ -48,6 +48,8 @@ const I18N = {
     closeContoursYes: 'Konturen automatisch schließen',
     lockedBadge: 'Gesperrt',
     bleWriteFailedTitle: 'Senden fehlgeschlagen', bleWriteFailedShort: 'Senden fehlgeschlagen: {message}',
+    bleResyncDone: 'Abgebrochenes Kommando abgeschlossen (Zeilenende nachgesendet).',
+    bleResyncFailed: 'Abgebrochenes Kommando konnte nicht abgeschlossen werden: {message}',
     bleWriteFailed: 'Der Befehl {context} konnte nicht an den Mäher gesendet werden.\n\n{message}',
     errorTitle: 'Fehler', okUnderstood: 'Verstanden',
     deleteExclusionTitle: 'Ausschlussfläche löschen', clearNow: 'Leeren',
@@ -181,6 +183,8 @@ const I18N = {
     closeContoursYes: 'Close contours automatically',
     lockedBadge: 'Locked',
     bleWriteFailedTitle: 'Sending failed', bleWriteFailedShort: 'Sending failed: {message}',
+    bleResyncDone: 'Terminated the aborted command (sent a line break).',
+    bleResyncFailed: 'Could not terminate the aborted command: {message}',
     bleWriteFailed: 'The command {context} could not be sent to the mower.\n\n{message}',
     errorTitle: 'Error', okUnderstood: 'Got it',
     deleteExclusionTitle: 'Delete exclusion area', clearNow: 'Clear',
@@ -1352,21 +1356,52 @@ async function sleepMs(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function writeChunk(chunk) {
+  // Web Bluetooth + ESP32 is substantially more stable when each GATT write is acknowledged.
+  // The Sunray FFE1 characteristic supports WRITE and WRITE_NR, so prefer WRITE here.
+  if (typeof state.characteristic.writeValueWithResponse === 'function' && state.characteristic.properties.write) {
+    await state.characteristic.writeValueWithResponse(chunk);
+  } else if (typeof state.characteristic.writeValue === 'function' && state.characteristic.properties.write) {
+    await state.characteristic.writeValue(chunk);
+  } else if (typeof state.characteristic.writeValueWithoutResponse === 'function' && state.characteristic.properties.writeWithoutResponse) {
+    await state.characteristic.writeValueWithoutResponse(chunk);
+  } else {
+    throw new Error('BLE characteristic is not writable');
+  }
+}
+
+/**
+ * Schliesst ein angefangenes Kommando in der Firmware ab.
+ *
+ * Kommandos gehen in 15-Byte-Chunks raus. Scheitert ein Chunk in der Mitte, stehen die schon
+ * gesendeten Chunks ohne Zeilenende im rxBuf des ESP32 — das naechste, erfolgreiche Kommando
+ * klebt daran fest, und die Firmware sieht eine einzige verstuemmelte Zeile. Beide Kommandos
+ * sind damit verloren, obwohl die Verbindung steht. Ein einzelnes '\n' beendet das Bruchstueck:
+ * die Firmware verwirft es an der Pruefsumme, und das naechste Kommando faengt sauber an.
+ * Best effort — scheitert auch das, bleibt es beim urspruenglichen Fehler.
+ */
+async function resyncAfterPartialWrite() {
+  try {
+    await writeChunk(new TextEncoder().encode('\n'));
+    log('BLE', tr('bleResyncDone'));
+  } catch (error) {
+    log('BLE', tr('bleResyncFailed', { message: error?.message || String(error) }));
+  }
+}
+
 async function writeBytes(bytes) {
   if (!state.characteristic) throw new Error(tr('errorNoCharacteristic'));
+  let written = 0;
   for (let i = 0; i < bytes.length; i += BLE_CHUNK_SIZE) {
     const chunk = bytes.slice(i, i + BLE_CHUNK_SIZE);
-    // Web Bluetooth + ESP32 is substantially more stable when each GATT write is acknowledged.
-    // The Sunray FFE1 characteristic supports WRITE and WRITE_NR, so prefer WRITE here.
-    if (typeof state.characteristic.writeValueWithResponse === 'function' && state.characteristic.properties.write) {
-      await state.characteristic.writeValueWithResponse(chunk);
-    } else if (typeof state.characteristic.writeValue === 'function' && state.characteristic.properties.write) {
-      await state.characteristic.writeValue(chunk);
-    } else if (typeof state.characteristic.writeValueWithoutResponse === 'function' && state.characteristic.properties.writeWithoutResponse) {
-      await state.characteristic.writeValueWithoutResponse(chunk);
-    } else {
-      throw new Error('BLE characteristic is not writable');
+    try {
+      await writeChunk(chunk);
+    } catch (error) {
+      // Nur wenn schon etwas rausging, liegt ein Bruchstueck in der Firmware.
+      if (written > 0) await resyncAfterPartialWrite();
+      throw error;
     }
+    written += 1;
     if (i + BLE_CHUNK_SIZE < bytes.length) await sleepMs(BLE_INTER_CHUNK_DELAY_MS);
   }
 }

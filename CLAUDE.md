@@ -469,6 +469,13 @@ Noch **nicht** behoben — nur analysiert. Kandidaten, grob nach Wahrscheinlichk
 13. ~~`state.rxBuffer` ist unbegrenzt.~~ **Behoben** — siehe „Umgesetzte App-Fixes“ unten.
 14. Der 12-ms-Abstand zwischen Chunks ist wirkungslose Totzeit; limitierend ist das
     Connection-Intervall, nicht die JS-Seite.
+15. **NEU (2026-09-05, am Geraet beobachtet): einzelne `write()` scheitern mit
+    „GATT Error Unknown“, waehrend die Verbindung steht.** Betrifft `AT+S` und `AT+M`,
+    gelegentlich beim Steuern, nicht sicher reproduzierbar. Keiner der vier Fixes deckt das ab —
+    sie reagieren auf **Stille**, nicht auf einen aktiv abgewiesenen Schreibvorgang.
+    Ist-Zustand und Testabdeckung stehen unten unter „Fehlgeschlagene Schreibvorgaenge“.
+    Ursache offen; passt zum ESP32-Verdacht 3 (Race auf dem TX-Ringpuffer / Heap-Korruption),
+    ist damit aber **nicht** bestaetigt. Firmware unangetastet.
 
 ### Umgesetzte App-Fixes (2026-09-04)
 
@@ -500,6 +507,60 @@ TX-Ringpuffer-Race, MTU 20, WiFi/BLE-Koexistenz) sind unberührt und brauchen di
 bzw. eine vom Nutzer freigegebene Firmware-Änderung. Ebenfalls offen: App-Punkt 12
 (Hintergrund-Throttling — nur die Watchdog-Karenzzeit ist entschärft, nicht das Aussetzen von
 Polling und Fahr-Heartbeat) und App-Punkt 14 (wirkungslose 12 ms zwischen den Chunks).
+
+### Fehlgeschlagene Schreibvorgänge (Ist-Zustand, 2026-09-05)
+
+Analysiert, **noch nicht verändert** — der Umfang einer Gegenmaßnahme ist mit dem Nutzer
+abzustimmen, weil es um Fahrbefehle geht.
+
+- **Der Fehler geht nicht verloren.** `writeBytes()` fängt nichts ab, `sendSunray()` reicht die
+  Ablehnung durch (und löst im `finally` die Sendesperre `state.sendBusy`, es hängt also nichts).
+  Jede Aufrufstelle hat ein `.catch` auf `reportBleError()`: Kurzhinweis sofort in der
+  Kartenzeile und, während gefahren wird, in der Fahrzeile; Dialog gedrosselt auf 20 s, bei
+  Not-Halt und Diagnose-Tasten sofort. Ein unbehandelter `unhandledrejection` entsteht nirgends.
+- **Es gibt keinen Retry.** Ein gescheitertes Kommando wird nicht wiederholt. Beim Fahren ist das
+  faktisch entschärft: der 650-ms-Heartbeat schickt ohnehin gleich wieder ein `AT+M`. Der
+  Stopp beim Loslassen (`AT+M,0,0`) wird dagegen **genau einmal** versucht — hier rettet die
+  Sunray-Seite: sie hält nach **1000 ms ohne neues `AT+M`** von selbst an, ein verlorener Stopp
+  bedeutet also höchstens ~1 s Nachlauf, keinen weiterfahrenden Mäher.
+- **Nichts erkennt den Zustand.** Die ESP32-4-Erkennung zählt `pendingStateReplies` nur bei
+  **erfolgreich gesendetem** `AT+S` hoch — ein nicht abgeschickter Poll zählt nicht. Bleibt allein
+  der RX-Watchdog, der nach **8 s Stille** greift. Bei dauerhaft scheiternden Schreibvorgängen
+  gilt der Link also 8 s lang als gesund; bei nur gelegentlichen Fehlern greift er gar nicht.
+- **Der gefährlichste Teil: halbe Zeilen.** `writeBytes()` stückelt jedes Kommando in 15-Byte-
+  Chunks. Scheitert ein Chunk in der Mitte, bricht die Schleife ab — die bereits gesendeten
+  Chunks stehen ohne `\n` im `rxBuf` der Firmware. Das **nächste, erfolgreiche** Kommando klebt
+  daran fest. Gemessen im Fake:
+
+  ```
+  gesendet: AT+C,-1,…,128   (Chunk 2 abgewiesen)
+  danach:   AT+S
+  Firmware sieht: "AT+C,-1,-1,-1,-AT+S,0x13"   ← eine einzige Zeile
+  ```
+
+  Sunray verwirft sie an der Prüfsumme, aber **das `AT+S` ist mit verloren** — die Verbindung
+  steht, die App wartet auf eine Antwort, die nie kommt. Genau das Bild „verbunden, aber
+  Befehle wirken nicht“. Eine Resynchronisation (nach einem Schreibfehler ein einzelnes `\n`
+  nachschicken) gibt es nicht.
+
+**Umgesetzt (nur die Resynchronisation, vom Nutzer so freigegeben):** `writeBytes()` merkt sich,
+ob schon ein Chunk rausging. Scheitert ein späterer, schickt `resyncAfterPartialWrite()` ein
+einzelnes `\n` hinterher und wirft danach den **ursprünglichen** Fehler weiter — die Meldung an
+den Nutzer bleibt also unverändert. Die Firmware verwirft das Bruchstück an der Prüfsumme, das
+nächste Kommando fängt sauber an. Best effort: scheitert auch das `\n`, wird es nur protokolliert
+(`bleResyncDone` / `bleResyncFailed`). Scheitert schon der **erste** Chunk, liegt kein Bruchstück
+vor und es wird nichts nachgeschickt. **Bewusst nicht umgesetzt** (auf Wunsch des Nutzers):
+Retry gescheiterter Kommandos und eine eigene Erkennung/Trennung nach n Schreibfehlern.
+
+**Testabdeckung** (`tests/ble-test.js`, fünf neue Fälle): vereinzelter Fehler wird gemeldet und
+nicht wiederholt; Fehler mitten im Kommando wird durch das nachgesendete Zeilenende abgeschlossen
+und das Folgekommando kommt unverstümmelt an; ohne angefangene Zeile wird nichts nachgeschickt;
+dauerhaftes Scheitern trennt erst nach 8 s über den RX-Watchdog; scheiternder Fahr-Heartbeat
+landet in der Fahrzeile und der nächste Takt kommt an. Gegen einen simulierten Rückfall geprüft.
+`tests/fake-ble.js` kann das jetzt gezielt: **`failWriteChunks: n`** weist die nächsten n
+Chunk-Schreibvorgänge ab und lässt den Link danach normal weiterlaufen (`failWrites` bleibt der
+Dauerfall), `stats.writeFailures` zählt mit, und der Fehlertext ist der von Chrome/Android
+gemeldete Wortlaut **`GATT Error Unknown`**.
 
 ### Nächster Diagnoseschritt (wenn es ans Beheben geht)
 
@@ -563,6 +624,17 @@ Polling und Fahr-Heartbeat) und App-Punkt 14 (wirkungslose 12 ms zwischen den Ch
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-05: **Neues Gerätesymptom analysiert: einzelne Schreibvorgänge scheitern mit
+  „GATT Error Unknown“ bei stehender Verbindung.** Reine Analyse, kein Verhalten geändert.
+  Ergebnis siehe „Fehlgeschlagene Schreibvorgänge (Ist-Zustand)“: der Fehler wird sauber
+  durchgereicht und gemeldet, es gibt keinen Retry, keine Erkennung außer dem 8-s-RX-Watchdog
+  — und als eigentliches Risiko eine **halbe Zeile im Firmware-Puffer**, an der das nächste
+  Kommando festklebt und mit verloren geht. Davon umgesetzt wurde nach Rücksprache **nur die
+  Resynchronisation** (`resyncAfterPartialWrite()`: ein einzelnes `\n` nach einem abgebrochenen
+  Kommando, ursprünglicher Fehler wird weitergeworfen); kein Retry, keine neue Trennlogik.
+  `tests/fake-ble.js` um `failWriteChunks` und `stats.writeFailures` erweitert,
+  `tests/ble-test.js` von 28 auf 33 Fälle, `APP_VERSION` auf `v21`.
 
 - 2026-09-05: **„Schließen & neu ist immer noch sichtbar“ — Ursache war die Auslieferung, nicht der Code.**
   Gegengeprüft: die ausgelieferten `app.js`, `index.html`, `styles.css` und `protocol.js` sind

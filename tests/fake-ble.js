@@ -135,6 +135,13 @@ function createFakeBluetooth(options = {}) {
     suppressDisconnectEvent: Boolean(options.suppressDisconnectEvent),
     /** true = jeder Schreibvorgang wird abgewiesen, obwohl der Link steht. */
     failWrites: Boolean(options.failWrites),
+    /**
+     * Anzahl der naechsten *Chunk*-Schreibvorgaenge, die abgewiesen werden; danach laeuft der
+     * Link normal weiter. Bildet den beobachteten Fall "GATT Error Unknown" ab: die Verbindung
+     * steht, nur einzelne writes scheitern. Ein Wert kleiner als die Chunk-Zahl eines Kommandos
+     * bricht dieses mittendrin ab und laesst eine Zeile ohne \n im rxBuf der Firmware stehen.
+     */
+    failWriteChunks: options.failWriteChunks ?? 0,
     telemetry: { battery: 28.6, x: 15.15, y: -10.24, delta: 2.02, solution: 2, accuracy: 0.02, sats: 49, satsDgps: 48 },
 
     // --- Beobachtung --------------------------------------------------------
@@ -143,7 +150,7 @@ function createFakeBluetooth(options = {}) {
     /** Rohe Zeilen so, wie sie ueber die Luft kamen. */
     rawCommands: [],
     writes: [],
-    stats: { connectCalls: 0, disconnects: 0, startNotifications: 0, listenerAdds: 0, listenerRemoves: 0, notifyPackets: 0, bytesToApp: 0, maxWriteChunk: 0 },
+    stats: { connectCalls: 0, disconnects: 0, startNotifications: 0, listenerAdds: 0, listenerRemoves: 0, notifyPackets: 0, bytesToApp: 0, maxWriteChunk: 0, writeFailures: 0 },
 
     _session: 0,
     _rxLine: '',
@@ -173,7 +180,12 @@ function createFakeBluetooth(options = {}) {
   sim._appWrote = (chunk) => {
     const bytes = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk.buffer || chunk);
     if (!sim.gatt.connected) throw new Error('GATT Server is disconnected.');
-    if (sim.failWrites) throw new Error('GATT operation failed for unknown reason.');
+    if (sim.failWrites || sim.failWriteChunks > 0) {
+      if (sim.failWriteChunks > 0) sim.failWriteChunks -= 1;
+      sim.stats.writeFailures += 1;
+      // Wortlaut wie Chrome ihn auf Android liefert.
+      throw new Error('GATT Error Unknown');
+    }
     sim.writes.push(bytes.byteLength);
     sim.stats.maxWriteChunk = Math.max(sim.stats.maxWriteChunk, bytes.byteLength);
     sim._rxLine += decoder.decode(bytes);

@@ -10,7 +10,7 @@ const { createFakeBluetooth, ESP32_NOTIFY_PAYLOAD } = require('./fake-ble.js');
 
 const EXPORTS = ['state', 'ui', 'bleAdapter', 'connectBluetooth', 'disconnectBluetooth', 'onDisconnected',
   'establishGatt', 'sendSunray', 'handleLine', 'onNotification', 'scheduleReconnect', 'startPolling', 'stopPolling',
-  'initializeSunrayHandshake', 'emergencyStop'];
+  'initializeSunrayHandshake', 'emergencyStop', 'reportBleError'];
 
 function setup(fakeOptions = {}) {
   const clock = createClock();
@@ -197,7 +197,7 @@ test('Fehlgeschlagene Schreibvorgaenge werden dem Nutzer gemeldet', async () => 
   const ctx = await connect(setup());
   ctx.sim.failWrites = true;
   await ctx.clock.runFor(2500); // die naechste Statusabfrage scheitert
-  assert.ok(ctx.logText().includes('GATT operation failed'), 'Fehler steht im Diagnoseprotokoll');
+  assert.ok(ctx.logText().includes('GATT Error Unknown'), 'Fehler steht im Diagnoseprotokoll');
   assert.ok(ctx.elements.get('pointStatus').textContent.includes('Senden fehlgeschlagen'),
     'Kurzhinweis erscheint auf der Karte');
   assert.ok(ctx.sandbox.__lastConfirmRequest, 'der erste Fehler wird als Meldung gezeigt');
@@ -379,6 +379,108 @@ test('Wiederholter Ueberlauf gilt als kaputter Datenstrom und trennt die Verbind
   assert.strictEqual(ctx.t.state.connected, false);
   assert.strictEqual(ctx.t.state.connectionDetailKey, 'bleProtocolError');
   assert.ok(ctx.t.state.reconnectAttempts >= 1, 'Reconnect laeuft an');
+});
+
+// === Neues Symptom: einzelne Schreibvorgaenge scheitern, der Link steht weiter ============
+// Beobachtet am Geraet: "GATT Error Unknown" bei AT+S/AT+M, nicht dauerhaft reproduzierbar.
+// Die folgenden Faelle halten den IST-Zustand fest — sie beschreiben, was die App heute tut,
+// nicht was sie tun soll. Aenderungen am Verhalten muessen sie bewusst mit anpassen.
+
+test('IST: ein vereinzelter Schreibfehler wird gemeldet und nicht wiederholt', async () => {
+  const ctx = await connect(setup());
+  ctx.t.stopPolling();
+  const before = ctx.sim.commands.length;
+  ctx.sim.failWriteChunks = 1; // genau der naechste Chunk scheitert
+  let rejected = null;
+  const pending = ctx.t.sendSunray('AT+S').catch((error) => { rejected = error; });
+  await ctx.clock.runFor(200);
+  await pending;
+  assert.ok(rejected, 'sendSunray() lehnt ab, verschluckt den Fehler also nicht');
+  assert.strictEqual(rejected.message, 'GATT Error Unknown');
+  assert.strictEqual(ctx.sim.commands.length, before, 'das Kommando kam nie bei der Firmware an');
+  // Kein automatischer zweiter Versuch: die App sendet von sich aus nichts nach.
+  await ctx.clock.runFor(1000);
+  assert.strictEqual(ctx.sim.commands.length, before, 'kein Retry');
+  assert.strictEqual(ctx.sim.stats.writeFailures, 1);
+  assert.strictEqual(ctx.t.state.sendBusy, false, 'die Sendesperre wird trotz Fehler geloest');
+  assert.strictEqual(ctx.t.state.connected, true, 'die Verbindung gilt weiterhin als bestehend');
+});
+
+test('Ein Fehler mitten im Kommando wird durch ein nachgesendetes Zeilenende abgeschlossen', async () => {
+  const ctx = await connect(setup());
+  ctx.t.stopPolling();
+  // AT+C,… ist drei Chunks lang, dazwischen liegen 12 ms Pause: erst Chunk 1 durchlassen,
+  // dann genau den naechsten Chunk abweisen.
+  const long = 'AT+C,-1,-1,-1,-1,-1,-1,-1,-1,128';
+  const before = ctx.sim.rawCommands.length;
+  let rejected = null;
+  const pending = ctx.t.sendSunray(long).catch((e) => { rejected = e; });
+  await ctx.clock.runFor(6);
+  ctx.sim.failWriteChunks = 1;
+  await ctx.clock.runFor(200);
+  await pending;
+  assert.ok(rejected, 'der Fehler kommt trotz Resynchronisation beim Aufrufer an');
+  assert.strictEqual(rejected.message, 'GATT Error Unknown');
+  assert.strictEqual(ctx.sim._rxLine, '', 'kein Bruchstueck bleibt im Empfangspuffer der Firmware');
+  assert.ok(ctx.logText().includes('Zeilenende nachgesendet'), 'die Resynchronisation steht im Protokoll');
+
+  // Das naechste Kommando kommt dadurch unverstuemmelt an.
+  const next = ctx.t.sendSunray('AT+S');
+  await ctx.clock.runFor(200);
+  await next;
+  const arrived = ctx.sim.commands.slice(before);
+  assert.ok(arrived.some((c) => c === 'AT+S,0x13'),
+    `AT+S muss sauber ankommen, angekommen ist: ${JSON.stringify(arrived)}`);
+  assert.ok(!arrived.some((c) => c.includes('AT+C') && c.includes('AT+S')),
+    'kein zusammengeklebtes Kommando mehr');
+});
+
+test('IST: ohne bereits gesendeten Chunk wird nichts nachgeschickt', async () => {
+  const ctx = await connect(setup());
+  ctx.t.stopPolling();
+  const writesBefore = ctx.sim.writes.length;
+  ctx.sim.failWriteChunks = 1; // schon der erste Chunk scheitert
+  let rejected = null;
+  const pending = ctx.t.sendSunray('AT+S').catch((e) => { rejected = e; });
+  await ctx.clock.runFor(200);
+  await pending;
+  assert.ok(rejected);
+  assert.strictEqual(ctx.sim.writes.length, writesBefore,
+    'ohne angefangene Zeile gibt es nichts abzuschliessen — kein zusaetzlicher Schreibvorgang');
+});
+
+test('IST: dauerhaft scheiternde Schreibvorgaenge trennen erst ueber den RX-Watchdog', async () => {
+  const ctx = await connect(setup());
+  ctx.sim.connectFailures = 999; // Reconnect soll den Zustand nicht sofort wieder aufraeumen
+  ctx.sim.failWrites = true;
+  await ctx.clock.runFor(5000);
+  assert.strictEqual(ctx.t.state.connected, true, 'nach 5 s gilt der Link noch als verbunden');
+  assert.strictEqual(ctx.t.state.pendingStateReplies, 0,
+    'die ESP32-4-Erkennung greift nicht: nicht gesendete Abfragen werden nicht gezaehlt');
+  await ctx.clock.runFor(5000);
+  assert.strictEqual(ctx.t.state.connected, false, 'erst der RX-Watchdog (8 s Stille) beendet den Link');
+  assert.strictEqual(ctx.t.state.connectionDetailKey, 'bleLinkStalled');
+});
+
+test('IST: scheiternder Fahr-Heartbeat meldet sich und wird im naechsten Takt erneut versucht', async () => {
+  const ctx = await connect(setup());
+  ctx.t.stopPolling();
+  ctx.t.state.driveDirection = 'joystick';
+  ctx.t.state.driveVector = { linear: 0.2, angular: 0 };
+  ctx.sim.failWriteChunks = 1;
+  let rejected = null;
+  const pending = ctx.t.sendSunray('AT+M,0.20,0.00').catch((e) => { rejected = e; ctx.t.reportBleError('AT+M', e); });
+  await ctx.clock.runFor(200);
+  await pending;
+  assert.ok(rejected, 'der Fahrbefehl scheitert sichtbar');
+  assert.ok(ctx.elements.get('driveState').textContent.includes('Senden fehlgeschlagen'),
+    'der Hinweis steht in der Fahrzeile, nicht nur im Log');
+  // Der naechste Befehl geht wieder durch — der 650-ms-Takt ist die faktische Wiederholung.
+  const before = ctx.sim.commands.length;
+  const again = ctx.t.sendSunray('AT+M,0.20,0.00');
+  await ctx.clock.runFor(200);
+  await again;
+  assert.strictEqual(ctx.sim.commands.length, before + 1, 'der naechste Takt kommt an');
 });
 
 // ---------------------------------------------------------------------------

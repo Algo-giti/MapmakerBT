@@ -5,7 +5,7 @@
 // Dateien aus, die beim *Installieren* dieser Version geholt wurden. Bleibt die Version
 // stehen, ist das monatelang derselbe alte Stand. Eine neue Version legt einen frischen
 // Cache an und zeigt dem Nutzer ausserdem die Update-Leiste.
-const APP_VERSION = 'v20';
+const APP_VERSION = 'v21';
 const CACHE = `mapcreator-ardumower-${APP_VERSION}`;
 
 // Die App selbst. Diese Dateien werden IMMER zuerst aus dem Netz geholt (network-first),
