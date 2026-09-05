@@ -35,6 +35,9 @@ const MAX_MAPS = 10;
 
 const I18N = {
   de: {
+    unlockedBadge: 'Offen', mapLockedNote: '🔒 Karte gesperrt – keine Änderungen möglich',
+    mapElements: 'Elemente der Karte', elementPoints: '{count} Punkte',
+    deleteElement: '{label} löschen', deleteElementConfirm: '{label} mit {count} Punkten wirklich löschen?',
     updateAvailable: 'Neue Version verfügbar – zum Aktualisieren tippen',
     closeContourYes: 'Kontur automatisch schließen', closeContourNo: 'Kontur NOCH NICHT schließen',
     closeContoursYes: 'Konturen automatisch schließen',
@@ -79,7 +82,7 @@ const I18N = {
     appDescription: 'MapCreator für Ardumower – mobile Kartenaufnahme über Web Bluetooth und Sunray.',
     languageToggleLabel: 'Auf Englisch umschalten', tabMaps: 'Karten', tabConnection: 'Verbindung', tabHelp: 'Hilfe', tabDebug: 'Diagnose',
     activeMap: 'AKTIVE KARTE', battery: 'Akku', perimeter: 'Perimeter', exclusion: 'Ausschluss', dock: 'Dock',
-    exclusionArea: 'Ausschlussfläche', newExclusion: '+ Neu', delete: 'Löschen', clearCurrentElement: 'Aktuelles Element leeren',
+    exclusionArea: 'Ausschlussfläche', newExclusion: '+ Neue Ausschlussfläche', delete: 'Löschen',
     onlyRtkFix: 'Nur bei RTK FIX',
     viewScale: 'Ansicht & Maßstab', showGrid: 'Raster anzeigen', gridSpacing: 'Rasterweite', gridAuto: 'Automatisch',
     showMower: 'Mäher anzeigen', mowerLength: 'Länge', mowerWidth: 'Breite', mowerScaleNote: 'Der Mäher wird maßstäblich zur Karte dargestellt.', mowerTooltip: 'Mäher {length} × {width} m',
@@ -109,10 +112,10 @@ const I18N = {
     stateError: 'AT+S Fehler', noWebBluetooth: 'Web Bluetooth ist in diesem Browser nicht verfügbar.', openingPicker: 'Bluetooth-Geräteauswahl wird geöffnet …',
     connectingDevice: 'Verbinde mit {name} …', bleDevice: 'BLE-Gerät', connectedWith: 'Verbunden mit {name}', bleDisconnectedLog: 'BLE getrennt',
     demoStop: 'Demo-Modus beenden', demoStart: 'Demo-Modus starten', demoDetail: 'Demo-Modus: simulierte RTK-FIX-Position.', demoEnded: 'Demo beendet.',
-    firstMapName: 'Meine erste Karte', saving: 'Speichert …', savedAt: 'Lokal gespeichert · {time}', noExclusion: 'Noch keine Ausschlussfläche',
+    firstMapName: 'Meine erste Karte', saving: 'Speichert …', savedAt: 'Lokal gespeichert · {time}',
     exclusionN: 'Ausschluss {n}', mapN: 'Karte {n}', deleteMapConfirm: 'Karte „{name}“ wirklich lokal löschen?',
     dockPath: 'Dockpfad',
-    deleteExclusionConfirm: '{name} wirklich löschen?', pointSaved: 'Punkt gespeichert: X {x} · Y {y}', dockPoints: 'Dockpunkte', clearConfirm: '{label} wirklich leeren?',
+    deleteExclusionConfirm: '{name} wirklich löschen?', pointSaved: 'Punkt gespeichert: X {x} · Y {y}', dockPoints: 'Dockpunkte',
     mapSummary: '{name} · {points} Punkte', noMap: 'Keine Karte', noMapLoaded: 'Keine Karte geladen.', invalidMapFile: 'Datei ist keine MapCreator-für-Ardumower-Karte.', unknown: 'unbekannt',
     unsupportedGeometry: 'GeoJSON-Geometrie {type} wird nicht unterstützt.', invalidCoordinates: 'GeoJSON enthält ungültige X/Y-Koordinaten.',
     invalidGeoJson: 'Datei ist kein unterstütztes GeoJSON FeatureCollection.', noGeoFeatures: 'GeoJSON enthält keine Features mit role=perimeter, exclusion oder dock.',
@@ -160,6 +163,9 @@ const I18N = {
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   },
   en: {
+    unlockedBadge: 'Open', mapLockedNote: '🔒 Map locked – no changes possible',
+    mapElements: 'Map elements', elementPoints: '{count} points',
+    deleteElement: 'Delete {label}', deleteElementConfirm: 'Really delete {label} with {count} points?',
     updateAvailable: 'New version available – tap to update',
     closeContourYes: 'Close contour automatically', closeContourNo: 'Do NOT close the contour yet',
     closeContoursYes: 'Close contours automatically',
@@ -204,7 +210,7 @@ const I18N = {
     appDescription: 'MapCreator für Ardumower – mobile map recording via Web Bluetooth and Sunray.',
     languageToggleLabel: 'Switch to German', tabMaps: 'Maps', tabConnection: 'Connection', tabHelp: 'Help', tabDebug: 'Diagnostics',
     activeMap: 'ACTIVE MAP', battery: 'Battery', perimeter: 'Perimeter', exclusion: 'Exclusion', dock: 'Dock',
-    exclusionArea: 'Exclusion area', newExclusion: '+ New', delete: 'Delete', clearCurrentElement: 'Clear current element',
+    exclusionArea: 'Exclusion area', newExclusion: '+ New exclusion area', delete: 'Delete',
     onlyRtkFix: 'RTK FIX only',
     viewScale: 'View & scale', showGrid: 'Show grid', gridSpacing: 'Grid spacing', gridAuto: 'Automatic',
     showMower: 'Show mower', mowerLength: 'Length', mowerWidth: 'Width', mowerScaleNote: 'The mower is drawn to scale on the map.', mowerTooltip: 'Mower {length} × {width} m',
@@ -234,10 +240,10 @@ const I18N = {
     stateError: 'AT+S error', noWebBluetooth: 'Web Bluetooth is not available in this browser.', openingPicker: 'Opening Bluetooth device picker …',
     connectingDevice: 'Connecting to {name} …', bleDevice: 'BLE device', connectedWith: 'Connected to {name}', bleDisconnectedLog: 'BLE disconnected',
     demoStop: 'Stop demo mode', demoStart: 'Start demo mode', demoDetail: 'Demo mode: simulated RTK FIX position.', demoEnded: 'Demo ended.',
-    firstMapName: 'My first map', saving: 'Saving …', savedAt: 'Saved locally · {time}', noExclusion: 'No exclusion area yet',
+    firstMapName: 'My first map', saving: 'Saving …', savedAt: 'Saved locally · {time}',
     exclusionN: 'Exclusion {n}', mapN: 'Map {n}', deleteMapConfirm: 'Really delete map “{name}” locally?',
     dockPath: 'Dock path',
-    deleteExclusionConfirm: 'Really delete {name}?', pointSaved: 'Point saved: X {x} · Y {y}', dockPoints: 'Dock points', clearConfirm: 'Really clear {label}?',
+    deleteExclusionConfirm: 'Really delete {name}?', pointSaved: 'Point saved: X {x} · Y {y}', dockPoints: 'Dock points',
     mapSummary: '{name} · {points} points', noMap: 'No map', noMapLoaded: 'No map loaded.', invalidMapFile: 'File is not a MapCreator für Ardumower map.', unknown: 'unknown',
     unsupportedGeometry: 'GeoJSON geometry {type} is not supported.', invalidCoordinates: 'GeoJSON contains invalid X/Y coordinates.',
     invalidGeoJson: 'File is not a supported GeoJSON FeatureCollection.', noGeoFeatures: 'GeoJSON contains no features with role=perimeter, exclusion, or dock.',
@@ -368,8 +374,8 @@ const ui = {
   mapSelect: $('mapSelect'), newMapName: $('newMapName'), newMapBtn: $('newMapBtn'), deleteMapBtn: $('deleteMapBtn'), lockMapBtn: $('lockMapBtn'),
   exportJsonBtn: $('exportJsonBtn'), exportGeoJsonBtn: $('exportGeoJsonBtn'), importInput: $('importInput'),
   mapGallery: $('mapGallery'), mapCountBadge: $('mapCountBadge'),
-  exclusionControls: $('exclusionControls'), exclusionSelect: $('exclusionSelect'), newExclusionBtn: $('newExclusionBtn'), deleteExclusionBtn: $('deleteExclusionBtn'),
-  fixOnly: $('fixOnly'), clearModeBtn: $('clearModeBtn'),
+  elementList: $('elementList'), newExclusionBtn: $('newExclusionBtn'),
+  fixOnly: $('fixOnly'),
   autoCaptureIntervalInput: $('autoCaptureIntervalInput'), autoCaptureState: $('autoCaptureState'),
   showGrid: $('showGrid'), gridStepSelect: $('gridStepSelect'), showMower: $('showMower'), mowerLengthInput: $('mowerLengthInput'), mowerWidthInput: $('mowerWidthInput'),
   showTrail: $('showTrail'), clearTrailBtn: $('clearTrailBtn'), showPointQuality: $('showPointQuality'), keepAwake: $('keepAwake'), wakeLockStatus: $('wakeLockStatus'),
@@ -873,7 +879,7 @@ async function deleteSelectedArea() {
   state.selectedPoint = null;
   state.activeExclusionId = state.activeMap.exclusions[0]?.id || null;
   state.validationResult = null;
-  renderExclusionControls();
+  renderElementList();
   await saveActiveMap();
   renderMap();
   refreshCaptureState();
@@ -1751,10 +1757,11 @@ function renderMapGallery() {
     const title=document.createElement('strong'); title.textContent=localizedMapName(map);
     const meta=document.createElement('small'); meta.textContent=`${tr('mapCardArea',{area:mapNetArea(map).toFixed(0)})} · ${tr('mapCardPoints',{points:mapPointCount(map)})}`;
     const changed=document.createElement('small'); changed.textContent=tr('mapCardChanged',{date:new Date(map.updatedAt||map.createdAt||Date.now()).toLocaleDateString(localeCode())});
-    copy.append(title,meta,changed); select.append(svg,copy);
+    copy.append(title,meta,changed);
+    if (map.locked) { const note=document.createElement('small'); note.className='map-card-locked-note'; note.textContent=tr('mapLockedNote'); copy.appendChild(note); } select.append(svg,copy);
     const lock=document.createElement('button'); lock.type='button'; lock.className=`map-card-lock${map.locked?' active':''}`; lock.dataset.mapLockId=map.id;
     lock.appendChild(lockIcon(map.locked));
-    if (map.locked) { const badge=document.createElement('small'); badge.textContent=tr('lockedBadge'); lock.appendChild(badge); }
+    const badge=document.createElement('small'); badge.textContent=tr(map.locked?'lockedBadge':'unlockedBadge'); lock.appendChild(badge);
     lock.title=tr(map.locked?'unlockCurrentMap':'lockCurrentMap'); lock.setAttribute('aria-label',lock.title);
     card.append(select,lock); ui.mapGallery.appendChild(card);
   });
@@ -1789,9 +1796,7 @@ function renderMapControls() {
   const locked = Boolean(state.activeMap?.locked);
   ui.lockMapBtn.textContent = tr(locked ? 'unlockCurrentMap' : 'lockCurrentMap');
   ui.deleteMapBtn.disabled = locked;
-  ui.clearModeBtn.disabled = locked;
-  ui.newExclusionBtn.disabled = locked;
-  renderExclusionControls();
+  renderElementList();
   renderValidation();
   refreshCaptureState();
 }
@@ -1811,26 +1816,104 @@ function setActiveMapById(mapId) {
   renderMap();
 }
 
-function renderExclusionControls() {
-  ui.exclusionSelect.innerHTML = '';
-  const exclusions = state.activeMap?.exclusions || [];
-  if (!exclusions.length) {
-    const option = document.createElement('option');
-    option.textContent = tr('noExclusion');
-    option.value = '';
-    ui.exclusionSelect.appendChild(option);
-    state.activeExclusionId = null;
+/**
+ * Liste aller Kartenelemente: Perimeter, jede Ausschlussflaeche, Wegpunkte und Dockpfad —
+ * mit Punktzahl, antippbar zum Aktivieren und jeweils einzeln loeschbar. Ersetzt das fruehere
+ * Auswahlfeld, das nur Ausschlussflaechen kannte und nur im Ausschluss-Modus sichtbar war.
+ */
+function mapElements() {
+  const map = state.activeMap;
+  if (!map) return [];
+  const items = [
+    { key: 'perimeter', role: 'perimeter', label: tr('perimeter'), points: map.perimeter },
+  ];
+  map.exclusions.forEach((exclusion, index) => items.push({
+    key: `exclusion:${exclusion.id}`, role: 'exclusion', exclusionId: exclusion.id,
+    label: localizedExclusionName(exclusion, index), points: exclusion.points,
+  }));
+  items.push({ key: 'waypoint', role: 'waypoint', label: tr('waypoints'), points: map.waypoints });
+  items.push({ key: 'dock', role: 'dock', label: tr('dockPath'), points: map.dockPoints });
+  return items;
+}
+
+function renderElementList() {
+  if (!ui.elementList) return;
+  ui.elementList.innerHTML = '';
+  const locked = Boolean(state.activeMap?.locked);
+  ui.newExclusionBtn.disabled = !state.activeMap || locked;
+  if (!state.activeMap) { ui.elementList.textContent = tr('noMapLoaded'); return; }
+  const exclusions = state.activeMap.exclusions;
+  if (!exclusions.some((e) => e.id === state.activeExclusionId)) state.activeExclusionId = exclusions[0]?.id || null;
+
+  mapElements().forEach((item) => {
+    const row = document.createElement('div');
+    const active = item.role === state.mode && (item.role !== 'exclusion' || item.exclusionId === state.activeExclusionId);
+    row.className = `element-row${active ? ' active' : ''}`;
+
+    const select = document.createElement('button');
+    select.type = 'button';
+    select.className = 'element-select';
+    select.dataset.elementRole = item.role;
+    if (item.exclusionId) select.dataset.elementExclusion = item.exclusionId;
+    select.innerHTML = `<span class="element-dot" data-mode="${item.role}"></span>`
+      + `<span class="element-name">${item.label}</span>`
+      + `<span class="element-count">${tr('elementPoints', { count: item.points.length })}</span>`;
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'element-delete';
+    remove.dataset.deleteRole = item.role;
+    if (item.exclusionId) remove.dataset.deleteExclusion = item.exclusionId;
+    remove.disabled = locked || !item.points.length;
+    remove.title = tr('deleteElement', { label: item.label });
+    remove.setAttribute('aria-label', remove.title);
+    remove.appendChild(lockSafeTrashIcon());
+
+    row.append(select, remove);
+    ui.elementList.appendChild(row);
+  });
+}
+
+/** Papierkorb-Symbol fuer die Elementliste. */
+function lockSafeTrashIcon() {
+  const icon = svgEl('svg', { viewBox: '0 0 24 24', class: 'element-trash', 'aria-hidden': 'true' });
+  icon.appendChild(svgEl('path', { d: 'M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13M10 11v6M14 11v6' }));
+  return icon;
+}
+
+/** Element aus der Liste leeren bzw. — bei Ausschlussflaechen — ganz entfernen. */
+async function deleteElement(role, exclusionId) {
+  if (!state.activeMap || !ensureMapEditable()) return;
+  const item = mapElements().find((e) => e.role === role && (role !== 'exclusion' || e.exclusionId === exclusionId));
+  if (!item || !item.points.length) return;
+  const confirmed = await askConfirm({
+    title: tr('deleteElement', { label: item.label }),
+    message: tr('deleteElementConfirm', { label: item.label, count: item.points.length }),
+    confirmLabel: tr('delete'),
+    tone: 'danger',
+  });
+  if (!confirmed) return;
+  if (role === 'exclusion') {
+    state.activeMap.exclusions = state.activeMap.exclusions.filter((e) => e.id !== exclusionId);
+    if (state.selectedArea === exclusionId) state.selectedArea = null;
+    state.activeExclusionId = state.activeMap.exclusions[0]?.id || null;
   } else {
-    if (!exclusions.some((e) => e.id === state.activeExclusionId)) state.activeExclusionId = exclusions[0].id;
-    exclusions.forEach((exclusion, index) => {
-      const option = document.createElement('option');
-      option.value = exclusion.id;
-      option.textContent = localizedExclusionName(exclusion, index);
-      option.selected = exclusion.id === state.activeExclusionId;
-      ui.exclusionSelect.appendChild(option);
-    });
+    item.points.splice(0, item.points.length);
+    if (role === 'perimeter') state.activeMap.perimeterClosed = false;
   }
-  ui.deleteExclusionBtn.disabled = !state.activeExclusionId || Boolean(state.activeMap?.locked);
+  state.selectedPoint = null;
+  state.validationResult = null;
+  await saveActiveMap();
+  renderElementList();
+  renderMap();
+  refreshCaptureState();
+}
+
+/** Tippen auf eine Zeile macht das Element zum aktiven Aufnahmeziel. */
+function activateElement(role, exclusionId) {
+  if (exclusionId) state.activeExclusionId = exclusionId;
+  setMode(role);
+  renderElementList();
 }
 
 async function createMapFromInput() {
@@ -1931,26 +2014,7 @@ async function createExclusion() {
   const exclusion = { id: newId(), name: tr('exclusionN', { n: number }), points: [], closed: false };
   state.activeMap.exclusions.push(exclusion);
   state.activeExclusionId = exclusion.id;
-  renderExclusionControls();
-  await saveActiveMap();
-  renderMap();
-}
-
-async function deleteExclusion() {
-  if (!state.activeMap || !state.activeExclusionId || !ensureMapEditable()) return;
-  const exIndex = state.activeMap.exclusions.findIndex((e) => e.id === state.activeExclusionId);
-  const ex = state.activeMap.exclusions[exIndex];
-  const confirmed = await askConfirm({
-    title: tr('deleteExclusionTitle'),
-    message: tr('deleteExclusionConfirm', { name: ex ? localizedExclusionName(ex, exIndex) : tr('exclusionArea') }),
-    confirmLabel: tr('delete'),
-    tone: 'danger',
-  });
-  if (!confirmed) return;
-  if (state.selectedPoint?.role === 'exclusion' && state.selectedPoint.exclusionId === state.activeExclusionId) state.selectedPoint = null;
-  state.activeMap.exclusions = state.activeMap.exclusions.filter((e) => e.id !== state.activeExclusionId);
-  state.activeExclusionId = state.activeMap.exclusions[0]?.id || null;
-  renderExclusionControls();
+  renderElementList();
   await saveActiveMap();
   renderMap();
 }
@@ -2112,24 +2176,6 @@ async function undoPoint() {
   refreshCaptureState();
 }
 
-async function clearCurrentElement() {
-  if (!ensureMapEditable()) return;
-  const target = getActivePointArray();
-  if (!target?.length) return;
-  const confirmed = await askConfirm({
-    title: tr('clearCurrentElement'),
-    message: tr('clearConfirm', { label: modeLabel(state.mode) }),
-    confirmLabel: tr('clearNow'),
-    tone: 'danger',
-  });
-  if (!confirmed) return;
-  target.splice(0, target.length);
-  if (state.mode === 'perimeter') state.activeMap.perimeterClosed = false;
-  state.selectedPoint = null;
-  await saveActiveMap();
-  renderMap();
-}
-
 function allMapPoints() {
   const points = [];
   if (state.activeMap) {
@@ -2155,13 +2201,15 @@ function allMapPoints() {
  * das Wort „Gesperrt“.
  */
 function lockIcon(locked) {
-  const icon = svgEl('svg', { viewBox: '0 0 24 24', class: 'lock-icon', 'aria-hidden': 'true' });
-  icon.appendChild(svgEl('rect', { x: 4, y: 10.5, width: 16, height: 10.5, rx: 2.2, class: 'lock-body' }));
+  const icon = svgEl('svg', { viewBox: '0 0 24 24', class: `lock-icon${locked ? ' locked' : ' open'}`, 'aria-hidden': 'true' });
+  icon.appendChild(svgEl('rect', { x: 3.5, y: 11, width: 17, height: 10, rx: 2.4, class: 'lock-body' }));
   icon.appendChild(svgEl('path', {
-    // geschlossen: Buegel sitzt mittig auf dem Koerper · offen: Buegel steht rechts hoch
-    d: locked ? 'M8 10.5V7.5a4 4 0 0 1 8 0v3' : 'M8 10.5V7.5a4 4 0 0 1 7.8-1.2',
+    // geschlossen: Buegel sitzt mittig auf dem Koerper.
+    // offen: Buegel klappt deutlich nach rechts weg und endet neben dem Koerper.
+    d: locked ? 'M7.5 11V7.5a4.5 4.5 0 0 1 9 0V11' : 'M7.5 11V7.5a4.5 4.5 0 0 1 9 0',
     class: 'lock-shackle',
   }));
+  if (locked) icon.appendChild(svgEl('circle', { cx: 12, cy: 16, r: 1.6, class: 'lock-keyhole' }));
   return icon;
 }
 
@@ -2890,7 +2938,6 @@ function setMode(mode, { preserveSelection = false } = {}) {
   if (!preserveSelection) { state.selectedPoint = null; state.selectedArea = null; }
   ui.modeChipLabel.textContent = modeLabel(mode);
   ui.modeCycleBtn.dataset.mode = mode;
-  ui.exclusionControls.classList.toggle('hidden', mode !== 'exclusion');
   renderMap();
   refreshCaptureState();
 }
@@ -2980,7 +3027,7 @@ function selectablePoints() {
 }
 
 function applyPointSelection(ref) {
-  if (ref.role === 'exclusion' && ref.exclusionId) { state.activeExclusionId = ref.exclusionId; renderExclusionControls(); }
+  if (ref.role === 'exclusion' && ref.exclusionId) { state.activeExclusionId = ref.exclusionId; renderElementList(); }
   setMode(ref.role, { preserveSelection: true });
   state.selectedArea = null;
   state.selectedPoint = ref;
@@ -3010,7 +3057,7 @@ function handleMapTap(event) {
     state.selectedArea = area.id;
     state.activeExclusionId = area.id;
     setMode('exclusion', { preserveSelection: true });
-    renderExclusionControls();
+    renderElementList();
     ui.pointStatus.textContent = tr('areaSelected', { name: localizedExclusionName(area, state.activeMap.exclusions.indexOf(area)) });
     renderMap(); refreshCaptureState();
     return;
@@ -3203,10 +3250,13 @@ function bindEvents() {
   // Aufnahme-Einstellungen
   ui.fixOnly.addEventListener('change', refreshCaptureState);
   ui.autoCaptureIntervalInput.addEventListener('change', () => { updateViewPreferencesFromUi(); applyViewPreferencesToUi(); refreshCaptureState(); });
-  ui.exclusionSelect.addEventListener('change', () => { state.activeExclusionId = ui.exclusionSelect.value || null; state.selectedPoint = null; renderMap(); refreshCaptureState(); });
-  ui.newExclusionBtn.addEventListener('click', () => createExclusion().catch(reportError));
-  ui.deleteExclusionBtn.addEventListener('click', () => deleteExclusion().catch(reportError));
-  ui.clearModeBtn.addEventListener('click', () => clearCurrentElement().catch(reportError));
+  ui.newExclusionBtn.addEventListener('click', () => createExclusion().then(renderElementList).catch(reportError));
+  ui.elementList.addEventListener('click', (event) => {
+    const remove = event.target.closest('[data-delete-role]');
+    if (remove) { deleteElement(remove.dataset.deleteRole, remove.dataset.deleteExclusion || null).catch(reportError); return; }
+    const select = event.target.closest('[data-element-role]');
+    if (select) activateElement(select.dataset.elementRole, select.dataset.elementExclusion || null);
+  });
 
   // Ansicht
   [ui.showGrid, ui.gridStepSelect, ui.showMower, ui.showTrail, ui.showPointQuality].forEach((input) => input.addEventListener('change', updateViewPreferencesFromUi));

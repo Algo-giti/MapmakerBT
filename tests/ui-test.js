@@ -14,6 +14,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'openModeDialog', 'closeModeDialog', 'requestModeChange', 'openContours', 'closeAllOpenContours',
   'deleteAction', 'deleteSelectedArea', 'selectedExclusion', 'createExclusion', 'validateActiveMap',
   'toggleAutoCapture', 'startAutoCapture', 'stopAutoCapture', 'refreshDeleteButton', 'bindAccordion',
+  'mapElements', 'renderElementList', 'deleteElement', 'activateElement',
   'setTheme', 'applyTheme', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine', 'lockIcon',
   'askConfirm', 'confirmDialogRespond', 'showNotice', 'reportError', 'reportBleError',
   'showUpdateBar', 'applyUpdate', 'offerToCloseContour',
@@ -534,6 +535,11 @@ test('Gesperrte und offene Karten sind am Schloss klar unterscheidbar', () => {
   assert.ok(shackle(closed), 'geschlossenes Schloss hat einen Buegel');
   assert.ok(shackle(open), 'offenes Schloss hat einen Buegel');
   assert.notStrictEqual(shackle(closed), shackle(open), 'die Form muss sich unterscheiden');
+  const cls = (icon) => icon.attributes.class;
+  assert.ok(cls(closed).includes('locked') && cls(open).includes('open'), 'Zustand steht auch in der Klasse');
+  // Nur das geschlossene Schloss hat ein Schluesselloch.
+  assert.strictEqual(closed.children.filter((c) => c.attributes?.class === 'lock-keyhole').length, 1);
+  assert.strictEqual(open.children.filter((c) => c.attributes?.class === 'lock-keyhole').length, 0);
 });
 
 test('Update-Hinweis steht auf der Hauptseite und uebergibt an die wartende Fassung', () => {
@@ -557,6 +563,54 @@ test('Die Kontur-Rueckfrage sagt in den Knoepfen, was passiert', async () => {
   assert.strictEqual(sandbox.__lastConfirmRequest.confirmLabel, 'Kontur automatisch schließen');
   assert.strictEqual(sandbox.__lastConfirmRequest.cancelLabel, 'Kontur NOCH NICHT schließen');
   assert.strictEqual(t.state.activeMap.perimeterClosed, false, '"noch nicht" laesst sie offen');
+});
+
+test('Die Elementliste zeigt alle Bestandteile der Karte mit Punktzahl', async () => {
+  const { t } = setup();
+  t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }];
+  t.state.activeMap.waypoints = [{ x: 2, y: 2 }];
+  t.state.activeMap.dockPoints = [{ x: 3, y: 3 }, { x: 4, y: 4 }];
+  await t.createExclusion();
+  t.state.activeMap.exclusions[0].points.push({ x: 5, y: 5 });
+  const items = t.mapElements();
+  assert.strictEqual(items.map((i) => i.role).join(','), 'perimeter,exclusion,waypoint,dock');
+  assert.strictEqual(items.map((i) => i.points.length).join(','), '3,1,1,2');
+});
+
+test('Jedes Element laesst sich einzeln loeschen', async () => {
+  const { t, sandbox } = setup();
+  t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }];
+  t.state.activeMap.perimeterClosed = true;
+  t.state.activeMap.dockPoints = [{ x: 3, y: 3 }];
+  await t.createExclusion();
+  const exclusionId = t.state.activeMap.exclusions[0].id;
+  t.state.activeMap.exclusions[0].points.push({ x: 5, y: 5 });
+
+  sandbox.__confirmAnswer = false;
+  await t.deleteElement('perimeter', null);
+  assert.strictEqual(t.state.activeMap.perimeter.length, 3, 'ohne Bestaetigung bleibt alles stehen');
+
+  sandbox.__confirmAnswer = true;
+  await t.deleteElement('perimeter', null);
+  assert.strictEqual(t.state.activeMap.perimeter.length, 0);
+  assert.strictEqual(t.state.activeMap.perimeterClosed, false, 'geleerter Perimeter ist wieder offen');
+
+  await t.deleteElement('exclusion', exclusionId);
+  assert.strictEqual(t.state.activeMap.exclusions.length, 0, 'Ausschlussflaeche verschwindet ganz');
+
+  await t.deleteElement('dock', null);
+  assert.strictEqual(t.state.activeMap.dockPoints.length, 0);
+});
+
+test('Tippen auf eine Zeile macht das Element zum Aufnahmeziel', async () => {
+  const { t } = setup();
+  await t.createExclusion();
+  const exclusionId = t.state.activeMap.exclusions[0].id;
+  t.activateElement('dock', null);
+  assert.strictEqual(t.state.mode, 'dock');
+  t.activateElement('exclusion', exclusionId);
+  assert.strictEqual(t.state.mode, 'exclusion');
+  assert.strictEqual(t.state.activeExclusionId, exclusionId);
 });
 
 test('Akkordeon: das Oeffnen eines Abschnitts schliesst die anderen', () => {

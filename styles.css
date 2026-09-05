@@ -1626,7 +1626,7 @@ footer {
 .map-card-copy small { color: #82949b; font-size: .72rem; }
 .map-card-lock {
   align-self: stretch;
-  width: 58px;
+  width: 72px;
   min-height: 0;
   padding: 6px 4px;
   display: grid;
@@ -2089,8 +2089,8 @@ body {
 
 .app-frame {
   display: grid;
-  /* Update-Leiste, Kopfzeile, Karte, Fahrzone */
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  /* Update-Leiste, Kopfzeile, Karte (nimmt allen Rest), Fahrzone (nur so hoch wie noetig) */
+  grid-template-rows: auto auto minmax(0, 1fr) min-content;
   height: 100dvh;
   gap: 0;
 }
@@ -2305,15 +2305,23 @@ body.menu-open .app-frame { visibility: hidden; }
 .drive-zone {
   display: grid;
   justify-items: center;
+  /* Nicht auseinanderziehen: die Zone soll genau so hoch sein wie ihr Inhalt,
+     der ganze Rest gehoert der Karte. */
+  align-content: center;
   gap: 4px;
   padding: 8px 8px calc(env(safe-area-inset-bottom, 0px) + 8px);
   background: var(--shell-bar);
   border-top: 1px solid var(--shell-border-soft);
 }
 .drive-zone .joystick-base {
-  width: min(280px, 60vw, 30dvh);
-  height: auto;
-  aspect-ratio: 1;
+  /* Feste Groesse statt height:auto + aspect-ratio: als Grid-Kind wurde der Joystick sonst
+     auf die Zeilenhoehe gestreckt, die Zeile wuchs mit — und die Fahrzone nahm den halben
+     Bildschirm ein. align-self verhindert das Strecken zusaetzlich. */
+  width: 200px;
+  height: 200px;
+  aspect-ratio: auto;
+  align-self: center;
+  justify-self: center;
   margin: 0;
   touch-action: none;
 }
@@ -2396,8 +2404,8 @@ body.menu-open .app-frame { visibility: hidden; }
   .mode-chip, .rtk-chip, .battery-chip { height: 38px; font-size: .68rem; }
   .mode-chip { padding-inline: 8px; }
   .capture-fab { width: 92px; height: 92px; }
-  .drive-zone .joystick-base { width: min(240px, 62vw, 28dvh); }
-  .drive-zone .joystick-knob { width: 68px; height: 68px; }
+  .drive-zone .joystick-base { width: 170px; height: 170px; }
+  .drive-zone .joystick-knob { width: 62px; height: 62px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2863,3 +2871,81 @@ body.menu-open .app-frame { visibility: hidden; }
   text-align: center;
 }
 .update-bar:active { background: var(--shell-ok-border); }
+
+/* Elementliste im Menü unter „Karten“: alle Bestandteile der Karte mit Punktzahl,
+   antippbar zum Aktivieren, einzeln löschbar. */
+.element-list-head { margin-top: 4px; font-size: .72rem; font-weight: 800; color: var(--shell-muted); }
+.element-list { display: grid; gap: 6px; }
+.element-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 6px;
+  border: 1px solid var(--shell-border-soft);
+  border-radius: 10px;
+  background: var(--shell-panel-2);
+  overflow: hidden;
+}
+.element-row.active { border-color: var(--shell-ok-border); background: var(--shell-ok-bg); }
+.element-select {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--shell-text);
+  font-size: .78rem;
+  font-weight: 700;
+  text-align: left;
+}
+.element-dot { width: 11px; height: 11px; border-radius: 50%; background: var(--perimeter); }
+.element-dot[data-mode="exclusion"] { background: var(--exclusion); }
+.element-dot[data-mode="waypoint"] { background: var(--waypoint); }
+.element-dot[data-mode="dock"] { background: var(--dock); }
+.element-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.element-count { color: var(--shell-muted); font-size: .68rem; font-weight: 600; white-space: nowrap; }
+.element-delete {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--shell-border-soft);
+  border-radius: 0;
+  background: transparent;
+  color: var(--shell-danger);
+}
+.element-delete[disabled] { color: var(--shell-muted); opacity: .5; }
+.element-trash { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Sperrzustand auf drei Wegen erkennbar: Form des Bügels, Farbe und Wort — Farbe allein
+   war auf dem Gerät nicht zu sehen. */
+.lock-icon { width: 30px; height: 30px; }
+.lock-icon .lock-body { fill: none; stroke: currentColor; stroke-width: 2; }
+.lock-icon .lock-shackle { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.lock-icon .lock-keyhole { fill: currentColor; stroke: none; }
+.map-card-lock.active .lock-icon { width: 32px; height: 32px; }
+.map-card-lock.active .lock-icon .lock-body { fill: currentColor; stroke: currentColor; }
+.map-card-lock.active .lock-icon .lock-keyhole { fill: var(--shell-warn-bg); }
+.map-card-lock small { font-size: .56rem; }
+.map-card-locked-note {
+  margin-top: 2px;
+  color: var(--shell-warn);
+  font-size: .7rem;
+  font-weight: 800;
+}
+
+/* Fahrzone an die Bildschirmhöhe anpassen — sie bleibt trotzdem immer inhaltshoch. */
+@media (max-height: 720px) {
+  .drive-zone .joystick-base { width: 150px; height: 150px; }
+  .drive-zone .joystick-knob { width: 56px; height: 56px; }
+}
+@media (min-width: 700px) and (min-height: 900px) {
+  .drive-zone .joystick-base { width: 240px; height: 240px; }
+  .drive-zone .joystick-knob { width: 84px; height: 84px; }
+}

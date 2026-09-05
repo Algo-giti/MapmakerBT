@@ -159,6 +159,20 @@ test('Das hidden-Attribut blendet auch Knoepfe aus', () => {
   assert.ok(display.includes('!important'), 'ohne !important gewinnt die button-Regel');
 });
 
+test('Die Fahrzone bleibt inhaltshoch, die Karte bekommt den Rest', () => {
+  // Der Joystick hatte height:auto mit aspect-ratio. Als Grid-Kind wurde er auf die
+  // Zeilenhoehe gestreckt, die Zeile wuchs mit — die Fahrzone nahm den halben Bildschirm.
+  const rows = resolve('.app-frame', 'grid-template-rows').value || '';
+  assert.ok(/minmax\(0,\s*1fr\)/.test(rows), 'die Kartenzeile muss den Rest bekommen');
+  assert.ok(/min-content\s*$/.test(rows), `die Fahrzone darf nicht als auto-Zeile wachsen: "${rows}"`);
+  const height = resolve('.drive-zone .joystick-base', 'height').value;
+  assert.ok(height && height !== 'auto' && height.endsWith('px'), `Joystick braucht eine feste Hoehe, hat "${height}"`);
+  assert.strictEqual(resolve('.drive-zone .joystick-base', 'align-self').value, 'center',
+    'ohne align-self streckt das Grid den Joystick');
+  assert.strictEqual(resolve('.drive-zone', 'align-content').value, 'center',
+    'sonst zieht die Fahrzone ihre eigenen Zeilen auseinander');
+});
+
 test('Struktur: der Scrollcontainer ist direktes Kind der Menueseite', () => {
   const page = html.slice(html.indexOf('<section class="menu-page"'), html.indexOf('</section>', html.indexOf('<section class="menu-page"')));
   const head = page.slice(0, page.indexOf('<div class="menu-scroll"'));
