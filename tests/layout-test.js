@@ -51,11 +51,13 @@ const rules = parseRules(css);
  * Letzter gewinnender Wert einer Eigenschaft fuer einen exakten Selektor — beruecksichtigt
  * spaetere Layer und @media-Bloecke, die eine frueher gesetzte Regel wieder aufheben.
  */
-function resolve(selector, property) {
+function resolve(selector, property, { media = '' } = {}) {
   let value = null;
   let where = null;
   for (const rule of rules) {
     if (!rule.selectors.includes(selector)) continue;
+    // Standard: nur Regeln ohne @media. Sonst nur die des angegebenen Kontexts.
+    if (media ? !rule.media.includes(media) : rule.media) continue;
     const match = [...rule.body.matchAll(new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+)`, 'g'))].pop();
     if (match) { value = match[1].trim(); where = rule.media || 'ohne @media'; }
   }
@@ -174,12 +176,29 @@ test('Die Fahrzone bleibt inhaltshoch, die Karte bekommt den Rest', () => {
     'ohne min-height:0 waechst das Flex-Kind auf Inhaltshoehe');
   const drive = resolve('.app-frame > .drive-zone', 'flex').value || '';
   assert.ok(drive.startsWith('0 0'), `die Fahrzone darf weder wachsen noch schrumpfen, hat "${drive}"`);
-  const height = resolve('.drive-zone .joystick-base', 'height').value;
-  assert.ok(height && height !== 'auto' && height.endsWith('px'), `Joystick braucht eine feste Hoehe, hat "${height}"`);
+  // Die Groesse haengt an der Bildschirmhoehe, ist aber nach oben und unten begrenzt.
+  const height = resolve('.drive-zone .joystick-base', 'height').value || '';
+  assert.ok(height.startsWith('clamp('), `Joystick-Hoehe muss anteilig begrenzt sein, ist "${height}"`);
+  assert.ok(/dvh|vh|vw/.test(height), 'ohne Viewport-Einheit passt sich die Zone nicht an');
+  assert.notStrictEqual(height, 'auto');
   assert.strictEqual(resolve('.drive-zone .joystick-base', 'align-self').value, 'center',
     'ohne align-self streckt das Grid den Joystick');
   assert.strictEqual(resolve('.drive-zone', 'align-content').value, 'center',
     'sonst zieht die Fahrzone ihre eigenen Zeilen auseinander');
+});
+
+test('Auf breiten Fenstern steht die Fahrzone neben der Karte', () => {
+  const wide = { media: 'min-width: 760px' };
+  assert.strictEqual(resolve('.app-frame', 'display', wide).value, 'grid');
+  const areas = resolve('.app-frame', 'grid-template-areas', wide).value || '';
+  assert.ok(areas.includes('map') && areas.includes('drive'), 'Bereiche muessen benannt sein');
+  // Benannte Bereiche statt Reihenfolge: sonst verschiebt die ausgeblendete Update-Leiste alles.
+  for (const [selector, area] of [['.app-frame > .map-stage', 'map'], ['.app-frame > .drive-zone', 'drive'],
+    ['.app-frame > .appbar', 'bar'], ['.app-frame > .update-bar', 'update']]) {
+    assert.strictEqual(resolve(selector, 'grid-area', wide).value, area, `${selector} braucht einen festen Bereich`);
+  }
+  const columns = resolve('.app-frame', 'grid-template-columns', wide).value || '';
+  assert.ok(/minmax\(0,\s*1fr\)/.test(columns), 'die Karte bekommt die freie Breite');
 });
 
 test('Struktur: der Scrollcontainer ist direktes Kind der Menueseite', () => {

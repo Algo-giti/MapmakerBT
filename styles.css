@@ -2323,8 +2323,10 @@ body.menu-open .app-frame { visibility: hidden; }
   /* Feste Groesse statt height:auto + aspect-ratio: als Grid-Kind wurde der Joystick sonst
      auf die Zeilenhoehe gestreckt, die Zeile wuchs mit — und die Fahrzone nahm den halben
      Bildschirm ein. align-self verhindert das Strecken zusaetzlich. */
-  width: 200px;
-  height: 200px;
+  /* Anteilig zur Bildschirmhoehe: die Fahrzone belegt damit rund ein Viertel des
+     Bildschirms, egal wie gross das Geraet ist. Grenzen halten sie bedienbar. */
+  width: clamp(110px, 20dvh, 200px);
+  height: clamp(110px, 20dvh, 200px);
   aspect-ratio: auto;
   align-self: center;
   justify-self: center;
@@ -2410,7 +2412,6 @@ body.menu-open .app-frame { visibility: hidden; }
   .mode-chip, .rtk-chip, .battery-chip { height: 38px; font-size: .68rem; }
   .mode-chip { padding-inline: 8px; }
   .capture-fab { width: 92px; height: 92px; }
-  .drive-zone .joystick-base { width: 170px; height: 170px; }
   .drive-zone .joystick-knob { width: 62px; height: 62px; }
 }
 
@@ -2948,10 +2949,37 @@ body.menu-open .app-frame { visibility: hidden; }
 
 /* Fahrzone an die Bildschirmhöhe anpassen — sie bleibt trotzdem immer inhaltshoch. */
 @media (max-height: 720px) {
-  .drive-zone .joystick-base { width: 150px; height: 150px; }
   .drive-zone .joystick-knob { width: 56px; height: 56px; }
 }
-@media (min-width: 700px) and (min-height: 900px) {
-  .drive-zone .joystick-base { width: 240px; height: 240px; }
+
+/* --- Breite Fenster: Fahrzone neben die Karte statt darunter ---------------
+   Die Bereiche sind benannt, damit die meist ausgeblendete Update-Leiste die
+   übrigen Kinder nicht verschiebt (genau der Fehler, der die Aufteilung im
+   Hochformat schon einmal vertauscht hat). */
+@media (min-width: 760px) {
+  .app-frame {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(220px, 22vw, 320px);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "update update"
+      "bar    bar"
+      "map    drive";
+  }
+  .app-frame > .update-bar { grid-area: update; }
+  .app-frame > .appbar { grid-area: bar; }
+  .app-frame > .map-stage { grid-area: map; }
+  .app-frame > .drive-zone {
+    grid-area: drive;
+    border-top: 0;
+    border-left: 1px solid var(--shell-border-soft);
+  }
+  .drive-zone .joystick-base {
+    width: clamp(140px, 16vw, 260px);
+    height: clamp(140px, 16vw, 260px);
+  }
   .drive-zone .joystick-knob { width: 84px; height: 84px; }
+  /* Der Modus-Chip soll auf breiten Schirmen nicht über die halbe Leiste wandern. */
+  .mode-chip { flex: 0 1 auto; max-width: 260px; }
+  .rtk-chip { margin-left: auto; }
 }
