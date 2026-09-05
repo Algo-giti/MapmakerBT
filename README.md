@@ -10,6 +10,8 @@ Ardumower-ESP32 – ohne Internet, ohne Server, ohne Konto.
 Die Oberfläche lässt sich zwischen **Deutsch und Englisch** umschalten; Deutsch ist voreingestellt.
 
 Screenshots:
+
+
 <img src="https://github.com/Algo-giti/MapmakerBT/blob/main/screenshots/switch.jpg" alt="" width="300">
 
 <img src="https://github.com/Algo-giti/MapmakerBT/blob/main/screenshots/menu_speed.png" alt="" width="300">
