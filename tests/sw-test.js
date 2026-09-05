@@ -70,6 +70,13 @@ test('Die Version bleibt intern und taucht nirgends im UI auf', () => {
   assert.ok(!/\bv\d+\b/.test(html.replace(/<!--[\s\S]*?-->/g, '')), 'keine sichtbare Versionsangabe im Markup');
 });
 
+test('Die App bietet einen Knopf, der die neueste Fassung holt', () => {
+  assert.ok(/id="checkUpdateBtn"/.test(html), 'Knopf fehlt in der Diagnose-Sektion');
+  const fn = app.slice(app.indexOf('async function checkForUpdate('), app.indexOf('function browserCheck('));
+  assert.ok(fn.includes('registration.update()'), 'muss den Service Worker aktualisieren');
+  assert.ok(fn.includes('location?.reload?.()'), 'und danach neu laden');
+});
+
 test('Ein Wechsel des Service Workers laedt die Seite einmal neu', () => {
   // Ohne das zeigt der erste Neuladevorgang nach einem Deploy noch die Dateien des alten,
   // cache-first arbeitenden Workers — der Nutzer muesste von Hand ein zweites Mal neu laden.

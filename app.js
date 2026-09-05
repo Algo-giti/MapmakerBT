@@ -35,6 +35,7 @@ const MAX_MAPS = 10;
 
 const I18N = {
   de: {
+    checkForUpdate: 'Nach Updates suchen', updateSearching: 'Suche nach einer neueren Fassung …',
     bleWriteFailedTitle: 'Senden fehlgeschlagen', bleWriteFailedShort: 'Senden fehlgeschlagen: {message}',
     bleWriteFailed: 'Der Befehl {context} konnte nicht an den Mäher gesendet werden.\n\n{message}',
     errorTitle: 'Fehler', okUnderstood: 'Verstanden',
@@ -161,6 +162,7 @@ const I18N = {
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   },
   en: {
+    checkForUpdate: 'Check for updates', updateSearching: 'Looking for a newer version …',
     bleWriteFailedTitle: 'Sending failed', bleWriteFailedShort: 'Sending failed: {message}',
     bleWriteFailed: 'The command {context} could not be sent to the mower.\n\n{message}',
     errorTitle: 'Error', okUnderstood: 'Got it',
@@ -349,7 +351,8 @@ const ui = {
   showGrid: $('showGrid'), gridStepSelect: $('gridStepSelect'), showMower: $('showMower'), mowerLengthInput: $('mowerLengthInput'), mowerWidthInput: $('mowerWidthInput'),
   showTrail: $('showTrail'), clearTrailBtn: $('clearTrailBtn'), showPointQuality: $('showPointQuality'), keepAwake: $('keepAwake'), wakeLockStatus: $('wakeLockStatus'),
   validateMapBtn: $('validateMapBtn'), validationSummary: $('validationSummary'), validationList: $('validationList'), validationDrawer: $('validationDrawer'),
-  requestVersionBtn: $('requestVersionBtn'), requestStateBtn: $('requestStateBtn'), clearLogBtn: $('clearLogBtn'), debugLog: $('debugLog'),
+  requestVersionBtn: $('requestVersionBtn'), requestStateBtn: $('requestStateBtn'), clearLogBtn: $('clearLogBtn'),
+  checkUpdateBtn: $('checkUpdateBtn'), debugLog: $('debugLog'),
   helpSecureStatus: $('helpSecureStatus'), helpBluetoothStatus: $('helpBluetoothStatus'), helpOfflineStatus: $('helpOfflineStatus'), helpNetworkStatus: $('helpNetworkStatus'),
 };
 
@@ -3081,6 +3084,22 @@ function updateHelpSystemStatus() {
   setHelpStatus(ui.helpNetworkStatus, navigator.onLine ? tr('statusOnline') : tr('statusOffline'), navigator.onLine ? 'ok' : 'warn');
 }
 
+/**
+ * Holt die neueste Fassung vom Server. registration.update() umgeht den HTTP-Cache und laedt
+ * einen geaenderten Service Worker; der anschliessende Neuladevorgang holt die App-Dateien
+ * ohnehin network-first. Ohne diesen Knopf bleibt Nutzern nur das Loeschen der Website-Daten.
+ */
+async function checkForUpdate() {
+  log('UPDATE', tr('updateSearching'));
+  try {
+    const registration = await globalThis.navigator?.serviceWorker?.getRegistration?.();
+    if (registration) await registration.update();
+  } catch (error) {
+    log('UPDATE', error.message);
+  }
+  globalThis.location?.reload?.();
+}
+
 function browserCheck() {
   state.browserWarningKey = null;
   if (!window.isSecureContext) state.browserWarningKey = 'insecureContext';
@@ -3175,6 +3194,7 @@ function bindEvents() {
   ui.requestVersionBtn.addEventListener('click', () => sendSunray('AT+V', { forcePlain: true }).catch((e) => reportBleError('AT+V', e, { immediate: true })));
   ui.requestStateBtn.addEventListener('click', () => sendSunray('AT+S').catch((e) => reportBleError('AT+S', e, { immediate: true })));
   ui.clearLogBtn.addEventListener('click', () => { ui.debugLog.textContent = ''; });
+  ui.checkUpdateBtn.addEventListener('click', () => { checkForUpdate().catch(reportError); });
 
   // Karten
   ui.newMapBtn.addEventListener('click', () => createMapFromInput().catch(reportError));
