@@ -670,6 +670,34 @@ test('Schnellzugriff schließt die Fläche und beginnt ohne Rückfrage eine neue
   assert.strictEqual(t.ui.closeAndNewWrap.hidden, false);
 });
 
+test('Schnellzugriff verschwindet bei Auswahl und bei bereits geschlossener Kontur', async () => {
+  const { t } = setup();
+  t.setMode('exclusion');
+  await t.createExclusion();
+  const exclusion = t.currentExclusion();
+  exclusion.points.push({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 });
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.closeAndNewWrap.hidden, false);
+
+  // Punktauswahl: Papierkorb und Verschieben reichen.
+  t.applyPointSelection({ role: 'exclusion', index: 0, exclusionId: exclusion.id });
+  assert.strictEqual(t.ui.closeAndNewWrap.hidden, true, 'bei ausgewaehltem Punkt verborgen');
+  t.clearPointSelection();
+  assert.strictEqual(t.ui.closeAndNewWrap.hidden, false, 'ohne Auswahl wieder da');
+
+  // Flaechenauswahl ebenso.
+  t.state.selectedArea = exclusion.id;
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.closeAndNewWrap.hidden, true, 'bei ausgewaehlter Flaeche verborgen');
+  t.state.selectedArea = null;
+
+  // Schon geschlossen: es gibt nichts mehr zu schliessen.
+  exclusion.closed = true;
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.closeAndNewWrap.hidden, true, 'geschlossene Kontur braucht den Knopf nicht');
+  assert.strictEqual(t.canCloseAndStartNew(), false);
+});
+
 test('Schnellzugriff bleibt in anderen Modi und bei gesperrter Karte verborgen', async () => {
   const { t } = setup();
   t.setMode('exclusion');

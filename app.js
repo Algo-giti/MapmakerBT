@@ -3040,8 +3040,12 @@ function currentExclusion() {
 function canCloseAndStartNew() {
   if (!state.activeMap || state.activeMap.locked) return false;
   if (state.mode !== 'exclusion') return false;
+  // Beim Bearbeiten einer Auswahl reichen Papierkorb und Verschieben — der Schnellzugriff
+  // wuerde dort nur im Weg stehen.
+  if (state.selectedPoint || state.selectedArea) return false;
   const exclusion = currentExclusion();
-  return Boolean(exclusion && exclusion.points.length >= 3);
+  // Eine bereits geschlossene Kontur hat nichts mehr zu schliessen.
+  return Boolean(exclusion && exclusion.closed === false && exclusion.points.length >= 3);
 }
 
 /**
