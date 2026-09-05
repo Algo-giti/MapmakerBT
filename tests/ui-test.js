@@ -22,6 +22,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'deleteSelectedPoint', 'handleMapTap', 'applyPointSelection', 'clearPointSelection', 'refreshCaptureState',
   'renderMap', 'resetViewport', 'clampViewport', 'activeTransform', 'toScreen', 'svgMetrics', 'beginCustomViewport',
   'updateRtkBadge', 'setMenuOpen', 'onMapPointerDown', 'onMapPointerMove', 'onMapPointerUp', 'beginCaptureHold', 'cancelCaptureHold', 'driveSpeedLimits', 'joystickVectorFromPointer', 'makeMap', 'normalizeMap',
+  'undoLastAction', 'pushUndo', 'clearUndoStack', 'refreshUndoButton', 'UNDO_STACK_LIMIT',
   'MIN_USER_ZOOM', 'MAX_USER_ZOOM', 'init'];
 
 /** Minimaler IndexedDB-Ersatz, damit saveActiveMap() im Test durchlaeuft. */
@@ -464,6 +465,126 @@ test('Joystick: Drehen auf der Stelle folgt der Vorwaertskonvention', () => {
   assert.ok(right.linear === 0, 'kein Vortrieb');
   assert.ok(left.angular > 0, 'nach links = linksherum');
   assert.ok(right.angular < 0, 'nach rechts = rechtsherum');
+});
+
+// === Allgemeines Rueckgaengig ==============================================
+test('Rueckgaengig nimmt Schritte in umgekehrter Reihenfolge zurueck', async () => {
+  const { t } = setup();
+  await t.addCurrentPoint();
+  t.state.telemetry.x = 9;
+  await t.addCurrentPoint();
+  assert.strictEqual(t.state.activeMap.perimeter.length, 2);
+  assert.strictEqual(t.state.undoStack.length, 2, 'jede Aufnahme ist ein Schritt');
+
+  await t.undoLastAction();
+  assert.strictEqual(t.state.activeMap.perimeter.length, 1, 'der zuletzt gesetzte Punkt geht zuerst');
+  assert.strictEqual(t.state.activeMap.perimeter[0].x, 2, 'und zwar der richtige');
+  await t.undoLastAction();
+  assert.strictEqual(t.state.activeMap.perimeter.length, 0, 'mehrfaches Tippen arbeitet den Stapel ab');
+  assert.strictEqual(t.state.undoStack.length, 0);
+});
+
+test('Rueckgaengig deckt auch Verschieben, Loeschen und Konturschluss ab', async () => {
+  const { t } = setup();
+  for (const x of [1, 2, 3]) { t.state.telemetry.x = x; await t.addCurrentPoint(); }
+
+  // Verschieben
+  t.applyPointSelection({ role: 'perimeter', index: 0, exclusionId: null });
+  t.state.telemetry.x = 42;
+  await t.addCurrentPoint(); // mit Auswahl = verschieben
+  assert.strictEqual(t.state.activeMap.perimeter[0].x, 42);
+  await t.undoLastAction();
+  assert.strictEqual(t.state.activeMap.perimeter[0].x, 1, 'das Verschieben ist zurueckgenommen');
+
+  // Einzelnen Punkt loeschen
+  t.applyPointSelection({ role: 'perimeter', index: 1, exclusionId: null });
+  await t.deleteSelectedPoint();
+  assert.strictEqual(t.state.activeMap.perimeter.length, 2);
+  await t.undoLastAction();
+  assert.strictEqual(t.state.activeMap.perimeter.length, 3, 'der geloeschte Punkt ist wieder da');
+
+  // Kontur schliessen
+  t.setMode('exclusion');
+  await t.createExclusion();
+  for (const x of [5, 6, 7]) { t.state.telemetry.x = x; await t.addCurrentPoint(); }
+  const exclusion = t.currentExclusion();
+  assert.strictEqual(exclusion.closed, false);
+  await t.closeAllOpenContours();
+  assert.strictEqual(t.currentExclusion().closed, true);
+  await t.undoLastAction();
+  assert.strictEqual(t.currentExclusion().closed, false, 'der Konturschluss ist zurueckgenommen');
+});
+
+test('Rueckgaengig nimmt eine ganze geloeschte Flaeche zurueck', async () => {
+  const { t, sandbox } = setup();
+  t.setMode('exclusion');
+  await t.createExclusion();
+  for (const x of [1, 2, 3]) { t.state.telemetry.x = x; await t.addCurrentPoint(); }
+  const id = t.currentExclusion().id;
+  t.state.selectedArea = id;
+  sandbox.__confirmAnswer = true;
+  await t.deleteSelectedArea();
+  assert.strictEqual(t.state.activeMap.exclusions.length, 0);
+  await t.undoLastAction();
+  assert.strictEqual(t.state.activeMap.exclusions.length, 1, 'die Flaeche ist zurueck');
+  assert.strictEqual(t.state.activeMap.exclusions[0].points.length, 3, 'mitsamt ihren Punkten');
+});
+
+test('„Schliessen & neu“ ist genau ein Rueckgaengig-Schritt', async () => {
+  const { t } = setup();
+  t.setMode('exclusion');
+  await t.createExclusion();
+  for (const x of [1, 2, 3]) { t.state.telemetry.x = x; await t.addCurrentPoint(); }
+  const before = t.state.undoStack.length;
+  await t.closeAndStartNewExclusion();
+  assert.strictEqual(t.state.activeMap.exclusions.length, 2, 'geschlossen und neu angelegt');
+  assert.strictEqual(t.state.undoStack.length, before + 1,
+    'die zusammengesetzte Aktion darf nur einen Schritt kosten');
+  await t.undoLastAction();
+  assert.strictEqual(t.state.activeMap.exclusions.length, 1, 'ein Tipp nimmt beides zurueck');
+  assert.strictEqual(t.state.activeMap.exclusions[0].closed, false);
+});
+
+test('Der Rueckgaengig-Stapel ist auf 20 Schritte begrenzt', async () => {
+  const { t } = setup();
+  assert.strictEqual(t.UNDO_STACK_LIMIT, 20);
+  for (let i = 0; i < 25; i += 1) { t.state.telemetry.x = i; await t.addCurrentPoint(); }
+  assert.strictEqual(t.state.activeMap.perimeter.length, 25);
+  assert.strictEqual(t.state.undoStack.length, 20, 'aeltere Schritte fallen hinten raus');
+  // Der aelteste vorgehaltene Schritt gehoert zum 6. Punkt: 25 - 20 = 5 Punkte bleiben stehen.
+  for (let i = 0; i < 20; i += 1) await t.undoLastAction();
+  assert.strictEqual(t.state.activeMap.perimeter.length, 5, 'weiter zurueck reicht der Verlauf nicht');
+  assert.strictEqual(t.state.undoStack.length, 0);
+});
+
+test('Leerer Verlauf legt den Rueckgaengig-Knopf still', async () => {
+  const { t } = setup();
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.undoBtn.disabled, true, 'ohne Schritte ausgegraut');
+  await t.undoLastAction(); // darf nichts tun und nicht werfen
+  assert.strictEqual(t.state.activeMap.perimeter.length, 0);
+
+  await t.addCurrentPoint();
+  assert.strictEqual(t.ui.undoBtn.disabled, false, 'mit Verlauf bedienbar');
+  await t.undoLastAction();
+  assert.strictEqual(t.ui.undoBtn.disabled, true, 'nach dem letzten Schritt wieder ausgegraut');
+});
+
+test('Der Rueckgaengig-Knopf verschwindet waehrend der Automatik und bei gesperrter Karte', async () => {
+  const { t } = setup();
+  await t.addCurrentPoint();
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.undoFabWrap.hidden, false);
+
+  t.state.autoCaptureRunning = true;
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.undoFabWrap.hidden, true, 'gleiche Regel wie beim Papierkorb');
+  assert.strictEqual(t.ui.deleteFabWrap.hidden, true);
+  t.state.autoCaptureRunning = false;
+
+  t.state.activeMap.locked = true;
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.undoFabWrap.hidden, true, 'in einer gesperrten Karte gibt es nichts zurueckzunehmen');
 });
 
 test('RTK-Badge zeigt Zustand und Satelliten als Mäher/Station', () => {

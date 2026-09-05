@@ -132,6 +132,20 @@ die Knöpfe nicht, sie blieben sonst bis zum nächsten Telemetrie-Takt im alten 
 `refreshDeleteButton()` setzt Label, Farbe (`delete-point` = Akzent, `delete-area` = Warnfarbe)
 und Sichtbarkeit; `deleteAction()` verzweigt anhand der Auswahl.
 
+**Knopfbeschriftungen stehen seitlich, nicht oberhalb.** `.fab-label` ist `position: absolute`
+im `position: relative`-Wrapper `.fab-with-label` und hängt senkrecht mittig am eigenen Knopf.
+Oberhalb wuchsen mehrzeilige Beschriftungen nach oben und deckten auf schmalen Telefonen das
+Symbol des darüberliegenden Knopfes ab. Weil die Beschriftung aus dem Fluss genommen ist, trägt
+sie nichts zur Höhe der Knopfspalte bei — die gemeinsame senkrechte Mittelachse der Knöpfe bleibt
+erhalten. **Standardseite ist links** (`right: 100%`), weil beide Knopfspalten am rechten
+Bildschirmrand kleben; Knöpfe am linken Rand tragen `.label-right` und spiegeln die Seite
+(`left: 100%`, `right: auto`). Breite ist auf `min(112px, 32vw)` gedeckelt, längere Texte brechen
+um statt abgeschnitten zu werden, und `.map-hud` lässt mit `calc(100% - 220px)` Platz für
+Knopfspalte **und** Beschriftung. `tests/layout-test.js` prüft Seite, Verankerung, Spiegelung und
+das Breitenbudget. **Offen, ohne Gerät nicht prüfbar:** ob das auf jeder kleinen Bildschirmgröße
+tatsächlich überlappungsfrei bleibt — der Test rechnet mit den CSS-Zahlen, nicht mit echtem
+Textumbruch.
+
 **Punktgröße:** sichtbarer Radius 5 (ausgewählt 9) bei 3,5 Rand — bewusst klein. Die
 Trefferfläche hängt nicht daran, sie kommt aus dem unsichtbaren `map-point-hit`-Kreis mit
 `state.hitRadiusUnits` (immer ≥ 44 × 44 px).
@@ -246,6 +260,33 @@ sowie „Aktuelles Element leeren“. Neue Ausschlussflächen legt der Knopf unt
 Bügelform (offen/geschlossen, `lockIcon()` mit Schlüsselloch nur im gesperrten Zustand), Farbe
 (Warnfarbe) und Wort — die Schaltfläche trägt „Gesperrt“ bzw. „Offen“, die Kartenkarte zusätzlich
 die Zeile „🔒 Karte gesperrt – keine Änderungen möglich“.
+
+**Rückgängig-Knopf** (`#undoBtn` in `#undoFabWrap`, **unten links** auf der Karte über der
+Fahrzone, Beschriftung „Rückgängig“ rechts daneben): nimmt genau einen Bearbeitungsschritt
+zurück. Er steht **parallel** zum Zustand „Letzten Punkt“ des Papierkorbs oben rechts — der
+bleibt unverändert, beide sind bewusst nicht zusammengelegt, und die Symbole sind verschieden
+(gebogener Pfeil gegen Mülltonne).
+
+- `state.undoStack` hält bis zu `UNDO_STACK_LIMIT` = **20** Schnappschüsse, ältere fallen vorn
+  weg. Der Stapel lebt **nur im Speicher** und wird nie in der Karte gespeichert — die früher
+  persistierte Versionsverwaltung ist und bleibt entfernt. `setActiveMapById()` leert ihn.
+- `geometrySnapshot()` kopiert nur die Geometrie (Perimeter samt `perimeterClosed`,
+  Ausschlussflächen, Wegpunkte, Dockpfad, `activeExclusionId`) — Name, Sperre und Zeitstempel
+  gehören nicht zu einem Bearbeitungsschritt. `commitUndo(snapshot)` legt ab, `pushUndo()` ist
+  die Kurzform für „jetzt schnappschussen“.
+- **Verdrahtet** (jeweils nach allen frühen Ausstiegen, unmittelbar vor der Mutation):
+  `appendCurrentPoint()`, `relearnSelectedPoint()` (Verschieben), `deleteSelectedPoint()`,
+  `undoPoint()`, `deleteSelectedArea()`, `deleteElement()`, `createExclusion()`,
+  `closePerimeter()`, `reopenPerimeter()`, `closeContour()`.
+- **Zusammengesetzte Aktionen kosten genau einen Schritt**: `asOneUndoStep(fn)` setzt
+  `state.undoSuspended`, damit verschachtelte Aufrufe nichts eigenes ablegen — genutzt von
+  `closeAndStartNewExclusion()` und `closeAllOpenContours()`. `appendCurrentPoint()` macht
+  dasselbe von Hand: es nimmt den Schnappschuss **vor** einer eventuell automatisch angelegten
+  Ausschlussfläche und legt ihn erst ab, wenn wirklich ein Punkt entsteht — ein Fehlversuch ohne
+  Positionsdaten erzeugt so keinen leeren Schritt.
+- **Leerer Stapel** = Knopf ausgegraut (`refreshUndoButton()`), nicht wirkungslos tippbar.
+  **Während der Automatik und bei gesperrter Karte ausgeblendet** — dieselbe Regel wie beim
+  Papierkorb, so vom Nutzer entschieden.
 
 **Keine Verlaufsaufzeichnung mehr.** `map.history`, `checkpointMap()`, `geometrySnapshot()`,
 `applyGeometrySnapshot()`, `undoLastHistoryChange()` und die Liste „Letzte Punkte“ sind restlos
@@ -651,6 +692,16 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-05: **Beschriftungen seitlich, neuer allgemeiner Rückgängig-Knopf.** (a) Alle
+  Knopfbeschriftungen stehen jetzt neben statt über dem Knopf — absolut positioniert am eigenen
+  Knopf, Standardseite links, `.label-right` spiegelt sie für Knöpfe am linken Rand. Damit
+  können mehrzeilige Labels das Symbol darüber nicht mehr verdecken, und die Knopfspalte behält
+  ihre Mittelachse. `.map-hud` reserviert entsprechend mehr Platz. (b) Neuer `#undoBtn` unten
+  links mit 20-Schritte-Stapel über `geometrySnapshot()`/`commitUndo()`/`asOneUndoStep()`,
+  verdrahtet an zehn kartenändernde Aktionen; parallel zum bestehenden Papierkorb, eigenes
+  Symbol, bei leerem Verlauf ausgegraut, während der Automatik ausgeblendet. Elf neue Testfälle
+  (ui 57, layout 21), gegen vier simulierte Rückfälle geprüft. `APP_VERSION` auf `v23`.
 
 - 2026-09-05: **Rückwärtsfahrt war seitenverkehrt.** Am Gerät gemeldet: hinten-links am Joystick
   fuhr hinten-rechts und umgekehrt, vorwärts stimmte. Ursache ist keine Vorzeichen-Schlamperei,

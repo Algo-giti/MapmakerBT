@@ -143,14 +143,51 @@ test('Knopfbeschriftungen laufen nicht ueber den Bildschirmrand', () => {
   assert.ok(resolve('.fab-label', 'max-width').value, 'Beschriftung braucht eine Breitenbegrenzung');
 });
 
+test('Knopfbeschriftungen stehen neben dem Knopf, nicht darueber', () => {
+  // Oberhalb wuchsen mehrzeilige Beschriftungen nach oben und deckten das Symbol des daruber
+  // liegenden Knopfes ab. Seitlich kann das nicht passieren — vorausgesetzt, die Beschriftung
+  // ist aus dem Fluss genommen und am eigenen Knopf verankert.
+  assert.strictEqual(resolve('.fab-label', 'position').value, 'absolute',
+    'im Fluss wuerde die Beschriftung die Knopfspalte weiterhin in die Hoehe treiben');
+  assert.strictEqual(resolve('.fab-with-label', 'position').value, 'relative',
+    'ohne Bezugsrahmen haengt die Beschriftung an der Karte statt am Knopf');
+  assert.strictEqual(resolve('.fab-label', 'right').value, '100%',
+    'Standardseite ist links neben dem Knopf');
+  assert.strictEqual(resolve('.fab-label', 'top').value, '50%', 'senkrecht auf Knopfmitte');
+  // Gespiegelte Variante fuer Knoepfe am linken Rand.
+  assert.strictEqual(resolve('.fab-with-label.label-right .fab-label', 'left').value, '100%');
+  assert.strictEqual(resolve('.fab-with-label.label-right .fab-label', 'right').value, 'auto',
+    'ohne Zuruecksetzen von right waere die Beschriftung ueber die ganze Breite gespannt');
+});
+
+test('Der Rueckgaengig-Knopf sitzt unten links und beschriftet sich nach rechts', () => {
+  const wrap = html.match(/<div[^>]*id="undoFabWrap"[^>]*>/);
+  assert.ok(wrap, '#undoFabWrap fehlt im Markup');
+  assert.ok(wrap[0].includes('label-right'),
+    'am linken Rand ist nur rechts Platz fuer die Beschriftung');
+  assert.strictEqual(resolve('.undo-fab', 'left').value, '12px');
+  assert.strictEqual(resolve('.undo-fab', 'bottom').value, '12px');
+  assert.strictEqual(resolve('.undo-fab', 'position').value, 'absolute');
+  // Er steht ausserhalb der rechten Knopfspalte — hinter deren letztem Kind (#fitViewBtn).
+  assert.ok(html.indexOf('id="undoFabWrap"') > html.indexOf('id="fitViewBtn"'),
+    'der Knopf gehoert nicht in die rechte Spalte');
+  assert.ok(/<button[^>]*id="undoBtn"/.test(html) && /disabled=""[^>]*id="undoBtn"/.test(html),
+    'bei leerem Verlauf startet der Knopf ausgegraut');
+});
+
 test('Die Hinweiszeilen stehen untereinander und meiden die Knopfspalte', () => {
   assert.strictEqual(resolve('.map-hud', 'display').value, 'grid', 'zwei Zeilen untereinander');
   const columnWidth = parseInt(resolve('.map-fab-stack', 'width').value, 10);
   const columnRight = parseInt(resolve('.map-fab-stack', 'right').value, 10);
   const maxWidth = resolve('.map-hud', 'max-width').value || '';
   const reserved = Number((maxWidth.match(/-\s*(\d+)px/) || [])[1] || 0);
-  assert.ok(reserved >= columnWidth + columnRight,
-    `max-width muss mindestens ${columnWidth + columnRight}px fuer die Knopfspalte freilassen, laesst ${reserved}px`);
+  // Seit die Beschriftungen seitlich stehen, ragen sie zusaetzlich nach links in die Karte:
+  // die Hinweiszeile muss auch dafuer Platz lassen, sonst ueberlappen sich beide oben.
+  const labelWidth = Number((resolve('.fab-label', 'max-width').value.match(/min\(\s*(\d+)px/) || [])[1] || 0);
+  assert.ok(labelWidth > 0, 'die Beschriftung braucht eine bezifferte Obergrenze');
+  const needed = columnWidth + columnRight + labelWidth;
+  assert.ok(reserved >= needed,
+    `max-width muss mindestens ${needed}px fuer Knopfspalte und Beschriftung freilassen, laesst ${reserved}px`);
 });
 
 test('Das hidden-Attribut blendet auch Knoepfe aus', () => {

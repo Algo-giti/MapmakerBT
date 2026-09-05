@@ -22,6 +22,8 @@ const BLE_UNANSWERED_POLL_LIMIT = 4;
 // Der Kurzhinweis erscheint jedes Mal, der Dialog hoechstens alle 20 s.
 const BLE_ERROR_NOTICE_INTERVAL_MS = 20000;
 // Manuelle Aufnahme mittelt die letzten Fixes, statt den Nutzer warten zu lassen.
+/** So viele Bearbeitungsschritte haelt der Rueckgaengig-Stapel vor. */
+const UNDO_STACK_LIMIT = 20;
 const POSITION_SMOOTHING_WINDOW_MS = 2000;
 const POSITION_SMOOTHING_MAX_SAMPLES = 10;
 const DRIVE_POINTER_MIN_INTERVAL_MS = 160;
@@ -48,6 +50,8 @@ const I18N = {
     closeContoursYes: 'Konturen automatisch schließen',
     lockedBadge: 'Gesperrt',
     bleWriteFailedTitle: 'Senden fehlgeschlagen', bleWriteFailedShort: 'Senden fehlgeschlagen: {message}',
+    undoShort: 'Rückgängig', undoAction: 'Letzten Bearbeitungsschritt rückgängig machen',
+    undoDone: 'Schritt zurückgenommen.', undoDoneLast: 'Schritt zurückgenommen – Verlauf ist jetzt leer.',
     bleResyncDone: 'Abgebrochenes Kommando abgeschlossen (Zeilenende nachgesendet).',
     bleResyncFailed: 'Abgebrochenes Kommando konnte nicht abgeschlossen werden: {message}',
     bleWriteFailed: 'Der Befehl {context} konnte nicht an den Mäher gesendet werden.\n\n{message}',
@@ -183,6 +187,8 @@ const I18N = {
     closeContoursYes: 'Close contours automatically',
     lockedBadge: 'Locked',
     bleWriteFailedTitle: 'Sending failed', bleWriteFailedShort: 'Sending failed: {message}',
+    undoShort: 'Undo', undoAction: 'Undo the last editing step',
+    undoDone: 'Step undone.', undoDoneLast: 'Step undone – history is now empty.',
     bleResyncDone: 'Terminated the aborted command (sent a line break).',
     bleResyncFailed: 'Could not terminate the aborted command: {message}',
     bleWriteFailed: 'The command {context} could not be sent to the mower.\n\n{message}',
@@ -374,6 +380,7 @@ const ui = {
   mapSvg: $('mapSvg'), gridLayer: $('gridLayer'), shapeLayer: $('shapeLayer'), robotLayer: $('robotLayer'),
   deletePointBtn: $('deletePointBtn'), deleteFabWrap: $('deleteFabWrap'), deleteBtnLabel: $('deleteBtnLabel'),
   closeAndNewWrap: $('closeAndNewWrap'), closeAndNewBtn: $('closeAndNewBtn'), fitViewBtn: $('fitViewBtn'),
+  undoFabWrap: $('undoFabWrap'), undoBtn: $('undoBtn'),
   captureCluster: $('captureCluster'), autoFabWrap: $('autoFabWrap'), autoCaptureBtn: $('autoCaptureBtn'), autoCaptureLabel: $('autoCaptureLabel'),
   captureFabWrap: $('captureFabWrap'), addPointBtn: $('addPointBtn'), captureProgress: $('captureProgress'), captureButtonTitle: $('captureButtonTitle'), captureButtonHint: $('captureButtonHint'),
   mapSummary: $('mapSummary'), mapDistanceInfo: $('mapDistanceInfo'), pointStatus: $('pointStatus'), activeMapName: $('activeMapName'), saveState: $('saveState'),
@@ -451,6 +458,10 @@ const state = {
   viewBox: { w: 1000, h: 680 },
   hitRadiusUnits: 26,
   captureHold: null,
+  // Allgemeiner Rueckgaengig-Stapel (nur im Speicher, nichts davon wird in der Karte
+  // gespeichert — die frueher persistierte Versionsverwaltung ist bewusst entfallen).
+  undoStack: [],
+  undoSuspended: false,
   autoCaptureRunning: false,
   autoCaptureTimer: null,
   autoCaptureBusy: false,
@@ -766,6 +777,7 @@ function perimeterClosureCandidate() {
 
 async function closePerimeter({ automatic = false } = {}) {
   if (!ensureMapEditable() || !state.activeMap || state.activeMap.perimeter.length < 3) return;
+  pushUndo();
   state.activeMap.perimeterClosed = true;
   if (state.autoCaptureRunning) stopAutoCapture();
   await saveActiveMap();
@@ -778,6 +790,7 @@ async function closePerimeter({ automatic = false } = {}) {
 async function reopenPerimeter() {
   if (!ensureMapEditable() || !state.activeMap) return;
   if (!state.activeMap.perimeterClosed) return;
+  pushUndo();
   state.activeMap.perimeterClosed = false;
   await saveActiveMap();
   renderMap();
@@ -907,6 +920,7 @@ async function deleteSelectedArea() {
     tone: 'danger',
   });
   if (!confirmed) return;
+  pushUndo();
   state.activeMap.exclusions = state.activeMap.exclusions.filter((e) => e.id !== exclusion.id);
   state.selectedArea = null;
   state.selectedPoint = null;
@@ -1223,6 +1237,10 @@ function refreshCaptureState() {
   // hat in diesem Zustand nichts zu suchen.
   ui.autoFabWrap.hidden = Boolean(selected) || areaSelected;
   refreshDeleteButton();
+  // Der Rueckgaengig-Knopf folgt derselben Regel wie der Papierkorb: waehrend der Automatik
+  // ausgeblendet, damit ueber der Fahrzone nur der grosse Pause-Knopf steht.
+  ui.undoFabWrap.hidden = state.autoCaptureRunning || mapLocked || !state.activeMap;
+  refreshUndoButton();
   ui.closeAndNewWrap.hidden = !canCloseAndStartNew();
   // Im Verschieben-Zustand gibt es kein Halten: eine laufende Halteaktion wird verworfen.
   // (Nicht umgekehrt: ein laufendes Halten darf nicht von der 2-s-Telemetrie abgebrochen werden.)
@@ -1886,6 +1904,7 @@ function setActiveMapById(mapId) {
   const next = state.maps.find((m) => m.id === mapId);
   if (!next) return;
   stopAutoCapture();
+  clearUndoStack();
   state.activeMap = normalizeMap(next);
   state.activeExclusionId = state.activeMap.exclusions?.[0]?.id || null;
   state.selectedPoint = null;
@@ -1974,6 +1993,7 @@ async function deleteElement(role, exclusionId) {
     tone: 'danger',
   });
   if (!confirmed) return;
+  pushUndo();
   if (role === 'exclusion') {
     state.activeMap.exclusions = state.activeMap.exclusions.filter((e) => e.id !== exclusionId);
     if (state.selectedArea === exclusionId) state.selectedArea = null;
@@ -2092,6 +2112,7 @@ async function deleteAction() {
 async function createExclusion() {
   if (!state.activeMap || !ensureMapEditable()) return;
   const number = state.activeMap.exclusions.length + 1;
+  pushUndo();
   const exclusion = { id: newId(), name: tr('exclusionN', { n: number }), points: [], closed: false };
   state.activeMap.exclusions.push(exclusion);
   state.activeExclusionId = exclusion.id;
@@ -2136,6 +2157,7 @@ async function relearnSelectedPoint() {
   const sel = state.selectedPoint;
   const oldPoint = getSelectedPoint();
   if (!target || !sel || !oldPoint) return;
+  pushUndo();
   const point = pointFromTelemetry();
   point.originalCapturedAt = oldPoint.originalCapturedAt || oldPoint.capturedAt || null;
   point.editedAt = point.capturedAt;
@@ -2148,14 +2170,21 @@ async function relearnSelectedPoint() {
 
 async function appendCurrentPoint({ automatic = false, targetOverride = null, save = true } = {}) {
   if (!ensureMapEditable()) return null;
+  // Schnappschuss vor jeder Nebenwirkung: legt der Aufruf noch eine leere Ausschlussflaeche an,
+  // nimmt ein Undo beides zusammen zurueck. Abgelegt wird er erst, wenn wirklich ein Punkt
+  // entsteht — sonst haette ein Fehlversuch ohne Positionsdaten einen leeren Schritt erzeugt.
+  const before = geometrySnapshot();
   let target = targetOverride || getActivePointArray();
   if (!targetOverride && state.mode === 'exclusion' && !target) {
-    await createExclusion();
+    const nested = state.undoSuspended;
+    state.undoSuspended = true;
+    try { await createExclusion(); } finally { state.undoSuspended = nested; }
     target = getActivePointArray();
   }
   if (!target || !telemetryIsFresh()) return null;
   if (ui.fixOnly.checked && !telemetryHasFix()) return null;
   const point = pointFromTelemetry();
+  commitUndo(before);
   target.push(point);
   if (save) await saveActiveMap();
   if (!automatic) ui.pointStatus.textContent = tr('pointSaved', { x: point.x.toFixed(2), y: point.y.toFixed(2) });
@@ -2236,6 +2265,7 @@ async function deleteSelectedPoint() {
   const target = getSelectedPointArray();
   const sel = state.selectedPoint;
   if (!target || !sel || !target[sel.index]) return;
+  pushUndo();
   target.splice(sel.index, 1);
   if (sel.role === 'perimeter') state.activeMap.perimeterClosed = false;
   state.selectedPoint = null;
@@ -2246,10 +2276,98 @@ async function deleteSelectedPoint() {
   ui.pointStatus.textContent = tr('pointDeleted', { n: sel.index + 1 });
 }
 
+/**
+ * Schnappschuss der Kartengeometrie. Bewusst nur Geometrie und Auswahlziel — Name, Sperre und
+ * Zeitstempel gehoeren nicht zu einem Bearbeitungsschritt.
+ */
+function geometrySnapshot() {
+  const map = state.activeMap;
+  if (!map) return null;
+  const copy = (points) => points.map((p) => ({ ...p }));
+  return {
+    mapId: map.id,
+    perimeter: copy(map.perimeter),
+    perimeterClosed: Boolean(map.perimeterClosed),
+    exclusions: map.exclusions.map((e) => ({ ...e, points: copy(e.points) })),
+    waypoints: copy(map.waypoints),
+    dockPoints: copy(map.dockPoints),
+    activeExclusionId: state.activeExclusionId,
+  };
+}
+
+/**
+ * Legt einen Schnappschuss auf den Stapel. Waehrend state.undoSuspended (zusammengesetzte
+ * Aktionen wie „schliessen & neu“) wird nichts abgelegt, damit ein Tipp des Nutzers auch genau
+ * einem Undo-Schritt entspricht. Aelteste Eintraege fallen ueber UNDO_STACK_LIMIT hinaus weg.
+ */
+function commitUndo(snapshot) {
+  if (!snapshot || state.undoSuspended) return;
+  state.undoStack.push(snapshot);
+  while (state.undoStack.length > UNDO_STACK_LIMIT) state.undoStack.shift();
+  refreshUndoButton();
+}
+
+function pushUndo() {
+  commitUndo(geometrySnapshot());
+}
+
+/** Fuehrt eine zusammengesetzte Aktion als genau einen Undo-Schritt aus. */
+async function asOneUndoStep(fn) {
+  const before = geometrySnapshot();
+  const nested = state.undoSuspended;
+  state.undoSuspended = true;
+  try {
+    return await fn();
+  } finally {
+    state.undoSuspended = nested;
+    commitUndo(before);
+  }
+}
+
+function clearUndoStack() {
+  state.undoStack = [];
+  refreshUndoButton();
+}
+
+/** Aktiviert/deaktiviert den Rueckgaengig-Knopf anhand des Stapels. */
+function refreshUndoButton() {
+  if (!ui.undoBtn) return;
+  const usable = Boolean(state.activeMap) && !state.activeMap.locked && state.undoStack.length > 0;
+  ui.undoBtn.disabled = !usable;
+  ui.undoBtn.setAttribute('aria-disabled', String(!usable));
+}
+
+/** Nimmt genau einen Bearbeitungsschritt zurueck. */
+async function undoLastAction() {
+  if (!state.activeMap || !state.undoStack.length) return;
+  if (!ensureMapEditable()) return;
+  const snapshot = state.undoStack.pop();
+  // Der Stapel gilt nur fuer die gerade offene Karte; ein Kartenwechsel leert ihn ohnehin.
+  if (snapshot.mapId !== state.activeMap.id) { clearUndoStack(); return; }
+  const map = state.activeMap;
+  map.perimeter = snapshot.perimeter.map((p) => ({ ...p }));
+  map.perimeterClosed = snapshot.perimeterClosed;
+  map.exclusions = snapshot.exclusions.map((e) => ({ ...e, points: e.points.map((p) => ({ ...p })) }));
+  map.waypoints = snapshot.waypoints.map((p) => ({ ...p }));
+  map.dockPoints = snapshot.dockPoints.map((p) => ({ ...p }));
+  state.activeExclusionId = map.exclusions.some((e) => e.id === snapshot.activeExclusionId)
+    ? snapshot.activeExclusionId : (map.exclusions[0]?.id || null);
+  state.selectedPoint = null;
+  state.selectedArea = null;
+  state.validationResult = null;
+  await saveActiveMap();
+  renderElementList();
+  renderMap();
+  refreshCaptureState();
+  refreshUndoButton();
+  ui.pointStatus.textContent = tr(state.undoStack.length ? 'undoDone' : 'undoDoneLast');
+}
+
 async function undoPoint() {
   if (!ensureMapEditable()) return;
   const target = getActivePointArray();
   if (!target?.length) return;
+  pushUndo();
   target.pop();
   if (state.mode === 'perimeter') state.activeMap.perimeterClosed = false;
   state.selectedPoint = null;
@@ -3063,6 +3181,7 @@ async function closeContour(entry) {
   if (entry.role === 'perimeter') { await closePerimeter(); return; }
   const exclusion = state.activeMap?.exclusions.find((e) => e.id === entry.id);
   if (!exclusion) return;
+  pushUndo();
   exclusion.closed = true;
   state.validationResult = null;
   await saveActiveMap();
@@ -3099,8 +3218,10 @@ async function closeAndStartNewExclusion() {
   if (!canCloseAndStartNew()) return;
   const exclusion = currentExclusion();
   const index = state.activeMap.exclusions.indexOf(exclusion);
-  await closeContour({ role: 'exclusion', id: exclusion.id, label: localizedExclusionName(exclusion, index) });
-  await createExclusion();
+  await asOneUndoStep(async () => {
+    await closeContour({ role: 'exclusion', id: exclusion.id, label: localizedExclusionName(exclusion, index) });
+    await createExclusion();
+  });
   refreshCaptureState();
   ui.pointStatus.textContent = tr('closedAndStartedNew');
 }
@@ -3131,7 +3252,7 @@ async function closeAllOpenContours() {
     cancelLabel: tr('closeContourNo'),
   });
   if (!confirmed) return;
-  for (const entry of open) await closeContour(entry);
+  await asOneUndoStep(async () => { for (const entry of open) await closeContour(entry); });
   validateActiveMap();
 }
 
@@ -3273,6 +3394,7 @@ function bindEvents() {
   ui.bleStatusBtn.addEventListener('click', () => setMenuOpen(true, { section: 'menuConnection' }));
   ui.modeCycleBtn.addEventListener('click', openModeDialog);
   ui.closeAndNewBtn.addEventListener('click', () => closeAndStartNewExclusion().catch(reportError));
+  ui.undoBtn.addEventListener('click', () => undoLastAction().catch(reportError));
   ui.modeDialogCancel.addEventListener('click', closeModeDialog);
   ui.confirmDialogAccept.addEventListener('click', () => confirmDialogRespond(true));
   ui.confirmDialogCancel.addEventListener('click', () => confirmDialogRespond(false));

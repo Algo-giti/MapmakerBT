@@ -2235,7 +2235,7 @@ body.menu-open .app-frame { visibility: hidden; }
   display: grid;
   gap: 0;
   width: max-content;
-  max-width: calc(100% - 130px);
+  max-width: calc(100% - 220px);
   height: auto;
   padding: 3px 8px 4px;
   border: 0;
@@ -2272,7 +2272,6 @@ body.menu-open .app-frame { visibility: hidden; }
 .map-fab:active { background: var(--shell-hover); }
 .map-fab[disabled] { opacity: .35; }
 .map-fab.danger-fab { color: var(--shell-danger); border-color: var(--shell-danger-border); background: var(--shell-danger-bg); }
-.undo-fab { position: absolute; left: 12px; bottom: 12px; }
 
 .capture-fab {
   position: absolute;
@@ -2542,10 +2541,23 @@ body.menu-open .app-frame { visibility: hidden; }
 }
 
 /* --- Beschriftete Kartenknoepfe ------------------------------------------ */
-.fab-with-label { display: grid; justify-items: center; gap: 3px; }
+/* Die Beschriftung steht *neben* dem Knopf, nicht darueber. Oberhalb lag sie auf schmalen
+   Telefonen im Weg: mehrzeilige Labels wuchsen nach oben und deckten das Symbol des daruber
+   liegenden Knopfes ab. Sie ist deshalb absolut positioniert und traegt nichts zur Hoehe der
+   Knopfspalte bei — die gemeinsame senkrechte Mittelachse der Knoepfe bleibt dadurch erhalten. */
+.fab-with-label { position: relative; display: grid; justify-items: center; gap: 0; }
 .fab-with-label[hidden] { display: none; }
 .fab-label {
-  max-width: 96px;
+  position: absolute;
+  top: 50%;
+  /* Standardseite ist links: beide Knopfspalten kleben am rechten Bildschirmrand,
+     rechts daneben ist schlicht kein Platz. */
+  right: 100%;
+  margin-right: 6px;
+  transform: translateY(-50%);
+  /* Bewusst eng gehalten, damit die Beschriftung auf einem 360-px-Telefon nicht bis in die
+     Hinweiszeile oben links reicht. Laengere Texte brechen um statt abgeschnitten zu werden. */
+  max-width: min(112px, 32vw);
   padding: 1px 6px;
   border-radius: 7px;
   background: var(--shell-hud);
@@ -2553,11 +2565,27 @@ body.menu-open .app-frame { visibility: hidden; }
   font-size: .58rem;
   font-weight: 800;
   line-height: 1.3;
-  text-align: center;
-  /* Umbrechen statt ueber den rechten Bildschirmrand hinauslaufen. */
+  text-align: right;
   white-space: normal;
   overflow-wrap: anywhere;
 }
+/* Knoepfe am linken Rand spiegeln die Seite — dort ist rechts Platz und links keiner. */
+.fab-with-label.label-right .fab-label {
+  right: auto;
+  left: 100%;
+  margin-right: 0;
+  margin-left: 6px;
+  text-align: left;
+}
+/* Beschriftungen liegen ueber der Hinweiszeile, falls sie sich auf sehr schmalen Geraeten
+   doch beruehren — lesbar bleibt dann die Beschriftung. */
+.map-fab-stack, .capture-cluster, .undo-fab { z-index: 2; }
+.map-hud { z-index: 1; }
+
+/* --- Rueckgaengig-Knopf unten links -------------------------------------- */
+.undo-fab { position: absolute; left: 12px; bottom: 12px; }
+.map-fab.undo-map-fab { color: var(--shell-info); border-color: var(--shell-info-border); background: var(--shell-info-bg); }
+.map-fab.undo-map-fab[disabled] { color: var(--shell-muted); border-color: var(--shell-border); background: var(--shell-panel); }
 .map-fab.delete-point { color: var(--shell-info); border-color: var(--shell-info-border); background: var(--shell-info-bg); }
 .map-fab.delete-area { color: var(--shell-danger); border-color: var(--shell-danger-border); background: var(--shell-danger-bg); }
 
