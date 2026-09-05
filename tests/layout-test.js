@@ -125,69 +125,80 @@ test('Aufgeklappte Abschnitte werden nicht beschnitten', () => {
   }
 });
 
-test('Alle Kartenknoepfe liegen auf einer gemeinsamen rechten Achse', () => {
-  const stack = { right: resolve('.map-fab-stack', 'right').value, width: resolve('.map-fab-stack', 'width').value };
-  const cluster = { right: resolve('.capture-cluster', 'right').value, width: resolve('.capture-cluster', 'width').value };
-  assert.strictEqual(stack.right, cluster.right, 'oben und unten muessen denselben Rechtsabstand haben');
-  assert.strictEqual(stack.width, cluster.width, 'gleiche Spaltenbreite haelt 48-px- und 92-px-Knopf auf einer Mittelachse');
-  assert.ok(stack.width, 'ohne feste Spaltenbreite richten sich verschieden breite Knoepfe unterschiedlich aus');
-  for (const selector of ['.map-fab-stack', '.capture-cluster']) {
-    assert.strictEqual(resolve(selector, 'justify-items').value, 'center', `${selector} muss seine Knoepfe zentrieren`);
+test('Die Karte traegt oben eine Werkzeugleiste und darunter die Zeichenflaeche', () => {
+  // Die frueheren Eckstapel sind weg: Loeschen, Rueckgaengig, „Schliessen & neu“ und
+  // „Ansicht zuruecksetzen“ stehen jetzt waagerecht oben. Nur der Aufnahme-Cluster bleibt
+  // unten rechts.
+  assert.strictEqual(resolve('.map-stage', 'display').value, 'flex');
+  assert.strictEqual(resolve('.map-stage', 'flex-direction').value, 'column');
+  assert.strictEqual(resolve('.map-toolbar', 'flex').value, '0 0 auto',
+    'die Leiste darf nur ihre Inhaltshoehe kosten');
+  assert.strictEqual(resolve('.map-canvas-area', 'flex').value, '1 1 auto', 'der Rest gehoert der Karte');
+  assert.strictEqual(resolve('.map-canvas-area', 'min-height').value, '0',
+    'ohne min-height:0 waechst die Zeichenflaeche auf Inhaltshoehe');
+  assert.strictEqual(resolve('.map-canvas-area', 'position').value, 'relative',
+    'Hinweiszeile und Aufnahme-Cluster richten sich an der Zeichenflaeche aus, nicht an der Buehne');
+  // Der Aufnahme-Cluster ist unveraendert unten rechts geblieben.
+  assert.strictEqual(resolve('.capture-cluster', 'position').value, 'absolute');
+  assert.strictEqual(resolve('.capture-cluster', 'right').value, '12px');
+  assert.strictEqual(resolve('.capture-cluster', 'bottom').value, '12px');
+  const area = html.slice(html.indexOf('id="mapCanvasArea"'));
+  assert.ok(area.includes('id="captureCluster"') && area.includes('class="map-hud"'),
+    'Cluster und Hinweiszeile gehoeren in die Zeichenflaeche');
+});
+
+test('Die Werkzeugleiste bricht Beschriftungen nicht um', () => {
+  // Das war der gemeldete Fehler: auf schmalen Geraeten stapelten sich die Buchstaben
+  // untereinander, weil nur die Knopfbreite zur Verfuegung stand.
+  assert.strictEqual(resolve('.map-tool-label', 'white-space').value, 'nowrap',
+    'die Beschriftung muss in einer Zeile bleiben');
+  assert.strictEqual(resolve('.map-toolbar', 'display').value, 'flex');
+  assert.strictEqual(resolve('.map-toolbar', 'overflow-x').value, 'auto',
+    'passt die Leiste nicht, scrollt sie waagerecht statt umzubrechen');
+  assert.strictEqual(resolve('.map-tool', 'flex').value, '0 0 auto',
+    'die Werkzeuge duerfen nicht zusammengequetscht werden');
+  assert.strictEqual(resolve('.map-tool', 'display').value, 'grid', 'Symbol oben, Beschriftung darunter');
+  assert.strictEqual(resolve('.map-tool', 'min-height').value, '44px', 'Daumenziel');
+  const bar = html.slice(html.indexOf('id="mapToolbar"'), html.indexOf('id="mapCanvasArea"'));
+  for (const id of ['deletePointBtn', 'undoBtn', 'closeAndNewBtn', 'fitViewBtn']) {
+    assert.ok(bar.includes(`id="${id}"`), `${id} fehlt in der Werkzeugleiste`);
   }
+  assert.strictEqual((bar.match(/map-tool-label/g) || []).length, 4, 'jedes Werkzeug ist beschriftet');
+  assert.strictEqual((bar.match(/<svg/g) || []).length, 4, 'jedes Werkzeug hat ein Symbol');
 });
 
-test('Knopfbeschriftungen laufen nicht ueber den Bildschirmrand', () => {
-  // Die Beschriftungen sind breiter als ihre Knoepfe; ohne Umbruch und Breitenbegrenzung
-  // ragen sie rechts aus dem Bild ("Letzten Punkt" wird zu "Punkt").
-  assert.notStrictEqual(resolve('.fab-label', 'white-space').value, 'nowrap');
+test('Keine Beschriftung bricht mehr mitten im Wort', () => {
+  // `overflow-wrap: anywhere` war die Ursache der Buchstabenkolonnen. Die verbliebenen
+  // Beschriftungen am Aufnahme-Cluster duerfen hoechstens zwischen Woertern umbrechen.
+  assert.strictEqual(resolve('.fab-label', 'overflow-wrap').value, 'normal');
+  assert.strictEqual(resolve('.fab-label', 'word-break').value, 'normal');
   assert.ok(resolve('.fab-label', 'max-width').value, 'Beschriftung braucht eine Breitenbegrenzung');
+  // Im Diagnoseprotokoll ist `anywhere` weiterhin richtig (lange Protokollzeilen ohne
+  // Leerzeichen) — geprueft wird deshalb gezielt an den Beschriftungen.
+  assert.notStrictEqual(resolve('.map-tool-label', 'overflow-wrap').value, 'anywhere');
+  assert.notStrictEqual(resolve('.map-tool-label', 'word-break').value, 'break-all');
 });
 
-test('Knopfbeschriftungen stehen neben dem Knopf, nicht darueber', () => {
-  // Oberhalb wuchsen mehrzeilige Beschriftungen nach oben und deckten das Symbol des daruber
-  // liegenden Knopfes ab. Seitlich kann das nicht passieren — vorausgesetzt, die Beschriftung
-  // ist aus dem Fluss genommen und am eigenen Knopf verankert.
-  assert.strictEqual(resolve('.fab-label', 'position').value, 'absolute',
-    'im Fluss wuerde die Beschriftung die Knopfspalte weiterhin in die Hoehe treiben');
-  assert.strictEqual(resolve('.fab-with-label', 'position').value, 'relative',
-    'ohne Bezugsrahmen haengt die Beschriftung an der Karte statt am Knopf');
-  assert.strictEqual(resolve('.fab-label', 'right').value, '100%',
-    'Standardseite ist links neben dem Knopf');
-  assert.strictEqual(resolve('.fab-label', 'top').value, '50%', 'senkrecht auf Knopfmitte');
-  // Gespiegelte Variante fuer Knoepfe am linken Rand.
-  assert.strictEqual(resolve('.fab-with-label.label-right .fab-label', 'left').value, '100%');
-  assert.strictEqual(resolve('.fab-with-label.label-right .fab-label', 'right').value, 'auto',
-    'ohne Zuruecksetzen von right waere die Beschriftung ueber die ganze Breite gespannt');
+test('Der Rueckgaengig-Knopf steht als Werkzeug in der Leiste und startet ausgegraut', () => {
+  const bar = html.slice(html.indexOf('id="mapToolbar"'), html.indexOf('id="mapCanvasArea"'));
+  assert.ok(bar.includes('id="undoFabWrap"'), 'der Schalter fuer die Sichtbarkeit bleibt erhalten');
+  assert.ok(/disabled=""[^>]*id="undoBtn"/.test(html), 'bei leerem Verlauf startet der Knopf ausgegraut');
+  assert.ok(resolve('.map-tool[disabled]', 'opacity').value, 'ausgegraut muss sichtbar anders aussehen');
+  // Eigenes Symbol, nicht die Muelltonne des Loesch-Werkzeugs.
+  const undo = bar.slice(bar.indexOf('id="undoBtn"'), bar.indexOf('id="undoBtn"') + 400);
+  assert.ok(!undo.includes('M4 7h16'), 'der Rueckgaengig-Knopf traegt nicht das Loesch-Symbol');
 });
 
-test('Der Rueckgaengig-Knopf sitzt unten links und beschriftet sich nach rechts', () => {
-  const wrap = html.match(/<div[^>]*id="undoFabWrap"[^>]*>/);
-  assert.ok(wrap, '#undoFabWrap fehlt im Markup');
-  assert.ok(wrap[0].includes('label-right'),
-    'am linken Rand ist nur rechts Platz fuer die Beschriftung');
-  assert.strictEqual(resolve('.undo-fab', 'left').value, '12px');
-  assert.strictEqual(resolve('.undo-fab', 'bottom').value, '12px');
-  assert.strictEqual(resolve('.undo-fab', 'position').value, 'absolute');
-  // Er steht ausserhalb der rechten Knopfspalte — hinter deren letztem Kind (#fitViewBtn).
-  assert.ok(html.indexOf('id="undoFabWrap"') > html.indexOf('id="fitViewBtn"'),
-    'der Knopf gehoert nicht in die rechte Spalte');
-  assert.ok(/<button[^>]*id="undoBtn"/.test(html) && /disabled=""[^>]*id="undoBtn"/.test(html),
-    'bei leerem Verlauf startet der Knopf ausgegraut');
-});
-
-test('Die Hinweiszeilen stehen untereinander und meiden die Knopfspalte', () => {
+test('Die Hinweiszeilen stehen untereinander und meiden den Aufnahme-Cluster', () => {
   assert.strictEqual(resolve('.map-hud', 'display').value, 'grid', 'zwei Zeilen untereinander');
-  const columnWidth = parseInt(resolve('.map-fab-stack', 'width').value, 10);
-  const columnRight = parseInt(resolve('.map-fab-stack', 'right').value, 10);
+  // Oben rechts steht seit der Werkzeugleiste nichts mehr, wovor die Zeile ausweichen muesste;
+  // randlos ueber die volle Breite darf sie trotzdem nicht laufen.
   const maxWidth = resolve('.map-hud', 'max-width').value || '';
   const reserved = Number((maxWidth.match(/-\s*(\d+)px/) || [])[1] || 0);
-  // Seit die Beschriftungen seitlich stehen, ragen sie zusaetzlich nach links in die Karte:
-  // die Hinweiszeile muss auch dafuer Platz lassen, sonst ueberlappen sich beide oben.
-  const labelWidth = Number((resolve('.fab-label', 'max-width').value.match(/min\(\s*(\d+)px/) || [])[1] || 0);
-  assert.ok(labelWidth > 0, 'die Beschriftung braucht eine bezifferte Obergrenze');
-  const needed = columnWidth + columnRight + labelWidth;
-  assert.ok(reserved >= needed,
-    `max-width muss mindestens ${needed}px fuer Knopfspalte und Beschriftung freilassen, laesst ${reserved}px`);
+  assert.ok(reserved > 0 && reserved < 100,
+    `ohne Knopfspalte oben rechts genuegt ein Rand, reserviert sind ${reserved}px`);
+  assert.ok(html.indexOf('class="map-hud"') > html.indexOf('id="mapCanvasArea"'),
+    'die Hinweiszeile haengt an der Zeichenflaeche, sonst laege sie hinter der Werkzeugleiste');
 });
 
 test('Das hidden-Attribut blendet auch Knoepfe aus', () => {

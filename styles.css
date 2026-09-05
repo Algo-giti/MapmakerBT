@@ -2213,7 +2213,13 @@ body.menu-open .app-frame { visibility: hidden; }
   min-height: 0;
   background: var(--shell-bg);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
+/* Eigener Bezugsrahmen fuer die schwebenden Elemente (Hinweiszeile, Aufnahme-Cluster):
+   sie sollen sich an der Zeichenflaeche ausrichten, nicht an der Buehne inklusive
+   Werkzeugleiste — sonst laege die Hinweiszeile hinter den Werkzeugen. */
+.map-canvas-area { position: relative; flex: 1 1 auto; min-height: 0; }
 .map-stage #mapSvg {
   display: block;
   width: 100%;
@@ -2235,7 +2241,7 @@ body.menu-open .app-frame { visibility: hidden; }
   display: grid;
   gap: 0;
   width: max-content;
-  max-width: calc(100% - 220px);
+  max-width: calc(100% - 24px);
   height: auto;
   padding: 3px 8px 4px;
   border: 0;
@@ -2254,9 +2260,6 @@ body.menu-open .app-frame { visibility: hidden; }
 .map-hud .hud-dim { color: var(--shell-muted); }
 .map-hud .hud-dim:empty { display: none; }
 
-/* Feste Spaltenbreite: dadurch liegen der 48-px- und der 92-px-Knopf auf derselben
-   senkrechten Mittelachse — oben rechts wie unten rechts. */
-.map-fab-stack { position: absolute; top: 8px; right: 12px; width: 96px; display: grid; justify-items: center; gap: 8px; }
 .map-fab {
   display: grid;
   place-items: center;
@@ -2567,7 +2570,11 @@ body.menu-open .app-frame { visibility: hidden; }
   line-height: 1.3;
   text-align: right;
   white-space: normal;
-  overflow-wrap: anywhere;
+  /* Niemals `anywhere`: das war die Ursache der Buchstabenkolonnen auf schmalen Geraeten.
+     Umbrochen wird hoechstens zwischen Woertern. */
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 /* Knoepfe am linken Rand spiegeln die Seite — dort ist rechts Platz und links keiner. */
 .fab-with-label.label-right .fab-label {
@@ -2577,17 +2584,55 @@ body.menu-open .app-frame { visibility: hidden; }
   margin-left: 6px;
   text-align: left;
 }
-/* Beschriftungen liegen ueber der Hinweiszeile, falls sie sich auf sehr schmalen Geraeten
-   doch beruehren — lesbar bleibt dann die Beschriftung. */
-.map-fab-stack, .capture-cluster, .undo-fab { z-index: 2; }
+.capture-cluster { z-index: 2; }
 .map-hud { z-index: 1; }
 
-/* --- Rueckgaengig-Knopf unten links -------------------------------------- */
-.undo-fab { position: absolute; left: 12px; bottom: 12px; }
-.map-fab.undo-map-fab { color: var(--shell-info); border-color: var(--shell-info-border); background: var(--shell-info-bg); }
-.map-fab.undo-map-fab[disabled] { color: var(--shell-muted); border-color: var(--shell-border); background: var(--shell-panel); }
-.map-fab.delete-point { color: var(--shell-info); border-color: var(--shell-info-border); background: var(--shell-info-bg); }
-.map-fab.delete-area { color: var(--shell-danger); border-color: var(--shell-danger-border); background: var(--shell-danger-bg); }
+/* --- Werkzeugleiste oben auf der Karte ------------------------------------
+   Loesen loest das eigentliche Problem der frueheren Eckbeschriftungen: dort stand nur die
+   Knopfbreite zur Verfuegung, und `overflow-wrap: anywhere` brach den Text notfalls Buchstabe
+   fuer Buchstabe untereinander. Hier hat jede Beschriftung die volle Zeilenbreite, laeuft
+   ausdruecklich `nowrap`, und passt die Leiste einmal nicht, scrollt sie waagerecht. */
+.map-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  gap: 6px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--shell-border);
+  background: var(--shell-panel);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.map-toolbar::-webkit-scrollbar { display: none; }
+.map-tool-slot { display: flex; flex: 0 0 auto; }
+.map-tool {
+  flex: 0 0 auto;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  min-width: 62px;
+  min-height: 44px;           /* Daumenziel, auch wenn das Symbol klein ist */
+  padding: 3px 8px;
+  border: 1px solid var(--shell-border);
+  border-radius: 10px;
+  background: var(--shell-panel);
+  color: var(--shell-text);
+  font-family: inherit;
+  font-size: .55rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.map-tool svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.map-tool-label { white-space: nowrap; }
+.map-tool:active { background: var(--shell-hover); }
+.map-tool[disabled] { color: var(--shell-muted); border-color: var(--shell-border); background: var(--shell-panel); opacity: .55; }
+.map-tool.undo-map-fab { color: var(--shell-info); border-color: var(--shell-info-border); background: var(--shell-info-bg); }
+.map-tool.undo-map-fab[disabled] { color: var(--shell-muted); border-color: var(--shell-border); background: var(--shell-panel); }
+.map-tool.delete-point { color: var(--shell-info); border-color: var(--shell-info-border); background: var(--shell-info-bg); }
+.map-tool.delete-area { color: var(--shell-danger); border-color: var(--shell-danger-border); background: var(--shell-danger-bg); }
 
 /* --- Aufnahme-Cluster: Automatik ersetzt den manuellen Knopf -------------- */
 .capture-cluster {

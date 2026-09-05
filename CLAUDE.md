@@ -57,12 +57,33 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
 1. **Kopfzeile** (`.appbar`): Menü-Button (☰), Bluetooth-Statussymbol (auch Kurzweg zur
    Verbindungssektion), Moduswahl-Chip (öffnet `#modeDialog`), RTK-Badge (`updateRtkBadge()`,
    Text Fix/Float/No Fix, Satelliten als `Mäher/Station`), Akku-Chip.
-2. **Karte** (`.map-stage`): füllt den Rest. Zeiger-Steuerung auf dem SVG
-   (`onMapPointerDown/Move/Up`): Tap wählt aus, Ziehen ab 8 px verschiebt, zwei Finger zoomen.
-   Oben eine schmale, halbtransparente Hinweiszeile (`.map-hud`, Karte bleibt dahinter sichtbar).
-   Sie muss `right`/`bottom` explizit auf `auto` setzen — sonst spannt die ältere `.map-hud`-Regel
-   (v1-Layer, `bottom: 10px`) den Kasten über die ganze Kartenhöhe. Oben rechts der Lösch-Button mit Beschriftung und darunter „Ansicht zurücksetzen“
-   (nur nach eigenem Zoom). Unten rechts der `.capture-cluster`.
+2. **Karte** (`.map-stage`): füllt den Rest und ist selbst eine **Flexbox-Spalte** aus
+   `.map-toolbar` (`flex: 0 0 auto`) und `.map-canvas-area` (`flex: 1 1 auto; min-height: 0;
+   position: relative`). Zeiger-Steuerung auf dem SVG (`onMapPointerDown/Move/Up`): Tap wählt
+   aus, Ziehen ab 8 px verschiebt, zwei Finger zoomen. Die Hinweiszeile (`.map-hud`) und der
+   `.capture-cluster` liegen **in der Zeichenfläche**, nicht in der Bühne — sonst läge die
+   Hinweiszeile hinter der Werkzeugleiste. `.map-hud` muss `right`/`bottom` explizit auf `auto`
+   setzen, sonst spannt die ältere `.map-hud`-Regel (v1-Layer, `bottom: 10px`) den Kasten über
+   die ganze Kartenhöhe. Unten rechts bleibt der `.capture-cluster`.
+
+   **Werkzeugleiste** (`.map-toolbar`, waagerecht am oberen Rand der Karte): vier Werkzeuge mit
+   Symbol **oben** und Beschriftung **darunter** — Lösch-Werkzeug (`#deletePointBtn` in
+   `#deleteFabWrap`), Rückgängig (`#undoBtn` in `#undoFabWrap`), „Schließen & neu“
+   (`#closeAndNewBtn` in `#closeAndNewWrap`) und „Ansicht zurück“ (`#fitViewBtn`). Die
+   `…Wrap`-Hüllen (`.map-tool-slot`) tragen weiterhin das `hidden`-Attribut, die Knöpfe selbst
+   `disabled` — Zustände, Klick-Handler und Sichtbarkeitsregeln sind unverändert, nur die
+   Position hat sich geändert.
+
+   **Warum die Leiste:** vorher standen diese Knöpfe in Ecksäulen mit seitlicher Beschriftung.
+   Dort stand nur die Knopfbreite zur Verfügung, und `overflow-wrap: anywhere` brach den Text
+   notfalls **Buchstabe für Buchstabe untereinander**. In der Leiste hat jede Beschriftung die
+   volle Zeilenbreite und läuft ausdrücklich `nowrap`; passt die Leiste einmal nicht, **scrollt
+   sie waagerecht** (`overflow-x: auto`) statt umzubrechen. `.map-tool` ist bewusst kompakt
+   (18-px-Symbol, 0,55 rem Schrift), hält aber `min-height: 44px` als Daumenziel. Die
+   verbliebenen Beschriftungen am Aufnahme-Cluster stehen jetzt auf `overflow-wrap: normal`
+   statt `anywhere`. **Nicht ohne Gerät verifizierbar:** ob die Leiste auf sehr schmalen
+   Bildschirmen alle vier Beschriftungen ohne Scrollen unterbringt — beim nächsten Gerätetest
+   gezielt prüfen.
 3. **Fahrzone** (`.drive-zone`): der Joystick, fest sichtbar, für den Daumen. Sie ist bewusst
    **nur so hoch wie ihr Inhalt**: `flex: 0 0 auto`, `align-content: center`. Drei Spalten
    (`minmax(0,1fr) auto minmax(0,1fr)`) — der Joystick sitzt fest in Spalte 2 und bleibt damit
@@ -132,7 +153,7 @@ die Knöpfe nicht, sie blieben sonst bis zum nächsten Telemetrie-Takt im alten 
 `refreshDeleteButton()` setzt Label, Farbe (`delete-point` = Akzent, `delete-area` = Warnfarbe)
 und Sichtbarkeit; `deleteAction()` verzweigt anhand der Auswahl.
 
-**Knopfbeschriftungen stehen seitlich, nicht oberhalb.** `.fab-label` ist `position: absolute`
+**Knopfbeschriftungen (nur noch am Aufnahme-Cluster) stehen seitlich, nicht oberhalb.** `.fab-label` ist `position: absolute`
 im `position: relative`-Wrapper `.fab-with-label` und hängt senkrecht mittig am eigenen Knopf.
 Oberhalb wuchsen mehrzeilige Beschriftungen nach oben und deckten auf schmalen Telefonen das
 Symbol des darüberliegenden Knopfes ab. Weil die Beschriftung aus dem Fluss genommen ist, trägt
@@ -187,8 +208,8 @@ Antwort ein (dieselbe Konvention wie `bleAdapter()`): `sandbox.__confirmAnswer` 
 Dialogpfad löschen die Tests den Adapter (`delete sandbox.__confirmAdapter`) und antworten mit
 `confirmDialogRespond()`.
 
-**Schnellzugriff „Fläche schließen & neue“** (`#closeAndNewBtn` in `#closeAndNewWrap`, auf der
-Karte **unter dem Papierkorb**, mit Beschriftung „Schließen & neu“): erscheint nur, wenn
+**Schnellzugriff „Fläche schließen & neue“** (`#closeAndNewBtn` in `#closeAndNewWrap`, als
+Werkzeug in der Leiste oben, Beschriftung „Schließen & neu“): erscheint nur, wenn
 `canCloseAndStartNew()` — Modus `exclusion`, Karte nicht gesperrt, **keine Auswahl aktiv** (bei
 ausgewähltem Punkt oder ausgewählter Fläche genügen Papierkorb und Verschieben) und die laufende
 Kontur ist **noch offen** (`closed === false`) mit ≥ 3 Punkten. Ein Tipp schließt die Kontur über dieselbe `closeContour()`-Logik
@@ -280,8 +301,8 @@ Bügelform (offen/geschlossen, `lockIcon()` mit Schlüsselloch nur im gesperrten
 (Warnfarbe) und Wort — die Schaltfläche trägt „Gesperrt“ bzw. „Offen“, die Kartenkarte zusätzlich
 die Zeile „🔒 Karte gesperrt – keine Änderungen möglich“.
 
-**Rückgängig-Knopf** (`#undoBtn` in `#undoFabWrap`, **unten links** auf der Karte über der
-Fahrzone, Beschriftung „Rückgängig“ rechts daneben): nimmt genau einen Bearbeitungsschritt
+**Rückgängig-Knopf** (`#undoBtn` in `#undoFabWrap`, als Werkzeug in der Leiste oben, eigenes
+Symbol — gebogener Pfeil, nicht die Mülltonne): nimmt genau einen Bearbeitungsschritt
 zurück. Er steht **parallel** zum Zustand „Letzten Punkt“ des Papierkorbs oben rechts — der
 bleibt unverändert, beide sind bewusst nicht zusammengelegt, und die Symbole sind verschieden
 (gebogener Pfeil gegen Mülltonne).
@@ -718,6 +739,19 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-05: **Werkzeugleiste oben statt Knöpfe in den Kartenecken.** Gemeldet: auf schmalen
+  Bildschirmen brachen die Beschriftungen an den Eckknöpfen Buchstabe für Buchstabe
+  untereinander. Ursache war die Kombination aus Beschriftungen, die nur die Knopfbreite zur
+  Verfügung hatten, und `overflow-wrap: anywhere`. Lösch-Werkzeug, Rückgängig, „Schließen & neu“
+  und „Ansicht zurück“ stehen jetzt in einer waagerechten `.map-toolbar` am oberen Rand der
+  Karte, Symbol oben und Beschriftung `nowrap` darunter; passt die Leiste nicht, scrollt sie
+  waagerecht. `.map-stage` ist dafür eine Flexbox-Spalte aus Leiste und `.map-canvas-area`
+  geworden, in der Hinweiszeile und Aufnahme-Cluster jetzt liegen. Zustände, Klick-Handler und
+  Sichtbarkeitsregeln blieben unverändert — die `…Wrap`-Hüllen tragen weiterhin `hidden`, also
+  brauchte `app.js` außer dem neuen Schlüssel `fitViewShort` keine Logikänderung. Aufnahme- und
+  Automatik-Knopf sind unverändert unten rechts. Vier layout-Fälle umgeschrieben (21), gegen
+  drei simulierte Rückfälle geprüft. `APP_VERSION` auf `v25`.
 
 - 2026-09-05: **Polling auf 500 ms, distanzbasierte Automatik.** (a) `BLE_POLL_INTERVAL_MS` = 500
   statt 2000. Dabei musste `BLE_UNANSWERED_POLL_LIMIT` von der festen 4 auf eine Ableitung aus

@@ -33,28 +33,25 @@
 </header>
 
 <main class="map-stage" id="mapStage">
+<div class="map-toolbar" id="mapToolbar">
+<div class="map-tool-slot" id="deleteFabWrap">
+<button class="map-tool delete-fab" id="deletePointBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg><span class="map-tool-label" id="deleteBtnLabel">Letzten Punkt</span></button>
+</div>
+<div class="map-tool-slot" id="undoFabWrap">
+<button aria-label="Letzten Bearbeitungsschritt rückgängig machen" class="map-tool undo-map-fab" data-i18n-aria-label="undoAction" disabled="" id="undoBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 0 12H9"></path></svg><span class="map-tool-label" data-i18n="undoShort">Rückgängig</span></button>
+</div>
+<div class="map-tool-slot" hidden="" id="closeAndNewWrap">
+<button aria-label="Fläche schließen und neue beginnen" class="map-tool close-new-fab" data-i18n-aria-label="closeAndNew" id="closeAndNewBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 12.5 7.5 17 15 6"></path><path d="M18 14v7M14.5 17.5h7"></path></svg><span class="map-tool-label" data-i18n="closeAndNewShort">Schließen &amp; neu</span></button>
+</div>
+<button aria-label="Ansicht zurücksetzen" class="map-tool" data-i18n-aria-label="fitView" hidden="" id="fitViewBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span class="map-tool-label" data-i18n="fitViewShort">Ansicht zurück</span></button>
+</div>
+
+<div class="map-canvas-area" id="mapCanvasArea">
 <svg aria-label="Aufgenommene Mähkarte" data-i18n-aria-label="mapPreviewAria" id="mapSvg" role="img" viewBox="0 0 1000 680">
 <g id="gridLayer"></g>
 <g id="shapeLayer"></g>
 <g id="robotLayer"></g>
 </svg>
-
-<div class="map-fab-stack map-fab-topright">
-<div class="fab-with-label" id="deleteFabWrap">
-<span class="fab-label" id="deleteBtnLabel">Letzten Punkt</span>
-<button class="map-fab delete-fab" id="deletePointBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></button>
-</div>
-<div class="fab-with-label" hidden="" id="closeAndNewWrap">
-<span class="fab-label" data-i18n="closeAndNewShort">Schließen &amp; neu</span>
-<button aria-label="Fläche schließen und neue beginnen" class="map-fab close-new-fab" data-i18n-aria-label="closeAndNew" id="closeAndNewBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 12.5 7.5 17 15 6"></path><path d="M18 14v7M14.5 17.5h7"></path></svg></button>
-</div>
-<button aria-label="Ansicht zurücksetzen" class="map-fab" data-i18n-aria-label="fitView" hidden="" id="fitViewBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-</div>
-
-<div class="fab-with-label label-right undo-fab" id="undoFabWrap">
-<span class="fab-label" data-i18n="undoShort">Rückgängig</span>
-<button aria-label="Letzten Bearbeitungsschritt rückgängig machen" class="map-fab undo-map-fab" data-i18n-aria-label="undoAction" disabled="" id="undoBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 0 12H9"></path></svg></button>
-</div>
 
 <div class="capture-cluster" id="captureCluster">
 <div class="fab-with-label" id="autoFabWrap">
@@ -81,6 +78,7 @@
 <span class="sr-only" id="mapDistanceInfo">–</span>
 <span class="sr-only" id="activeMapName">–</span>
 <span class="sr-only" id="saveState">–</span>
+</div>
 </div>
 </main>
 
