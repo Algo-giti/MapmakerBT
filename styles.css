@@ -2340,6 +2340,10 @@ body.menu-open .app-frame { visibility: hidden; }
   width: var(--joystick-size);
   height: var(--joystick-size);
   aspect-ratio: auto;
+  /* Beide Kinder ausdruecklich in Zeile 1: sonst wandert die Anzeige in Spalte 1 (links vom
+     Joystick) in eine zweite Zeile, weil der Platzierungszeiger nach dem Joystick schon in
+     Spalte 3 steht. Genau das war der sichtbare Layout-Sprung bei „Rechtshaender“. */
+  grid-row: 1;
   align-self: center;
   justify-self: center;
   margin: 0;
@@ -2348,6 +2352,7 @@ body.menu-open .app-frame { visibility: hidden; }
 /* Kugel anteilig zur Basis: skaliert automatisch mit jeder Groessenstufe mit. */
 .drive-zone .joystick-knob { width: 41%; height: 41%; }
 .drive-meta {
+  grid-row: 1;
   grid-column: 1;
   justify-self: end;
   min-width: 0;
@@ -2358,6 +2363,8 @@ body.menu-open .app-frame { visibility: hidden; }
   color: var(--shell-muted);
 }
 .drive-zone[data-label-side="right"] .drive-meta {
+  /* Exakt gespiegelt zur linken Variante — nur Spalte und Ausrichtung drehen sich. */
+  grid-row: 1;
   grid-column: 3;
   justify-self: start;
   text-align: left;
@@ -2397,6 +2404,11 @@ body.menu-open .app-frame { visibility: hidden; }
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   padding: 10px 10px calc(env(safe-area-inset-bottom, 0px) + 28px);
+  /* Gleiche Spaltenbreite auf Handy und Desktop: ohne Begrenzung ziehen sich die
+     Einstellungszeilen im breiten Fenster ueber den halben Bildschirm. */
+  width: 100%;
+  max-width: 760px;
+  margin-inline: auto;
   /* Bewusst Blocklayout: ein Grid- oder Flex-Stapel kann seine Kinder auf die
      Containerhoehe zusammenstauchen, ein aufgeklappter Abschnitt wird dann
      abgeschnitten statt den Container zu verlaengern. */
@@ -2984,7 +2996,7 @@ body.menu-open .app-frame { visibility: hidden; }
 @media (min-width: 760px) {
   .app-frame {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) clamp(220px, 22vw, 320px);
+    grid-template-columns: minmax(0, 1fr) clamp(300px, 30vw, 520px);
     grid-template-rows: auto auto minmax(0, 1fr);
     grid-template-areas:
       "update update"
@@ -2999,17 +3011,10 @@ body.menu-open .app-frame { visibility: hidden; }
     border-top: 0;
     border-left: 1px solid var(--shell-border-soft);
   }
-  /* Schmale Seitenspalte: Statusanzeige wieder unter den Joystick. */
-  .drive-zone { grid-template-columns: minmax(0, 1fr); row-gap: 8px; }
+  /* Die Statusanzeige steht auch hier seitlich — gleiche Anordnung wie am Handy.
+     Die Spalte ist dafuer breiter, der Joystick etwas zurueckhaltender. */
   .drive-zone .joystick-base {
-    grid-column: 1;
-    --joystick-size: clamp(150px, calc(18vw * var(--joystick-scale, 1)), calc(280px * var(--joystick-scale, 1)));
-  }
-  .drive-meta,
-  .drive-zone[data-label-side="right"] .drive-meta {
-    grid-column: 1;
-    justify-self: center;
-    text-align: center;
+    --joystick-size: clamp(150px, calc(14vw * var(--joystick-scale, 1)), calc(260px * var(--joystick-scale, 1)));
   }
   /* Der Modus-Chip soll auf breiten Schirmen nicht über die halbe Leiste wandern. */
   .mode-chip { flex: 0 1 auto; max-width: 260px; }

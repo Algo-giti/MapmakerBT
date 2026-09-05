@@ -230,10 +230,41 @@ test('Statusanzeige und Joystick ueberlappen in keiner Groessenstufe', () => {
   assert.strictEqual(resolve('.drive-zone[data-label-side="right"] .drive-meta', 'grid-column').value, '3');
   // Die Aussenspalten duerfen den Joystick nicht wegdruecken.
   assert.strictEqual(resolve('.drive-meta', 'min-width').value, '0');
-  // Auf schmalen Seitenspalten (breites Fenster) steht die Anzeige wieder darunter.
+});
+
+test('Beide Haendigkeiten sind exakt gespiegelt und erzeugen keinen Zeilenumbruch', () => {
+  // Ursache des frueheren Sprungs: ohne grid-row rutschte die linke Anzeige in eine zweite
+  // Zeile, weil der Platzierungszeiger nach dem Joystick schon hinter Spalte 1 stand.
+  for (const selector of ['.drive-zone .joystick-base', '.drive-meta',
+    '.drive-zone[data-label-side="right"] .drive-meta']) {
+    assert.strictEqual(resolve(selector, 'grid-row').value, '1', `${selector} braucht eine feste Zeile`);
+  }
+  const left = { column: resolve('.drive-meta', 'grid-column').value, justify: resolve('.drive-meta', 'justify-self').value, align: resolve('.drive-meta', 'text-align').value };
+  const right = { column: resolve('.drive-zone[data-label-side="right"] .drive-meta', 'grid-column').value,
+    justify: resolve('.drive-zone[data-label-side="right"] .drive-meta', 'justify-self').value,
+    align: resolve('.drive-zone[data-label-side="right"] .drive-meta', 'text-align').value };
+  assert.deepStrictEqual([left.column, left.justify, left.align], ['1', 'end', 'right']);
+  assert.deepStrictEqual([right.column, right.justify, right.align], ['3', 'start', 'left']);
+});
+
+test('Die seitliche Anzeige gilt auch im breiten Fenster', () => {
   const wide = { media: 'min-width: 760px' };
-  assert.strictEqual((resolve('.drive-zone', 'grid-template-columns', wide).value || '').trim(), 'minmax(0, 1fr)');
-  assert.strictEqual(resolve('.drive-zone .joystick-base', 'grid-column', wide).value, '1');
+  // Kein Zurueckfallen auf „Anzeige unter dem Joystick“: Handy und Desktop verhalten sich gleich.
+  assert.strictEqual(resolve('.drive-zone', 'grid-template-columns', wide).value, null,
+    'die Spaltenaufteilung darf im breiten Fenster nicht ueberschrieben werden');
+  assert.strictEqual(resolve('.drive-meta', 'grid-column', wide).value, null);
+  assert.strictEqual(resolve('.drive-zone .joystick-base', 'grid-column', wide).value, null);
+  // Dafuer ist die Seitenspalte breit genug fuer Joystick und Anzeige nebeneinander.
+  const columns = (resolve('.app-frame', 'grid-template-columns', wide).value || '').replace(/\s+/g, ' ');
+  assert.ok(/clamp\(300px/.test(columns), `Fahrspalte muss breiter sein: "${columns}"`);
+});
+
+test('Der Menueinhalt hat auf jedem Bildschirm dieselbe Spaltenbreite', () => {
+  // Ohne Begrenzung ziehen sich die Einstellungszeilen im breiten Fenster ueber den halben
+  // Bildschirm und sehen dort anders aus als am Handy.
+  const maxWidth = resolve('.menu-scroll', 'max-width').value;
+  assert.ok(maxWidth && maxWidth.endsWith('px'), `Menue braucht eine Maximalbreite, hat "${maxWidth}"`);
+  assert.strictEqual(resolve('.menu-scroll', 'margin-inline').value, 'auto', 'und muss zentriert stehen');
 });
 
 test('Struktur: der Scrollcontainer ist direktes Kind der Menueseite', () => {
