@@ -403,6 +403,69 @@ test('Joystick: Auslenkung bestimmt die Geschwindigkeit zwischen Min und Max', (
   assert.ok(dead.angular === 0, 'Totzone liefert keine Drehung');
 });
 
+/**
+ * Faehrt AT+M,linear,angular im selben Einrad-/Differentialmodell nach, das Sunray benutzt,
+ * und meldet zurueck, wo der Maeher landet. Der Roboter blickt anfangs nach +x; +y ist links
+ * von ihm, -y rechts. Damit wird die *tatsaechliche Fahrtrichtung* geprueft und nicht nur ein
+ * Vorzeichen — genau hier lag der Fehler: die Vorzeichen waren fuer sich genommen plausibel.
+ */
+function driveOutcome({ linear, angular }, steps = 400, dt = 0.005) {
+  let x = 0; let y = 0; let th = 0;
+  for (let i = 0; i < steps; i += 1) {
+    x += linear * Math.cos(th) * dt;
+    y += linear * Math.sin(th) * dt;
+    th += angular * dt;
+  }
+  return {
+    laengs: x > 0.01 ? 'vorwaerts' : x < -0.01 ? 'rueckwaerts' : 'steht',
+    quer: y > 0.01 ? 'links' : y < -0.01 ? 'rechts' : 'geradeaus',
+    th,
+  };
+}
+
+test('Joystick: alle vier Quadranten fahren in die ausgelenkte Richtung', () => {
+  const { t } = setup();
+  t.state.view.driveSpeedMin = 0.10;
+  t.state.view.driveSpeedMax = 0.30;
+  // Stub-Joystick: 300x300 px, Mitte (150,150), Radius 116. 82 px ergeben eine volle Diagonale.
+  const d = 82;
+  const stick = (dx, dy) => t.joystickVectorFromPointer({ clientX: 150 + dx, clientY: 150 + dy });
+
+  const cases = [
+    ['vorne-links', -d, -d, 'vorwaerts', 'links'],
+    ['vorne-rechts', d, -d, 'vorwaerts', 'rechts'],
+    ['hinten-links', -d, d, 'rueckwaerts', 'links'],
+    ['hinten-rechts', d, d, 'rueckwaerts', 'rechts'],
+  ];
+  for (const [name, dx, dy, laengs, quer] of cases) {
+    const vector = stick(dx, dy);
+    const out = driveOutcome(vector);
+    assert.strictEqual(out.laengs, laengs, `${name}: Laengsrichtung`);
+    assert.strictEqual(out.quer, quer,
+      `${name}: der Maeher muss nach ${quer} ausweichen, tut es aber nach ${out.quer} `
+      + `(linear=${vector.linear.toFixed(2)}, angular=${vector.angular.toFixed(2)})`);
+  }
+
+  // Die Vorwaertsfaelle duerfen sich durch die Spiegelung nicht veraendert haben.
+  assert.ok(stick(-d, -d).angular > 0, 'vorne-links dreht weiterhin linksherum');
+  assert.ok(stick(d, -d).angular < 0, 'vorne-rechts dreht weiterhin rechtsherum');
+  // Rueckwaerts ist die Drehrate gegenueber vorwaerts gespiegelt.
+  assert.ok(stick(-d, d).angular < 0, 'hinten-links braucht die entgegengesetzte Drehrate');
+  assert.ok(stick(d, d).angular > 0, 'hinten-rechts braucht die entgegengesetzte Drehrate');
+});
+
+test('Joystick: Drehen auf der Stelle folgt der Vorwaertskonvention', () => {
+  const { t } = setup();
+  // Reine Seitwaertsauslenkung: kein Vortrieb, nur Drehung — hier gibt es keine Fahrtrichtung,
+  // die man spiegeln koennte, also muss die Stickrichtung direkt gelten.
+  const left = t.joystickVectorFromPointer({ clientX: 150 - 116, clientY: 150 });
+  const right = t.joystickVectorFromPointer({ clientX: 150 + 116, clientY: 150 });
+  assert.ok(left.linear === 0, 'kein Vortrieb');
+  assert.ok(right.linear === 0, 'kein Vortrieb');
+  assert.ok(left.angular > 0, 'nach links = linksherum');
+  assert.ok(right.angular < 0, 'nach rechts = rechtsherum');
+});
+
 test('RTK-Badge zeigt Zustand und Satelliten als Mäher/Station', () => {
   const { t } = setup();
   t.updateRtkBadge();

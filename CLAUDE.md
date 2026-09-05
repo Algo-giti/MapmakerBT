@@ -260,7 +260,9 @@ auf der Karte („Letzten Punkt“).
 - **Protokoll-Auswertung**: `handleLine` (~Z. 1213)
 - **Fahrsteuerung**: Joystick (`joystickVectorFromPointer` → Auslenkung = Geschwindigkeit zwischen
   `driveSpeedMin` und `driveSpeedMax`), `sendDriveVector`, `stopDrive`, `emergencyStop`
-  (wird nur noch beim Trennen genutzt)
+  (wird nur noch beim Trennen genutzt). **Der zweite Wert von `AT+M` ist eine Drehrate im
+  Roboterrahmen, keine Lenkrichtung** — deshalb spiegelt `joystickVectorFromPointer()` die
+  Lenkung bei `linear < 0`, siehe „Rückwärtslenkung“ unten.
 - **Persistenz** (~Z. 1497–1640): IndexedDB `ardumower-bt-mapper`, Store `maps`, max. 10 Karten
 - **Karten-Rendering** (~Z. 2107–2385): eigenes SVG-Zeichnen, `computeTransform`/`toScreen`
 - **Import/Export** (~Z. 2385–2600): JSON-Backup und GeoJSON
@@ -292,6 +294,31 @@ auf der Karte („Letzten Punkt“).
 **Bestätigt:** Sunray verschlüsselt **Antworten nicht** (`Comm::cmdAnswer` in `sunray/comm.cpp` hängt nur
 CRC + CRLF an). Das Plain-Parsing in `handleLine` ist also korrekt. Nur *Kommandos* werden verschlüsselt,
 `AT+V` immer im Klartext (Sunray überspringt die Entschlüsselung explizit für `AT+V`).
+
+### Rückwärtslenkung (`AT+M`: Drehrate, nicht Lenkrichtung)
+
+`AT+M,linear,angular` gibt Sunray eine Längsgeschwindigkeit **und eine Drehrate** vor
+(Einrad-/Differentialmodell: `ẋ = v·cosθ`, `ẏ = v·sinθ`, `θ̇ = ω`). Eine Drehrate ist von der
+Fahrtrichtung **unabhängig**: dieselbe Drehung, die den Mäher vorwärts nach links trägt, trägt
+ihn rückwärts nach rechts. Nachgerechnet (Roboter blickt nach +x, +y ist links von ihm):
+
+| Kommando | Ergebnis |
+|---|---|
+| `linear +`, `angular +` | vorwärts / links |
+| `linear +`, `angular -` | vorwärts / rechts |
+| `linear -`, `angular +` | rückwärts / **rechts** |
+| `linear -`, `angular -` | rückwärts / **links** |
+
+Der Joystick liefert aber eine *Lenkrichtung*: hinten-links soll hinten-links fahren. Deshalb
+spiegelt `joystickVectorFromPointer()` die Lenkung, sobald `linear < 0`
+(`const steering = linear < 0 ? nx : -nx`). Vorwärts ändert sich dadurch nichts — genau deshalb
+war der Fehler am Gerät auch nur in den beiden rückwärtigen Quadranten sichtbar. Beim Drehen auf
+der Stelle (`linear === 0`, reine Seitwärtsauslenkung) gilt die Vorwärtskonvention, weil es dort
+keine Fahrtrichtung zum Spiegeln gibt.
+
+`tests/ui-test.js` prüft das nicht über Vorzeichen, sondern integriert dasselbe Modell
+(`driveOutcome()`) und vergleicht die **tatsächliche Fahrtrichtung** für alle vier Quadranten —
+die Vorzeichen für sich genommen sahen vorher plausibel aus.
 
 ### Sunray-Kommandos, die die App nutzt
 
@@ -624,6 +651,17 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-05: **Rückwärtsfahrt war seitenverkehrt.** Am Gerät gemeldet: hinten-links am Joystick
+  fuhr hinten-rechts und umgekehrt, vorwärts stimmte. Ursache ist keine Vorzeichen-Schlamperei,
+  sondern die Bedeutung des zweiten `AT+M`-Werts: das ist eine **Drehrate im Roboterrahmen**,
+  keine Lenkrichtung, und eine Drehrate ist von der Fahrtrichtung unabhängig. Mit dem
+  Einradmodell nachgerechnet und bestätigt (Tabelle unter „Rückwärtslenkung“).
+  `joystickVectorFromPointer()` spiegelt die Lenkung jetzt bei `linear < 0`; Vorwärtsfahrt und
+  Drehen auf der Stelle bleiben unverändert. Zwei neue Testfälle (ui 50), die statt der
+  Vorzeichen die **integrierte Fahrtrichtung** aller vier Quadranten prüfen; gegen den
+  simulierten Rückfall geprüft (meldet dann wörtlich „muss nach links ausweichen, tut es aber
+  nach rechts“). `APP_VERSION` auf `v22`.
 
 - 2026-09-05: **Neues Gerätesymptom analysiert: einzelne Schreibvorgänge scheitern mit
   „GATT Error Unknown“ bei stehender Verbindung.** Reine Analyse, kein Verhalten geändert.

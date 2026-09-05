@@ -564,10 +564,17 @@ function joystickVectorFromPointer(event) {
   // Minimum, am Anschlag das Maximum.
   const { min, max, turn } = driveSpeedLimits();
   const ramp = (value) => (value === 0 ? 0 : Math.sign(value) * (min + (max - min) * Math.min(1, Math.abs(value))));
+  const linear = -ramp(ny);
+  // AT+M erwartet als zweiten Wert eine *Drehrate* im Roboterrahmen, keine Lenkrichtung. Eine
+  // Drehrate ist von der Fahrtrichtung unabhaengig: dieselbe Drehung, die den Maeher vorwaerts
+  // nach links traegt, traegt ihn rueckwaerts nach rechts. Ohne Spiegelung sind deshalb genau
+  // die beiden rueckwaertigen Quadranten seitenverkehrt, waehrend vorwaerts richtig bleibt.
+  // Beim Drehen auf der Stelle (linear === 0) gilt die Vorwaertskonvention.
+  const steering = linear < 0 ? nx : -nx;
   return {
     nx, ny,
-    linear: -ramp(ny),
-    angular: -nx * turn,
+    linear,
+    angular: steering * turn,
     px: nx * radius,
     py: ny * radius,
   };
