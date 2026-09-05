@@ -292,13 +292,21 @@ test('Automatik ersetzt den manuellen Knopf und blendet den Loeschknopf aus', as
   t.setMode('waypoint');
   await t.toggleAutoCapture();
   assert.strictEqual(t.state.autoCaptureRunning, true);
+  assert.strictEqual(t.ui.autoCaptureLabel.textContent, 'Automatik läuft (5s)', 'Intervall steht im Label');
   assert.strictEqual(t.ui.captureFabWrap.hidden, true, 'manueller Knopf samt Beschriftung verschwindet');
   assert.ok(t.ui.captureCluster.classList.contains('auto-active'));
   assert.strictEqual(t.ui.autoFabWrap.hidden, false, 'laufende Automatik bleibt bedienbar');
   assert.strictEqual(t.ui.deleteFabWrap.hidden, true, 'kein Loeschen waehrend der Automatik');
   assert.strictEqual(t.state.activeMap.waypoints.length, 1, 'erster Punkt sofort');
+  // Anderes Intervall -> anderes Label (die Einstellung selbst ist nur bei gestoppter
+  // Automatik erreichbar, weil das Menue sie beendet).
+  t.state.view.autoCaptureIntervalS = 12;
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.autoCaptureLabel.textContent, 'Automatik läuft (12s)');
+
   await t.toggleAutoCapture();
   assert.strictEqual(t.state.autoCaptureRunning, false);
+  assert.strictEqual(t.ui.autoCaptureLabel.textContent, 'Auto-Aufnahme', 'gestoppt ohne Intervall');
   assert.strictEqual(t.ui.captureFabWrap.hidden, false);
   assert.strictEqual(t.ui.deleteFabWrap.hidden, false);
 });

@@ -55,7 +55,7 @@ const I18N = {
     deleteAreaConfirm: '„{name}“ mit allen Punkten löschen?',
     settings: 'Einstellungen', appearance: 'Darstellung', themeSystem: 'System', themeLight: 'Hell', themeDark: 'Dunkel',
     themeHint: '„System“ übernimmt die Einstellung des Geräts.',
-    autoCaptureInterval: 'Intervall der automatischen Aufnahme', autoCaptureOn: 'Automatik läuft',
+    autoCaptureInterval: 'Intervall der automatischen Aufnahme', autoCaptureOn: 'Automatik läuft ({seconds}s)',
     autoCaptureWhereHint: 'Ein- und ausgeschaltet wird die Automatik über den Knopf auf der Karte.',
     autoCaptureWaiting: 'Automatik wartet auf eine brauchbare Position …',
     onlyRtkFixHint: 'Ohne echten RTK FIX bleibt die Aufnahme gesperrt.',
@@ -183,7 +183,7 @@ const I18N = {
     deleteAreaConfirm: 'Delete “{name}” with all its points?',
     settings: 'Settings', appearance: 'Appearance', themeSystem: 'System', themeLight: 'Light', themeDark: 'Dark',
     themeHint: '“System” follows the device setting.',
-    autoCaptureInterval: 'Automatic capture interval', autoCaptureOn: 'Automatic running',
+    autoCaptureInterval: 'Automatic capture interval', autoCaptureOn: 'Automatic running ({seconds}s)',
     autoCaptureWhereHint: 'The automatic capture is switched on and off with the button on the map.',
     autoCaptureWaiting: 'Automatic capture is waiting for a usable position …',
     onlyRtkFixHint: 'Without a true RTK FIX capturing stays blocked.',
@@ -1167,7 +1167,10 @@ function refreshCaptureState() {
   // Bei ausgewaehlter Flaeche bleibt nur der Papierkorb stehen: aufnehmen laesst sich in
   // diesem Zustand nichts, es geht ausschliesslich um die Flaeche.
   ui.captureFabWrap.hidden = auto || areaSelected;
-  ui.autoCaptureLabel.textContent = tr(auto ? 'autoCaptureOn' : 'autoCapture');
+  // Bei laufender Automatik steht das eingestellte Intervall mit im Label.
+  ui.autoCaptureLabel.textContent = auto
+    ? tr('autoCaptureOn', { seconds: state.view.autoCaptureIntervalS })
+    : tr('autoCapture');
   ui.autoCaptureBtn.setAttribute('aria-pressed', String(auto));
   ui.autoCaptureBtn.disabled = mapLocked || (!auto && !(hasMap && fresh && coords && !blockedByFixRule));
   // Mit ausgewaehltem Punkt geht es ums Verschieben, nicht ums Aufnehmen: die Automatik
