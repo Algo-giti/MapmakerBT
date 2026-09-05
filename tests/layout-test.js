@@ -162,9 +162,18 @@ test('Das hidden-Attribut blendet auch Knoepfe aus', () => {
 test('Die Fahrzone bleibt inhaltshoch, die Karte bekommt den Rest', () => {
   // Der Joystick hatte height:auto mit aspect-ratio. Als Grid-Kind wurde er auf die
   // Zeilenhoehe gestreckt, die Zeile wuchs mit — die Fahrzone nahm den halben Bildschirm.
-  const rows = resolve('.app-frame', 'grid-template-rows').value || '';
-  assert.ok(/minmax\(0,\s*1fr\)/.test(rows), 'die Kartenzeile muss den Rest bekommen');
-  assert.ok(/min-content\s*$/.test(rows), `die Fahrzone darf nicht als auto-Zeile wachsen: "${rows}"`);
+  // Kein Grid mit festen Zeilen: die Update-Leiste ist meist ausgeblendet, dann rutschen im
+  // Grid alle Kinder eine Zeile hoch und Karte und Fahrzone tauschen ihre Rollen.
+  assert.strictEqual(resolve('.app-frame', 'display').value, 'flex');
+  assert.strictEqual(resolve('.app-frame', 'flex-direction').value, 'column');
+  assert.strictEqual(resolve('.app-frame', 'grid-template-rows').value, null,
+    'feste Grid-Zeilen brechen, sobald ein Kind ausgeblendet ist');
+  const map = resolve('.app-frame > .map-stage', 'flex').value || '';
+  assert.ok(map.startsWith('1'), `die Karte muss den Rest bekommen, hat "${map}"`);
+  assert.strictEqual(resolve('.app-frame > .map-stage', 'min-height').value, '0',
+    'ohne min-height:0 waechst das Flex-Kind auf Inhaltshoehe');
+  const drive = resolve('.app-frame > .drive-zone', 'flex').value || '';
+  assert.ok(drive.startsWith('0 0'), `die Fahrzone darf weder wachsen noch schrumpfen, hat "${drive}"`);
   const height = resolve('.drive-zone .joystick-base', 'height').value;
   assert.ok(height && height !== 'auto' && height.endsWith('px'), `Joystick braucht eine feste Hoehe, hat "${height}"`);
   assert.strictEqual(resolve('.drive-zone .joystick-base', 'align-self').value, 'center',

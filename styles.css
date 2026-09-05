@@ -2088,12 +2088,18 @@ body {
 }
 
 .app-frame {
-  display: grid;
-  /* Update-Leiste, Kopfzeile, Karte (nimmt allen Rest), Fahrzone (nur so hoch wie noetig) */
-  grid-template-rows: auto auto minmax(0, 1fr) min-content;
+  /* Bewusst Flex statt Grid: die Update-Leiste ist meistens ausgeblendet. In einem Grid mit
+     festen Zeilen rutschten die restlichen Kinder dann eine Zeile hoch — die Karte landete in
+     der auto-Zeile und die Fahrzone in der 1fr-Zeile, also genau vertauscht. Bei Flex haben
+     die Kinder ihre Rolle selbst, egal wie viele davon gerade ausgeblendet sind. */
+  display: flex;
+  flex-direction: column;
   height: 100dvh;
-  gap: 0;
 }
+.app-frame > .update-bar,
+.app-frame > .appbar,
+.app-frame > .drive-zone { flex: 0 0 auto; }
+.app-frame > .map-stage { flex: 1 1 auto; min-height: 0; }
 body.menu-open .app-frame { visibility: hidden; }
 
 /* --- Kopfzeile ---------------------------------------------------------- */
