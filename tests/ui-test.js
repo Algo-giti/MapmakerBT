@@ -7,12 +7,15 @@ const assert = require('assert');
 const { loadApp } = require('./app-harness.js');
 const { createClock } = require('./virtual-clock.js');
 const { createFakeBluetooth } = require('./fake-ble.js');
+const fs = require('fs');
+const path = require('path');
 
 const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCurrentPoint', 'undoPoint',
   'openModeDialog', 'closeModeDialog', 'requestModeChange', 'openContours', 'closeAllOpenContours',
   'deleteAction', 'deleteSelectedArea', 'selectedExclusion', 'createExclusion', 'validateActiveMap',
   'toggleAutoCapture', 'startAutoCapture', 'stopAutoCapture', 'refreshDeleteButton', 'bindAccordion',
   'setTheme', 'applyTheme', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine',
+  'askConfirm', 'confirmDialogRespond', 'showNotice', 'reportError',
   'deleteSelectedPoint', 'handleMapTap', 'applyPointSelection', 'clearPointSelection', 'refreshCaptureState',
   'renderMap', 'resetViewport', 'clampViewport', 'activeTransform', 'toScreen', 'svgMetrics', 'beginCustomViewport',
   'updateRtkBadge', 'setMenuOpen', 'onMapPointerDown', 'onMapPointerMove', 'onMapPointerUp', 'beginCaptureHold', 'cancelCaptureHold', 'driveSpeedLimits', 'joystickVectorFromPointer', 'makeMap', 'normalizeMap',
@@ -405,6 +408,86 @@ test('Menueseite ist eine eigene Vollbildseite und stoppt die Fahrt', () => {
   assert.strictEqual(t.state.driveDirection, null, 'Menue oeffnen stoppt die Fahrt');
   t.setMenuOpen(false);
   assert.strictEqual(t.ui.menuPage.hidden, true);
+});
+
+
+test('Rueckfragen und Meldungen laufen ueber den eigenen Dialog, nicht ueber den Browser', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  const confirms = source.match(/(?<![A-Za-z.])confirm\s*\(/g) || [];
+  assert.deepStrictEqual(confirms, [], 'window.confirm() darf nicht mehr aufgerufen werden');
+  const alerts = source.match(/(?<![A-Za-z.])alert\s*\(/g) || [];
+  assert.deepStrictEqual(alerts, [], 'window.alert() darf nicht mehr aufgerufen werden');
+  assert.ok(source.includes('function askConfirm('), 'askConfirm() ist die einzige Stelle fuer Rueckfragen');
+  assert.ok(source.includes('function showNotice('), 'showNotice() ist die einzige Stelle fuer Meldungen');
+});
+
+test('Meldung zeigt nur einen Knopf und keine Abbrechen-Option', async () => {
+  const { t, sandbox } = setup();
+  delete sandbox.__confirmAdapter;
+  const pending = t.showNotice({ title: 'Fehler', message: 'Karte konnte nicht gespeichert werden.', tone: 'danger' });
+  assert.strictEqual(t.ui.confirmDialog.hidden, false);
+  assert.strictEqual(t.ui.confirmDialogCancel.hidden, true, 'kein Abbrechen bei einer reinen Meldung');
+  assert.ok(t.ui.confirmDialogActions.classList.contains('single'));
+  assert.strictEqual(t.ui.confirmDialogAccept.textContent, 'Verstanden');
+  assert.strictEqual(t.ui.confirmDialogText.textContent, 'Karte konnte nicht gespeichert werden.');
+  t.confirmDialogRespond(true);
+  await pending;
+  assert.strictEqual(t.ui.confirmDialog.hidden, true);
+});
+
+test('reportError zeigt die Meldung und schreibt sie ins Diagnoseprotokoll', async () => {
+  const { t, sandbox, elements } = setup();
+  await t.reportError(new Error('Kartengrenze fehlt'));
+  assert.strictEqual(sandbox.__lastConfirmRequest.message, 'Kartengrenze fehlt');
+  assert.strictEqual(sandbox.__lastConfirmRequest.singleButton, true);
+  assert.strictEqual(sandbox.__lastConfirmRequest.tone, 'danger');
+  assert.ok(elements.get('debugLog').textContent.includes('Kartengrenze fehlt'), 'Fehler steht auch im Protokoll');
+});
+
+test('Bestaetigungsdialog: Titel, Text und Knopfbeschriftung, beide Antworten', async () => {
+  const { t, sandbox } = setup();
+  delete sandbox.__confirmAdapter; // echten Dialog statt Testautomatik pruefen
+  const pending = t.askConfirm({ title: 'Fläche löschen', message: 'Wirklich?', confirmLabel: 'Löschen', tone: 'danger' });
+  assert.strictEqual(t.ui.confirmDialog.hidden, false, 'Dialog wird sichtbar');
+  assert.strictEqual(t.ui.confirmDialogTitle.textContent, 'Fläche löschen');
+  assert.strictEqual(t.ui.confirmDialogText.textContent, 'Wirklich?');
+  assert.strictEqual(t.ui.confirmDialogAccept.textContent, 'Löschen', 'aussagekraeftige Beschriftung statt OK');
+  assert.strictEqual(t.ui.confirmDialogCancel.textContent, 'Abbrechen');
+  assert.ok(t.ui.confirmDialogAccept.classList.contains('danger'), 'Loeschen wird als Warnfarbe gezeigt');
+  t.confirmDialogRespond(true);
+  assert.strictEqual(await pending, true);
+  assert.strictEqual(t.ui.confirmDialog.hidden, true, 'Dialog schliesst nach der Antwort');
+
+  const second = t.askConfirm({ title: 'Kontur schließen', message: 'Verbinden?', confirmLabel: 'Schließen' });
+  assert.ok(t.ui.confirmDialogAccept.classList.contains('primary'));
+  assert.ok(!t.ui.confirmDialogAccept.classList.contains('danger'));
+  t.confirmDialogRespond(false);
+  assert.strictEqual(await second, false, 'Abbrechen liefert false');
+});
+
+test('Eine zweite Rueckfrage laesst die erste nicht haengen', async () => {
+  const { t, sandbox } = setup();
+  delete sandbox.__confirmAdapter;
+  const first = t.askConfirm({ title: 'A', message: 'a', confirmLabel: 'ok' });
+  const second = t.askConfirm({ title: 'B', message: 'b', confirmLabel: 'ok' });
+  assert.strictEqual(await first, false, 'die verdraengte Rueckfrage gilt als abgelehnt');
+  assert.strictEqual(t.ui.confirmDialogTitle.textContent, 'B');
+  t.confirmDialogRespond(true);
+  assert.strictEqual(await second, true);
+});
+
+test('Loeschen einer Flaeche fragt mit eigener Beschriftung nach', async () => {
+  const { t, sandbox } = setup();
+  t.state.activeMap.perimeter = [{ x: -5, y: -5 }, { x: 9, y: -5 }, { x: 9, y: 9 }];
+  await t.createExclusion();
+  t.state.activeMap.exclusions[0].points.push({ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 });
+  t.state.selectedArea = t.state.activeMap.exclusions[0].id;
+  sandbox.__confirmAnswer = false;
+  await t.deleteAction();
+  assert.strictEqual(t.state.activeMap.exclusions.length, 1, 'ohne Bestaetigung bleibt sie erhalten');
+  assert.strictEqual(sandbox.__lastConfirmRequest.confirmLabel, 'Löschen');
+  assert.strictEqual(sandbox.__lastConfirmRequest.tone, 'danger');
+  assert.ok(sandbox.__lastConfirmRequest.title);
 });
 
 test('Akkordeon: das Oeffnen eines Abschnitts schliesst die anderen', () => {

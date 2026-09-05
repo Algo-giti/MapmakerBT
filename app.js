@@ -35,6 +35,9 @@ const MAX_MAPS = 10;
 
 const I18N = {
   de: {
+    errorTitle: 'Fehler', okUnderstood: 'Verstanden',
+    deleteExclusionTitle: 'Ausschlussfläche löschen', clearNow: 'Leeren', closeNow: 'Schließen',
+    closeContourTitle: 'Kontur schließen',
     chooseMode: 'Aufnahmemodus wählen', cancel: 'Abbrechen',
     closeContourQuestion: 'Soll {label} geschlossen werden? Der letzte Punkt wird mit dem ersten verbunden.',
     closeOpenContours: 'Offene Konturen schließen', closeContoursConfirm: '{count} offene Kontur(en) jetzt schließen?',
@@ -157,6 +160,9 @@ const I18N = {
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   },
   en: {
+    errorTitle: 'Error', okUnderstood: 'Got it',
+    deleteExclusionTitle: 'Delete exclusion area', clearNow: 'Clear', closeNow: 'Close',
+    closeContourTitle: 'Close contour',
     chooseMode: 'Choose capture mode', cancel: 'Cancel',
     closeContourQuestion: 'Close {label}? The last point will be connected to the first one.',
     closeOpenContours: 'Close open contours', closeContoursConfirm: 'Close {count} open contour(s) now?',
@@ -313,6 +319,8 @@ const ui = {
   // Kopfzeile
   menuBtn: $('menuBtn'), bleStatusBtn: $('bleStatusBtn'), modeCycleBtn: $('modeCycleBtn'), modeChipLabel: $('modeChipLabel'),
   modeDialog: $('modeDialog'), modeDialogCancel: $('modeDialogCancel'), closeContoursBtn: $('closeContoursBtn'),
+  confirmDialog: $('confirmDialog'), confirmDialogTitle: $('confirmDialogTitle'), confirmDialogText: $('confirmDialogText'),
+  confirmDialogActions: $('confirmDialogActions'), confirmDialogCancel: $('confirmDialogCancel'), confirmDialogAccept: $('confirmDialogAccept'),
   rtkBadge: $('rtkBadge'), rtkText: $('rtkText'), rtkSats: $('rtkSats'), batteryChip: $('batteryChip'), batteryFill: $('batteryFill'), batteryValue: $('batteryValue'),
   // Kartenbuehne
   mapSvg: $('mapSvg'), gridLayer: $('gridLayer'), shapeLayer: $('shapeLayer'), robotLayer: $('robotLayer'),
@@ -379,6 +387,7 @@ const state = {
   lastBleRxAt: 0,
   mode: 'perimeter',
   menuOpen: false,
+  pendingConfirm: null,
   reloadingForUpdate: false,
   selectedPoint: null,
   selectedArea: null,
@@ -823,7 +832,13 @@ async function deleteSelectedArea() {
   const exclusion = selectedExclusion();
   if (!exclusion || !ensureMapEditable()) return;
   const index = state.activeMap.exclusions.indexOf(exclusion);
-  if (!confirm(tr('deleteAreaConfirm', { name: localizedExclusionName(exclusion, index) }))) return;
+  const confirmed = await askConfirm({
+    title: tr('deleteAreaLabel'),
+    message: tr('deleteAreaConfirm', { name: localizedExclusionName(exclusion, index) }),
+    confirmLabel: tr('delete'),
+    tone: 'danger',
+  });
+  if (!confirmed) return;
   checkpointMap('deleteExclusion');
   state.activeMap.exclusions = state.activeMap.exclusions.filter((e) => e.id !== exclusion.id);
   state.selectedArea = null;
@@ -911,6 +926,51 @@ function setTheme(theme) {
   state.view.theme = theme;
   saveViewPreferences();
   applyTheme();
+}
+
+// --- Rueckfragen ----------------------------------------------------------
+/**
+ * Bestaetigung im App-Design statt window.confirm(). Einzige Stelle fuer Rueckfragen;
+ * gibt ein Promise<boolean> zurueck. Tests haengen ueber globalThis.__confirmAdapter eine
+ * automatische Antwort ein — dieselbe Konvention wie bleAdapter() beim Bluetooth-Zugriff.
+ */
+function askConfirm({ title, message, confirmLabel, tone = 'neutral', singleButton = false }) {
+  if (typeof globalThis.__confirmAdapter === 'function') {
+    return Promise.resolve(Boolean(globalThis.__confirmAdapter({ title, message, confirmLabel, tone, singleButton })));
+  }
+  // Eine noch offene Rueckfrage gilt als abgelehnt, damit kein Promise haengen bleibt.
+  if (state.pendingConfirm) confirmDialogRespond(false);
+  return new Promise((resolve) => {
+    state.pendingConfirm = resolve;
+    ui.confirmDialogTitle.textContent = title;
+    ui.confirmDialogText.textContent = message;
+    ui.confirmDialogCancel.textContent = tr('cancel');
+    ui.confirmDialogCancel.hidden = singleButton;
+    ui.confirmDialogActions.classList.toggle('single', singleButton);
+    ui.confirmDialogAccept.textContent = confirmLabel;
+    ui.confirmDialogAccept.classList.toggle('danger', tone === 'danger');
+    ui.confirmDialogAccept.classList.toggle('primary', tone !== 'danger');
+    ui.confirmDialog.hidden = false;
+  });
+}
+
+/** Einseitige Meldung im selben Dialog — ersetzt window.alert(). */
+function showNotice({ title, message, tone = 'neutral' }) {
+  return askConfirm({ title, message, confirmLabel: tr('okUnderstood'), tone, singleButton: true })
+    .then(() => undefined);
+}
+
+/** Sammelstelle fuer Fehler aus Nutzeraktionen: sichtbare Meldung statt stiller Konsole. */
+function reportError(error) {
+  log('FEHLER', error?.message || String(error));
+  return showNotice({ title: tr('errorTitle'), message: error?.message || String(error), tone: 'danger' });
+}
+
+function confirmDialogRespond(answer) {
+  const resolve = state.pendingConfirm;
+  state.pendingConfirm = null;
+  ui.confirmDialog.hidden = true;
+  if (resolve) resolve(Boolean(answer));
 }
 
 // --- Menueseite -----------------------------------------------------------
@@ -1787,7 +1847,13 @@ async function deleteActiveMap() {
   stopAutoCapture();
   if (!state.activeMap) return;
   if (state.activeMap.locked) { ui.pointStatus.textContent = tr('mapLockedHint'); return; }
-  if (!confirm(tr('deleteMapConfirm', { name: localizedMapName(state.activeMap) }))) return;
+  const confirmed = await askConfirm({
+    title: tr('deleteCurrentMap'),
+    message: tr('deleteMapConfirm', { name: localizedMapName(state.activeMap) }),
+    confirmLabel: tr('delete'),
+    tone: 'danger',
+  });
+  if (!confirmed) return;
   await dbRequest('readwrite', (store) => store.delete(state.activeMap.id));
   state.maps = state.maps.filter((m) => m.id !== state.activeMap.id);
   if (!state.maps.length) {
@@ -1868,7 +1934,13 @@ async function deleteExclusion() {
   if (!state.activeMap || !state.activeExclusionId || !ensureMapEditable()) return;
   const exIndex = state.activeMap.exclusions.findIndex((e) => e.id === state.activeExclusionId);
   const ex = state.activeMap.exclusions[exIndex];
-  if (!confirm(tr('deleteExclusionConfirm', { name: ex ? localizedExclusionName(ex, exIndex) : tr('exclusionArea') }))) return;
+  const confirmed = await askConfirm({
+    title: tr('deleteExclusionTitle'),
+    message: tr('deleteExclusionConfirm', { name: ex ? localizedExclusionName(ex, exIndex) : tr('exclusionArea') }),
+    confirmLabel: tr('delete'),
+    tone: 'danger',
+  });
+  if (!confirmed) return;
   checkpointMap('deleteExclusion');
   if (state.selectedPoint?.role === 'exclusion' && state.selectedPoint.exclusionId === state.activeExclusionId) state.selectedPoint = null;
   state.activeMap.exclusions = state.activeMap.exclusions.filter((e) => e.id !== state.activeExclusionId);
@@ -2038,7 +2110,13 @@ async function clearCurrentElement() {
   if (!ensureMapEditable()) return;
   const target = getActivePointArray();
   if (!target?.length) return;
-  if (!confirm(tr('clearConfirm', { label: modeLabel(state.mode) }))) return;
+  const confirmed = await askConfirm({
+    title: tr('clearCurrentElement'),
+    message: tr('clearConfirm', { label: modeLabel(state.mode) }),
+    confirmLabel: tr('clearNow'),
+    tone: 'danger',
+  });
+  if (!confirmed) return;
   checkpointMap('clear');
   target.splice(0, target.length);
   if (state.mode === 'perimeter') state.activeMap.perimeterClosed = false;
@@ -2769,7 +2847,13 @@ async function saveManualVersion() {
 
 async function restoreHistoryEntry(id) {
   if(!state.activeMap || !ensureMapEditable())return; normalizeMap(state.activeMap); const entry=state.activeMap.history.find((h)=>h.id===id); if(!entry)return;
-  const time=new Date(entry.createdAt).toLocaleString(localeCode(),{dateStyle:'short',timeStyle:'short'}); if(!confirm(tr('restoreConfirm',{time})))return;
+  const time=new Date(entry.createdAt).toLocaleString(localeCode(),{dateStyle:'short',timeStyle:'short'});
+  const confirmed = await askConfirm({
+    title: tr('restoreVersion'),
+    message: tr('restoreConfirm', { time }),
+    confirmLabel: tr('restoreVersion'),
+  });
+  if (!confirmed) return;
   checkpointMap('restore',{beforeChange:true}); applyGeometrySnapshot(entry.snapshot); await saveActiveMap(); state.validationResult=null; renderMapControls(); renderMap(); ui.pointStatus.textContent=tr('restoredVersion',{time});
 }
 
@@ -2898,7 +2982,12 @@ async function offerToCloseContour(role) {
   const entry = openContours().find((c) => c.role === role
     && (role !== 'exclusion' || c.id === state.activeExclusionId));
   if (!entry) return;
-  if (!confirm(tr('closeContourQuestion', { label: entry.label }))) return;
+  const confirmed = await askConfirm({
+    title: tr('closeContourTitle'),
+    message: tr('closeContourQuestion', { label: entry.label }),
+    confirmLabel: tr('closeNow'),
+  });
+  if (!confirmed) return;
   await closeContour(entry);
 }
 
@@ -2906,7 +2995,12 @@ async function offerToCloseContour(role) {
 async function closeAllOpenContours() {
   const open = openContours();
   if (!open.length || !ensureMapEditable()) return;
-  if (!confirm(tr('closeContoursConfirm', { count: open.length }))) return;
+  const confirmed = await askConfirm({
+    title: tr('closeOpenContours'),
+    message: tr('closeContoursConfirm', { count: open.length }),
+    confirmLabel: tr('closeNow'),
+  });
+  if (!confirmed) return;
   for (const entry of open) await closeContour(entry);
   validateActiveMap();
 }
@@ -3016,11 +3110,19 @@ function bindEvents() {
   ui.bleStatusBtn.addEventListener('click', () => setMenuOpen(true, { section: 'menuConnection' }));
   ui.modeCycleBtn.addEventListener('click', openModeDialog);
   ui.modeDialogCancel.addEventListener('click', closeModeDialog);
+  ui.confirmDialogAccept.addEventListener('click', () => confirmDialogRespond(true));
+  ui.confirmDialogCancel.addEventListener('click', () => confirmDialogRespond(false));
+  ui.confirmDialog.addEventListener('click', (event) => { if (event.target === ui.confirmDialog) confirmDialogRespond(false); });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    if (!ui.confirmDialog.hidden) { confirmDialogRespond(false); return; }
+    if (!ui.modeDialog.hidden) closeModeDialog();
+  });
   ui.modeDialog.addEventListener('click', (event) => { if (event.target === ui.modeDialog) closeModeDialog(); });
   document.querySelectorAll('#modeDialog [data-mode]').forEach((button) => button.addEventListener('click', () => {
-    requestModeChange(button.dataset.mode).catch((e) => alert(e.message));
+    requestModeChange(button.dataset.mode).catch(reportError);
   }));
-  ui.closeContoursBtn.addEventListener('click', () => closeAllOpenContours().catch((e) => alert(e.message)));
+  ui.closeContoursBtn.addEventListener('click', () => closeAllOpenContours().catch(reportError));
   ui.languageToggle.addEventListener('click', toggleLanguage);
   window.addEventListener('online', updateHelpSystemStatus);
   window.addEventListener('offline', updateHelpSystemStatus);
@@ -3050,8 +3152,8 @@ function bindEvents() {
   ui.fitViewBtn.addEventListener('click', () => resetViewport());
 
   // Kartenwerkzeuge
-  ui.deletePointBtn.addEventListener('click', () => deleteAction().catch((e) => alert(e.message)));
-  ui.autoCaptureBtn.addEventListener('click', () => toggleAutoCapture().catch((e) => alert(e.message)));
+  ui.deletePointBtn.addEventListener('click', () => deleteAction().catch(reportError));
+  ui.autoCaptureBtn.addEventListener('click', () => toggleAutoCapture().catch(reportError));
   ui.addPointBtn.addEventListener('pointerdown', beginCaptureHold);
   ['pointerup', 'pointercancel', 'pointerleave'].forEach((name) => ui.addPointBtn.addEventListener(name, cancelCaptureHold));
   ui.addPointBtn.addEventListener('click', captureButtonTap);
@@ -3079,36 +3181,36 @@ function bindEvents() {
   ui.clearLogBtn.addEventListener('click', () => { ui.debugLog.textContent = ''; });
 
   // Karten
-  ui.newMapBtn.addEventListener('click', () => createMapFromInput().catch((e) => alert(e.message)));
-  ui.newMapName.addEventListener('keydown', (e) => { if (e.key === 'Enter') createMapFromInput().catch((err) => alert(err.message)); });
-  ui.deleteMapBtn.addEventListener('click', () => deleteActiveMap().catch((e) => alert(e.message)));
+  ui.newMapBtn.addEventListener('click', () => createMapFromInput().catch(reportError));
+  ui.newMapName.addEventListener('keydown', (e) => { if (e.key === 'Enter') createMapFromInput().catch(reportError); });
+  ui.deleteMapBtn.addEventListener('click', () => deleteActiveMap().catch(reportError));
   ui.mapSelect.addEventListener('change', () => setActiveMapById(ui.mapSelect.value));
   ui.mapGallery.addEventListener('click', (event) => {
     const lock = event.target.closest('[data-map-lock-id]');
-    if (lock) { toggleMapLockById(lock.dataset.mapLockId).catch((e) => alert(e.message)); return; }
+    if (lock) { toggleMapLockById(lock.dataset.mapLockId).catch(reportError); return; }
     const select = event.target.closest('[data-map-card-id]');
     if (select) setActiveMapById(select.dataset.mapCardId);
   });
-  ui.lockMapBtn.addEventListener('click', () => state.activeMap && toggleMapLockById(state.activeMap.id).catch((e) => alert(e.message)));
+  ui.lockMapBtn.addEventListener('click', () => state.activeMap && toggleMapLockById(state.activeMap.id).catch(reportError));
   ui.exportJsonBtn.addEventListener('click', exportCurrentMapJson);
   ui.exportGeoJsonBtn.addEventListener('click', exportCurrentMapGeoJson);
   ui.importInput.addEventListener('change', () => {
     const file = ui.importInput.files?.[0];
-    if (file) importMapFile(file).catch((e) => alert(tr('importFailed', { message: e.message })));
+    if (file) importMapFile(file).catch((e) => showNotice({ title: tr('errorTitle'), message: tr('importFailed', { message: e.message }), tone: 'danger' }));
     ui.importInput.value = '';
   });
-  ui.saveVersionBtn.addEventListener('click', () => saveManualVersion().catch((e) => alert(e.message)));
-  ui.historyList.addEventListener('click', (event) => { const button = event.target.closest('[data-restore-history-id]'); if (button) restoreHistoryEntry(button.dataset.restoreHistoryId).catch((e) => alert(e.message)); });
-  ui.historyUndoBtn.addEventListener('click', () => undoLastHistoryChange().catch((e) => alert(e.message)));
+  ui.saveVersionBtn.addEventListener('click', () => saveManualVersion().catch(reportError));
+  ui.historyList.addEventListener('click', (event) => { const button = event.target.closest('[data-restore-history-id]'); if (button) restoreHistoryEntry(button.dataset.restoreHistoryId).catch(reportError); });
+  ui.historyUndoBtn.addEventListener('click', () => undoLastHistoryChange().catch(reportError));
   ui.validateMapBtn.addEventListener('click', validateActiveMap);
 
   // Aufnahme-Einstellungen
   ui.fixOnly.addEventListener('change', refreshCaptureState);
   ui.autoCaptureIntervalInput.addEventListener('change', () => { updateViewPreferencesFromUi(); applyViewPreferencesToUi(); refreshCaptureState(); });
   ui.exclusionSelect.addEventListener('change', () => { state.activeExclusionId = ui.exclusionSelect.value || null; state.selectedPoint = null; renderMap(); refreshCaptureState(); });
-  ui.newExclusionBtn.addEventListener('click', () => createExclusion().catch((e) => alert(e.message)));
-  ui.deleteExclusionBtn.addEventListener('click', () => deleteExclusion().catch((e) => alert(e.message)));
-  ui.clearModeBtn.addEventListener('click', () => clearCurrentElement().catch((e) => alert(e.message)));
+  ui.newExclusionBtn.addEventListener('click', () => createExclusion().catch(reportError));
+  ui.deleteExclusionBtn.addEventListener('click', () => deleteExclusion().catch(reportError));
+  ui.clearModeBtn.addEventListener('click', () => clearCurrentElement().catch(reportError));
 
   // Ansicht
   [ui.showGrid, ui.gridStepSelect, ui.showMower, ui.showTrail, ui.showPointQuality].forEach((input) => input.addEventListener('change', updateViewPreferencesFromUi));

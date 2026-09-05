@@ -2813,3 +2813,18 @@ body.menu-open .app-frame { visibility: hidden; }
 .auto-fab svg { width: 26px; height: 26px; stroke-width: 2; }
 .capture-cluster.auto-active .auto-fab svg { width: 38px; height: 38px; }
 .map-fab[disabled], .auto-fab[disabled], .capture-fab[disabled] { opacity: .62; }
+
+/* Rueckfragen im App-Design statt window.confirm(): gleiche Karte wie der Moduswahl-Dialog. */
+.modal-text {
+  margin: 0;
+  color: var(--shell-muted);
+  font-size: .8rem;
+  line-height: 1.45;
+}
+.modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.modal-actions button { min-height: 48px; font-weight: 800; }
+.modal-actions.single { grid-template-columns: 1fr; }

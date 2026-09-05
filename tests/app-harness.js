@@ -62,9 +62,6 @@ function loadApp(options = {}) {
     setTimeout, clearTimeout, setInterval, clearInterval,
     performance: { now: () => Date.now() },
     URL: { createObjectURL() { return 'blob:test'; }, revokeObjectURL() {} },
-    alert(message) { sandbox.__lastAlert = message; },
-    // Tests steuern die Antwort ueber sandbox.__confirmAnswer und lesen die Frage zurueck.
-    confirm(message) { sandbox.__lastConfirm = message; return sandbox.__confirmAnswer !== false; },
   };
 
   if (clock) {
@@ -78,6 +75,13 @@ function loadApp(options = {}) {
     sandbox.Date = VirtualDate;
   }
   if (bleAdapter) sandbox.__bleAdapter = bleAdapter;
+  // Rueckfragen laufen ueber askConfirm(); der Adapter beantwortet sie automatisch, damit
+  // Tests ohne Klick auskommen. Steuerung: sandbox.__confirmAnswer, Rueckschau: __lastConfirm.
+  sandbox.__confirmAdapter = (request) => {
+    sandbox.__lastConfirm = request.message;
+    sandbox.__lastConfirmRequest = request;
+    return sandbox.__confirmAnswer !== false;
+  };
 
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
