@@ -2375,12 +2375,12 @@ function drawPoints(points, tr, className, meta) {
 
     const qualityClass = state.view.showPointQuality ? ` quality-${pointQuality(p)}` : '';
     const circle = svgEl('circle', {
-      cx: s.x, cy: s.y, r: selected ? 11 : 7,
+      cx: s.x, cy: s.y, r: selected ? 9 : 5,
       class: `${className} map-point${qualityClass}${selected ? ' selected-map-point' : ''}`,
       'pointer-events': 'none', role: 'img', ...common,
     });
     ui.shapeLayer.appendChild(circle);
-    if (selected) ui.shapeLayer.appendChild(svgEl('circle', { cx: s.x, cy: s.y, r: 19, class: 'edit-selected-ring', 'pointer-events': 'none' }));
+    if (selected) ui.shapeLayer.appendChild(svgEl('circle', { cx: s.x, cy: s.y, r: 15, class: 'edit-selected-ring', 'pointer-events': 'none' }));
   });
 }
 

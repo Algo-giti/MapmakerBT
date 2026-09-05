@@ -215,6 +215,10 @@ test('Trefferflaeche der Punkte ist mindestens 44x44 px', () => {
   t.renderMap();
   const px = t.state.hitRadiusUnits * t.svgMetrics().scale;
   assert.ok(px >= 22, `Trefferradius ${px.toFixed(1)} px muss >= 22 px sein`);
+  // Der sichtbare Punkt ist bewusst klein — die Trefferflaeche haengt nicht daran.
+  const dot = t.ui.shapeLayer.children.find((c) => (c.attributes?.class || '').includes('map-point')
+    && !(c.attributes?.class || '').includes('map-point-hit'));
+  assert.ok(Number(dot.attributes.r) <= 6, `sichtbarer Punktradius ${dot.attributes.r} soll klein bleiben`);
 });
 
 test('Mit Auswahl verschiebt ein Tap den Punkt auf die Maeherposition', async () => {

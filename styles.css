@@ -2328,15 +2328,15 @@ body.menu-open .app-frame { visibility: hidden; }
      Bildschirm ein. align-self verhindert das Strecken zusaetzlich. */
   /* Anteilig zur Bildschirmhoehe: die Fahrzone belegt damit rund ein Viertel des
      Bildschirms, egal wie gross das Geraet ist. Grenzen halten sie bedienbar. */
-  width: clamp(110px, 20dvh, 200px);
-  height: clamp(110px, 20dvh, 200px);
+  width: clamp(130px, 25dvh, 240px);
+  height: clamp(130px, 25dvh, 240px);
   aspect-ratio: auto;
   align-self: center;
   justify-self: center;
   margin: 0;
   touch-action: none;
 }
-.drive-zone .joystick-knob { width: 76px; height: 76px; }
+.drive-zone .joystick-knob { width: 88px; height: 88px; }
 .drive-meta { font-size: .68rem; font-weight: 700; color: var(--shell-muted); min-height: 1.1em; }
 
 /* --- Menueseite --------------------------------------------------------- */
@@ -2434,7 +2434,7 @@ body.menu-open .app-frame { visibility: hidden; }
   filter: drop-shadow(0 0 4px rgba(215,162,74,.14));
 }
 .point-waypoint { fill: var(--point-fill); stroke: var(--waypoint); stroke-width: 4; vector-effect: non-scaling-stroke; }
-.map-point.selected-map-point { stroke: var(--selection); stroke-width: 5; }
+.map-point.selected-map-point { stroke: var(--selection); stroke-width: 4; }
 
 
 /* ==========================================================================
@@ -2978,8 +2978,8 @@ body.menu-open .app-frame { visibility: hidden; }
     border-left: 1px solid var(--shell-border-soft);
   }
   .drive-zone .joystick-base {
-    width: clamp(140px, 16vw, 260px);
-    height: clamp(140px, 16vw, 260px);
+    width: clamp(150px, 18vw, 280px);
+    height: clamp(150px, 18vw, 280px);
   }
   .drive-zone .joystick-knob { width: 84px; height: 84px; }
   /* Der Modus-Chip soll auf breiten Schirmen nicht über die halbe Leiste wandern. */
@@ -2998,7 +2998,7 @@ body.menu-open .app-frame { visibility: hidden; }
 
 /* Elementfarbe deutlich am Punktrand: kräftigerer Rand und je Art eine eigene Farbe.
    Die Füllung bleibt der RTK-Qualität vorbehalten. */
-.map-point { stroke-width: 5; }
+.map-point { stroke-width: 3.5; }
 .point-perimeter { stroke: var(--perimeter); }
 .point-exclusion { stroke: var(--exclusion); }
 .point-waypoint { stroke: var(--waypoint); }
