@@ -1,6 +1,11 @@
 'use strict';
-// Version an einer Stelle pflegen; app.js traegt dieselbe in APP_VERSION.
-const APP_VERSION = 'v19';
+// Version an einer Stelle pflegen. Bei jedem Deploy hochzaehlen — nicht wegen des
+// network-first-Zweigs (der holt ohnehin frisch), sondern wegen der Rueckfallebene:
+// scheitert der Netzabruf (draussen am Maeher oft der Fall), liefert der Cache die
+// Dateien aus, die beim *Installieren* dieser Version geholt wurden. Bleibt die Version
+// stehen, ist das monatelang derselbe alte Stand. Eine neue Version legt einen frischen
+// Cache an und zeigt dem Nutzer ausserdem die Update-Leiste.
+const APP_VERSION = 'v20';
 const CACHE = `mapcreator-ardumower-${APP_VERSION}`;
 
 // Die App selbst. Diese Dateien werden IMMER zuerst aus dem Netz geholt (network-first),

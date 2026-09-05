@@ -679,9 +679,16 @@ test('Schnellzugriff verschwindet bei Auswahl und bei bereits geschlossener Kont
   t.refreshCaptureState();
   assert.strictEqual(t.ui.closeAndNewWrap.hidden, false);
 
-  // Punktauswahl: Papierkorb und Verschieben reichen.
-  t.applyPointSelection({ role: 'exclusion', index: 0, exclusionId: exclusion.id });
+  // Punktauswahl ueber den echten Weg: Tippen auf den Punkt in der Karte.
+  t.renderMap();
+  const metrics = t.svgMetrics();
+  const screen = t.toScreen(exclusion.points[1], t.state.currentTransform);
+  t.handleMapTap({ clientX: screen.x * metrics.scale + metrics.offX, clientY: screen.y * metrics.scale + metrics.offY });
+  assert.ok(t.state.selectedPoint, 'der Tap muss den Punkt treffen');
   assert.strictEqual(t.ui.closeAndNewWrap.hidden, true, 'bei ausgewaehltem Punkt verborgen');
+  // Auch der naechste Telemetrie-Takt darf ihn nicht zurueckholen.
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.closeAndNewWrap.hidden, true, 'bleibt verborgen');
   t.clearPointSelection();
   assert.strictEqual(t.ui.closeAndNewWrap.hidden, false, 'ohne Auswahl wieder da');
 
