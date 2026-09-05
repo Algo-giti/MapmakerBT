@@ -27,7 +27,6 @@ const map = t.makeMap('Test');
 map.perimeter = square.map((p)=>({...p, gps:{solution:2}}));
 map.exclusions.push({id:'ex1',name:'Exclusion 1',points:inside.map((p)=>({...p,gps:{solution:2}}))});
 assert.strictEqual(map.version, 2);
-assert.ok(Array.isArray(map.history));
 const geo = t.mapToGeoJson(map);
 assert.strictEqual(geo.type, 'FeatureCollection');
 assert.strictEqual(geo.features[0].geometry.type, 'Polygon');
@@ -39,7 +38,9 @@ assert.strictEqual(t.state.validationResult.issues.some((i)=>i.key==='checkExclu
 
 const legacy = t.normalizeMap({id:'old',name:'Old',perimeter:[],exclusions:[],dockPoints:[],version:1});
 assert.strictEqual(legacy.version, 2);
-assert.ok(Array.isArray(legacy.history));
+// Die Versionsverwaltung ist entfernt: neue Karten fuehren kein history-Feld mehr.
+assert.strictEqual(map.history, undefined);
+assert.strictEqual(legacy.history, undefined);
 
 // Wegpunkte gehoeren seit dem UI-Umbau zum Kartenmodell.
 assert.strictEqual(map.waypoints.length, 0);

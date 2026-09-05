@@ -1626,14 +1626,19 @@ footer {
 .map-card-copy small { color: #82949b; font-size: .72rem; }
 .map-card-lock {
   align-self: stretch;
-  width: 46px;
+  width: 58px;
+  min-height: 0;
+  padding: 6px 4px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
   border: 0;
-  border-left: 1px solid #27383e;
+  border-left: 1px solid var(--shell-border-soft);
   border-radius: 0;
-  background: #0c1519;
-  font-size: 1.05rem;
+  background: var(--shell-panel-2);
+  color: var(--shell-muted);
 }
-.map-card-lock.active { background: #17201c; }
 
 .control-safety-card { border-color: #4b3539; }
 .control-status-row,
@@ -2824,3 +2829,17 @@ body.menu-open .app-frame { visibility: hidden; }
    Das liess unter anderem den Abbrechen-Knopf in reinen Meldungen stehen und den
    Knopf „Ansicht zuruecksetzen“ dauerhaft sichtbar. */
 [hidden] { display: none !important; }
+
+/* Schloss in der Kartenübersicht: offen = gedämpft und dünn, gesperrt = Warnfarbe,
+   gefüllter Körper und Wortmarke. Die früheren Emoji waren im Dunkeln nicht zu unterscheiden. */
+.lock-icon { width: 22px; height: 22px; }
+.lock-icon .lock-body { fill: none; stroke: currentColor; stroke-width: 1.8; }
+.lock-icon .lock-shackle { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.map-card-lock small { font-size: .52rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.map-card-lock.active {
+  background: var(--shell-warn-bg);
+  color: var(--shell-warn);
+}
+.map-card-lock.active .lock-icon .lock-body { fill: currentColor; stroke: currentColor; }
+.map-card-lock.active .lock-icon { width: 24px; height: 24px; }
+.map-gallery-card.locked { border-color: var(--shell-warn-border); border-style: solid; }

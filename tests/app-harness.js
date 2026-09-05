@@ -51,7 +51,15 @@ function loadApp(options = {}) {
     querySelector() { return null; },
     querySelectorAll() { return []; },
     createElement() { return elementStub(); },
-    createElementNS() { return elementStub(); },
+    createElementNS() {
+      // SVG-Knoten merken sich Attribute und Kinder, damit Tests die Zeichnung pruefen koennen.
+      const el = elementStub();
+      el.attributes = {};
+      el.setAttribute = (name, value) => { el.attributes[name] = String(value); };
+      el.getAttribute = (name) => (name in el.attributes ? el.attributes[name] : null);
+      el.appendChild = (child) => { el.children.push(child); return child; };
+      return el;
+    },
     addEventListener() {},
     body: elementStub('body'),
     hidden: false,

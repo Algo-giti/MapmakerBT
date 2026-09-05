@@ -14,7 +14,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'openModeDialog', 'closeModeDialog', 'requestModeChange', 'openContours', 'closeAllOpenContours',
   'deleteAction', 'deleteSelectedArea', 'selectedExclusion', 'createExclusion', 'validateActiveMap',
   'toggleAutoCapture', 'startAutoCapture', 'stopAutoCapture', 'refreshDeleteButton', 'bindAccordion',
-  'setTheme', 'applyTheme', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine',
+  'setTheme', 'applyTheme', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine', 'lockIcon',
   'askConfirm', 'confirmDialogRespond', 'showNotice', 'reportError', 'reportBleError',
   'deleteSelectedPoint', 'handleMapTap', 'applyPointSelection', 'clearPointSelection', 'refreshCaptureState',
   'renderMap', 'resetViewport', 'clampViewport', 'activeTransform', 'toScreen', 'svgMetrics', 'beginCustomViewport',
@@ -521,6 +521,18 @@ test('Fehlgeschlagener Funkbefehl: Kurzhinweis immer, Dialog nur gedrosselt', as
   await clock.runFor(21000);
   await t.reportBleError('AT+S', new Error('spaeter Fehler'));
   assert.ok(sandbox.__lastConfirmRequest, 'nach 20 s wird wieder gemeldet');
+});
+
+test('Gesperrte und offene Karten sind am Schloss klar unterscheidbar', () => {
+  const { t } = setup();
+  const closed = t.lockIcon(true);
+  const open = t.lockIcon(false);
+  // Der Buegel wird unterschiedlich gezeichnet, nicht nur eingefaerbt.
+  // svgEl() setzt die Klasse als Attribut, nicht ueber classList.
+  const shackle = (icon) => icon.children.find((c) => c.attributes?.class === 'lock-shackle')?.attributes?.d;
+  assert.ok(shackle(closed), 'geschlossenes Schloss hat einen Buegel');
+  assert.ok(shackle(open), 'offenes Schloss hat einen Buegel');
+  assert.notStrictEqual(shackle(closed), shackle(open), 'die Form muss sich unterscheiden');
 });
 
 test('Akkordeon: das Oeffnen eines Abschnitts schliesst die anderen', () => {

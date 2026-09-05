@@ -35,6 +35,7 @@ const MAX_MAPS = 10;
 
 const I18N = {
   de: {
+    lockedBadge: 'Gesperrt',
     checkForUpdate: 'Nach Updates suchen', updateSearching: 'Suche nach einer neueren Fassung …',
     bleWriteFailedTitle: 'Senden fehlgeschlagen', bleWriteFailedShort: 'Senden fehlgeschlagen: {message}',
     bleWriteFailed: 'Der Befehl {context} konnte nicht an den Mäher gesendet werden.\n\n{message}',
@@ -77,7 +78,7 @@ const I18N = {
     languageToggleLabel: 'Auf Englisch umschalten', tabMaps: 'Karten', tabConnection: 'Verbindung', tabHelp: 'Hilfe', tabDebug: 'Diagnose',
     activeMap: 'AKTIVE KARTE', battery: 'Akku', perimeter: 'Perimeter', exclusion: 'Ausschluss', dock: 'Dock',
     exclusionArea: 'Ausschlussfläche', newExclusion: '+ Neu', delete: 'Löschen', clearCurrentElement: 'Aktuelles Element leeren',
-    onlyRtkFix: 'Nur bei RTK FIX', recentPoints: 'Letzte Punkte',
+    onlyRtkFix: 'Nur bei RTK FIX',
     viewScale: 'Ansicht & Maßstab', showGrid: 'Raster anzeigen', gridSpacing: 'Rasterweite', gridAuto: 'Automatisch',
     showMower: 'Mäher anzeigen', mowerLength: 'Länge', mowerWidth: 'Breite', mowerScaleNote: 'Der Mäher wird maßstäblich zur Karte dargestellt.', mowerTooltip: 'Mäher {length} × {width} m',
     noPointSelected: 'Kein Punkt ausgewählt',
@@ -110,8 +111,7 @@ const I18N = {
     exclusionN: 'Ausschluss {n}', mapN: 'Karte {n}', deleteMapConfirm: 'Karte „{name}“ wirklich lokal löschen?',
     dockPath: 'Dockpfad',
     deleteExclusionConfirm: '{name} wirklich löschen?', pointSaved: 'Punkt gespeichert: X {x} · Y {y}', dockPoints: 'Dockpunkte', clearConfirm: '{label} wirklich leeren?',
-    mapSummary: '{name} · {points} Punkte', noMap: 'Keine Karte', noMapLoaded: 'Keine Karte geladen.',
-    recentPoint: 'Punkt {n}', invalidMapFile: 'Datei ist keine MapCreator-für-Ardumower-Karte.', unknown: 'unbekannt',
+    mapSummary: '{name} · {points} Punkte', noMap: 'Keine Karte', noMapLoaded: 'Keine Karte geladen.', invalidMapFile: 'Datei ist keine MapCreator-für-Ardumower-Karte.', unknown: 'unbekannt',
     unsupportedGeometry: 'GeoJSON-Geometrie {type} wird nicht unterstützt.', invalidCoordinates: 'GeoJSON enthält ungültige X/Y-Koordinaten.',
     invalidGeoJson: 'Datei ist kein unterstütztes GeoJSON FeatureCollection.', noGeoFeatures: 'GeoJSON enthält keine Features mit role=perimeter, exclusion oder dock.',
     insecureContext: 'Diese Seite läuft nicht in einem sicheren Kontext. Für Web Bluetooth bitte über HTTPS (z. B. GitHub Pages) öffnen.',
@@ -123,8 +123,6 @@ const I18N = {
     mapCheck: 'Kartenprüfung', checkNow: 'Jetzt prüfen', notCheckedYet: 'Noch nicht geprüft.', mapCheckOk: 'Karte plausibel · Fläche {area} m² · Umfang {perimeter} m · RTK FIX {fix}/{points}', mapCheckIssues: '{errors} Fehler · {warnings} Hinweise · Fläche {area} m²',
     checkPerimeterTooFew: 'Perimeter hat weniger als 3 Punkte.', checkAreaTooFew: '{label} hat weniger als 3 Punkte.', checkSelfIntersection: '{label} überschneidet sich selbst.', checkExclusionOutside: '{label} liegt nicht vollständig innerhalb des Perimeters.', checkExclusionOverlap: '{a} und {b} überschneiden sich.',
     checkClosePoints: '{label}: {count} sehr kurze Punktabstände unter 5 cm.', checkLongSegments: '{label}: {count} Strecken sind länger als 5 m.', checkNonFixPoints: '{count} von {points} Punkten wurden nicht mit RTK FIX aufgenommen.', checkDockEmpty: 'Kein Dockpfad vorhanden (optional).',
-    undoLastChange: 'Letzte Änderung zurück', noChangeToUndo: 'Noch keine Änderung im Verlauf', undoChangeHint: '{reason} · {time}',
-    historyManual: 'Manuelle Version', historyAddPoint: 'Punkt aufgenommen', historyAutoCapture: 'Auto-Aufnahme', historyDeletePoint: 'Punkt gelöscht', historyRelearnPoint: 'Punkt neu angelernt', historyClear: 'Element geleert', historyDeleteExclusion: 'Ausschluss gelöscht', historyCreateExclusion: 'Ausschluss angelegt',
     systemCheckTitle: 'Systemcheck auf diesem Gerät', systemCheckText: 'Hier siehst du sofort, ob die technischen Voraussetzungen für den Einsatz im Garten passen.',
     secureContextLabel: 'HTTPS / sicherer Kontext', webBluetoothLabel: 'Web Bluetooth', offlineCacheLabel: 'Offline-Cache', internetStatusLabel: 'Browser-Netzwerkstatus', compatibilityDate: 'Kompatibilitätsstand: August 2026.', networkStatusNote: 'Der Online/Offline-Wert ist ein Browser-Netzwerksignal und kein aktiver Test zu GitHub.',
     statusReady: 'Bereit', statusAvailable: 'Verfügbar', statusUnavailable: 'Nicht verfügbar', statusOnline: 'Online', statusOffline: 'Offline', statusSecure: 'Sicher', statusInsecure: 'Nicht sicher', statusPreparing: 'Wird vorbereitet …',
@@ -152,8 +150,6 @@ const I18N = {
     formatsTitle: 'Speichern, JSON & GeoJSON', jsonHelp: 'Empfohlenes vollständiges Backup für MapCreator. Enthält Kartenstruktur, Punkte und zusätzliche Metadaten wie Aufnahme-/Editierinformationen.', geoJsonHelp: 'Für Geometrie-Austausch. Perimeter und Ausschlüsse werden als Polygone, der Dockpfad als LineString exportiert.', geoJsonXYWarning: 'Die Ardumower-Koordinaten sind lokale Sunray-X/Y-Werte in Metern. Sie sind keine GPS-Längen-/Breitengrade und werden deshalb im Export ausdrücklich als lokales metrisches Koordinatensystem gekennzeichnet.',
     troubleshootingTitle: 'Fehlerbehebung', faqDeviceTitle: 'Ardumower wird nicht gefunden', faqDeviceText: 'Prüfe Bluetooth am Tablet, aktuelle Chrome-Version, Reichweite und ob der ESP32 BLE sendet. Falls eine andere App bereits verbunden ist, diese Verbindung zuerst trennen. Danach Bluetooth-Gerätesuche erneut öffnen.', faqButtonTitle: 'Aufnahme-Button wird nicht grün', faqButtonText: 'Grün bedeutet echten RTK FIX. Prüfe RTK-Empfang und die Live-Daten. Wenn „Nur bei RTK FIX“ aktiv ist, bleibt die Aufnahme bei FLOAT/INVALID gesperrt.', faqOfflineTitle: 'Die App startet ohne WLAN nicht', faqOfflineText: 'Öffne die GitHub-Pages-Seite mindestens einmal mit Internet und warte, bis der Offline-Cache im Systemcheck als bereit angezeigt wird. Danach am besten als PWA installieren.', faqMapsGoneTitle: 'Meine Karten sind verschwunden', faqMapsGoneText: 'Karten liegen lokal im Browser. Gelöschte Website-Daten, ein anderer Browser oder ein anderes Benutzerprofil haben einen eigenen Speicher. Importiere dein letztes JSON-Backup.', faqIosTitle: 'Warum funktioniert es auf iPhone/iPad nicht?', faqIosText: 'Der MapCreator benötigt Web Bluetooth. Safari und Chrome auf iOS/iPadOS bieten diese Web-API derzeit nicht nativ an; deshalb kann die Webseite den Ardumower dort nicht direkt auswählen und verbinden.',
     privacyTitle: 'Daten & Privatsphäre', privacy1: 'GitHub Pages liefert nur die statische App aus. Deine aufgezeichneten Karten werden nicht automatisch zu GitHub hochgeladen.', privacy2: 'Karten liegen lokal im Browser des verwendeten Geräts.', privacy3: 'Bluetooth-Kommunikation läuft direkt zwischen Browser und Ardumower-ESP32.', privacy4: 'Das Sunray-Passwort wird nicht in den Kartendaten gespeichert.', privacy5: 'Für wichtige Karten regelmäßig ein JSON-Backup auf einem zweiten Speicherort ablegen.',
-    historyCloseContour: 'Kontur geschlossen',
-    historyClosePerimeter: 'Perimeter schließen/öffnen',
     showPointQuality: 'Punktqualität anzeigen', keepAwake: 'Bildschirm beim Mapping wachhalten', wakeLockAuto: 'Wird bei aktiver Aufnahme automatisch verwendet.', wakeLockActive: 'Bildschirm bleibt wach.', wakeLockUnavailable: 'Wake Lock in diesem Browser nicht verfügbar.', wakeLockReleased: 'Wake Lock derzeit nicht aktiv.',
     perimeterNearStart: 'Startpunkt erreicht · Abstand {distance} m', closePerimeter: 'Perimeter schließen', perimeterClosed: 'Perimeter geschlossen · kein doppelter Startpunkt gespeichert.', perimeterAlreadyClosed: 'Perimeter ist bereits geschlossen.', reopenPerimeter: 'Perimeter wieder öffnen', checkPerimeterOpen: 'Perimeter ist noch nicht als geschlossen markiert.',
     mapOverview: 'Kartenübersicht', lockCurrentMap: 'Karte sperren', unlockCurrentMap: 'Karte entsperren', mapLocked: 'Gesperrt', mapLockedHint: 'Diese Karte ist gesperrt. Zum Bearbeiten zuerst entsperren.', mapCardArea: '{area} m²', mapCardPoints: '{points} Punkte', mapCardChanged: 'Geändert {date}', selectMap: 'Karte auswählen', drive: 'Fahren', stopEverythingDone: 'STOP gesendet · Fahrt 0 · Mähmotor AUS · IDLE',
@@ -162,6 +158,7 @@ const I18N = {
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   },
   en: {
+    lockedBadge: 'Locked',
     checkForUpdate: 'Check for updates', updateSearching: 'Looking for a newer version …',
     bleWriteFailedTitle: 'Sending failed', bleWriteFailedShort: 'Sending failed: {message}',
     bleWriteFailed: 'The command {context} could not be sent to the mower.\n\n{message}',
@@ -204,7 +201,7 @@ const I18N = {
     languageToggleLabel: 'Switch to German', tabMaps: 'Maps', tabConnection: 'Connection', tabHelp: 'Help', tabDebug: 'Diagnostics',
     activeMap: 'ACTIVE MAP', battery: 'Battery', perimeter: 'Perimeter', exclusion: 'Exclusion', dock: 'Dock',
     exclusionArea: 'Exclusion area', newExclusion: '+ New', delete: 'Delete', clearCurrentElement: 'Clear current element',
-    onlyRtkFix: 'RTK FIX only', recentPoints: 'Recent points',
+    onlyRtkFix: 'RTK FIX only',
     viewScale: 'View & scale', showGrid: 'Show grid', gridSpacing: 'Grid spacing', gridAuto: 'Automatic',
     showMower: 'Show mower', mowerLength: 'Length', mowerWidth: 'Width', mowerScaleNote: 'The mower is drawn to scale on the map.', mowerTooltip: 'Mower {length} × {width} m',
     noPointSelected: 'No point selected',
@@ -237,8 +234,7 @@ const I18N = {
     exclusionN: 'Exclusion {n}', mapN: 'Map {n}', deleteMapConfirm: 'Really delete map “{name}” locally?',
     dockPath: 'Dock path',
     deleteExclusionConfirm: 'Really delete {name}?', pointSaved: 'Point saved: X {x} · Y {y}', dockPoints: 'Dock points', clearConfirm: 'Really clear {label}?',
-    mapSummary: '{name} · {points} points', noMap: 'No map', noMapLoaded: 'No map loaded.',
-    recentPoint: 'Point {n}', invalidMapFile: 'File is not a MapCreator für Ardumower map.', unknown: 'unknown',
+    mapSummary: '{name} · {points} points', noMap: 'No map', noMapLoaded: 'No map loaded.', invalidMapFile: 'File is not a MapCreator für Ardumower map.', unknown: 'unknown',
     unsupportedGeometry: 'GeoJSON geometry {type} is not supported.', invalidCoordinates: 'GeoJSON contains invalid X/Y coordinates.',
     invalidGeoJson: 'File is not a supported GeoJSON FeatureCollection.', noGeoFeatures: 'GeoJSON contains no features with role=perimeter, exclusion, or dock.',
     insecureContext: 'This page is not running in a secure context. Open it via HTTPS (for example GitHub Pages) to use Web Bluetooth.',
@@ -250,8 +246,6 @@ const I18N = {
     mapCheck: 'Map check', checkNow: 'Check now', notCheckedYet: 'Not checked yet.', mapCheckOk: 'Map looks plausible · area {area} m² · perimeter {perimeter} m · RTK FIX {fix}/{points}', mapCheckIssues: '{errors} errors · {warnings} notes · area {area} m²',
     checkPerimeterTooFew: 'Perimeter has fewer than 3 points.', checkAreaTooFew: '{label} has fewer than 3 points.', checkSelfIntersection: '{label} intersects itself.', checkExclusionOutside: '{label} is not fully inside the perimeter.', checkExclusionOverlap: '{a} and {b} overlap.',
     checkClosePoints: '{label}: {count} very short point gaps below 5 cm.', checkLongSegments: '{label}: {count} segments are longer than 5 m.', checkNonFixPoints: '{count} of {points} points were not captured with RTK FIX.', checkDockEmpty: 'No dock path present (optional).',
-    undoLastChange: 'Undo last change', noChangeToUndo: 'No change in history yet', undoChangeHint: '{reason} · {time}',
-    historyManual: 'Manual version', historyAddPoint: 'Point captured', historyAutoCapture: 'Auto capture', historyDeletePoint: 'Point deleted', historyRelearnPoint: 'Point relearned', historyClear: 'Element cleared', historyDeleteExclusion: 'Exclusion deleted', historyCreateExclusion: 'Exclusion created',
     systemCheckTitle: 'System check on this device', systemCheckText: 'See immediately whether the technical requirements for garden use are met.',
     secureContextLabel: 'HTTPS / secure context', webBluetoothLabel: 'Web Bluetooth', offlineCacheLabel: 'Offline cache', internetStatusLabel: 'Browser network status', compatibilityDate: 'Compatibility status: August 2026.', networkStatusNote: 'The online/offline value is a browser network signal, not an active test against GitHub.',
     statusReady: 'Ready', statusAvailable: 'Available', statusUnavailable: 'Unavailable', statusOnline: 'Online', statusOffline: 'Offline', statusSecure: 'Secure', statusInsecure: 'Not secure', statusPreparing: 'Preparing …',
@@ -279,8 +273,6 @@ const I18N = {
     formatsTitle: 'Saving, JSON & GeoJSON', jsonHelp: 'Recommended complete MapCreator backup. Contains the map structure, points and extra metadata such as capture/edit information.', geoJsonHelp: 'For geometry exchange. Perimeter and exclusions are exported as polygons and the dock path as a LineString.', geoJsonXYWarning: 'Ardumower coordinates are local Sunray X/Y values in metres. They are not GPS longitude/latitude values, so the export explicitly marks them as a local metric coordinate system.',
     troubleshootingTitle: 'Troubleshooting', faqDeviceTitle: 'Ardumower is not found', faqDeviceText: 'Check Bluetooth on the tablet, a current Chrome version, range and whether the ESP32 is advertising BLE. If another app is already connected, disconnect it first. Then open Bluetooth device discovery again.', faqButtonTitle: 'Capture button does not turn green', faqButtonText: 'Green means a real RTK FIX. Check RTK reception and the live data. With “RTK FIX only” enabled, capture remains blocked for FLOAT/INVALID.', faqOfflineTitle: 'The app does not start without Wi-Fi', faqOfflineText: 'Open the GitHub Pages site at least once with internet and wait until the system check shows the offline cache as ready. Installing it as a PWA is recommended.', faqMapsGoneTitle: 'My maps are gone', faqMapsGoneText: 'Maps are stored locally in the browser. Cleared site data, a different browser or a different browser profile use separate storage. Import your latest JSON backup.', faqIosTitle: 'Why does it not work on iPhone/iPad?', faqIosText: 'MapCreator requires Web Bluetooth. Safari and Chrome on iOS/iPadOS currently do not provide this Web API natively, so the website cannot directly select and connect to the Ardumower there.',
     privacyTitle: 'Data & privacy', privacy1: 'GitHub Pages only serves the static app. Your recorded maps are not automatically uploaded to GitHub.', privacy2: 'Maps stay in the browser storage of the device being used.', privacy3: 'Bluetooth communication runs directly between the browser and the Ardumower ESP32.', privacy4: 'The Sunray password is not stored in map data.', privacy5: 'For important maps, regularly keep a JSON backup in a second location.',
-    historyCloseContour: 'Contour closed',
-    historyClosePerimeter: 'Close/reopen perimeter',
     showPointQuality: 'Show point quality', keepAwake: 'Keep screen awake while mapping', wakeLockAuto: 'Used automatically while an active recording is running.', wakeLockActive: 'Screen will stay awake.', wakeLockUnavailable: 'Wake Lock is not available in this browser.', wakeLockReleased: 'Wake Lock is currently inactive.',
     perimeterNearStart: 'Start point reached · distance {distance} m', closePerimeter: 'Close perimeter', perimeterClosed: 'Perimeter closed · no duplicate start point stored.', perimeterAlreadyClosed: 'Perimeter is already closed.', reopenPerimeter: 'Reopen perimeter', checkPerimeterOpen: 'Perimeter is not marked as closed yet.',
     mapOverview: 'Map overview', lockCurrentMap: 'Lock map', unlockCurrentMap: 'Unlock map', mapLocked: 'Locked', mapLockedHint: 'This map is locked. Unlock it before editing.', mapCardArea: '{area} m²', mapCardPoints: '{points} points', mapCardChanged: 'Changed {date}', selectMap: 'Select map', drive: 'Drive', stopEverythingDone: 'STOP sent · drive 0 · mowing motor OFF · IDLE',
@@ -372,7 +364,6 @@ const ui = {
   mapSelect: $('mapSelect'), newMapName: $('newMapName'), newMapBtn: $('newMapBtn'), deleteMapBtn: $('deleteMapBtn'), lockMapBtn: $('lockMapBtn'),
   exportJsonBtn: $('exportJsonBtn'), exportGeoJsonBtn: $('exportGeoJsonBtn'), importInput: $('importInput'),
   mapGallery: $('mapGallery'), mapCountBadge: $('mapCountBadge'),
-  historyUndoBtn: $('historyUndoBtn'), historyUndoHint: $('historyUndoHint'), recentPoints: $('recentPoints'),
   exclusionControls: $('exclusionControls'), exclusionSelect: $('exclusionSelect'), newExclusionBtn: $('newExclusionBtn'), deleteExclusionBtn: $('deleteExclusionBtn'),
   fixOnly: $('fixOnly'), clearModeBtn: $('clearModeBtn'),
   autoCaptureIntervalInput: $('autoCaptureIntervalInput'), autoCaptureState: $('autoCaptureState'),
@@ -731,7 +722,6 @@ function perimeterClosureCandidate() {
 
 async function closePerimeter({ automatic = false } = {}) {
   if (!ensureMapEditable() || !state.activeMap || state.activeMap.perimeter.length < 3) return;
-  if (!state.activeMap.perimeterClosed) checkpointMap('closePerimeter');
   state.activeMap.perimeterClosed = true;
   if (state.autoCaptureRunning) stopAutoCapture();
   await saveActiveMap();
@@ -744,7 +734,6 @@ async function closePerimeter({ automatic = false } = {}) {
 async function reopenPerimeter() {
   if (!ensureMapEditable() || !state.activeMap) return;
   if (!state.activeMap.perimeterClosed) return;
-  checkpointMap('closePerimeter');
   state.activeMap.perimeterClosed = false;
   await saveActiveMap();
   renderMap();
@@ -874,7 +863,6 @@ async function deleteSelectedArea() {
     tone: 'danger',
   });
   if (!confirmed) return;
-  checkpointMap('deleteExclusion');
   state.activeMap.exclusions = state.activeMap.exclusions.filter((e) => e.id !== exclusion.id);
   state.selectedArea = null;
   state.selectedPoint = null;
@@ -1660,7 +1648,7 @@ function makeMap(name) {
   return {
     format: 'ardumower-web-map', generator: 'MapCreator für Ardumower', version: 2,
     id: newId(), name: name.trim(), coordinateSystem: 'sunray-local-xy-meters',
-    createdAt: now, updatedAt: now, locked: false, perimeterClosed: false, perimeter: [], exclusions: [], waypoints: [], dockPoints: [], history: [],
+    createdAt: now, updatedAt: now, locked: false, perimeterClosed: false, perimeter: [], exclusions: [], waypoints: [], dockPoints: [],
   };
 }
 
@@ -1682,54 +1670,8 @@ function normalizeMap(map) {
   });
   if (!Array.isArray(map.waypoints)) map.waypoints = [];
   if (!Array.isArray(map.dockPoints)) map.dockPoints = [];
-  if (!Array.isArray(map.history)) map.history = [];
   return map;
 }
-
-function geometrySnapshot(map) {
-  return {
-    name: map.name,
-    perimeterClosed: map.perimeterClosed === true,
-    perimeter: structuredClone(map.perimeter || []),
-    exclusions: structuredClone(map.exclusions || []),
-    waypoints: structuredClone(map.waypoints || []),
-    dockPoints: structuredClone(map.dockPoints || []),
-  };
-}
-
-function checkpointMap(reasonKey, { beforeChange = true } = {}) {
-  if (!state.activeMap) return null;
-  normalizeMap(state.activeMap);
-  const entry = {
-    id: newId(), createdAt: new Date().toISOString(), reasonKey, beforeChange,
-    snapshot: geometrySnapshot(state.activeMap),
-  };
-  state.activeMap.history.push(entry);
-  if (state.activeMap.history.length > 30) state.activeMap.history.splice(0, state.activeMap.history.length - 30);
-  return entry;
-}
-
-function historyReason(entry) {
-  const keyMap = {
-    manual: 'historyManual', addPoint: 'historyAddPoint', autoCapture: 'historyAutoCapture', deletePoint: 'historyDeletePoint', relearnPoint: 'historyRelearnPoint',
-    clear: 'historyClear', deleteExclusion: 'historyDeleteExclusion', createExclusion: 'historyCreateExclusion',
-    closePerimeter: 'historyClosePerimeter', closeContour: 'historyCloseContour',
-  };
-  return tr(keyMap[entry?.reasonKey] || 'historyManual');
-}
-
-function applyGeometrySnapshot(snapshot) {
-  if (!state.activeMap || !snapshot) return;
-  state.activeMap.name = snapshot.name || state.activeMap.name;
-  state.activeMap.perimeterClosed = snapshot.perimeterClosed === true;
-  state.activeMap.perimeter = structuredClone(snapshot.perimeter || []);
-  state.activeMap.exclusions = structuredClone(snapshot.exclusions || []);
-  state.activeMap.waypoints = structuredClone(snapshot.waypoints || []);
-  state.activeMap.dockPoints = structuredClone(snapshot.dockPoints || []);
-  state.activeExclusionId = state.activeMap.exclusions[0]?.id || null;
-  clearPointSelection({ render: false });
-}
-
 
 async function loadMaps() {
   state.maps = (await dbRequest('readonly', (store) => store.getAll())).map(normalizeMap);
@@ -1759,7 +1701,6 @@ async function saveActiveMap() {
   state.saving = false;
   state.lastSavedAt = new Date();
   ui.saveState.textContent = tr('savedAt', { time: state.lastSavedAt.toLocaleTimeString(localeCode(), { hour: '2-digit', minute: '2-digit' }) });
-  refreshHistoryUndoState();
   renderMapGallery();
 }
 
@@ -1806,7 +1747,10 @@ function renderMapGallery() {
     const meta=document.createElement('small'); meta.textContent=`${tr('mapCardArea',{area:mapNetArea(map).toFixed(0)})} · ${tr('mapCardPoints',{points:mapPointCount(map)})}`;
     const changed=document.createElement('small'); changed.textContent=tr('mapCardChanged',{date:new Date(map.updatedAt||map.createdAt||Date.now()).toLocaleDateString(localeCode())});
     copy.append(title,meta,changed); select.append(svg,copy);
-    const lock=document.createElement('button'); lock.type='button'; lock.className=`map-card-lock${map.locked?' active':''}`; lock.dataset.mapLockId=map.id; lock.textContent=map.locked?'🔒':'🔓'; lock.title=tr(map.locked?'unlockCurrentMap':'lockCurrentMap'); lock.setAttribute('aria-label',lock.title);
+    const lock=document.createElement('button'); lock.type='button'; lock.className=`map-card-lock${map.locked?' active':''}`; lock.dataset.mapLockId=map.id;
+    lock.appendChild(lockIcon(map.locked));
+    if (map.locked) { const badge=document.createElement('small'); badge.textContent=tr('lockedBadge'); lock.appendChild(badge); }
+    lock.title=tr(map.locked?'unlockCurrentMap':'lockCurrentMap'); lock.setAttribute('aria-label',lock.title);
     card.append(select,lock); ui.mapGallery.appendChild(card);
   });
 }
@@ -1843,7 +1787,6 @@ function renderMapControls() {
   ui.clearModeBtn.disabled = locked;
   ui.newExclusionBtn.disabled = locked;
   renderExclusionControls();
-  refreshHistoryUndoState();
   renderValidation();
   refreshCaptureState();
 }
@@ -1979,7 +1922,6 @@ async function deleteAction() {
 
 async function createExclusion() {
   if (!state.activeMap || !ensureMapEditable()) return;
-  checkpointMap('createExclusion');
   const number = state.activeMap.exclusions.length + 1;
   const exclusion = { id: newId(), name: tr('exclusionN', { n: number }), points: [], closed: false };
   state.activeMap.exclusions.push(exclusion);
@@ -2000,7 +1942,6 @@ async function deleteExclusion() {
     tone: 'danger',
   });
   if (!confirmed) return;
-  checkpointMap('deleteExclusion');
   if (state.selectedPoint?.role === 'exclusion' && state.selectedPoint.exclusionId === state.activeExclusionId) state.selectedPoint = null;
   state.activeMap.exclusions = state.activeMap.exclusions.filter((e) => e.id !== state.activeExclusionId);
   state.activeExclusionId = state.activeMap.exclusions[0]?.id || null;
@@ -2045,7 +1986,6 @@ async function relearnSelectedPoint() {
   const sel = state.selectedPoint;
   const oldPoint = getSelectedPoint();
   if (!target || !sel || !oldPoint) return;
-  checkpointMap('relearnPoint');
   const point = pointFromTelemetry();
   point.originalCapturedAt = oldPoint.originalCapturedAt || oldPoint.capturedAt || null;
   point.editedAt = point.capturedAt;
@@ -2065,7 +2005,6 @@ async function appendCurrentPoint({ automatic = false, targetOverride = null, sa
   }
   if (!target || !telemetryIsFresh()) return null;
   if (ui.fixOnly.checked && !telemetryHasFix()) return null;
-  if (!automatic && save) checkpointMap('addPoint');
   const point = pointFromTelemetry();
   target.push(point);
   if (save) await saveActiveMap();
@@ -2088,7 +2027,6 @@ async function startAutoCapture() {
   if (!state.activeMap || !telemetryIsFresh() || (ui.fixOnly.checked && !telemetryHasFix())) return;
   if (state.mode === 'exclusion' && !getActivePointArray()) await createExclusion();
   clearPointSelection({ render: false });
-  checkpointMap('autoCapture');
   state.autoCaptureRunning = true;
   state.autoCaptureCount = 0;
   requestWakeLockIfNeeded();
@@ -2147,7 +2085,6 @@ async function deleteSelectedPoint() {
   const target = getSelectedPointArray();
   const sel = state.selectedPoint;
   if (!target || !sel || !target[sel.index]) return;
-  checkpointMap('deletePoint');
   target.splice(sel.index, 1);
   if (sel.role === 'perimeter') state.activeMap.perimeterClosed = false;
   state.selectedPoint = null;
@@ -2162,7 +2099,6 @@ async function undoPoint() {
   if (!ensureMapEditable()) return;
   const target = getActivePointArray();
   if (!target?.length) return;
-  checkpointMap('deletePoint');
   target.pop();
   if (state.mode === 'perimeter') state.activeMap.perimeterClosed = false;
   state.selectedPoint = null;
@@ -2182,7 +2118,6 @@ async function clearCurrentElement() {
     tone: 'danger',
   });
   if (!confirmed) return;
-  checkpointMap('clear');
   target.splice(0, target.length);
   if (state.mode === 'perimeter') state.activeMap.perimeterClosed = false;
   state.selectedPoint = null;
@@ -2206,6 +2141,23 @@ function allMapPoints() {
     );
   }
   return points;
+}
+
+/**
+ * Schloss-Symbol fuer die Kartenuebersicht. Die frueheren Emoji 🔒/🔓 waren im Dunkeln kaum
+ * zu unterscheiden — jetzt ein gezeichnetes Schloss: geschlossen mit Buegel auf dem Koerper,
+ * offen mit hochgeklapptem Buegel, dazu unterschiedliche Farben und beim gesperrten Zustand
+ * das Wort „Gesperrt“.
+ */
+function lockIcon(locked) {
+  const icon = svgEl('svg', { viewBox: '0 0 24 24', class: 'lock-icon', 'aria-hidden': 'true' });
+  icon.appendChild(svgEl('rect', { x: 4, y: 10.5, width: 16, height: 10.5, rx: 2.2, class: 'lock-body' }));
+  icon.appendChild(svgEl('path', {
+    // geschlossen: Buegel sitzt mittig auf dem Koerper · offen: Buegel steht rechts hoch
+    d: locked ? 'M8 10.5V7.5a4 4 0 0 1 8 0v3' : 'M8 10.5V7.5a4 4 0 0 1 7.8-1.2',
+    class: 'lock-shackle',
+  }));
+  return icon;
 }
 
 function svgEl(name, attrs = {}) {
@@ -2498,11 +2450,6 @@ function refreshMapDistanceInfo() {
   ui.mapDistanceInfo.textContent = bits.length ? bits.join(' · ') : '–';
 }
 
-function recentArray() {
-  const arr = getActivePointArray() || [];
-  return arr.slice(-6).map((p, i) => ({ point: p, index: arr.length - Math.min(6, arr.length) + i + 1 }));
-}
-
 function renderMap() {
   updateViewBox();
   ui.shapeLayer.innerHTML = '';
@@ -2537,15 +2484,7 @@ function renderMap() {
   drawRobot(transform);
   refreshMapDistanceInfo();
   refreshDeleteButton();
-  refreshHistoryUndoState();
 
-  ui.recentPoints.innerHTML = '';
-  recentArray().forEach(({ point, index }) => {
-    const row = document.createElement('div');
-    row.className = 'recent-point';
-    row.innerHTML = `<span>${tr('recentPoint', { n: index })}</span><strong>X ${point.x.toFixed(2)} · Y ${point.y.toFixed(2)}</strong>`;
-    ui.recentPoints.appendChild(row);
-  });
 }
 
 function safeFileName(name) {
@@ -2883,19 +2822,6 @@ function renderValidation() {
   if (ui.closeContoursBtn) ui.closeContoursBtn.hidden = openContours().length === 0;
 }
 
-function refreshHistoryUndoState() {
-  if(!ui.historyUndoBtn||!state.activeMap)return;
-  normalizeMap(state.activeMap);
-  const entry=[...state.activeMap.history].reverse().find((h)=>h.beforeChange);
-  ui.historyUndoBtn.disabled=!entry || Boolean(state.activeMap?.locked);
-  ui.historyUndoHint.textContent=entry ? tr('undoChangeHint',{reason:historyReason(entry),time:new Date(entry.createdAt).toLocaleTimeString(localeCode(),{hour:'2-digit',minute:'2-digit'})}) : tr('noChangeToUndo');
-}
-
-async function undoLastHistoryChange() {
-  if(!state.activeMap || !ensureMapEditable())return; normalizeMap(state.activeMap); let index=-1; for(let i=state.activeMap.history.length-1;i>=0;i-=1){if(state.activeMap.history[i].beforeChange){index=i;break;}}
-  if(index<0)return; const entry=state.activeMap.history[index]; applyGeometrySnapshot(entry.snapshot); state.activeMap.history.splice(index,1); await saveActiveMap(); state.validationResult=null; renderMapControls(); renderMap();
-}
-
 function refreshSaveState() {
   if (state.saving) {
     ui.saveState.textContent = tr('saving');
@@ -3003,7 +2929,6 @@ async function closeContour(entry) {
   if (entry.role === 'perimeter') { await closePerimeter(); return; }
   const exclusion = state.activeMap?.exclusions.find((e) => e.id === entry.id);
   if (!exclusion) return;
-  checkpointMap('closeContour');
   exclusion.closed = true;
   state.validationResult = null;
   await saveActiveMap();
@@ -3249,7 +3174,6 @@ function bindEvents() {
     if (file) importMapFile(file).catch((e) => showNotice({ title: tr('errorTitle'), message: tr('importFailed', { message: e.message }), tone: 'danger' }));
     ui.importInput.value = '';
   });
-  ui.historyUndoBtn.addEventListener('click', () => undoLastHistoryChange().catch(reportError));
   ui.validateMapBtn.addEventListener('click', validateActiveMap);
 
   // Aufnahme-Einstellungen
