@@ -23,6 +23,8 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'renderMap', 'resetViewport', 'clampViewport', 'activeTransform', 'toScreen', 'svgMetrics', 'beginCustomViewport',
   'updateRtkBadge', 'setMenuOpen', 'onMapPointerDown', 'onMapPointerMove', 'onMapPointerUp', 'beginCaptureHold', 'cancelCaptureHold', 'driveSpeedLimits', 'joystickVectorFromPointer', 'makeMap', 'normalizeMap',
   'undoLastAction', 'pushUndo', 'clearUndoStack', 'refreshUndoButton', 'UNDO_STACK_LIMIT',
+  'autoCaptureTick', 'applyAutoCaptureModeToUi', 'updateViewPreferencesFromUi',
+  'AUTO_CAPTURE_DISTANCE_MIN_CM', 'AUTO_CAPTURE_DISTANCE_MAX_CM', 'BLE_POLL_INTERVAL_MS',
   'MIN_USER_ZOOM', 'MAX_USER_ZOOM', 'init'];
 
 /** Minimaler IndexedDB-Ersatz, damit saveActiveMap() im Test durchlaeuft. */
@@ -585,6 +587,147 @@ test('Der Rueckgaengig-Knopf verschwindet waehrend der Automatik und bei gesperr
   t.state.activeMap.locked = true;
   t.refreshCaptureState();
   assert.strictEqual(t.ui.undoFabWrap.hidden, true, 'in einer gesperrten Karte gibt es nichts zurueckzunehmen');
+});
+
+// === Distanzbasierte Automatik =============================================
+/** Setzt die Live-Position und laesst die Automatik einmal pruefen. */
+async function moveTo(t, x, y = 3) {
+  t.state.telemetry.x = x;
+  t.state.telemetry.y = y;
+  t.state.telemetry.receivedAt = Date.now();
+  t.state.fixHistory = []; // ohne Glaettung rechnet pointFromTelemetry mit dem rohen Wert
+  await t.autoCaptureTick();
+}
+
+test('Distanzmodus setzt Punkte nach gefahrener Strecke, nicht nach Zeit', async () => {
+  const { t } = setup();
+  t.state.view.autoCaptureMode = 'distance';
+  t.state.view.autoCaptureDistanceCm = 50;
+  await t.startAutoCapture();
+  assert.strictEqual(t.state.activeMap.perimeter.length, 1, 'der Start setzt den Bezugspunkt');
+  const start = t.state.activeMap.perimeter[0];
+
+  // 30 cm reichen nicht.
+  await moveTo(t, start.x + 0.30);
+  assert.strictEqual(t.state.activeMap.perimeter.length, 1, 'unter dem Schwellwert passiert nichts');
+  // 49 cm auch nicht — knapp darunter darf nicht ausloesen.
+  await moveTo(t, start.x + 0.49);
+  assert.strictEqual(t.state.activeMap.perimeter.length, 1);
+  // 50 cm loesen aus.
+  await moveTo(t, start.x + 0.50);
+  assert.strictEqual(t.state.activeMap.perimeter.length, 2, 'ab dem Schwellwert entsteht ein Punkt');
+
+  // Gemessen wird ab dem zuletzt gesetzten Punkt, nicht ab dem Start.
+  await moveTo(t, start.x + 0.80);
+  assert.strictEqual(t.state.activeMap.perimeter.length, 2, '30 cm nach dem letzten Punkt reichen nicht');
+  await moveTo(t, start.x + 1.00);
+  assert.strictEqual(t.state.activeMap.perimeter.length, 3);
+
+  // Auch quer zur Fahrtrichtung zaehlt die echte Strecke, nicht nur x.
+  const last = t.state.activeMap.perimeter[2];
+  await moveTo(t, last.x, last.y + 0.60);
+  assert.strictEqual(t.state.activeMap.perimeter.length, 4, 'Strecke ist zweidimensional');
+});
+
+test('Zeitmodus bleibt vom Distanzschwellwert unberuehrt', async () => {
+  const { t } = setup();
+  assert.strictEqual(t.state.view.autoCaptureMode, 'time', 'Zeitbasiert bleibt Standard');
+  await t.startAutoCapture();
+  assert.strictEqual(t.state.activeMap.perimeter.length, 1);
+  // Ohne jede Bewegung entsteht im Zeitmodus trotzdem der naechste Punkt.
+  await t.autoCaptureTick();
+  assert.strictEqual(t.state.activeMap.perimeter.length, 2, 'Zeitmodus fragt nicht nach Strecke');
+});
+
+test('Das Label traegt die Einheit des gewaehlten Modus', () => {
+  const { t } = setup();
+  t.state.view.autoCaptureIntervalS = 5;
+  t.state.view.autoCaptureDistanceCm = 40;
+
+  t.state.view.autoCaptureMode = 'time';
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.autoCaptureLabel.textContent, 'Auto-Aufnahme (5s)');
+  t.state.autoCaptureRunning = true;
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.autoCaptureLabel.textContent, 'Automatik läuft (5s)');
+
+  t.state.view.autoCaptureMode = 'distance';
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.autoCaptureLabel.textContent, 'Automatik läuft (40cm)');
+  t.state.autoCaptureRunning = false;
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.autoCaptureLabel.textContent, 'Auto-Aufnahme (40cm)');
+  assert.ok(!t.ui.autoCaptureLabel.textContent.includes('{'), 'kein unersetzter Platzhalter');
+
+  t.toggleLanguage();
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.autoCaptureLabel.textContent, 'Auto capture (40cm)', 'auch auf Englisch');
+});
+
+test('„Nur bei RTK FIX“ gilt in beiden Automatik-Modi', async () => {
+  for (const mode of ['time', 'distance']) {
+    const { t } = setup();
+    t.state.view.autoCaptureMode = mode;
+    t.state.view.autoCaptureDistanceCm = 10;
+    t.ui.fixOnly.checked = true;
+    t.state.telemetry.solution = 1; // Float, kein FIX
+
+    await t.startAutoCapture();
+    assert.strictEqual(t.state.autoCaptureRunning, false, `${mode}: ohne FIX startet die Automatik gar nicht`);
+    assert.strictEqual(t.state.activeMap.perimeter.length, 0, `${mode}: und setzt keinen Punkt`);
+
+    // Auch ein Verlust des FIX waehrend des Laufs darf keine Punkte mehr erzeugen.
+    t.state.telemetry.solution = 2;
+    await t.startAutoCapture();
+    assert.strictEqual(t.state.activeMap.perimeter.length, 1, `${mode}: mit FIX laeuft es`);
+    t.state.telemetry.solution = 1;
+    t.state.telemetry.x = 99; // weit genug fuer den Distanzmodus
+    await t.autoCaptureTick();
+    assert.strictEqual(t.state.activeMap.perimeter.length, 1, `${mode}: ohne FIX kommt nichts dazu`);
+  }
+});
+
+test('Distanzwert wird auf sinnvolle Grenzen gestutzt', () => {
+  const { t } = setup();
+  assert.strictEqual(t.AUTO_CAPTURE_DISTANCE_MIN_CM, 10, 'unter RTK-Rauschen waere sinnlos');
+  assert.strictEqual(t.AUTO_CAPTURE_DISTANCE_MAX_CM, 1000);
+  t.ui.autoCaptureModeSelect.value = 'distance';
+  t.ui.autoCaptureDistanceInput.value = '2';
+  t.updateViewPreferencesFromUi();
+  assert.strictEqual(t.state.view.autoCaptureDistanceCm, 10, 'zu klein wird angehoben');
+  t.ui.autoCaptureDistanceInput.value = '5000';
+  t.updateViewPreferencesFromUi();
+  assert.strictEqual(t.state.view.autoCaptureDistanceCm, 1000, 'zu gross wird gedeckelt');
+});
+
+test('Im Menue steht nur die Zeile des gewaehlten Modus', () => {
+  const { t } = setup();
+  t.state.view.autoCaptureMode = 'time';
+  t.applyAutoCaptureModeToUi();
+  assert.strictEqual(t.ui.autoCaptureIntervalRow.hidden, false);
+  assert.strictEqual(t.ui.autoCaptureDistanceRow.hidden, true);
+  t.state.view.autoCaptureMode = 'distance';
+  t.applyAutoCaptureModeToUi();
+  assert.strictEqual(t.ui.autoCaptureIntervalRow.hidden, true);
+  assert.strictEqual(t.ui.autoCaptureDistanceRow.hidden, false);
+});
+
+test('Der Distanzmodus prueft im Takt der Positionsabfragen', async () => {
+  const { t, clock } = setup();
+  assert.strictEqual(t.BLE_POLL_INTERVAL_MS, 500, 'Grundlage der Distanzpruefung');
+  t.state.view.autoCaptureMode = 'distance';
+  // Das Zeitintervall darf im Distanzmodus keine Rolle spielen: mit 60 s waere nach einer
+  // Sekunde noch kein einziger Takt gelaufen.
+  t.state.view.autoCaptureIntervalS = 60;
+  t.state.view.autoCaptureDistanceCm = 20;
+  await t.startAutoCapture();
+  const start = t.state.activeMap.perimeter[0];
+  t.state.telemetry.x = start.x + 0.5;
+  t.state.telemetry.receivedAt = clock.now();
+  t.state.fixHistory = [];
+  await clock.runFor(1200);
+  assert.ok(t.state.activeMap.perimeter.length >= 2,
+    `nach 1,2 s muss der eigene Takt gelaufen sein, Punkte: ${t.state.activeMap.perimeter.length}`);
 });
 
 test('RTK-Badge zeigt Zustand und Satelliten als Mäher/Station', () => {

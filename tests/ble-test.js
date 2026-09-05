@@ -30,6 +30,9 @@ async function connect(ctx, budgetMs = 2000) {
 }
 
 // ---------------------------------------------------------------------------
+/** Erwartete abgeleitete Grenze: 8000 ms Karenzzeit / 500 ms Intervall. */
+const BLE_UNANSWERED_POLL_LIMIT_EXPECTED = 16;
+
 const cases = [];
 const test = (name, fn) => cases.push({ name, fn });
 
@@ -55,13 +58,13 @@ test('AT+V geht im Klartext raus, spaetere Kommandos verschluesselt', async () =
   assert.ok(ctx.sim.commands.includes('AT+S,0x13'), 'Firmware muss AT+S entschluesselt sehen');
 });
 
-test('Polling: alle 2000 ms ein AT+S, Telemetrie wird uebernommen', async () => {
+test('Polling: alle 500 ms ein AT+S, Telemetrie wird uebernommen', async () => {
   const ctx = await connect(setup());
   const polls = () => ctx.sim.commands.filter((c) => c.startsWith('AT+S')).length;
   assert.ok(polls() >= 1, 'startPolling() fragt sofort einmal ab');
   const before = polls();
   await ctx.clock.runFor(4000);
-  assert.strictEqual(polls() - before, 2, 'genau zwei weitere Abfragen in 4 s');
+  assert.strictEqual(polls() - before, 8, 'genau acht weitere Abfragen in 4 s');
   assert.strictEqual(ctx.t.state.telemetry.x, 15.15);
   assert.strictEqual(ctx.t.state.telemetry.y, -10.24);
   assert.strictEqual(ctx.t.state.telemetry.solution, 2);
@@ -232,13 +235,36 @@ test('Unbeantwortete AT+S werden erkannt, auch wenn noch Daten eintrudeln', asyn
   assert.ok(ctx.t.state.reconnectAttempts >= 1, 'Reconnect laeuft an');
 });
 
-test('Abgerissene Notify-Kette endet nicht mehr im stillen "verbunden"', async () => {
+test('Abgerissene Notify-Kette laeuft mit 500-ms-Polling nur noch verlangsamt', async () => {
+  // Die Firmware schiebt das naechste Notify-Paket entweder aus SUCCESS_NOTIFY nach oder beim
+  // naechsten bleSend(). Faellt SUCCESS_NOTIFY aus, tropft der Stau also im Takt der Abfragen
+  // heraus — mit 500 ms statt 2000 ms viermal so schnell. Dadurch setzen sich wieder ganze
+  // Zeilen zusammen: der Link ist nicht mehr tot, sondern nur langsam, und die App darf ihn
+  // deshalb auch nicht mehr trennen. Frueher (2-s-Takt) reichte der Tropfen nicht und die
+  // Erkennung schlug zu. Der Fall "es kommt wirklich nichts Verwertbares" bleibt durch
+  // 'Unbeantwortete AT+S werden erkannt, auch wenn noch Daten eintrudeln' abgedeckt.
   const ctx = setup({ notifyAck: false });
   await connect(ctx, 4200);
   ctx.sim.connectFailures = 999;
+  const seenAt = ctx.t.state.telemetry.receivedAt;
   await ctx.clock.runFor(30000);
-  assert.strictEqual(ctx.t.state.connected, false);
-  assert.ok(['bleNoAnswer', 'bleLinkStalled'].includes(ctx.t.state.connectionDetailKey));
+  assert.strictEqual(ctx.t.state.connected, true, 'ein tropfender Link ist kein toter Link');
+  assert.ok(ctx.t.state.telemetry.receivedAt > seenAt, 'es kommen weiterhin ganze Zeilen an');
+  assert.ok(ctx.t.state.pendingStateReplies < BLE_UNANSWERED_POLL_LIMIT_EXPECTED,
+    'der Zaehler wird immer wieder zurueckgesetzt');
+});
+
+test('Die Grenze fuer unbeantwortete Abfragen haengt am Intervall, nicht an einer festen Zahl', () => {
+  // Als feste Anzahl (frueher 4) haette das schnellere Polling die Karenzzeit von 8 s auf 2 s
+  // verkuerzt und gesunde Verbindungen abgeschossen.
+  const source = require('fs').readFileSync(require('path').join(__dirname, '..', 'app.js'), 'utf8');
+  const interval = Number((source.match(/BLE_POLL_INTERVAL_MS = (\d+)/) || [])[1]);
+  const grace = Number((source.match(/BLE_UNANSWERED_POLL_GRACE_MS = (\d+)/) || [])[1]);
+  assert.ok(interval > 0 && grace > 0, 'beide Konstanten muessen benannt sein');
+  assert.ok(/BLE_UNANSWERED_POLL_LIMIT = Math\.max\(4, Math\.round\(BLE_UNANSWERED_POLL_GRACE_MS \/ BLE_POLL_INTERVAL_MS\)\)/.test(source),
+    'die Grenze muss aus Karenzzeit und Intervall abgeleitet werden');
+  assert.strictEqual(BLE_UNANSWERED_POLL_LIMIT_EXPECTED, Math.round(grace / interval));
+  assert.strictEqual(grace, 8000, 'die Karenzzeit von 8 s bleibt unabhaengig vom Intervall');
 });
 
 test('Bleibt das Disconnect-Event aus, raeumt die App selbst auf', async () => {

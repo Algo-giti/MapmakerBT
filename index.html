@@ -284,7 +284,15 @@
 <label class="fix-switch"><input checked="" id="fixOnly" type="checkbox"/><span data-i18n="onlyRtkFix">Nur bei RTK FIX</span></label>
 <small class="view-note" data-i18n="onlyRtkFixHint">Ohne echten RTK FIX bleibt die Aufnahme gesperrt.</small>
 <div class="view-divider"></div>
-<label class="field compact"><span data-i18n="autoCaptureInterval">Intervall der automatischen Aufnahme</span><div class="unit-input"><input id="autoCaptureIntervalInput" inputmode="decimal" max="120" min="1" step="1" type="number" value="5"/><span>s</span></div></label>
+<label class="field compact"><span data-i18n="autoCaptureMode">Automatik-Modus</span>
+<select id="autoCaptureModeSelect">
+<option data-i18n="autoCaptureModeTime" selected="" value="time">Zeitbasiert</option>
+<option data-i18n="autoCaptureModeDistance" value="distance">Distanzbasiert</option>
+</select>
+</label>
+<label class="field compact" id="autoCaptureIntervalRow"><span data-i18n="autoCaptureInterval">Intervall der automatischen Aufnahme</span><div class="unit-input"><input id="autoCaptureIntervalInput" inputmode="decimal" max="120" min="1" step="1" type="number" value="5"/><span>s</span></div></label>
+<label class="field compact" hidden="" id="autoCaptureDistanceRow"><span data-i18n="autoCaptureDistance">Abstand der automatischen Aufnahme</span><div class="unit-input"><input id="autoCaptureDistanceInput" inputmode="decimal" max="1000" min="10" step="5" type="number" value="50"/><span>cm</span></div></label>
+<small class="view-note" data-i18n="autoCaptureDistanceHint">Ein neuer Punkt entsteht, sobald der Mäher seit dem letzten Auto-Punkt so weit gefahren ist. Unter 10 cm läuft die Automatik ins GPS-Rauschen.</small>
 <small class="auto-capture-state" data-i18n="autoCaptureOff" id="autoCaptureState">Automatik aus</small>
 <small class="view-note" data-i18n="autoCaptureWhereHint">Ein- und ausgeschaltet wird die Automatik über den Knopf auf der Karte.</small>
 </section>

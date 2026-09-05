@@ -14,14 +14,29 @@ const BLE_MAX_RECONNECT_ATTEMPTS = 8;
 // zerstueckelte Antworten und begrenzen trotzdem Muell ohne Zeilenende.
 const BLE_RX_BUFFER_LIMIT = 4096;
 const BLE_RX_OVERFLOW_LIMIT = 3;
-// Sunray beantwortet jedes AT+S. Bleiben vier Abfragen in Folge ohne verwertbare Antwort
-// (rund 8 s), ist die Antwortkette gestoert — auch wenn noch Bruchstuecke eintrudeln und
-// der reine Stille-Watchdog deshalb nicht anschlaegt.
-const BLE_UNANSWERED_POLL_LIMIT = 4;
+// Abstand der AT+S-Abfragen. Weder die Hauptplatine (aktualisiert die Position intern alle
+// 20 ms) noch die ESP32-Bruecke (reine UART-BLE-Weiterleitung ohne eigene Taktung) begrenzen
+// das — die frueheren 2000 ms waren eine reine Entscheidung der App.
+const BLE_POLL_INTERVAL_MS = 500;
+// Sunray beantwortet jedes AT+S. Bleibt rund 8 s lang jede Abfrage ohne verwertbare Antwort,
+// ist die Antwortkette gestoert — auch wenn noch Bruchstuecke eintrudeln und der reine
+// Stille-Watchdog deshalb nicht anschlaegt. Die Grenze wird aus dem Intervall abgeleitet:
+// als feste Anzahl haette das schnellere Polling sie auf 2 s verkuerzt und gesunde
+// Verbindungen abgeschossen.
+const BLE_UNANSWERED_POLL_GRACE_MS = 8000;
+const BLE_UNANSWERED_POLL_LIMIT = Math.max(4, Math.round(BLE_UNANSWERED_POLL_GRACE_MS / BLE_POLL_INTERVAL_MS));
 // Fehlgeschlagene Schreibvorgaenge wiederholen sich im Sekundentakt (Fahr-Heartbeat, Polling).
 // Der Kurzhinweis erscheint jedes Mal, der Dialog hoechstens alle 20 s.
 const BLE_ERROR_NOTICE_INTERVAL_MS = 20000;
 // Manuelle Aufnahme mittelt die letzten Fixes, statt den Nutzer warten zu lassen.
+// Distanzbasierte Automatik. Die Untergrenze liegt bewusst deutlich ueber der RTK-Fix-
+// Genauigkeit von wenigen Zentimetern: darunter wuerde schon das Restrauschen der Position
+// laufend Punkte ausloesen, obwohl der Maeher steht.
+const AUTO_CAPTURE_DISTANCE_MIN_CM = 10;
+const AUTO_CAPTURE_DISTANCE_MAX_CM = 1000;
+const AUTO_CAPTURE_DISTANCE_DEFAULT_CM = 50;
+const AUTO_CAPTURE_MODES = ['time', 'distance'];
+
 /** So viele Bearbeitungsschritte haelt der Rueckgaengig-Stapel vor. */
 const UNDO_STACK_LIMIT = 20;
 const POSITION_SMOOTHING_WINDOW_MS = 2000;
@@ -134,6 +149,10 @@ const I18N = {
     browserNoBluetooth: 'Dieser Browser stellt Web Bluetooth nicht bereit. Für den Prototyp Android + Chrome verwenden; der Demo-Modus funktioniert trotzdem.',
     connectionFailed: 'Verbindung fehlgeschlagen: {message}', bleError: 'BLE Fehler', importFailed: 'Import fehlgeschlagen: {message}',
     versionError: 'AT+V Fehler', startError: 'Startfehler: {message}', appStarted: 'App gestartet',
+    autoCaptureMode: 'Automatik-Modus', autoCaptureModeTime: 'Zeitbasiert', autoCaptureModeDistance: 'Distanzbasiert',
+    autoCaptureDistance: 'Abstand der automatischen Aufnahme',
+    autoCaptureDistanceHint: 'Ein neuer Punkt entsteht, sobald der Mäher seit dem letzten Auto-Punkt so weit gefahren ist. Unter 10 cm läuft die Automatik ins GPS-Rauschen.',
+    autoCaptureDist: 'Auto-Aufnahme ({distance}cm)', autoCaptureDistOn: 'Automatik läuft ({distance}cm)',
     autoCapture: 'Auto-Aufnahme ({seconds}s)', autoCaptureOff: 'Automatik aus', autoCaptureRunning: 'Läuft · {count} Punkte automatisch', autoPointSaved: 'Auto-Punkt {count}: X {x} · Y {y}',
     showTrail: 'Fahrspur anzeigen', clearTrail: 'Fahrspur löschen', trailCleared: 'Fahrspur gelöscht.', distanceToBoundary: 'Zur Grenze {distance} m', distanceToPoint: 'Zum Punkt {distance} m',
     mapCheck: 'Kartenprüfung', checkNow: 'Jetzt prüfen', notCheckedYet: 'Noch nicht geprüft.', mapCheckOk: 'Karte plausibel · Fläche {area} m² · Umfang {perimeter} m · RTK FIX {fix}/{points}', mapCheckIssues: '{errors} Fehler · {warnings} Hinweise · Fläche {area} m²',
@@ -271,6 +290,10 @@ const I18N = {
     browserNoBluetooth: 'This browser does not provide Web Bluetooth. Use Android + Chrome for the prototype; demo mode still works.',
     connectionFailed: 'Connection failed: {message}', bleError: 'BLE error', importFailed: 'Import failed: {message}',
     versionError: 'AT+V error', startError: 'Startup error: {message}', appStarted: 'App started',
+    autoCaptureMode: 'Automatic mode', autoCaptureModeTime: 'Time-based', autoCaptureModeDistance: 'Distance-based',
+    autoCaptureDistance: 'Distance between automatic points',
+    autoCaptureDistanceHint: 'A new point is captured once the mower has travelled this far since the last automatic point. Below 10 cm the automation just follows GPS noise.',
+    autoCaptureDist: 'Auto capture ({distance}cm)', autoCaptureDistOn: 'Automatic running ({distance}cm)',
     autoCapture: 'Auto capture ({seconds}s)', autoCaptureOff: 'Automatic off', autoCaptureRunning: 'Running · {count} points captured automatically', autoPointSaved: 'Auto point {count}: X {x} · Y {y}',
     showTrail: 'Show movement trail', clearTrail: 'Clear movement trail', trailCleared: 'Movement trail cleared.', distanceToBoundary: 'To boundary {distance} m', distanceToPoint: 'To point {distance} m',
     mapCheck: 'Map check', checkNow: 'Check now', notCheckedYet: 'Not checked yet.', mapCheckOk: 'Map looks plausible · area {area} m² · perimeter {perimeter} m · RTK FIX {fix}/{points}', mapCheckIssues: '{errors} errors · {warnings} notes · area {area} m²',
@@ -387,6 +410,8 @@ const ui = {
   // Fahren
   driveZone: $('driveZone'), driveJoystick: $('driveJoystick'), joystickKnob: $('joystickKnob'), driveState: $('driveState'),
   joystickSizeSelect: $('joystickSizeSelect'), driveLabelSideSelect: $('driveLabelSideSelect'),
+  autoCaptureModeSelect: $('autoCaptureModeSelect'), autoCaptureDistanceInput: $('autoCaptureDistanceInput'),
+  autoCaptureIntervalRow: $('autoCaptureIntervalRow'), autoCaptureDistanceRow: $('autoCaptureDistanceRow'),
   driveSpeedMinInput: $('driveSpeedMinInput'), driveSpeedMaxInput: $('driveSpeedMaxInput'), driveTurnMaxInput: $('driveTurnMaxInput'), driveSpeedValue: $('driveSpeedValue'),
   // Menueseite
   menuPage: $('menuPage'), menuScroll: $('menuScroll'), settingsSections: $('settingsSections'),
@@ -466,6 +491,8 @@ const state = {
   autoCaptureTimer: null,
   autoCaptureBusy: false,
   autoCaptureCount: 0,
+  // Bezugspunkt der distanzbasierten Automatik: ab hier wird die Fahrstrecke gemessen.
+  autoCaptureLastPoint: null,
   currentTransform: null,
   wakeLock: null,
   driveTimer: null,
@@ -482,7 +509,8 @@ const state = {
   activeExclusionId: null,
   view: {
     showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35,
-    autoCaptureIntervalS: 5, showTrail: true, showPointQuality: true, keepAwake: true,
+    autoCaptureIntervalS: 5, autoCaptureMode: 'time', autoCaptureDistanceCm: AUTO_CAPTURE_DISTANCE_DEFAULT_CM,
+    showTrail: true, showPointQuality: true, keepAwake: true,
     driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
     joystickScale: '1', driveLabelSide: 'left',
   },
@@ -673,6 +701,9 @@ function loadViewPreferences() {
     state.view.mowerWidth = clampNumber(saved.mowerWidth, 0.10, 3.00, 0.35);
     state.view.gridStep = saved.gridStep === 'auto' ? 'auto' : clampNumber(saved.gridStep, 0.10, 10.00, 0.50);
     state.view.autoCaptureIntervalS = Math.round(clampNumber(saved.autoCaptureIntervalS, 1, 120, 5));
+    state.view.autoCaptureMode = AUTO_CAPTURE_MODES.includes(saved.autoCaptureMode) ? saved.autoCaptureMode : 'time';
+    state.view.autoCaptureDistanceCm = Math.round(clampNumber(saved.autoCaptureDistanceCm,
+      AUTO_CAPTURE_DISTANCE_MIN_CM, AUTO_CAPTURE_DISTANCE_MAX_CM, AUTO_CAPTURE_DISTANCE_DEFAULT_CM));
     state.view.theme = THEMES.includes(saved.theme) ? saved.theme : 'system';
     state.view.showTrail = saved.showTrail !== false;
     state.view.showPointQuality = saved.showPointQuality !== false;
@@ -683,9 +714,16 @@ function loadViewPreferences() {
     state.view.joystickScale = JOYSTICK_SCALES.includes(String(saved.joystickScale)) ? String(saved.joystickScale) : '1';
     state.view.driveLabelSide = saved.driveLabelSide === 'right' ? 'right' : 'left';
   } catch (_) {
-    state.view = { showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, autoCaptureIntervalS: 5, showTrail: true, showPointQuality: true, keepAwake: true, driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
+    state.view = { showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, autoCaptureIntervalS: 5, autoCaptureMode: 'time', autoCaptureDistanceCm: AUTO_CAPTURE_DISTANCE_DEFAULT_CM, showTrail: true, showPointQuality: true, keepAwake: true, driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
       joystickScale: '1', driveLabelSide: 'left' };
   }
+}
+
+/** Im Menue steht nur die Zeile, die zum gewaehlten Automatik-Modus gehoert. */
+function applyAutoCaptureModeToUi() {
+  const distance = state.view.autoCaptureMode === 'distance';
+  ui.autoCaptureIntervalRow.hidden = distance;
+  ui.autoCaptureDistanceRow.hidden = !distance;
 }
 
 function saveViewPreferences() {
@@ -700,6 +738,9 @@ function applyViewPreferencesToUi() {
   ui.mowerLengthInput.value = state.view.mowerLength.toFixed(2);
   ui.mowerWidthInput.value = state.view.mowerWidth.toFixed(2);
   ui.autoCaptureIntervalInput.value = String(state.view.autoCaptureIntervalS);
+  ui.autoCaptureModeSelect.value = state.view.autoCaptureMode;
+  ui.autoCaptureDistanceInput.value = String(state.view.autoCaptureDistanceCm);
+  applyAutoCaptureModeToUi();
   applyTheme();
   ui.showTrail.checked = state.view.showTrail;
   ui.showPointQuality.checked = state.view.showPointQuality;
@@ -720,6 +761,9 @@ function updateViewPreferencesFromUi() {
   state.view.mowerLength = clampNumber(ui.mowerLengthInput.value, 0.10, 3.00, state.view.mowerLength);
   state.view.mowerWidth = clampNumber(ui.mowerWidthInput.value, 0.10, 3.00, state.view.mowerWidth);
   state.view.autoCaptureIntervalS = Math.round(clampNumber(ui.autoCaptureIntervalInput.value, 1, 120, state.view.autoCaptureIntervalS));
+  state.view.autoCaptureMode = AUTO_CAPTURE_MODES.includes(ui.autoCaptureModeSelect.value) ? ui.autoCaptureModeSelect.value : 'time';
+  state.view.autoCaptureDistanceCm = Math.round(clampNumber(ui.autoCaptureDistanceInput.value,
+    AUTO_CAPTURE_DISTANCE_MIN_CM, AUTO_CAPTURE_DISTANCE_MAX_CM, state.view.autoCaptureDistanceCm));
   state.view.showTrail = ui.showTrail.checked;
   state.view.showPointQuality = ui.showPointQuality.checked;
   state.view.keepAwake = ui.keepAwake.checked;
@@ -1229,8 +1273,11 @@ function refreshCaptureState() {
   ui.captureFabWrap.hidden = auto || areaSelected;
   // Das eingestellte Intervall steht in beiden Zustaenden im Label. Nur im laufenden Zustand
   // waere es unsichtbar, solange kein Maeher verbunden ist — dann bleibt der Knopf gesperrt.
-  ui.autoCaptureLabel.textContent = tr(auto ? 'autoCaptureOn' : 'autoCapture',
-    { seconds: state.view.autoCaptureIntervalS });
+  // Die Einheit folgt dem gewaehlten Modus, damit auf der Karte ablesbar bleibt, wonach die
+  // Automatik ueberhaupt ausloest.
+  ui.autoCaptureLabel.textContent = state.view.autoCaptureMode === 'distance'
+    ? tr(auto ? 'autoCaptureDistOn' : 'autoCaptureDist', { distance: state.view.autoCaptureDistanceCm })
+    : tr(auto ? 'autoCaptureOn' : 'autoCapture', { seconds: state.view.autoCaptureIntervalS });
   ui.autoCaptureBtn.setAttribute('aria-pressed', String(auto));
   ui.autoCaptureBtn.disabled = mapLocked || (!auto && !(hasMap && fresh && coords && !blockedByFixRule));
   // Mit ausgewaehltem Punkt geht es ums Verschieben, nicht ums Aufnehmen: die Automatik
@@ -1497,7 +1544,7 @@ function startPolling() {
   };
   state.pendingStateReplies = 0;
   poll();
-  state.pollTimer = setInterval(poll, 2000);
+  state.pollTimer = setInterval(poll, BLE_POLL_INTERVAL_MS);
 }
 
 function stopPolling() {
@@ -2196,6 +2243,7 @@ function stopAutoCapture({ render = true } = {}) {
   state.autoCaptureTimer = null;
   state.autoCaptureRunning = false;
   state.autoCaptureBusy = false;
+  state.autoCaptureLastPoint = null;
   releaseWakeLock();
   if (render) { renderMap(); refreshCaptureState(); }
 }
@@ -2208,9 +2256,14 @@ async function startAutoCapture() {
   clearPointSelection({ render: false });
   state.autoCaptureRunning = true;
   state.autoCaptureCount = 0;
+  state.autoCaptureLastPoint = null; // der erste Takt setzt den Bezugspunkt
   requestWakeLockIfNeeded();
   await autoCaptureTick();
-  const intervalMs = Math.max(1, state.view.autoCaptureIntervalS) * 1000;
+  // Im Distanzmodus entscheidet nicht der Takt, sondern die gefahrene Strecke — deshalb wird
+  // so oft geprueft, wie ueberhaupt neue Positionen eintreffen.
+  const intervalMs = state.view.autoCaptureMode === 'distance'
+    ? BLE_POLL_INTERVAL_MS
+    : Math.max(1, state.view.autoCaptureIntervalS) * 1000;
   state.autoCaptureTimer = setInterval(() => {
     // Eine still weiterlaufende, aber fehlschlagende Automatik waere das Schlimmste:
     // anhalten und den Grund zeigen.
@@ -2233,8 +2286,17 @@ async function autoCaptureTick() {
       renderMap(); refreshCaptureState();
       return;
     }
+    // Distanzmodus: erst ausloesen, wenn seit dem letzten Auto-Punkt genug Strecke liegt.
+    // Der Bezugspunkt ist der zuletzt tatsaechlich gesetzte Punkt, nicht die letzte Messung —
+    // sonst wuerde sich der Schwellwert bei langsamer Fahrt in kleinen Schritten aufaddieren.
+    if (state.view.autoCaptureMode === 'distance' && state.autoCaptureLastPoint) {
+      const now = pointFromTelemetry();
+      const moved = Math.hypot(now.x - state.autoCaptureLastPoint.x, now.y - state.autoCaptureLastPoint.y);
+      if (moved < state.view.autoCaptureDistanceCm / 100) return;
+    }
     const point = await appendCurrentPoint({ automatic: true });
     if (point) {
+      state.autoCaptureLastPoint = { x: point.x, y: point.y };
       state.autoCaptureCount += 1;
       ui.pointStatus.textContent = tr('autoPointSaved', { count: state.autoCaptureCount, x: point.x.toFixed(2), y: point.y.toFixed(2) });
       renderMap(); refreshCaptureState();
@@ -3490,7 +3552,8 @@ function bindEvents() {
 
   // Aufnahme-Einstellungen
   ui.fixOnly.addEventListener('change', refreshCaptureState);
-  ui.autoCaptureIntervalInput.addEventListener('change', () => { updateViewPreferencesFromUi(); applyViewPreferencesToUi(); refreshCaptureState(); });
+  [ui.autoCaptureIntervalInput, ui.autoCaptureModeSelect, ui.autoCaptureDistanceInput].forEach((input) => input
+    .addEventListener('change', () => { updateViewPreferencesFromUi(); applyViewPreferencesToUi(); refreshCaptureState(); }));
   ui.newExclusionBtn.addEventListener('click', () => createExclusion().then(renderElementList).catch(reportError));
   ui.elementList.addEventListener('click', (event) => {
     const remove = event.target.closest('[data-delete-role]');

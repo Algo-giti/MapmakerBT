@@ -205,13 +205,32 @@ meldet sie als `checkAreaOpen`/`checkPerimeterOpen` und bietet `closeAllOpenCont
 **Positions-Glättung:** `state.fixHistory` sammelt die letzten Fixes aus `handleLine()`;
 `smoothedPosition()` mittelt alle innerhalb von `POSITION_SMOOTHING_WINDOW_MS` (2 s) und
 `pointFromTelemetry()` nimmt diesen Mittelwert (Feld `smoothedFrom` = Anzahl der Fixes). Bei
-weniger als zwei Fixes im Fenster wird nicht gemittelt. **Einschränkung:** bei 2 s Polling liegen
-im Fenster meist nur ein bis zwei Fixes — die Glättung wirkt erst mit kürzerem Poll-Intervall
-richtig.
+weniger als zwei Fixes im Fenster wird nicht gemittelt. Mit dem **500-ms-Polling** liegen jetzt
+bis zu vier Fixes im 2-s-Fenster statt einem bis zwei — die Glättung wirkt damit erstmals so, wie
+sie gedacht war. Die frühere Einschränkung ist damit erledigt.
 
-**Automatik:** zeitgesteuert über `state.view.autoCaptureIntervalS` (Standard 5 s, nur im Menü
-einstellbar). Die Beschriftung über dem Knopf trägt das Intervall in **beiden** Zuständen:
-„Auto-Aufnahme (5s)“ bzw. „Automatik läuft (5s)“. Bewusst auch im gestoppten Zustand — der
+**Automatik — zwei Modi** über `state.view.autoCaptureMode` ∈ `time | distance`, umschaltbar in
+*Einstellungen › Aufnahme*; **`time` bleibt Standard**. Im Menü steht immer nur die Zeile des
+gewählten Modus (`applyAutoCaptureModeToUi()`).
+
+- **Zeitbasiert:** `state.view.autoCaptureIntervalS` (Standard 5 s, 1–120).
+- **Distanzbasiert:** `state.view.autoCaptureDistanceCm` (Standard 50 cm, **Minimum 10 cm**,
+  Maximum 1000 cm). Ein Punkt entsteht, sobald die Strecke zwischen der aktuellen Position und
+  dem **zuletzt tatsächlich gesetzten** Auto-Punkt (`state.autoCaptureLastPoint`) den Wert
+  erreicht — bewusst nicht zur letzten Messung, sonst summierten sich kleine Schritte bei
+  langsamer Fahrt nie zum Schwellwert. Gemessen wird zweidimensional (`Math.hypot`). Der Takt ist
+  in diesem Modus `BLE_POLL_INTERVAL_MS`, nicht das Zeitintervall: es soll jede neue Position
+  geprüft werden. Das Minimum von 10 cm liegt bewusst deutlich über der RTK-Fix-Genauigkeit von
+  wenigen Zentimetern. **Nicht ohne Gerät verifizierbar:** ob 10 cm bei echtem RTK-Rauschen
+  wirklich nicht „zittert“.
+
+Die Beschriftung über dem Knopf trägt die Einheit des Modus in **beiden** Zuständen:
+„Auto-Aufnahme (5s)“ / „Automatik läuft (5s)“ bzw. „Auto-Aufnahme (50cm)“ /
+„Automatik läuft (50cm)“.
+
+**„Nur bei RTK FIX“ gilt in beiden Modi** — das war schon vorher so und ist jetzt festgenagelt:
+`startAutoCapture()` startet ohne FIX gar nicht erst, `autoCaptureTick()` prüft es je Takt, und
+`appendCurrentPoint()` prüft es ein drittes Mal. Kein Bug gefunden, aber ein Test dafür ergänzt. Bewusst auch im gestoppten Zustand — der
 laufende Zustand ist ohne verbundenen Mäher gar nicht erreichbar (`ui.autoCaptureBtn.disabled`
 verlangt frische Telemetrie), das Intervall wäre sonst praktisch unsichtbar.
 **Das Intervall lässt sich während des Laufs nicht ändern**, weil `setMenuOpen(true)` eine
@@ -324,8 +343,15 @@ auf der Karte („Letzten Punkt“).
 4. Handshake: `AT+V` **unverschlüsselt** senden, 1800 ms auf `V,…` warten; bei Timeout einmal ohne
    Checksumme wiederholen. Aus der Antwort: Firmware, Version, `encryptionEnabled`, `challenge`.
 5. Schlüssel = `passwort % challenge` (`deriveEncryptionKey`).
-6. Polling: alle **2000 ms** `AT+S`; wird übersprungen, solange ein Schreibvorgang läuft oder in den
-   letzten 220 ms ein Fahrbefehl ging.
+6. Polling: alle **500 ms** `AT+S` (`BLE_POLL_INTERVAL_MS`); wird übersprungen, solange ein
+   Schreibvorgang läuft oder in den letzten 220 ms ein Fahrbefehl ging. Weder die Hauptplatine
+   (aktualisiert die Position intern alle 20 ms) noch die ESP32-Brücke (reine UART↔BLE-
+   Weiterleitung ohne eigene Taktung) begrenzen das — die früheren 2000 ms waren eine reine
+   Entscheidung der App. **`BLE_UNANSWERED_POLL_LIMIT` wird deshalb aus dem Intervall
+   abgeleitet** (`BLE_UNANSWERED_POLL_GRACE_MS` 8000 / Intervall = 16): als feste Anzahl hätte
+   das schnellere Polling die Karenzzeit von 8 s auf 2 s verkürzt und gesunde Verbindungen
+   abgeschossen. **Nicht ohne Gerät verifizierbar:** ob 500 ms in der Praxis stabil bleiben
+   (BLE-Last, Akku).
 7. Senden: Kommando + `,0x<crc8>`, bei aktiver Verschlüsselung zeichenweise verschoben
    (`encryptPrintable`, Wrap im druckbaren ASCII 32..126), dann `\n`, in **15-Byte-Chunks** mit
    `writeValueWithResponse` und 12 ms Pause.
@@ -692,6 +718,20 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-05: **Polling auf 500 ms, distanzbasierte Automatik.** (a) `BLE_POLL_INTERVAL_MS` = 500
+  statt 2000. Dabei musste `BLE_UNANSWERED_POLL_LIMIT` von der festen 4 auf eine Ableitung aus
+  `BLE_UNANSWERED_POLL_GRACE_MS`/Intervall umgestellt werden — sonst hätte die Karenzzeit
+  8 s → 2 s betragen und gesunde Verbindungen getrennt. Ein BLE-Testfall hat sich dadurch
+  inhaltlich gedreht: bei abgerissener Notify-Kette tropft der ESP32-Stau jetzt viermal so
+  schnell heraus, es setzen sich wieder ganze Zeilen zusammen, der Link ist also nur noch
+  langsam statt tot — und darf deshalb nicht mehr getrennt werden. Der Fall „es kommt wirklich
+  nichts Verwertbares“ bleibt eigenständig abgedeckt. (b) Neuer Automatik-Modus
+  „Distanzbasiert“ (10–1000 cm, Standard 50) neben dem bestehenden Zeitmodus, mit
+  modusabhängigem Label und modusabhängiger Menüzeile. Die RTK-FIX-Pflicht galt bereits für
+  beide Modi — geprüft, kein Bug, jetzt per Test abgesichert. Sieben neue ui-Fälle und ein
+  neuer ble-Fall (ui 64, ble 34), gegen fünf simulierte Rückfälle geprüft. `APP_VERSION` auf
+  `v24`.
 
 - 2026-09-05: **Beschriftungen seitlich, neuer allgemeiner Rückgängig-Knopf.** (a) Alle
   Knopfbeschriftungen stehen jetzt neben statt über dem Knopf — absolut positioniert am eigenen
