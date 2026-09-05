@@ -11,7 +11,7 @@ Die Oberfläche lässt sich zwischen **Deutsch und Englisch** umschalten; Deutsc
 
 Screenshots:
 
-<img src="[pfad/zum/bild.png](https://github.com/Algo-giti/MapmakerBT/blob/main/screenshots/menu_connection.jpg)" alt="" width="300">
+<img src="https://github.com/Algo-giti/MapmakerBT/blob/main/screenshots/menu_connection.jpg" alt="" width="300">
 
 
 
