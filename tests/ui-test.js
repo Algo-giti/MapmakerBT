@@ -16,7 +16,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'toggleAutoCapture', 'startAutoCapture', 'stopAutoCapture', 'refreshDeleteButton', 'bindAccordion',
   'mapElements', 'renderElementList', 'deleteElement', 'activateElement',
   'canCloseAndStartNew', 'closeAndStartNewExclusion', 'currentExclusion',
-  'setTheme', 'applyTheme', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine', 'lockIcon',
+  'setTheme', 'applyTheme', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine', 'lockIcon', 'toggleLanguage',
   'askConfirm', 'confirmDialogRespond', 'showNotice', 'reportError', 'reportBleError',
   'showUpdateBar', 'applyUpdate', 'offerToCloseContour',
   'deleteSelectedPoint', 'handleMapTap', 'applyPointSelection', 'clearPointSelection', 'refreshCaptureState',
@@ -307,7 +307,7 @@ test('Automatik ersetzt den manuellen Knopf und blendet den Loeschknopf aus', as
 
   await t.toggleAutoCapture();
   assert.strictEqual(t.state.autoCaptureRunning, false);
-  assert.strictEqual(t.ui.autoCaptureLabel.textContent, 'Auto-Aufnahme', 'gestoppt ohne Intervall');
+  assert.strictEqual(t.ui.autoCaptureLabel.textContent, 'Auto-Aufnahme (12s)', 'auch gestoppt mit Intervall');
   assert.strictEqual(t.ui.captureFabWrap.hidden, false);
   assert.strictEqual(t.ui.deleteFabWrap.hidden, false);
 });
@@ -682,6 +682,35 @@ test('Schnellzugriff bleibt in anderen Modi und bei gesperrter Karte verborgen',
   t.state.activeMap.locked = true;
   t.refreshCaptureState();
   assert.strictEqual(t.ui.closeAndNewBtn.hidden, true, 'gesperrte Karte laesst nichts schliessen');
+});
+
+test('Das Automatik-Label traegt das Intervall in beiden Sprachen und ohne Platzhalterrest', async () => {
+  const { t } = setup();
+  t.state.view.autoCaptureIntervalS = 7;
+  t.setMode('waypoint');
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.autoCaptureLabel.textContent, 'Auto-Aufnahme (7s)');
+
+  await t.toggleAutoCapture();
+  assert.strictEqual(t.state.autoCaptureRunning, true, 'ohne laufende Automatik sagt das Label nichts aus');
+  assert.strictEqual(t.ui.autoCaptureLabel.textContent, 'Automatik läuft (7s)');
+
+  t.toggleLanguage();
+  assert.strictEqual(t.ui.autoCaptureLabel.textContent, 'Automatic running (7s)');
+  // Der haeufigste stille Rueckfall: tr() ersetzt den Platzhalter nicht mehr.
+  assert.ok(!t.ui.autoCaptureLabel.textContent.includes('{'), 'kein unersetzter Platzhalter');
+  t.toggleLanguage();
+  t.stopAutoCapture();
+  assert.strictEqual(t.ui.autoCaptureLabel.textContent, 'Auto-Aufnahme (7s)');
+});
+
+
+test('Das Aufnahmesymbol im Automatik-Knopf ist ein abgerundetes Quadrat', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const icon = html.slice(html.indexOf('class="auto-fab-icon icon-play"'), html.indexOf('icon-pause'));
+  assert.ok(icon.includes('<rect'), 'Kassettenrekorder-Aufnahme ist eckig, kein Punkt');
+  assert.ok(/rx="[\d.]+"/.test(icon), 'mit abgerundeten Ecken');
+  assert.ok(!icon.includes('<circle'), 'der gefuellte Kreis ist ersetzt');
 });
 
 test('Akkordeon: das Oeffnen eines Abschnitts schliesst die anderen', () => {

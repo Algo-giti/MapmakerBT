@@ -124,7 +124,7 @@ const I18N = {
     browserNoBluetooth: 'Dieser Browser stellt Web Bluetooth nicht bereit. Für den Prototyp Android + Chrome verwenden; der Demo-Modus funktioniert trotzdem.',
     connectionFailed: 'Verbindung fehlgeschlagen: {message}', bleError: 'BLE Fehler', importFailed: 'Import fehlgeschlagen: {message}',
     versionError: 'AT+V Fehler', startError: 'Startfehler: {message}', appStarted: 'App gestartet',
-    autoCapture: 'Auto-Aufnahme', autoCaptureOff: 'Automatik aus', autoCaptureRunning: 'Läuft · {count} Punkte automatisch', autoPointSaved: 'Auto-Punkt {count}: X {x} · Y {y}',
+    autoCapture: 'Auto-Aufnahme ({seconds}s)', autoCaptureOff: 'Automatik aus', autoCaptureRunning: 'Läuft · {count} Punkte automatisch', autoPointSaved: 'Auto-Punkt {count}: X {x} · Y {y}',
     showTrail: 'Fahrspur anzeigen', clearTrail: 'Fahrspur löschen', trailCleared: 'Fahrspur gelöscht.', distanceToBoundary: 'Zur Grenze {distance} m', distanceToPoint: 'Zum Punkt {distance} m',
     mapCheck: 'Kartenprüfung', checkNow: 'Jetzt prüfen', notCheckedYet: 'Noch nicht geprüft.', mapCheckOk: 'Karte plausibel · Fläche {area} m² · Umfang {perimeter} m · RTK FIX {fix}/{points}', mapCheckIssues: '{errors} Fehler · {warnings} Hinweise · Fläche {area} m²',
     checkPerimeterTooFew: 'Perimeter hat weniger als 3 Punkte.', checkAreaTooFew: '{label} hat weniger als 3 Punkte.', checkSelfIntersection: '{label} überschneidet sich selbst.', checkExclusionOutside: '{label} liegt nicht vollständig innerhalb des Perimeters.', checkExclusionOverlap: '{a} und {b} überschneiden sich.',
@@ -253,7 +253,7 @@ const I18N = {
     browserNoBluetooth: 'This browser does not provide Web Bluetooth. Use Android + Chrome for the prototype; demo mode still works.',
     connectionFailed: 'Connection failed: {message}', bleError: 'BLE error', importFailed: 'Import failed: {message}',
     versionError: 'AT+V error', startError: 'Startup error: {message}', appStarted: 'App started',
-    autoCapture: 'Auto capture', autoCaptureOff: 'Automatic off', autoCaptureRunning: 'Running · {count} points captured automatically', autoPointSaved: 'Auto point {count}: X {x} · Y {y}',
+    autoCapture: 'Auto capture ({seconds}s)', autoCaptureOff: 'Automatic off', autoCaptureRunning: 'Running · {count} points captured automatically', autoPointSaved: 'Auto point {count}: X {x} · Y {y}',
     showTrail: 'Show movement trail', clearTrail: 'Clear movement trail', trailCleared: 'Movement trail cleared.', distanceToBoundary: 'To boundary {distance} m', distanceToPoint: 'To point {distance} m',
     mapCheck: 'Map check', checkNow: 'Check now', notCheckedYet: 'Not checked yet.', mapCheckOk: 'Map looks plausible · area {area} m² · perimeter {perimeter} m · RTK FIX {fix}/{points}', mapCheckIssues: '{errors} errors · {warnings} notes · area {area} m²',
     checkPerimeterTooFew: 'Perimeter has fewer than 3 points.', checkAreaTooFew: '{label} has fewer than 3 points.', checkSelfIntersection: '{label} intersects itself.', checkExclusionOutside: '{label} is not fully inside the perimeter.', checkExclusionOverlap: '{a} and {b} overlap.',
@@ -1170,10 +1170,10 @@ function refreshCaptureState() {
   // Bei ausgewaehlter Flaeche bleibt nur der Papierkorb stehen: aufnehmen laesst sich in
   // diesem Zustand nichts, es geht ausschliesslich um die Flaeche.
   ui.captureFabWrap.hidden = auto || areaSelected;
-  // Bei laufender Automatik steht das eingestellte Intervall mit im Label.
-  ui.autoCaptureLabel.textContent = auto
-    ? tr('autoCaptureOn', { seconds: state.view.autoCaptureIntervalS })
-    : tr('autoCapture');
+  // Das eingestellte Intervall steht in beiden Zustaenden im Label. Nur im laufenden Zustand
+  // waere es unsichtbar, solange kein Maeher verbunden ist — dann bleibt der Knopf gesperrt.
+  ui.autoCaptureLabel.textContent = tr(auto ? 'autoCaptureOn' : 'autoCapture',
+    { seconds: state.view.autoCaptureIntervalS });
   ui.autoCaptureBtn.setAttribute('aria-pressed', String(auto));
   ui.autoCaptureBtn.disabled = mapLocked || (!auto && !(hasMap && fresh && coords && !blockedByFixRule));
   // Mit ausgewaehltem Punkt geht es ums Verschieben, nicht ums Aufnehmen: die Automatik
