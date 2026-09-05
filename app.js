@@ -318,7 +318,35 @@ function bleAdapter() {
   return (typeof navigator === 'undefined' ? null : navigator.bluetooth) || null;
 }
 
-const $ = (id) => document.getElementById(id);
+// Fehlt ein Element — etwa weil der Browser eine aeltere index.html aus dem Cache zeigt,
+// waehrend app.js schon neu ist — darf das nicht die ganze App lahmlegen: frueher warf der
+// erste Zugriff in bindEvents(), init() brach ab, und weil die Datenbank danach geoeffnet
+// wurde, waren plotzlich "alle Karten weg". Stattdessen ein stiller Platzhalter, der beim
+// Start gemeldet wird.
+const missingUiElements = [];
+
+function missingElementStub(id) {
+  const noop = () => {};
+  const stub = {
+    id, textContent: '', innerHTML: '', value: '', checked: false, disabled: true, hidden: true,
+    open: false, scrollTop: 0, scrollHeight: 0, dataset: {}, children: [], files: null, parentElement: null,
+    style: { setProperty: noop, removeProperty: noop },
+    classList: { add: noop, remove: noop, toggle: () => false, contains: () => false },
+    addEventListener: noop, removeEventListener: noop, setAttribute: noop, removeAttribute: noop,
+    getAttribute: () => null, appendChild: noop, append: noop, remove: noop, focus: noop, blur: noop,
+    setPointerCapture: noop, releasePointerCapture: noop, closest: () => null,
+    querySelector: () => null, querySelectorAll: () => [],
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 0, height: 0 }),
+  };
+  return stub;
+}
+
+const $ = (id) => {
+  const element = document.getElementById(id);
+  if (element) return element;
+  missingUiElements.push(id);
+  return missingElementStub(id);
+};
 const ui = {
   // Kopfzeile
   menuBtn: $('menuBtn'), bleStatusBtn: $('bleStatusBtn'), modeCycleBtn: $('modeCycleBtn'), modeChipLabel: $('modeChipLabel'),
@@ -3250,11 +3278,26 @@ function bindEvents() {
 
 async function init() {
   loadViewPreferences();
-  applyViewPreferencesToUi();
-  bindEvents();
+  if (missingUiElements.length) {
+    // Sichtbar machen statt still danebenlaufen — meist ein halb aktualisierter Cache.
+    log('UI', `fehlende Elemente: ${missingUiElements.join(', ')}`);
+  }
+  // Karten zuerst: eine fehlerhafte Bedienelement-Bindung darf die Kartendaten nie blockieren.
+  try {
+    state.db = await openDb();
+    await loadMaps();
+  } catch (error) {
+    log('DB', error.message);
+    reportError(error);
+  }
+  try {
+    applyViewPreferencesToUi();
+    bindEvents();
+  } catch (error) {
+    log('START', error.message);
+    reportError(error);
+  }
   resetViewport({ render: false });
-  state.db = await openDb();
-  await loadMaps();
   setMode('perimeter');
   setConnectionStatus(false, 'notConnected', 'readyConnect');
   applyLanguage();

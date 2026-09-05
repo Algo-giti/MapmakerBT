@@ -2818,3 +2818,9 @@ body.menu-open .app-frame { visibility: hidden; }
 }
 .modal-actions button { min-height: 48px; font-weight: 800; }
 .modal-actions.single { grid-template-columns: 1fr; }
+
+/* Ohne diese Regel greift das hidden-Attribut bei Knoepfen nicht: die Regel
+   `button { display: inline-flex }` weiter oben schlaegt das display:none des Browsers.
+   Das liess unter anderem den Abbrechen-Knopf in reinen Meldungen stehen und den
+   Knopf „Ansicht zuruecksetzen“ dauerhaft sichtbar. */
+[hidden] { display: none !important; }

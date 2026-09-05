@@ -33,10 +33,10 @@ function fakeDb() {
   return { transaction: () => ({ objectStore: () => store }) };
 }
 
-function setup() {
+function setup({ missingIds = [] } = {}) {
   const clock = createClock();
   const fake = createFakeBluetooth({ clock });
-  const { t, elements, sandbox } = loadApp({ clock, bleAdapter: fake.adapter, exportNames: EXPORTS });
+  const { t, elements, sandbox } = loadApp({ clock, bleAdapter: fake.adapter, exportNames: EXPORTS, missingIds });
   t.state.db = fakeDb();
   t.state.activeMap = t.normalizeMap(t.makeMap('Test'));
   t.state.maps = [t.state.activeMap];
@@ -549,6 +549,29 @@ test('Gesperrte Karte blockiert Aufnahme und Loeschwerkzeug', () => {
   assert.strictEqual(t.ui.deleteFabWrap.hidden, true);
 });
 
+
+test('Ein fehlendes Bedienelement legt die Karten nicht lahm', async () => {
+  // Halb aktualisierter Cache: app.js ist neu, index.html noch alt. Frueher warf bindEvents(),
+  // init() brach vor dem Oeffnen der Datenbank ab — und alle Karten schienen verschwunden.
+  const { t, sandbox, clock } = setup({ missingIds: ['clearLogBtn', 'checkUpdateBtn'] });
+  t.state.activeMap = null;
+  t.state.maps = [];
+  sandbox.indexedDB = {
+    open() {
+      const request = {};
+      queueMicrotask(() => request.onsuccess && request.onsuccess());
+      request.result = fakeDb();
+      return request;
+    },
+  };
+  await t.init();
+  await clock.flush();
+  assert.ok(t.state.db, 'die Datenbank wird trotzdem geoeffnet');
+  assert.ok(t.state.activeMap, 'und eine Karte steht bereit');
+  const logText = sandbox.document.getElementById('debugLog').textContent;
+  assert.ok(logText.includes('clearLogBtn') && logText.includes('checkUpdateBtn'),
+    'die fehlenden Elemente stehen im Diagnoseprotokoll');
+});
 
 test('init() laeuft ohne Fehler durch (Startpfad der App)', async () => {
   const { t, sandbox, clock } = setup();

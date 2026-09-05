@@ -151,6 +151,14 @@ test('Die Hinweiszeilen stehen untereinander und meiden die Knopfspalte', () => 
     `max-width muss mindestens ${columnWidth + columnRight}px fuer die Knopfspalte freilassen, laesst ${reserved}px`);
 });
 
+test('Das hidden-Attribut blendet auch Knoepfe aus', () => {
+  // `button { display: inline-flex }` schlaegt das display:none des Browsers fuer [hidden].
+  // Ohne eine eigene Regel bleiben per element.hidden ausgeblendete Knoepfe sichtbar.
+  const display = resolve('[hidden]', 'display').value || '';
+  assert.ok(display.includes('none'), 'globale [hidden]-Regel fehlt');
+  assert.ok(display.includes('!important'), 'ohne !important gewinnt die button-Regel');
+});
+
 test('Struktur: der Scrollcontainer ist direktes Kind der Menueseite', () => {
   const page = html.slice(html.indexOf('<section class="menu-page"'), html.indexOf('</section>', html.indexOf('<section class="menu-page"')));
   const head = page.slice(0, page.indexOf('<div class="menu-scroll"'));

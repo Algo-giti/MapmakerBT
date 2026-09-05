@@ -29,8 +29,10 @@ function elementStub(id) {
 }
 
 function loadApp(options = {}) {
-  const { clock = null, bleAdapter = null, exportNames = [] } = options;
+  const { clock = null, bleAdapter = null, exportNames = [], missingIds = [] } = options;
   const elements = new Map();
+  // Simuliert fehlende Elemente, z. B. eine aeltere index.html aus dem Cache.
+  const missing = new Set(missingIds);
   const documentStub = {
     documentElement: (() => {
       const attrs = new Map();
@@ -41,7 +43,11 @@ function loadApp(options = {}) {
         removeAttribute(name) { attrs.delete(name); },
       };
     })(),
-    getElementById(id) { if (!elements.has(id)) elements.set(id, elementStub(id)); return elements.get(id); },
+    getElementById(id) {
+      if (missing.has(id)) return null;
+      if (!elements.has(id)) elements.set(id, elementStub(id));
+      return elements.get(id);
+    },
     querySelector() { return null; },
     querySelectorAll() { return []; },
     createElement() { return elementStub(); },
