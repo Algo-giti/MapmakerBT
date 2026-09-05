@@ -142,11 +142,13 @@ test('Tap auf einen Punkt waehlt ihn aus, Tap ins Leere hebt die Auswahl auf', (
   assert.strictEqual(t.state.selectedPoint.index, 1);
   assert.strictEqual(t.ui.deleteFabWrap.hidden, false, 'Loeschwerkzeug ist sichtbar');
   assert.strictEqual(t.ui.deleteBtnLabel.textContent, 'Punktauswahl löschen');
+  assert.strictEqual(t.ui.autoFabWrap.hidden, true, 'beim Verschieben keine Automatik anbieten');
   assert.ok(t.ui.addPointBtn.classList.contains('move-mode'), 'Hauptbutton wechselt zu Verschieben');
 
   t.handleMapTap(tapAt(t, screen.x + 400, screen.y + 250));
   assert.strictEqual(t.state.selectedPoint, null);
   assert.strictEqual(t.ui.deleteBtnLabel.textContent, 'Letzten Punkt');
+  assert.strictEqual(t.ui.autoFabWrap.hidden, false, 'ohne Auswahl ist die Automatik wieder da');
   assert.ok(!t.ui.addPointBtn.classList.contains('move-mode'));
 });
 
@@ -285,6 +287,7 @@ test('Automatik ersetzt den manuellen Knopf und blendet den Loeschknopf aus', as
   assert.strictEqual(t.state.autoCaptureRunning, true);
   assert.strictEqual(t.ui.captureFabWrap.hidden, true, 'manueller Knopf samt Beschriftung verschwindet');
   assert.ok(t.ui.captureCluster.classList.contains('auto-active'));
+  assert.strictEqual(t.ui.autoFabWrap.hidden, false, 'laufende Automatik bleibt bedienbar');
   assert.strictEqual(t.ui.deleteFabWrap.hidden, true, 'kein Loeschen waehrend der Automatik');
   assert.strictEqual(t.state.activeMap.waypoints.length, 1, 'erster Punkt sofort');
   await t.toggleAutoCapture();
