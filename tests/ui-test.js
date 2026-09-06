@@ -15,7 +15,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'deleteAction', 'deleteSelectedArea', 'selectedExclusion', 'createExclusion', 'validateActiveMap',
   'toggleAutoCapture', 'startAutoCapture', 'stopAutoCapture', 'refreshDeleteButton', 'bindAccordion',
   'mapElements', 'renderElementList', 'deleteElement', 'activateElement',
-  'pruneEmptyExclusions', 'localizedExclusionName',
+  'pruneEmptyExclusions', 'localizedExclusionName', 'loadViewPreferences', 'applyHandedness',
   'canCloseAndStartNew', 'closeAndStartNewExclusion', 'currentExclusion',
   'setTheme', 'applyTheme', 'applyDriveZonePreferences', 'applyViewPreferencesToUi', 'updateViewPreferencesFromUi', 'JOYSTICK_SCALES', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine', 'lockIcon', 'toggleLanguage',
   'askConfirm', 'confirmDialogRespond', 'showNotice', 'reportError', 'reportBleError',
@@ -1185,21 +1185,54 @@ test('Das Aufnahmesymbol im Automatik-Knopf ist ein abgerundetes Quadrat', () =>
   assert.ok(!icon.includes('<circle'), 'der gefuellte Kreis ist ersetzt');
 });
 
-test('Statusanzeige steht links oder rechts vom Joystick, je nach Einstellung', () => {
-  const { t } = setup();
-  // Standard: links — der Joystick sitzt mittig, der rechte Daumen kommt von rechts.
-  assert.strictEqual(t.state.view.driveLabelSide, 'left');
+test('Ein Schalter spiegelt die gesamte Bedienung', () => {
+  const { t, sandbox } = setup();
+  const handed = () => sandbox.document.documentElement.getAttribute('data-handed');
+  // Standard ist Rechtshaender — unveraendert gegenueber vorher.
+  assert.strictEqual(t.state.view.handed, 'right');
   t.applyDriveZonePreferences();
-  assert.strictEqual(t.ui.driveZone.dataset.labelSide, 'left');
+  assert.strictEqual(handed(), 'right');
 
-  t.ui.driveLabelSideSelect.value = 'right';
+  t.ui.handedSelect.value = 'left';
   t.updateViewPreferencesFromUi();
-  assert.strictEqual(t.state.view.driveLabelSide, 'right');
-  assert.strictEqual(t.ui.driveZone.dataset.labelSide, 'right');
+  assert.strictEqual(t.state.view.handed, 'left');
+  assert.strictEqual(handed(), 'left', 'ein einziges Attribut am <html> schaltet alles um');
 
-  t.ui.driveLabelSideSelect.value = 'bogus';
+  t.ui.handedSelect.value = 'bogus';
   t.updateViewPreferencesFromUi();
-  assert.strictEqual(t.state.view.driveLabelSide, 'left', 'unbekannte Werte fallen auf links zurueck');
+  assert.strictEqual(t.state.view.handed, 'right', 'unbekannte Werte fallen auf Rechtshaender zurueck');
+  assert.strictEqual(handed(), 'right');
+
+  // Es darf keine zweite, parallele Umschaltung mehr geben.
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  assert.ok(!src.includes('dataset.labelSide'), 'die alte Umschaltung an der Fahrzone ist entfernt');
+  assert.strictEqual((src.match(/setAttribute\('data-handed'/g) || []).length, 1,
+    'das Attribut wird an genau einer Stelle gesetzt');
+});
+
+test('Die alte Einstellung driveLabelSide wird auf die Haendigkeit uebernommen', () => {
+  const { t, sandbox } = setup();
+  // Alter Stand aus dem localStorage: driveLabelSide 'right' hiess Linkshaender.
+  sandbox.localStorage.setItem('mapcreator-ardumower-view-prefs-v1', JSON.stringify({ driveLabelSide: 'right' }));
+  t.loadViewPreferences();
+  assert.strictEqual(t.state.view.handed, 'left', 'Anzeige rechts hiess Linkshaender');
+
+  sandbox.localStorage.setItem('mapcreator-ardumower-view-prefs-v1', JSON.stringify({ driveLabelSide: 'left' }));
+  t.loadViewPreferences();
+  assert.strictEqual(t.state.view.handed, 'right');
+});
+
+test('Die Karteninfo steht in der Werkzeugleiste und wird weiterhin gefuellt', () => {
+  const { t } = setup();
+  t.state.activeMap.name = 'Testwiese';
+  t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 1, y: 1 }];
+  t.renderMap();
+  assert.ok(t.ui.mapSummary.textContent.includes('Testwiese'), 'Kartenname steht in der Leiste');
+  assert.ok(t.ui.mapSummary.textContent.includes('2'), 'samt Punktzahl');
+  // Die Statuszeile ist dieselbe wie zuvor, nur an anderer Stelle.
+  t.ui.pointStatus.textContent = '';
+  t.refreshCaptureState();
+  assert.ok(t.ui.pointStatus.textContent.length > 0, 'die Statuszeile wird weiterhin beschrieben');
 });
 
 test('Joystick-Groesse ist einstellbar und wirkt ueber die CSS-Variable', () => {

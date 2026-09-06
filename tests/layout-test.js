@@ -143,8 +143,10 @@ test('Die Karte traegt oben eine Werkzeugleiste und darunter die Zeichenflaeche'
   assert.strictEqual(resolve('.capture-cluster', 'right').value, '12px');
   assert.strictEqual(resolve('.capture-cluster', 'bottom').value, '12px');
   const area = html.slice(html.indexOf('id="mapCanvasArea"'));
-  assert.ok(area.includes('id="captureCluster"') && area.includes('class="map-hud"'),
-    'Cluster und Hinweiszeile gehoeren in die Zeichenflaeche');
+  assert.ok(area.includes('id="captureCluster"'), 'der Aufnahme-Cluster gehoert in die Zeichenflaeche');
+  assert.ok(!area.includes('id="mapSummary"'),
+    'die Karteninfo liegt nicht mehr als Overlay auf der Karte');
+  assert.ok(!html.includes('class="map-hud"'), 'der Overlay-Kasten ist restlos entfernt');
 });
 
 test('Die Werkzeugleiste bricht Beschriftungen nicht um', () => {
@@ -153,8 +155,8 @@ test('Die Werkzeugleiste bricht Beschriftungen nicht um', () => {
   assert.strictEqual(resolve('.map-tool-label', 'white-space').value, 'nowrap',
     'die Beschriftung muss in einer Zeile bleiben');
   assert.strictEqual(resolve('.map-toolbar', 'display').value, 'flex');
-  assert.strictEqual(resolve('.map-toolbar', 'overflow-x').value, 'auto',
-    'passt die Leiste nicht, scrollt sie waagerecht statt umzubrechen');
+  assert.strictEqual(resolve('.map-tools', 'overflow-x').value, 'auto',
+    'passen die Werkzeuge nicht, scrollen sie waagerecht statt umzubrechen');
   assert.strictEqual(resolve('.map-tool', 'flex').value, '0 0 auto',
     'die Werkzeuge duerfen nicht zusammengequetscht werden');
   assert.strictEqual(resolve('.map-tool', 'display').value, 'grid', 'Symbol oben, Beschriftung darunter');
@@ -189,16 +191,59 @@ test('Der Rueckgaengig-Knopf steht als Werkzeug in der Leiste und startet ausgeg
   assert.ok(!undo.includes('M4 7h16'), 'der Rueckgaengig-Knopf traegt nicht das Loesch-Symbol');
 });
 
-test('Die Hinweiszeilen stehen untereinander und meiden den Aufnahme-Cluster', () => {
-  assert.strictEqual(resolve('.map-hud', 'display').value, 'grid', 'zwei Zeilen untereinander');
-  // Oben rechts steht seit der Werkzeugleiste nichts mehr, wovor die Zeile ausweichen muesste;
-  // randlos ueber die volle Breite darf sie trotzdem nicht laufen.
-  const maxWidth = resolve('.map-hud', 'max-width').value || '';
-  const reserved = Number((maxWidth.match(/-\s*(\d+)px/) || [])[1] || 0);
-  assert.ok(reserved > 0 && reserved < 100,
-    `ohne Knopfspalte oben rechts genuegt ein Rand, reserviert sind ${reserved}px`);
-  assert.ok(html.indexOf('class="map-hud"') > html.indexOf('id="mapCanvasArea"'),
-    'die Hinweiszeile haengt an der Zeichenflaeche, sonst laege sie hinter der Werkzeugleiste');
+test('Die Karteninfo sitzt in der Leiste und schneidet ab, statt die Werkzeuge zu verdraengen', () => {
+  // Frueher lag sie als halbtransparenter Kasten auf der Karte. In der Leiste darf sie den
+  // Werkzeugen keinen Platz wegnehmen: sie schrumpft (min-width: 0) und kuerzt je Zeile.
+  assert.strictEqual(resolve('.map-toolbar', 'justify-content').value, 'space-between',
+    'Karteninfo und Werkzeuge stehen an den beiden Enden der Zeile');
+  assert.strictEqual(resolve('.map-info', 'flex').value, '1 1 auto', 'die Info nimmt den Rest');
+  assert.strictEqual(resolve('.map-info', 'min-width').value, '0',
+    'ohne min-width:0 kann ein langer Kartenname die Werkzeuge aus der Leiste schieben');
+  assert.strictEqual(resolve('.map-tools', 'flex').value, '0 0 auto', 'die Werkzeuge geben nicht nach');
+  assert.strictEqual(resolve('.map-info', 'display').value, 'grid', 'zwei Zeilen untereinander');
+  assert.strictEqual(resolve('.info-line', 'white-space').value, 'nowrap');
+  assert.strictEqual(resolve('.info-line', 'text-overflow').value, 'ellipsis');
+  assert.strictEqual(resolve('.info-line', 'overflow').value, 'hidden');
+  // Und im Markup steht sie in der Leiste, vor den Werkzeugen.
+  const bar = html.slice(html.indexOf('id="mapToolbar"'), html.indexOf('id="mapCanvasArea"'));
+  assert.ok(bar.indexOf('id="mapInfo"') >= 0 && bar.indexOf('id="mapInfo"') < bar.indexOf('id="mapTools"'),
+    'die Karteninfo steht als erstes Kind der Leiste');
+});
+
+test('Linkshaender spiegelt jedes mit dem Daumen bediente Element', () => {
+  // Der Sinn der Einstellung ist Konsistenz: es darf nicht die Haelfte umschalten und der Rest
+  // stehen bleiben. Geprueft wird deshalb jede gespiegelte Stelle gegen ihre Grundregel.
+  const mirrored = [
+    // [Selektor rechts (Grundregel), Selektor links, Eigenschaft, erwartet rechts, erwartet links]
+    ['.map-toolbar', ':root[data-handed="left"] .map-toolbar', 'flex-direction', null, 'row-reverse'],
+    ['.map-info', ':root[data-handed="left"] .map-info', 'text-align', 'left', 'right'],
+    ['.capture-cluster', ':root[data-handed="left"] .capture-cluster', 'right', '12px', 'auto'],
+    ['.capture-cluster', ':root[data-handed="left"] .capture-cluster', 'left', null, '12px'],
+    ['.drive-meta', ':root[data-handed="left"] .drive-meta', 'grid-column', '1', '3'],
+    ['.drive-meta', ':root[data-handed="left"] .drive-meta', 'justify-self', 'end', 'start'],
+    ['.drive-meta', ':root[data-handed="left"] .drive-meta', 'text-align', 'right', 'left'],
+    ['.fab-label', ':root[data-handed="left"] .capture-cluster .fab-label', 'left', null, '100%'],
+    ['.fab-label', ':root[data-handed="left"] .capture-cluster .fab-label', 'right', '100%', 'auto'],
+  ];
+  for (const [rightSel, leftSel, prop, expectRight, expectLeft] of mirrored) {
+    assert.strictEqual(resolve(rightSel, prop).value, expectRight, `${rightSel} { ${prop} } (Rechtshaender)`);
+    assert.strictEqual(resolve(leftSel, prop).value, expectLeft, `${leftSel} { ${prop} } (Linkshaender)`);
+  }
+  // Alles haengt an einem einzigen Attribut, nicht an mehreren nebeneinander.
+  assert.ok(!css.includes('data-label-side'), 'die alte, nur fuer die Fahrzone gueltige Umschaltung ist weg');
+  const handedRules = (css.match(/:root\[data-handed="left"\]/g) || []).length;
+  assert.ok(handedRules >= 5, `alle Stellen haengen an data-handed, gefunden: ${handedRules}`);
+});
+
+test('Rechtshaender bleibt der unveraenderte Standard', () => {
+  // Die Grundregeln beschreiben Rechtshaender; nur die Linkshaender-Seite wird ueberschrieben.
+  // Damit aendert sich fuer bestehende Nutzer nichts, solange sie nichts umstellen.
+  const html2 = html;
+  assert.ok(/<select id="handedSelect">[\s\S]*?<option[^>]*selected=""[^>]*value="right"/.test(html2),
+    'Rechtshaender ist in der Auswahl vorbelegt');
+  assert.ok(!html2.includes('data-label-side'), 'kein Restattribut im Markup');
+  assert.strictEqual(resolve('.capture-cluster', 'right').value, '12px', 'Aufnahme-Knopf unten rechts');
+  assert.strictEqual(resolve('.drive-meta', 'grid-column').value, '1', 'Fahrtanzeige links');
 });
 
 test('Das hidden-Attribut blendet auch Knoepfe aus', () => {
@@ -275,7 +320,7 @@ test('Statusanzeige und Joystick ueberlappen in keiner Groessenstufe', () => {
   assert.strictEqual(columns, 'minmax(0, 1fr) auto minmax(0, 1fr)');
   assert.strictEqual(resolve('.drive-zone .joystick-base', 'grid-column').value, '2');
   assert.strictEqual(resolve('.drive-meta', 'grid-column').value, '1', 'Standard: Anzeige links');
-  assert.strictEqual(resolve('.drive-zone[data-label-side="right"] .drive-meta', 'grid-column').value, '3');
+  assert.strictEqual(resolve(':root[data-handed="left"] .drive-meta', 'grid-column').value, '3');
   // Die Aussenspalten duerfen den Joystick nicht wegdruecken.
   assert.strictEqual(resolve('.drive-meta', 'min-width').value, '0');
 });
@@ -284,15 +329,14 @@ test('Beide Haendigkeiten sind exakt gespiegelt und erzeugen keinen Zeilenumbruc
   // Ursache des frueheren Sprungs: ohne grid-row rutschte die linke Anzeige in eine zweite
   // Zeile, weil der Platzierungszeiger nach dem Joystick schon hinter Spalte 1 stand.
   for (const selector of ['.drive-zone .joystick-base', '.drive-meta',
-    '.drive-zone[data-label-side="right"] .drive-meta']) {
+    ':root[data-handed="left"] .drive-meta']) {
     assert.strictEqual(resolve(selector, 'grid-row').value, '1', `${selector} braucht eine feste Zeile`);
   }
-  const left = { column: resolve('.drive-meta', 'grid-column').value, justify: resolve('.drive-meta', 'justify-self').value, align: resolve('.drive-meta', 'text-align').value };
-  const right = { column: resolve('.drive-zone[data-label-side="right"] .drive-meta', 'grid-column').value,
-    justify: resolve('.drive-zone[data-label-side="right"] .drive-meta', 'justify-self').value,
-    align: resolve('.drive-zone[data-label-side="right"] .drive-meta', 'text-align').value };
-  assert.deepStrictEqual([left.column, left.justify, left.align], ['1', 'end', 'right']);
-  assert.deepStrictEqual([right.column, right.justify, right.align], ['3', 'start', 'left']);
+  const right = ['grid-column', 'justify-self', 'text-align'].map((p) => resolve('.drive-meta', p).value);
+  const left = ['grid-column', 'justify-self', 'text-align']
+    .map((p) => resolve(':root[data-handed="left"] .drive-meta', p).value);
+  assert.strictEqual(right.join(','), '1,end,right', 'Rechtshaender: Anzeige links vom Joystick');
+  assert.strictEqual(left.join(','), '3,start,left', 'Linkshaender: exakt gespiegelt');
 });
 
 test('Die seitliche Anzeige gilt auch im breiten Fenster', () => {

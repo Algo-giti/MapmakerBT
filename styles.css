@@ -2230,35 +2230,6 @@ body.menu-open .app-frame { visibility: hidden; }
 }
 .map-point-hit { fill: transparent; stroke: none; cursor: pointer; }
 
-.map-hud {
-  /* Zwei schmale Zeilen untereinander am oberen Rand, links neben der Knopfspalte.
-     right/bottom muessen zurueckgesetzt werden, sonst spannt die aeltere .map-hud-Regel
-     den Kasten ueber die ganze Kartenhoehe. */
-  position: absolute;
-  top: 4px; left: 10px;
-  right: auto; bottom: auto;
-  transform: none;
-  display: grid;
-  gap: 0;
-  width: max-content;
-  max-width: calc(100% - 24px);
-  height: auto;
-  padding: 3px 8px 4px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--shell-hud);
-  backdrop-filter: blur(6px);
-  box-shadow: none;
-  pointer-events: none;
-  text-align: left;
-  font-family: inherit;
-  font-size: .6rem;
-  line-height: 1.45;
-  color: var(--shell-text);
-}
-.map-hud .hud-line { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.map-hud .hud-dim { color: var(--shell-muted); }
-.map-hud .hud-dim:empty { display: none; }
 
 .map-fab {
   display: grid;
@@ -2364,8 +2335,8 @@ body.menu-open .app-frame { visibility: hidden; }
   line-height: 1.3;
   color: var(--shell-muted);
 }
-.drive-zone[data-label-side="right"] .drive-meta {
-  /* Exakt gespiegelt zur linken Variante — nur Spalte und Ausrichtung drehen sich. */
+:root[data-handed="left"] .drive-meta {
+  /* Exakt gespiegelt zur Rechtshaender-Variante — nur Spalte und Ausrichtung drehen sich. */
   grid-row: 1;
   grid-column: 3;
   justify-self: start;
@@ -2576,8 +2547,17 @@ body.menu-open .app-frame { visibility: hidden; }
   word-break: normal;
   hyphens: none;
 }
-/* Knoepfe am linken Rand spiegeln die Seite — dort ist rechts Platz und links keiner. */
-.fab-with-label.label-right .fab-label {
+/* --- Haendigkeit ---------------------------------------------------------
+   Alles haengt an einem einzigen Attribut am <html> (applyHandedness()). Vorher sass die
+   Umschaltung an der Fahrzone und betraf nur deren Anzeige; jede weitere Stelle haette ihre
+   eigene Bedingung gebraucht. Rechtshaender ist der unveraenderte Standard, deshalb steht er
+   in den Grundregeln und nur die Linkshaender-Seite wird ueberschrieben. */
+:root[data-handed="left"] .map-toolbar { flex-direction: row-reverse; }
+:root[data-handed="left"] .map-info { text-align: right; }
+:root[data-handed="left"] .capture-cluster { left: 12px; right: auto; }
+/* Wandert der Aufnahme-Knopf an den linken Rand, ist links kein Platz mehr fuer seine
+   Beschriftung — sie klappt auf die andere Seite. */
+:root[data-handed="left"] .capture-cluster .fab-label {
   right: auto;
   left: 100%;
   margin-right: 0;
@@ -2585,7 +2565,6 @@ body.menu-open .app-frame { visibility: hidden; }
   text-align: left;
 }
 .capture-cluster { z-index: 2; }
-.map-hud { z-index: 1; }
 
 /* --- Werkzeugleiste oben auf der Karte ------------------------------------
    Loesen loest das eigentliche Problem der frueheren Eckbeschriftungen: dort stand nur die
@@ -2595,17 +2574,39 @@ body.menu-open .app-frame { visibility: hidden; }
 .map-toolbar {
   flex: 0 0 auto;
   display: flex;
-  justify-content: center;
-  align-items: stretch;
-  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   padding: 4px 8px;
   border-bottom: 1px solid var(--shell-border);
   background: var(--shell-panel);
+}
+/* Die Karteninfo stand frueher als halbtransparenter Kasten auf der Karte. In der Leiste
+   kostet sie keine Kartenflaeche mehr — dafuer muss sie sich zusammenstauchen lassen
+   (min-width: 0) und je Zeile abschneiden statt die Werkzeuge zu verdraengen. */
+.map-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  gap: 0;
+  text-align: left;
+  font-size: .6rem;
+  line-height: 1.45;
+  color: var(--shell-text);
+}
+.info-line { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.info-dim { color: var(--shell-muted); }
+.info-dim:empty { display: none; }
+.map-tools {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
 }
-.map-toolbar::-webkit-scrollbar { display: none; }
+.map-tools::-webkit-scrollbar { display: none; }
 .map-tool-slot { display: flex; flex: 0 0 auto; }
 .map-tool {
   flex: 0 0 auto;

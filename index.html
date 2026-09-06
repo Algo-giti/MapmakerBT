@@ -34,6 +34,15 @@
 
 <main class="map-stage" id="mapStage">
 <div class="map-toolbar" id="mapToolbar">
+<div class="map-info" id="mapInfo">
+<span class="info-line" id="mapSummary">Keine Karte geladen.</span>
+<span aria-live="polite" class="info-line info-dim" id="pointStatus">Zum Aufnehmen zuerst verbinden.</span>
+<span class="sr-only" id="captureButtonHint">Warte auf Position</span>
+<span class="sr-only" id="mapDistanceInfo">–</span>
+<span class="sr-only" id="activeMapName">–</span>
+<span class="sr-only" id="saveState">–</span>
+</div>
+<div class="map-tools" id="mapTools">
 <div class="map-tool-slot" id="deleteFabWrap">
 <button class="map-tool delete-fab" id="deletePointBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg><span class="map-tool-label" id="deleteBtnLabel">Letzten Punkt</span></button>
 </div>
@@ -44,6 +53,7 @@
 <button aria-label="Fläche schließen und neue beginnen" class="map-tool close-new-fab" data-i18n-aria-label="closeAndNew" id="closeAndNewBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 12.5 7.5 17 15 6"></path><path d="M18 14v7M14.5 17.5h7"></path></svg><span class="map-tool-label" data-i18n="closeAndNewShort">Schließen &amp; neu</span></button>
 </div>
 <button aria-label="Ansicht zurücksetzen" class="map-tool" data-i18n-aria-label="fitView" hidden="" id="fitViewBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span class="map-tool-label" data-i18n="fitViewShort">Ansicht zurück</span></button>
+</div>
 </div>
 
 <div class="map-canvas-area" id="mapCanvasArea">
@@ -70,19 +80,10 @@
 </button>
 </div>
 </div>
-
-<div class="map-hud">
-<span class="hud-line" id="mapSummary">Keine Karte geladen.</span>
-<span aria-live="polite" class="hud-line hud-dim" id="pointStatus">Zum Aufnehmen zuerst verbinden.</span>
-<span class="sr-only" id="captureButtonHint">Warte auf Position</span>
-<span class="sr-only" id="mapDistanceInfo">–</span>
-<span class="sr-only" id="activeMapName">–</span>
-<span class="sr-only" id="saveState">–</span>
-</div>
 </div>
 </main>
 
-<section aria-label="Fahrsteuerung" class="drive-zone" data-i18n-aria-label="manualDrive" data-label-side="left" id="driveZone">
+<section aria-label="Fahrsteuerung" class="drive-zone" data-i18n-aria-label="manualDrive" id="driveZone">
 <div aria-label="Manuell fahren" class="joystick-base" data-i18n-aria-label="manualDrive" id="driveJoystick" role="application" tabindex="0">
 <span class="joystick-ring ring-a"></span><span class="joystick-ring ring-b"></span>
 <span class="joystick-axis joystick-axis-x"></span><span class="joystick-axis joystick-axis-y"></span>
@@ -224,12 +225,13 @@
 </select>
 </label>
 <small class="view-note" data-i18n="joystickSizeHint">„Mittel“ passt sich der Bildschirmhöhe an. Größer heißt mehr Trefferfläche, kleiner mehr Karte.</small>
-<label class="field compact"><span data-i18n="driveLabelSide">Statusanzeige neben dem Joystick</span>
-<select id="driveLabelSideSelect">
-<option data-i18n="sideLeft" selected="" value="left">Links (Rechtshänder)</option>
-<option data-i18n="sideRight" value="right">Rechts (Linkshänder)</option>
+<label class="field compact"><span data-i18n="handedness">Bedienseite</span>
+<select id="handedSelect">
+<option data-i18n="handedRight" selected="" value="right">Rechtshänder</option>
+<option data-i18n="handedLeft" value="left">Linkshänder</option>
 </select>
 </label>
+<small class="view-note" data-i18n="handednessHint">Spiegelt die gesamte Bedienung: Werkzeuge und Karteninfo in der Kartenleiste, Aufnahme-Knopf und Fahrtanzeige.</small>
 <small class="view-note" data-i18n="driveSafetyNote">Loslassen stoppt sofort. Sunray stoppt zusätzlich nach 1 s ohne neues Fahrkommando.</small>
 </section>
 </div>

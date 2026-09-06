@@ -60,19 +60,27 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
 2. **Karte** (`.map-stage`): füllt den Rest und ist selbst eine **Flexbox-Spalte** aus
    `.map-toolbar` (`flex: 0 0 auto`) und `.map-canvas-area` (`flex: 1 1 auto; min-height: 0;
    position: relative`). Zeiger-Steuerung auf dem SVG (`onMapPointerDown/Move/Up`): Tap wählt
-   aus, Ziehen ab 8 px verschiebt, zwei Finger zoomen. Die Hinweiszeile (`.map-hud`) und der
-   `.capture-cluster` liegen **in der Zeichenfläche**, nicht in der Bühne — sonst läge die
-   Hinweiszeile hinter der Werkzeugleiste. `.map-hud` muss `right`/`bottom` explizit auf `auto`
-   setzen, sonst spannt die ältere `.map-hud`-Regel (v1-Layer, `bottom: 10px`) den Kasten über
-   die ganze Kartenhöhe. Unten rechts bleibt der `.capture-cluster`.
+   aus, Ziehen ab 8 px verschiebt, zwei Finger zoomen. In der Zeichenfläche liegt nur noch der
+   `.capture-cluster` (unten rechts, bei Linkshändern unten links) — **es gibt kein Overlay auf
+   der Karte mehr**.
 
-   **Werkzeugleiste** (`.map-toolbar`, waagerecht am oberen Rand der Karte): vier Werkzeuge mit
-   Symbol **oben** und Beschriftung **darunter** — Lösch-Werkzeug (`#deletePointBtn` in
+   **Werkzeugleiste** (`.map-toolbar`, waagerecht am oberen Rand der Karte) hat **zwei
+   Bereiche**: `.map-info` mit Kartenname/Punktzahl (`#mapSummary`) und Statuszeile
+   (`#pointStatus`, `aria-live`), daneben `.map-tools` mit vier Werkzeugen (Symbol **oben**,
+   Beschriftung **darunter**) — Lösch-Werkzeug (`#deletePointBtn` in
    `#deleteFabWrap`), Rückgängig (`#undoBtn` in `#undoFabWrap`), „Schließen & neu“
    (`#closeAndNewBtn` in `#closeAndNewWrap`) und „Ansicht zurück“ (`#fitViewBtn`). Die
    `…Wrap`-Hüllen (`.map-tool-slot`) tragen weiterhin das `hidden`-Attribut, die Knöpfe selbst
-   `disabled` — Zustände, Klick-Handler und Sichtbarkeitsregeln sind unverändert, nur die
-   Position hat sich geändert.
+   `disabled` — Zustände, Klick-Handler und Sichtbarkeitsregeln sind unverändert.
+
+   **Die Karteninfo darf die Werkzeuge nie verdrängen:** `.map-info` ist `flex: 1 1 auto` mit
+   **`min-width: 0`**, `.map-tools` ist `flex: 0 0 auto`, und jede `.info-line` kürzt per
+   `nowrap` + `text-overflow: ellipsis`. Ohne `min-width: 0` schöbe ein langer Kartenname die
+   Werkzeuge aus der Leiste — ein Flex-Kind unterschreitet sonst seine Inhaltsbreite nicht.
+   Vorher stand dieselbe Information als halbtransparenter Kasten (`.map-hud`) auf der Karte und
+   kostete Kartenfläche. **Nicht ohne Gerät verifizierbar:** ob lange Kartennamen auf kleinen
+   Bildschirmen tatsächlich sauber abgeschnitten werden statt zu drängeln — der Test prüft die
+   CSS-Zahlen, nicht echten Textfluss.
 
    **Warum die Leiste:** vorher standen diese Knöpfe in Ecksäulen mit seitlicher Beschriftung.
    Dort stand nur die Knopfbreite zur Verfügung, und `overflow-wrap: anywhere` brach den Text
@@ -88,7 +96,7 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    **nur so hoch wie ihr Inhalt**: `flex: 0 0 auto`, `align-content: center`. Drei Spalten
    (`minmax(0,1fr) auto minmax(0,1fr)`) — der Joystick sitzt fest in Spalte 2 und bleibt damit
    mittig, die Statusanzeige (`.drive-meta`) belegt eine Außenspalte, damit der bedienende Daumen
-   sie nicht verdeckt. Seite über `data-label-side` am `#driveZone`, **Standard links**, weil der
+   sie nicht verdeckt. Die Seite kommt aus der Händigkeit (siehe unten), **Standard links**, weil der
    Joystick mittig sitzt und der rechte Daumen von rechts kommt. **Beide Kinder brauchen
    `grid-row: 1`** — ohne das rutscht die Anzeige in Spalte 1 in eine zweite Zeile, weil der
    Platzierungszeiger nach dem Joystick (Spalte 2) schon hinter Spalte 1 steht; das war der
@@ -166,6 +174,30 @@ Knopfspalte **und** Beschriftung. `tests/layout-test.js` prüft Seite, Verankeru
 das Breitenbudget. **Offen, ohne Gerät nicht prüfbar:** ob das auf jeder kleinen Bildschirmgröße
 tatsächlich überlappungsfrei bleibt — der Test rechnet mit den CSS-Zahlen, nicht mit echtem
 Textumbruch.
+
+**Händigkeit: ein Schalter für die gesamte Bedienung.** `state.view.handed` ∈ `right | left`
+(**Standard `right`**), einstellbar in *Einstellungen › Fahrgeschwindigkeit* (`#handedSelect`).
+`applyHandedness()` setzt **ein einziges Attribut** `data-handed` am `<html>` — dieselbe
+Schreibweise wie `applyTheme()` — und das Stylesheet hängt alle gespiegelten Stellen daran:
+
+| Stelle | Rechtshänder (Grundregel) | Linkshänder (`:root[data-handed="left"]`) |
+|---|---|---|
+| `.map-toolbar` | Info links, Werkzeuge rechts | `flex-direction: row-reverse` |
+| `.map-info` | `text-align: left` | `text-align: right` |
+| `.capture-cluster` | `right: 12px` | `left: 12px; right: auto` |
+| `.capture-cluster .fab-label` | links vom Knopf (`right: 100%`) | rechts (`left: 100%`) |
+| `.drive-meta` | Spalte 1, rechtsbündig | Spalte 3, linksbündig |
+
+**Warum zentral:** vorher saß die Umschaltung als `data-label-side` an der Fahrzone und betraf
+nur deren Anzeige; jede weitere Stelle hätte ihre eigene Bedingung gebraucht. Rechtshänder steht
+bewusst in den **Grundregeln**, nur die Linkshänder-Seite wird überschrieben — für bestehende
+Nutzer ändert sich dadurch nichts. `tests/ui-test.js` prüft per Quelltextsuche, dass es keine
+zweite, parallele Umschaltung mehr gibt (`dataset.labelSide` ist verboten, `data-handed` wird an
+genau einer Stelle gesetzt).
+
+**Migration:** die Einstellung hieß früher `driveLabelSide` und meinte die Seite der
+Fahrtanzeige — `'left'` bedeutete Rechtshänder. `loadViewPreferences()` rechnet gespeicherte
+Altwerte um (`driveLabelSide: 'right'` → `handed: 'left'`).
 
 **Punktgröße:** sichtbarer Radius 5 (ausgewählt 9) bei 3,5 Rand — bewusst klein. Die
 Trefferfläche hängt nicht daran, sie kommt aus dem unsichtbaren `map-point-hit`-Kreis mit
@@ -280,7 +312,7 @@ geschoben wird. Trefferflächen der Punkte: `state.hitRadiusUnits` wird je Rende
 `svgMetrics()` so gesetzt, dass immer mindestens 44 × 44 px Touch-Ziel entstehen.
 
 **Bewusst nicht enthalten:** Mähsteuerung (Start/Stop/Dock/Mähmotor/PWM), Tab-Leiste, seitliche
-Schieber, Rechts-/Linkshänder-Umschaltung, Messwerkzeug, Teilstück-/Geraden-Bearbeitung,
+Schieber, Messwerkzeug, Teilstück-/Geraden-Bearbeitung,
 Undo-Pfeil (im Lösch-Button aufgegangen), distanzbasierte Auto-Aufnahme, Versionsverwaltung
 („Versionen & Verlauf“ mit Speichern/Wiederherstellen — vom Nutzer als unübersichtlich verworfen),
 **jede sichtbare Versionsnummer der App**.
@@ -765,6 +797,18 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
 
 ## Änderungsprotokoll
 
+- 2026-09-06: **Karteninfo in die Werkzeugleiste, Händigkeit zentral.** (a) Kartenname,
+  Punktzahl und Statuszeile stehen jetzt links in der Kartenleiste statt als halbtransparenter
+  Kasten auf der Karte; der Overlay `.map-hud` ist restlos entfernt, die Karte gewinnt dessen
+  Fläche. Damit ein langer Name die Werkzeuge nicht aus der Leiste schiebt, hat `.map-info`
+  `flex: 1 1 auto; min-width: 0` und kürzt je Zeile per Ellipse, `.map-tools` ist `0 0 auto`.
+  (b) Die Links-/Rechtshänder-Einstellung galt bisher nur der Fahrtanzeige. Sie ist jetzt ein
+  **einziges Attribut `data-handed` am `<html>`** (`applyHandedness()`), an dem Werkzeugleiste,
+  Karteninfo, Aufnahme-Cluster samt Beschriftungen und Fahrtanzeige gemeinsam hängen — statt
+  fünf einzelner Bedingungen. Das alte `data-label-side` an der Fahrzone ist weg, gespeicherte
+  Altwerte werden migriert. Fünf neue Testfälle (ui 74, layout 23), gegen fünf simulierte
+  Rückfälle geprüft. `APP_VERSION` auf `v27`.
+
 - 2026-09-06: **Leere Ausschlussflächen räumen sich selbst auf.** Der Knopf „+ Neue
   Ausschlussfläche“ unter der Elementliste ist entfallen — er erzeugte genau die leeren
   Platzhalter, die sich in der Übersicht sammelten, während Flächen längst automatisch beim
@@ -868,7 +912,7 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
 
 - 2026-09-05: **Statusanzeige seitlich, Joystick-Größe einstellbar.** Die Fahrzone ist jetzt ein
   Drei-Spalten-Grid: Joystick fest mittig, `.drive-meta` in einer Außenspalte (Standard links,
-  umschaltbar über *Einstellungen › Fahrgeschwindigkeit*, `data-label-side`). Neue Einstellung
+  umschaltbar über *Einstellungen › Fahrgeschwindigkeit*; seit 2026-09-06 über `data-handed`). Neue Einstellung
   „Größe des Joysticks“ mit vier Stufen (Klein 0,75 / **Mittel 1** / Groß 1,25 / Sehr groß 1,5);
   die Stufe skaliert über `--joystick-scale` die bestehende Rechnung, statt eine zweite
   einzuführen. Auf einem 853-px-Bildschirm ergibt das Fahrzonen von 21,6 % bis 40,3 %, gedeckelt

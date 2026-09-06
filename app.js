@@ -54,7 +54,8 @@ const I18N = {
   de: {
     joystickSize: 'Größe des Joysticks', joystickSmall: 'Klein', joystickMedium: 'Mittel', joystickLarge: 'Groß', joystickXLarge: 'Sehr groß',
     joystickSizeHint: '„Mittel“ passt sich der Bildschirmhöhe an. Größer heißt mehr Trefferfläche, kleiner mehr Karte.',
-    driveLabelSide: 'Statusanzeige neben dem Joystick', sideLeft: 'Links (Rechtshänder)', sideRight: 'Rechts (Linkshänder)',
+    handedness: 'Bedienseite', handedRight: 'Rechtshänder', handedLeft: 'Linkshänder',
+    handednessHint: 'Spiegelt die gesamte Bedienung: Werkzeuge und Karteninfo in der Kartenleiste, Aufnahme-Knopf und Fahrtanzeige.',
     closeAndNewShort: 'Schließen & neu',
     closeAndNew: 'Fläche schließen & neue beginnen', closedAndStartedNew: 'Fläche geschlossen · neue Fläche begonnen.',
     unlockedBadge: 'Offen', mapLockedNote: '🔒 Karte gesperrt – keine Änderungen möglich',
@@ -196,7 +197,8 @@ const I18N = {
   en: {
     joystickSize: 'Joystick size', joystickSmall: 'Small', joystickMedium: 'Medium', joystickLarge: 'Large', joystickXLarge: 'Extra large',
     joystickSizeHint: '“Medium” adapts to the screen height. Larger means a bigger target, smaller leaves more map.',
-    driveLabelSide: 'Status next to the joystick', sideLeft: 'Left (right-handed)', sideRight: 'Right (left-handed)',
+    handedness: 'Operating side', handedRight: 'Right-handed', handedLeft: 'Left-handed',
+    handednessHint: 'Mirrors the whole layout: tools and map info in the map bar, capture button and drive status.',
     closeAndNewShort: 'Close & new',
     closeAndNew: 'Close area & start a new one', closedAndStartedNew: 'Area closed · new area started.',
     unlockedBadge: 'Open', mapLockedNote: '🔒 Map locked – no changes possible',
@@ -411,7 +413,7 @@ const ui = {
   mapSummary: $('mapSummary'), mapDistanceInfo: $('mapDistanceInfo'), pointStatus: $('pointStatus'), activeMapName: $('activeMapName'), saveState: $('saveState'),
   // Fahren
   driveZone: $('driveZone'), driveJoystick: $('driveJoystick'), joystickKnob: $('joystickKnob'), driveState: $('driveState'),
-  joystickSizeSelect: $('joystickSizeSelect'), driveLabelSideSelect: $('driveLabelSideSelect'),
+  joystickSizeSelect: $('joystickSizeSelect'), handedSelect: $('handedSelect'),
   autoCaptureModeSelect: $('autoCaptureModeSelect'), autoCaptureDistanceInput: $('autoCaptureDistanceInput'),
   autoCaptureIntervalRow: $('autoCaptureIntervalRow'), autoCaptureDistanceRow: $('autoCaptureDistanceRow'),
   driveSpeedMinInput: $('driveSpeedMinInput'), driveSpeedMaxInput: $('driveSpeedMaxInput'), driveTurnMaxInput: $('driveTurnMaxInput'), driveSpeedValue: $('driveSpeedValue'),
@@ -514,7 +516,7 @@ const state = {
     autoCaptureIntervalS: 5, autoCaptureMode: 'time', autoCaptureDistanceCm: AUTO_CAPTURE_DISTANCE_DEFAULT_CM,
     showTrail: true, showPointQuality: true, keepAwake: true,
     driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
-    joystickScale: '1', driveLabelSide: 'left',
+    joystickScale: '1', handed: 'right',
   },
   telemetry: {
     x: null, y: null, delta: null, solution: null, age: null, accuracy: null,
@@ -714,10 +716,12 @@ function loadViewPreferences() {
     state.view.driveSpeedMax = clampNumber(saved.driveSpeedMax, 0.03, 0.50, 0.25);
     state.view.driveTurnMax = clampNumber(saved.driveTurnMax, 0.20, 2.00, 1.15);
     state.view.joystickScale = JOYSTICK_SCALES.includes(String(saved.joystickScale)) ? String(saved.joystickScale) : '1';
-    state.view.driveLabelSide = saved.driveLabelSide === 'right' ? 'right' : 'left';
+    // Migration: die Einstellung hiess frueher driveLabelSide und meinte die Seite der
+    // Fahrtanzeige — links bedeutete Rechtshaender. Jetzt ist es die Haendigkeit selbst.
+    state.view.handed = saved.handed === 'left' || saved.driveLabelSide === 'right' ? 'left' : 'right';
   } catch (_) {
     state.view = { showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, autoCaptureIntervalS: 5, autoCaptureMode: 'time', autoCaptureDistanceCm: AUTO_CAPTURE_DISTANCE_DEFAULT_CM, showTrail: true, showPointQuality: true, keepAwake: true, driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
-      joystickScale: '1', driveLabelSide: 'left' };
+      joystickScale: '1', handed: 'right' };
   }
 }
 
@@ -752,7 +756,7 @@ function applyViewPreferencesToUi() {
   ui.driveSpeedMaxInput.value = limits.max.toFixed(2);
   ui.driveTurnMaxInput.value = limits.turn.toFixed(2);
   ui.joystickSizeSelect.value = state.view.joystickScale;
-  ui.driveLabelSideSelect.value = state.view.driveLabelSide;
+  ui.handedSelect.value = state.view.handed;
   applyDriveZonePreferences();
 }
 
@@ -773,7 +777,7 @@ function updateViewPreferencesFromUi() {
   state.view.driveSpeedMax = clampNumber(ui.driveSpeedMaxInput.value, state.view.driveSpeedMin + 0.01, 0.50, state.view.driveSpeedMax);
   state.view.driveTurnMax = clampNumber(ui.driveTurnMaxInput.value, 0.20, 2.00, state.view.driveTurnMax);
   state.view.joystickScale = JOYSTICK_SCALES.includes(ui.joystickSizeSelect.value) ? ui.joystickSizeSelect.value : '1';
-  state.view.driveLabelSide = ui.driveLabelSideSelect.value === 'right' ? 'right' : 'left';
+  state.view.handed = ui.handedSelect.value === 'left' ? 'left' : 'right';
   applyDriveZonePreferences();
   saveViewPreferences();
   refreshControlUi();
@@ -1044,10 +1048,22 @@ const JOYSTICK_SCALES = ['0.75', '1', '1.25', '1.5'];
  * die CSS-Variable --joystick-scale, damit die vorhandene, bildschirmabhaengige Berechnung
  * erhalten bleibt und nur skaliert wird.
  */
+/**
+ * Ein einziger Schalter fuer die gesamte Haendigkeit: `data-handed` am <html>. Von dort haengen
+ * alle gespiegelten Stellen im Stylesheet ab — Werkzeugleiste (Karteninfo gegen Werkzeuge),
+ * Aufnahme-Cluster samt seiner Beschriftungen und die Fahrtanzeige neben dem Joystick.
+ * Vorher sass das Attribut an der Fahrzone und betraf nur deren Anzeige; jede weitere Stelle
+ * haette sonst ihre eigene Bedingung gebraucht.
+ */
+function applyHandedness() {
+  // setAttribute statt dataset — dieselbe Schreibweise wie applyTheme().
+  document.documentElement.setAttribute('data-handed', state.view.handed === 'left' ? 'left' : 'right');
+}
+
 function applyDriveZonePreferences() {
   const scale = JOYSTICK_SCALES.includes(state.view.joystickScale) ? state.view.joystickScale : '1';
   document.documentElement.style.setProperty('--joystick-scale', scale);
-  ui.driveZone.dataset.labelSide = state.view.driveLabelSide === 'right' ? 'right' : 'left';
+  applyHandedness();
 }
 
 function applyTheme() {
@@ -3572,7 +3588,7 @@ function bindEvents() {
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((name) => ui.driveJoystick.addEventListener(name, (event) => {
     if (state.joystickPointerId === null || event.pointerId === state.joystickPointerId) stopDrive();
   }));
-  [ui.driveSpeedMinInput, ui.driveSpeedMaxInput, ui.driveTurnMaxInput, ui.joystickSizeSelect, ui.driveLabelSideSelect].forEach((input) => input.addEventListener('change', () => {
+  [ui.driveSpeedMinInput, ui.driveSpeedMaxInput, ui.driveTurnMaxInput, ui.joystickSizeSelect, ui.handedSelect].forEach((input) => input.addEventListener('change', () => {
     updateViewPreferencesFromUi();
     applyViewPreferencesToUi();
   }));
