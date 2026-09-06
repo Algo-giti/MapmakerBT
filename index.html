@@ -180,6 +180,18 @@
 </label>
 <button class="primary" data-i18n="createMap" id="newMapBtn" type="button">Neue Karte anlegen</button>
 </div>
+<div class="view-divider"></div>
+<label class="field compact"><span data-i18n="positionMode">Positionsmodus</span>
+<select id="positionModeSelect">
+<option data-i18n="positionModeRelative" selected="" value="relative">Relativ (lokale Meter)</option>
+<option data-i18n="positionModeAbsolute" value="absolute">Absolut (GPS-Grad)</option>
+</select>
+</label>
+<div hidden="" id="originFields">
+<label class="field compact"><span data-i18n="originLat">Breitengrad des Ursprungs</span><div class="unit-input"><input id="originLatInput" inputmode="decimal" max="90" min="-90" step="0.0000001" type="number"/><span>°</span></div></label>
+<label class="field compact"><span data-i18n="originLon">Längengrad des Ursprungs</span><div class="unit-input"><input id="originLonInput" inputmode="decimal" max="180" min="-180" step="0.0000001" type="number"/><span>°</span></div></label>
+</div>
+<small class="view-note" data-i18n="positionModeHint">Gilt nur für diese Karte und nur für den GeoJSON-Export. „Relativ“ ist der Standard und lässt alles wie bisher. Für „Absolut“ trägst du einmalig die GPS-Position des Nullpunkts ein, üblicherweise die der Ladestation.</small>
 </div>
 </section>
 <section class="card action-card">

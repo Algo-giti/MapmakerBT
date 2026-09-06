@@ -541,6 +541,107 @@ Koordinaten sind **lokale Sunray-XY-Meter**, keine WGS84-Geokoordinaten. Der Geo
 dasselbe lokale XY-System (Polygon für Flächen, LineString/Point für Teilgeometrien);
 Wegpunkte werden als LineString mit `role: "waypoints"` exportiert.
 
+## GeoJSON-Abgleich mit CaSSAndRA (Analyse 2026-09-06)
+
+Verglichen wurde unser Export/Import mit dem GeoJSON, das die Mapping-Oberfläche von
+**CaSSAndRA** (`github.com/EinEinfach/CaSSAndRA`) schreibt. **Am Code wurde nichts geändert** —
+zwei Abweichungen sind Formatentscheidungen und liegen beim Nutzer (siehe unten).
+
+### Ist-Zustand gegen CaSSAndRA-Konvention
+
+| Aspekt | MapmakerBT | CaSSAndRA (GeoJSON-UI) | Bewertung |
+|---|---|---|---|
+| Typ-Kennung (intern) | `properties.role` = `perimeter` / `exclusion` / `waypoints` / `dock` | — | bleibt unser Merkmal |
+| `properties.name` | **seit 2026-09-06 der CaSSAndRA-Typ** (siehe Mapping unten) | trägt den Typ | ✅ **angeglichen** |
+| Anzeigename | `properties.label` (übersetzt: „Perimeter“, „Ausschluss 1“, „Dockpfad“) | — | eigenes Feld, kollidiert nicht mehr |
+| Perimeter | `Polygon`, Ring geschlossen (`closeRing()` hängt den ersten Punkt an) | `Polygon`, geschlossen | ✅ **gleich** |
+| Ausschluss | `Polygon`, Ring geschlossen | `Polygon`, geschlossen | ✅ **gleich** |
+| Dockpfad | `LineString`, **offen** (`geometryForLine()` hängt nichts an) | `LineString`, offen, gerichtet | ✅ **gleich** |
+| Dock-Verlängerung | **keine** | +20 cm in Fahrtrichtung beim Speichern | ✅ bewusst nicht übernommen |
+| Koordinaten | lokale Sunray-**Meter**, Reihenfolge `[x, y]` | absolute **Grad** `[lon, lat]` | **abweichend** → Entscheidung 2 |
+| Wegpunkte | eigenes Konzept, `role: 'waypoints'`, offener `LineString` | existiert nicht | bleibt, wird nicht angeglichen |
+
+**Damit ist alles, was ohne Rückfrage anzugleichen gewesen wäre, bereits richtig:** geschlossen/
+offen stimmt für alle drei gemeinsamen Typen, und die von CaSSAndRA nachträglich angehängten
+20 cm gibt es bei uns nicht (geprüft in `mapToGeoJson()` und `geometryForLine()` — keine Stelle
+manipuliert die Punktliste). `tests/app-core-test.js` nagelt beides jetzt fest, inklusive eines
+Falls, der die CaSSAndRA-Verlängerung simuliert und dann fehlschlagen muss.
+
+**Nebenbefund zur Reihenfolge:** unser `[x, y]` entspricht formal der GeoJSON-Ordnung `[lon, lat]`
+(x = Ost, y = Nord). Die Reihenfolge ist also **nicht** falsch — nur die Einheit ist eine andere.
+
+### Umgesetzt: Typbezeichner (2026-09-06)
+
+`properties.name` trägt jetzt **ausschließlich** den Typ in CaSSAndRAs UI-Schreibweise, der
+übersetzte Anzeigename ist in das neue Feld **`properties.label`** gezogen. `properties.role`
+bleibt unverändert unser internes Merkmal.
+
+| unser `role` | `properties.name` | `properties.label` |
+|---|---|---|
+| `perimeter` | `perimeter` | „Perimeter“ |
+| `exclusion` | `exclusion` | Name der Fläche, z. B. „Ausschluss 1“ |
+| `waypoints` | `search wire` (**mit Leerzeichen**) | „Wegpunkte“ |
+| `dock` | `dockpoints` (**nicht** `dockPath` — das ist CaSSAndRAs abweichendes API-Vokabular) | „Dockpfad“ |
+
+`CASSANDRA_TYPE_BY_ROLE` und die daraus gebildete Umkehrung stehen direkt vor
+`geometryForLine()`. **Import** (`featureRole()`): zuerst `properties.role`, ersatzweise der Typ
+aus `properties.name` — reine CaSSAndRA-Dateien werden also am Bezeichner erkannt. Der
+Anzeigename einer importierten Fläche kommt aus `importedExclusionName()`: `label` zuerst, sonst
+ein `name`, **der kein Typbezeichner ist** (ältere Dateien dieser App trugen den Anzeigenamen
+noch dort), sonst der Standardname. Ohne diese Prüfung hieße jede importierte Fläche „exclusion“.
+
+**Dabei behoben:** `geoJsonToMap()` kannte gar keinen Wegpunkt-Zweig — exportierte Wegpunkte
+gingen beim Wiedereinlesen verloren. Der Rundlauf erhält sie jetzt.
+
+**Weiterhin offen — Bezeichner ≠ Kompatibilität:** ein Import echter CaSSAndRA-Dateien ist
+dadurch **noch nicht** sinnvoll nutzbar. CaSSAndRA exportiert absolute Grad-Koordinaten, wir
+lesen und schreiben lokale Meter; die Werte würden schlicht falsch interpretiert. Das bleibt
+Entscheidung 1 unten.
+
+### Positionsmodus: relativ oder absolut (2026-09-06)
+
+Optionaler Zusatzmodus nach dem Vorbild der grauonline-App. **Ohne Aktivierung ändert sich
+nichts** — `positionMode: 'relative'` ist der Standard, es erscheint kein Eingabefeld, und der
+Export bleibt bei lokalen Metern.
+
+- **Gespeichert wird beides an der Karte** (`map.positionMode`, `map.origin = { lat, lon }`),
+  nicht global. **Begründung:** der Ursprung definiert, was die Koordinaten *dieser* Karte
+  bedeuten. Zwei Karten liegen in aller Regel an zwei verschiedenen Orten — ein globaler Ursprung
+  wäre für jede zweite Karte falsch. Außerdem reist er so im JSON-Backup **und** im GeoJSON mit,
+  sodass ein Import die Grad auch auf einem anderen Gerät zurückrechnen kann. Die Bedienelemente
+  stehen deshalb im Menü unter *Karten*, nicht unter *Einstellungen*.
+- **Umgerechnet wird nur beim GeoJSON-Export**, nie im Datenmodell. Intern bleiben alle Punkte
+  lokale Meter. Ein Moduswechsel wirkt daher **nicht rückwirkend** auf gespeicherte Karten, nur
+  auf künftige Exporte. Der **JSON-Export bleibt bewusst in Metern**: er ist das vollständige
+  Backup des internen Modells (`JSON.stringify(state.activeMap)`) und muss unverändert wieder
+  einlesbar sein; der Ursprung steckt als Feld darin.
+- **Formel** (wie CaSSAndRA/grauonline): `lat = y/111111 + origin.lat`,
+  `lon = x/(111111·cos(origin.lat)) + origin.lon`, Ausgabe in GeoJSON-Reihenfolge `[lon, lat]`
+  mit 7 Nachkommastellen (≈ 1,1 cm). Rückweg entsprechend.
+- **Zwei Bedingungen müssen zusammenkommen** (`mapOriginInUse()`): Modus `absolute` **und** ein
+  gültiger Ursprung (`normalizeOrigin()`: Breite −90..90, Länge −180..180). Fehlt eines von
+  beiden, exportiert die App weiter Meter, statt falsche Grad zu erzeugen.
+- **Import**: der Ursprung kommt aus `properties.origin` der Datei, erkannt an
+  `properties.coordinateSystem === 'wgs84-degrees'`. Kündigt eine Datei Grad an, bringt aber
+  keinen Ursprung mit, wird sie mit `missingOrigin` abgelehnt — stillschweigend Grad als Meter zu
+  lesen wäre schlimmer als eine klare Meldung. Dateien ohne Kennzeichnung gelten wie bisher als
+  lokale Meter.
+- Die CaSSAndRA-Bezeichner (`properties.name`/`label`) gelten in beiden Modi unverändert.
+
+### Offene Entscheidung (Nutzer)
+
+1. **Fremde CaSSAndRA-Dateien.** Für absolute `[lon, lat]` bräuchte es eine Referenzposition
+   (`rover_lat`/`rover_lon`) und die Umrechnung `lat = y/111111 + ref_lat`,
+   `lon = x/(111111·cos(ref_lat)) + ref_lon`. **Die Referenz haben wir nicht:** Sunray liefert
+   über `AT+S` ausschließlich lokale X/Y-Meter. Der neue Positionsmodus löst das für **unsere
+   eigenen** Dateien (der Ursprung wird vom Nutzer eingetragen und reist mit), aber eine **fremde
+   CaSSAndRA-Datei** bringt ihren Ursprung nicht mit: sie enthält nur Grad. Um sie einzulesen,
+   müsste der Nutzer den passenden Ursprung von Hand angeben — dafür gibt es bisher keinen Weg.
+
+**Wichtig für beide:** solange die Koordinaten lokale Meter sind, wäre ein CaSSAndRA-Import bei
+uns wertlos — Grad würden als Meter gelesen. Unser Import bleibt deshalb bewusst auf `role`
+beschränkt, statt fremde Dateien scheinbar zu akzeptieren und stillschweigend Unsinn zu erzeugen.
+
 ## Testinfrastruktur
 
 Kein Runner, kein `package.json`, keine Abhängigkeiten — reine Node-Skripte.
@@ -843,6 +944,45 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-06: **Optionaler Positionsmodus relativ/absolut.** Neue Einstellung im Menü unter
+  *Karten*: „Relativ“ (Standard, alles unverändert) oder „Absolut“ mit einmalig einzutragendem
+  Ursprung (Breite/Länge, üblicherweise die Ladestation). **Gespeichert an der Karte**, nicht
+  global — zwei Karten liegen an zwei Orten, und so reist der Ursprung im Backup und im GeoJSON
+  mit. Umgerechnet wird **nur beim GeoJSON-Export**; das Datenmodell und der JSON-Backup-Export
+  bleiben lokale Meter, ein Moduswechsel wirkt also nicht rückwirkend. Umrechnung nur, wenn
+  Modus **und** gültiger Ursprung zusammenkommen; sonst weiter Meter statt falscher Grad. Der
+  Import erkennt Grad an `coordinateSystem: 'wgs84-degrees'` und rechnet über den mitgelieferten
+  Ursprung zurück; kündigt eine Datei Grad ohne Ursprung an, wird sie abgelehnt. Neun neue
+  Testfälle (app core, ui 91), gegen fünf simulierte Rückfälle geprüft — darunter ein
+  vergessenes `cos(lat)` und ein Ursprung, der nach dem Zurückschalten weiter umrechnet.
+  `APP_VERSION` auf `v33`.
+
+- 2026-09-06: **Typbezeichner an CaSSAndRA angeglichen.** `properties.name` trägt im
+  GeoJSON-Export jetzt nur noch den Typ in CaSSAndRAs Schreibweise (`perimeter`, `exclusion`,
+  `search wire` mit Leerzeichen, `dockpoints`), der übersetzte Anzeigename ist ins neue Feld
+  `properties.label` gezogen; `properties.role` bleibt unser internes Merkmal. Der Import
+  erkennt Features jetzt über `role` **oder** über einen CaSSAndRA-Namen (`featureRole()`).
+  Beim Umbau ist aufgefallen, dass `geoJsonToMap()` **keinen Wegpunkt-Zweig hatte** —
+  exportierte Wegpunkte gingen beim Wiedereinlesen verloren; behoben. Der Anzeigename einer
+  importierten Fläche kommt aus `label`, ersatzweise aus einem `name`, der kein Typbezeichner
+  ist (alte Dateien), sonst dem Standardnamen — sonst hieße jede Fläche „exclusion“.
+  Koordinaten bleiben lokale Meter, Ringschluss und offener Dockpfad unverändert. Drei neue
+  Testblöcke in `tests/app-core-test.js`, gegen sechs simulierte Rückfälle geprüft.
+  `APP_VERSION` auf `v32`.
+
+- 2026-09-06: **GeoJSON-Export gegen CaSSAndRA abgeglichen — reine Analyse, kein Codeeingriff.**
+  Ergebnis im Abschnitt „GeoJSON-Abgleich mit CaSSAndRA“: geschlossen/offen stimmt für
+  Perimeter, Ausschluss und Dockpfad bereits überein, und die 20-cm-Verlängerung des letzten
+  Dockpunktes gibt es bei uns nicht. Es gab also nichts unkritisch anzugleichen. Zwei
+  Abweichungen sind Formatentscheidungen und liegen beim Nutzer: das Typ-Vokabular
+  (`properties.role` gegen CaSSAndRAs `properties.name`, dazu dessen abweichendes
+  API-Vokabular `dockPath`) und die Koordinaten (lokale Meter gegen absolute `[lon, lat]` —
+  dafür fehlt uns die Referenzposition, Sunray liefert über `AT+S` nur lokale X/Y).
+  Neue Testfälle in `tests/app-core-test.js`: Ringschluss je Typ, offener Dockpfad ohne
+  Verlängerung, Koordinatenreihenfolge, Rundlauf Export→Import, Polygon-Rückfall bei zwei
+  Punkten. Gegen vier simulierte Rückfälle geprüft, darunter die CaSSAndRA-Verlängerung.
+  `APP_VERSION` unverändert, weil sich an der App nichts geändert hat.
 
 - 2026-09-06: **PWA-Installation erklärt.** Die Hilfe empfahl das Installieren, ohne zu sagen,
   was eine PWA ist oder wie es geht. Neuer Abschnitt in der Karte *Offline im Garten*: kurze

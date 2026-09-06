@@ -120,6 +120,9 @@ const I18N = {
     showMower: 'Mäher anzeigen', mowerLength: 'Länge', mowerWidth: 'Breite', mowerScaleNote: 'Der Mäher wird maßstäblich zur Karte dargestellt.', mowerTooltip: 'Mäher {length} × {width} m',
     noPointSelected: 'Kein Punkt ausgewählt',
     selectedPointInfo: '{label} · Punkt {n}', relearnPoint: 'Punkt neu anlernen', pointRelearned: 'Punkt {n} neu angelernt: X {x} · Y {y}',
+    positionMode: 'Positionsmodus', positionModeRelative: 'Relativ (lokale Meter)', positionModeAbsolute: 'Absolut (GPS-Grad)',
+    originLat: 'Breitengrad des Ursprungs', originLon: 'Längengrad des Ursprungs',
+    positionModeHint: 'Gilt nur für diese Karte und nur für den GeoJSON-Export. „Relativ“ ist der Standard und lässt alles wie bisher. Für „Absolut“ trägst du einmalig die GPS-Position des Nullpunkts ein, üblicherweise die der Ladestation.',
     activeMapField: 'Aktive Karte', newMapField: 'Neue Karte', newMapPlaceholder: 'z. B. Hintergarten', createMap: 'Neue Karte anlegen', mapLimitReached: 'Maximal 10 Karten können lokal gespeichert werden. Lösche zuerst eine Karte.',
     backupManagement: 'Backup & Verwaltung', backupDescription: 'Die Kartendaten liegen in IndexedDB des Browsers. Ein Export ist die einfachste Sicherung.',
     saveJson: 'Als JSON speichern', saveGeoJson: 'Als GeoJSON speichern',
@@ -149,8 +152,9 @@ const I18N = {
     dockPath: 'Dockpfad',
     deleteExclusionConfirm: '{name} wirklich löschen?', pointSaved: 'Punkt gespeichert: X {x} · Y {y}', dockPoints: 'Dockpunkte',
     mapSummary: '{name} · {points} Punkte', noMap: 'Keine Karte', noMapLoaded: 'Keine Karte geladen.', invalidMapFile: 'Datei ist keine MapCreator-für-Ardumower-Karte.', unknown: 'unbekannt',
+    missingOrigin: 'Die Datei enthält Grad-Koordinaten, aber keine Ursprungsposition. Ohne sie lassen sich die Werte nicht in lokale Meter zurückrechnen.',
     unsupportedGeometry: 'GeoJSON-Geometrie {type} wird nicht unterstützt.', invalidCoordinates: 'GeoJSON enthält ungültige X/Y-Koordinaten.',
-    invalidGeoJson: 'Datei ist kein unterstütztes GeoJSON FeatureCollection.', noGeoFeatures: 'GeoJSON enthält keine Features mit role=perimeter, exclusion oder dock.',
+    invalidGeoJson: 'Datei ist kein unterstütztes GeoJSON FeatureCollection.', noGeoFeatures: 'GeoJSON enthält keine erkennbaren Features (perimeter, exclusion, search wire oder dockpoints).',
     insecureContext: 'Diese Seite läuft nicht in einem sicheren Kontext. Für Web Bluetooth bitte über HTTPS (z. B. GitHub Pages) öffnen.',
     browserNoBluetooth: 'Dieser Browser stellt Web Bluetooth nicht bereit. Für den Prototyp Android + Chrome verwenden; der Demo-Modus funktioniert trotzdem.',
     connectionFailed: 'Verbindung fehlgeschlagen: {message}', bleError: 'BLE Fehler', importFailed: 'Import fehlgeschlagen: {message}',
@@ -302,6 +306,9 @@ const I18N = {
     showMower: 'Show mower', mowerLength: 'Length', mowerWidth: 'Width', mowerScaleNote: 'The mower is drawn to scale on the map.', mowerTooltip: 'Mower {length} × {width} m',
     noPointSelected: 'No point selected',
     selectedPointInfo: '{label} · point {n}', relearnPoint: 'Relearn point', pointRelearned: 'Point {n} relearned: X {x} · Y {y}',
+    positionMode: 'Position mode', positionModeRelative: 'Relative (local metres)', positionModeAbsolute: 'Absolute (GPS degrees)',
+    originLat: 'Latitude of the origin', originLon: 'Longitude of the origin',
+    positionModeHint: 'Applies to this map only and only to the GeoJSON export. “Relative” is the default and keeps everything as before. For “Absolute” you enter the GPS position of the zero point once, usually that of the charging station.',
     activeMapField: 'Active map', newMapField: 'New map', newMapPlaceholder: 'e.g. Back garden', createMap: 'Create new map', mapLimitReached: 'A maximum of 10 maps can be stored locally. Delete a map first.',
     backupManagement: 'Backup & management', backupDescription: 'Map data is stored in the browser’s IndexedDB. Exporting is the easiest way to create a backup.',
     saveJson: 'Save as JSON', saveGeoJson: 'Save as GeoJSON',
@@ -331,8 +338,9 @@ const I18N = {
     dockPath: 'Dock path',
     deleteExclusionConfirm: 'Really delete {name}?', pointSaved: 'Point saved: X {x} · Y {y}', dockPoints: 'Dock points',
     mapSummary: '{name} · {points} points', noMap: 'No map', noMapLoaded: 'No map loaded.', invalidMapFile: 'File is not a MapCreator für Ardumower map.', unknown: 'unknown',
+    missingOrigin: 'The file contains degree coordinates but no origin position. Without it the values cannot be converted back to local metres.',
     unsupportedGeometry: 'GeoJSON geometry {type} is not supported.', invalidCoordinates: 'GeoJSON contains invalid X/Y coordinates.',
-    invalidGeoJson: 'File is not a supported GeoJSON FeatureCollection.', noGeoFeatures: 'GeoJSON contains no features with role=perimeter, exclusion, or dock.',
+    invalidGeoJson: 'File is not a supported GeoJSON FeatureCollection.', noGeoFeatures: 'GeoJSON contains no recognisable features (perimeter, exclusion, search wire or dockpoints).',
     insecureContext: 'This page is not running in a secure context. Open it via HTTPS (for example GitHub Pages) to use Web Bluetooth.',
     browserNoBluetooth: 'This browser does not provide Web Bluetooth. Use Android + Chrome for the prototype; demo mode still works.',
     connectionFailed: 'Connection failed: {message}', bleError: 'BLE error', importFailed: 'Import failed: {message}',
@@ -507,6 +515,8 @@ const ui = {
   exportJsonBtn: $('exportJsonBtn'), exportGeoJsonBtn: $('exportGeoJsonBtn'), importInput: $('importInput'),
   mapGallery: $('mapGallery'), mapCountBadge: $('mapCountBadge'),
   elementList: $('elementList'),
+  positionModeSelect: $('positionModeSelect'), originFields: $('originFields'),
+  originLatInput: $('originLatInput'), originLonInput: $('originLonInput'),
   fixOnly: $('fixOnly'),
   autoCaptureIntervalInput: $('autoCaptureIntervalInput'), autoCaptureState: $('autoCaptureState'),
   showGrid: $('showGrid'), gridStepSelect: $('gridStepSelect'), showMower: $('showMower'), mowerLengthInput: $('mowerLengthInput'), mowerWidthInput: $('mowerWidthInput'),
@@ -1968,7 +1978,10 @@ function makeMap(name) {
   return {
     format: 'ardumower-web-map', generator: 'MapCreator für Ardumower', version: 2,
     id: newId(), name: name.trim(), coordinateSystem: 'sunray-local-xy-meters',
-    createdAt: now, updatedAt: now, locked: false, perimeterClosed: false, perimeter: [], exclusions: [], waypoints: [], dockPoints: [],
+    createdAt: now, updatedAt: now, locked: false, perimeterClosed: false,
+    // Positionsmodus und Ursprung gehoeren zur Karte, nicht zur App — Begruendung in CLAUDE.md.
+    positionMode: 'relative', origin: null,
+    perimeter: [], exclusions: [], waypoints: [], dockPoints: [],
   };
 }
 
@@ -1990,6 +2003,9 @@ function normalizeMap(map) {
   });
   if (!Array.isArray(map.waypoints)) map.waypoints = [];
   if (!Array.isArray(map.dockPoints)) map.dockPoints = [];
+  // Bestandskarten kennen den Positionsmodus nicht: sie sind relativ, wie sie aufgenommen wurden.
+  map.positionMode = map.positionMode === 'absolute' ? 'absolute' : 'relative';
+  map.origin = normalizeOrigin(map.origin);
   return map;
 }
 
@@ -2087,6 +2103,35 @@ async function toggleMapLockById(mapId) {
   renderMapControls(); renderMap();
 }
 
+/** Positionsmodus und Ursprung gehoeren zur Karte — die Felder folgen deshalb der aktiven. */
+function renderPositionMode() {
+  const map = state.activeMap;
+  const absolute = map?.positionMode === 'absolute';
+  ui.positionModeSelect.value = absolute ? 'absolute' : 'relative';
+  ui.positionModeSelect.disabled = !map || Boolean(map.locked);
+  ui.originFields.hidden = !absolute;
+  ui.originLatInput.value = map?.origin ? String(map.origin.lat) : '';
+  ui.originLonInput.value = map?.origin ? String(map.origin.lon) : '';
+  ui.originLatInput.disabled = !map || Boolean(map.locked);
+  ui.originLonInput.disabled = !map || Boolean(map.locked);
+}
+
+/**
+ * Uebernimmt Modus und Ursprung aus den Eingabefeldern in die **aktive Karte**. Ein unvollstaendig
+ * oder unsinnig eingetragener Ursprung wird zu null: der Modus bleibt dann zwar auf „absolut“
+ * stehen, exportiert aber weiter lokale Meter (mapOriginInUse()), statt falsche Grad zu erzeugen.
+ */
+async function updatePositionModeFromUi() {
+  const map = state.activeMap;
+  if (!map || map.locked) { renderPositionMode(); return; }
+  map.positionMode = ui.positionModeSelect.value === 'absolute' ? 'absolute' : 'relative';
+  map.origin = map.positionMode === 'absolute'
+    ? normalizeOrigin({ lat: ui.originLatInput.value, lon: ui.originLonInput.value })
+    : null;
+  renderPositionMode();
+  await saveActiveMap();
+}
+
 function renderMapControls() {
   populateMapSelect(ui.mapSelect);
   renderMapGallery();
@@ -2105,6 +2150,7 @@ function renderMapControls() {
   const locked = Boolean(state.activeMap?.locked);
   ui.lockMapBtn.textContent = tr(locked ? 'unlockCurrentMap' : 'lockCurrentMap');
   ui.deleteMapBtn.disabled = locked;
+  renderPositionMode();
   renderElementList();
   renderValidation();
   refreshCaptureState();
@@ -3077,26 +3123,91 @@ function exportCurrentMapJson() {
   downloadTextFile(payload, `${safeFileName(localizedMapName(state.activeMap))}.mapcreator-ardumower.json`, 'application/json');
 }
 
-function pointCoordinate(point) {
+/**
+ * Ursprung einer absoluten Karte: Breite -90..90, Länge -180..180. Alles andere ist kein
+ * Ursprung — dann bleibt die Karte relativ, statt falsche Grad zu erzeugen.
+ */
+function normalizeOrigin(origin) {
+  const lat = Number(origin?.lat);
+  const lon = Number(origin?.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+  return { lat, lon };
+}
+
+/** Rechnet eine Karte nur dann in Grad, wenn beides stimmt: Modus **und** gültiger Ursprung. */
+function mapOriginInUse(map) {
+  return map?.positionMode === 'absolute' ? normalizeOrigin(map.origin) : null;
+}
+
+// Dieselbe Näherung wie CaSSAndRA und die grauonline-App: ein Grad Breite entspricht 111111 m,
+// ein Grad Länge derselben Strecke mal cos(Breite). Für einen Garten ist das mehr als genau.
+const METERS_PER_DEGREE = 111111;
+const DEGREE_DECIMALS = 7; // 1e-7 Grad sind rund 1,1 cm
+
+function lonScale(originLat) {
+  return METERS_PER_DEGREE * Math.cos((originLat * Math.PI) / 180);
+}
+
+/** Lokale Sunray-Meter → absolute Grad, in GeoJSON-Reihenfolge [lon, lat]. */
+function localToAbsolute(point, origin) {
+  const lat = Number(point.y) / METERS_PER_DEGREE + origin.lat;
+  const lon = Number(point.x) / lonScale(origin.lat) + origin.lon;
+  return [Number(lon.toFixed(DEGREE_DECIMALS)), Number(lat.toFixed(DEGREE_DECIMALS))];
+}
+
+/** Absolute Grad [lon, lat] → lokale Sunray-Meter. */
+function absoluteToLocal(lon, lat, origin) {
+  return {
+    x: Number(((Number(lon) - origin.lon) * lonScale(origin.lat)).toFixed(3)),
+    y: Number(((Number(lat) - origin.lat) * METERS_PER_DEGREE).toFixed(3)),
+  };
+}
+
+function pointCoordinate(point, origin = null) {
+  if (origin) return localToAbsolute(point, origin);
   return [Number(point.x), Number(point.y)];
 }
 
-function closeRing(points) {
-  const coords = points.map(pointCoordinate);
+function closeRing(points, origin = null) {
+  const coords = points.map((p) => pointCoordinate(p, origin));
   if (coords.length >= 3) coords.push([...coords[0]]);
   return coords;
 }
 
-function geometryForArea(points) {
-  if (points.length >= 3) return { type: 'Polygon', coordinates: [closeRing(points)] };
-  if (points.length === 2) return { type: 'LineString', coordinates: points.map(pointCoordinate) };
-  if (points.length === 1) return { type: 'Point', coordinates: pointCoordinate(points[0]) };
+function geometryForArea(points, origin = null) {
+  if (points.length >= 3) return { type: 'Polygon', coordinates: [closeRing(points, origin)] };
+  if (points.length === 2) return { type: 'LineString', coordinates: points.map((p) => pointCoordinate(p, origin)) };
+  if (points.length === 1) return { type: 'Point', coordinates: pointCoordinate(points[0], origin) };
   return null;
 }
 
-function geometryForLine(points) {
-  if (points.length >= 2) return { type: 'LineString', coordinates: points.map(pointCoordinate) };
-  if (points.length === 1) return { type: 'Point', coordinates: pointCoordinate(points[0]) };
+/**
+ * Unser interner `role` gegen den Typbezeichner, den CaSSAndRA in `properties.name` schreibt.
+ * Die Schreibweisen sind woertlich uebernommen — „search wire“ traegt ein Leerzeichen.
+ * `role` bleibt unser internes Merkmal und aendert sich nicht; `name` ist ab jetzt
+ * ausschliesslich dieser Typ, der uebersetzte Anzeigename steht in `label`.
+ */
+const CASSANDRA_TYPE_BY_ROLE = {
+  perimeter: 'perimeter',
+  exclusion: 'exclusion',
+  waypoints: 'search wire',
+  dock: 'dockpoints',
+};
+const ROLE_BY_CASSANDRA_TYPE = Object.fromEntries(
+  Object.entries(CASSANDRA_TYPE_BY_ROLE).map(([role, name]) => [name, role]));
+
+/** Der Rollenname eines Features: bevorzugt unser `role`, sonst aus CaSSAndRAs `name`. */
+function featureRole(properties) {
+  const role = String(properties?.role || '').trim().toLowerCase();
+  if (role) return role;
+  const name = String(properties?.name || '').trim().toLowerCase();
+  return ROLE_BY_CASSANDRA_TYPE[name] || '';
+}
+
+function geometryForLine(points, origin = null) {
+  if (points.length >= 2) return { type: 'LineString', coordinates: points.map((p) => pointCoordinate(p, origin)) };
+  if (points.length === 1) return { type: 'Point', coordinates: pointCoordinate(points[0], origin) };
   return null;
 }
 
@@ -3112,15 +3223,21 @@ function sampleMetadata(points) {
 
 function mapToGeoJson(map) {
   const features = [];
-  const perimeterGeometry = geometryForArea(map.perimeter);
+  // Nur mit Modus „absolut“ **und** gueltigem Ursprung wird umgerechnet; sonst bleibt alles
+  // wie bisher bei lokalen Metern.
+  const origin = mapOriginInUse(map);
+  const system = origin ? 'wgs84-degrees' : 'sunray-local-xy-meters';
+  const units = origin ? 'deg' : 'm';
+  const perimeterGeometry = geometryForArea(map.perimeter, origin);
   if (perimeterGeometry) {
     features.push({
       type: 'Feature',
       properties: {
         role: 'perimeter',
-        name: 'Perimeter',
-        coordinateSystem: 'sunray-local-xy-meters',
-        units: 'm',
+        name: CASSANDRA_TYPE_BY_ROLE.perimeter,
+        label: tr('perimeter'),
+        coordinateSystem: system,
+        units,
         completePolygon: map.perimeter.length >= 3,
         samples: sampleMetadata(map.perimeter),
       },
@@ -3128,17 +3245,17 @@ function mapToGeoJson(map) {
     });
   }
 
-  const waypointGeometry = geometryForLine(map.waypoints || []);
+  const waypointGeometry = geometryForLine(map.waypoints || [], origin);
   if (waypointGeometry) {
     features.push({
       type: 'Feature',
-      properties: { role: 'waypoints', name: 'Waypoints', coordinateSystem: 'sunray-local-xy-meters', units: 'm', samples: sampleMetadata(map.waypoints) },
+      properties: { role: 'waypoints', name: CASSANDRA_TYPE_BY_ROLE.waypoints, label: tr('waypoints'), coordinateSystem: system, units, samples: sampleMetadata(map.waypoints) },
       geometry: waypointGeometry,
     });
   }
 
   map.exclusions.forEach((exclusion, index) => {
-    const geometry = geometryForArea(exclusion.points || []);
+    const geometry = geometryForArea(exclusion.points || [], origin);
     if (!geometry) return;
     features.push({
       type: 'Feature',
@@ -3146,9 +3263,10 @@ function mapToGeoJson(map) {
         role: 'exclusion',
         exclusionIndex: index,
         exclusionId: exclusion.id,
-        name: localizedExclusionName(exclusion, index),
-        coordinateSystem: 'sunray-local-xy-meters',
-        units: 'm',
+        name: CASSANDRA_TYPE_BY_ROLE.exclusion,
+        label: localizedExclusionName(exclusion, index),
+        coordinateSystem: system,
+        units,
         completePolygon: exclusion.points.length >= 3,
         samples: sampleMetadata(exclusion.points),
       },
@@ -3156,15 +3274,16 @@ function mapToGeoJson(map) {
     });
   });
 
-  const dockGeometry = geometryForLine(map.dockPoints);
+  const dockGeometry = geometryForLine(map.dockPoints, origin);
   if (dockGeometry) {
     features.push({
       type: 'Feature',
       properties: {
         role: 'dock',
-        name: tr('dockPath'),
-        coordinateSystem: 'sunray-local-xy-meters',
-        units: 'm',
+        name: CASSANDRA_TYPE_BY_ROLE.dock,
+        label: tr('dockPath'),
+        coordinateSystem: system,
+        units,
         samples: sampleMetadata(map.dockPoints),
       },
       geometry: dockGeometry,
@@ -3179,9 +3298,14 @@ function mapToGeoJson(map) {
       generator: 'MapCreator für Ardumower',
       version: 2,
       mapId: map.id,
-      coordinateSystem: 'sunray-local-xy-meters',
-      units: 'm',
-      note: 'Coordinates are local Sunray X/Y values in meters, not WGS84 longitude/latitude.',
+      coordinateSystem: system,
+      units,
+      // Der Ursprung reist mit: nur damit kann ein Import die Grad wieder in Meter zurueckrechnen,
+      // auch auf einem anderen Geraet.
+      origin: origin ? { lat: origin.lat, lon: origin.lon } : null,
+      note: origin
+        ? 'Coordinates are WGS84 [longitude, latitude] degrees, derived from local Sunray X/Y metres via properties.origin.'
+        : 'Coordinates are local Sunray X/Y values in meters, not WGS84 longitude/latitude.',
       createdAt: map.createdAt,
       updatedAt: map.updatedAt,
     },
@@ -3207,7 +3331,7 @@ function validateImportedMap(data) {
   return clone;
 }
 
-function pointsFromGeoGeometry(geometry, samples = []) {
+function pointsFromGeoGeometry(geometry, samples = [], origin = null) {
   if (!geometry) return [];
   let coords = [];
   if (geometry.type === 'Point') coords = [geometry.coordinates];
@@ -3226,9 +3350,10 @@ function pointsFromGeoGeometry(geometry, samples = []) {
       throw new Error(tr('invalidCoordinates'));
     }
     const meta = samples[index] || {};
+    const local = origin ? absoluteToLocal(coord[0], coord[1], origin) : { x: Number(coord[0]), y: Number(coord[1]) };
     return {
-      x: Number(coord[0]),
-      y: Number(coord[1]),
+      x: local.x,
+      y: local.y,
       capturedAt: meta.capturedAt || null,
       originalCapturedAt: meta.originalCapturedAt || null,
       editedAt: meta.editedAt || null,
@@ -3238,28 +3363,54 @@ function pointsFromGeoGeometry(geometry, samples = []) {
   });
 }
 
+/**
+ * Anzeigename einer importierten Ausschlussflaeche. `label` ist der neue Platz dafuer; aeltere
+ * Dateien aus dieser App trugen ihn noch in `name`. Ein `name`, das nur den CaSSAndRA-Typ
+ * enthaelt, ist kein Anzeigename — sonst hiesse jede Flaeche „exclusion“.
+ */
+function importedExclusionName(properties, number) {
+  const label = String(properties?.label || '').trim();
+  if (label) return label;
+  const name = String(properties?.name || '').trim();
+  if (name && !ROLE_BY_CASSANDRA_TYPE[name.toLowerCase()]) return name;
+  return tr('exclusionN', { n: number });
+}
+
 function geoJsonToMap(data) {
   if (!data || data.type !== 'FeatureCollection' || !Array.isArray(data.features)) {
     throw new Error(tr('invalidGeoJson'));
   }
   const map = makeMap(data.name || data.properties?.name || tr('geoJsonImport'));
   map.name = `${map.name} ${tr('importSuffix')}`;
+  // Grad koennen nur mit dem Ursprung zurueckgerechnet werden, mit dem sie entstanden sind —
+  // ohne ihn waeren die Werte nicht zu deuten, und stillschweigend als Meter zu lesen waere
+  // schlimmer als eine klare Fehlermeldung.
+  const declared = String(data.properties?.coordinateSystem || '').toLowerCase();
+  let origin = null;
+  if (declared === 'wgs84-degrees') {
+    origin = normalizeOrigin(data.properties?.origin);
+    if (!origin) throw new Error(tr('missingOrigin'));
+    map.positionMode = 'absolute';
+    map.origin = origin;
+  }
   for (const feature of data.features) {
-    const role = String(feature?.properties?.role || '').toLowerCase();
-    const points = pointsFromGeoGeometry(feature.geometry, feature?.properties?.samples || []);
+    const role = featureRole(feature?.properties);
+    const points = pointsFromGeoGeometry(feature.geometry, feature?.properties?.samples || [], origin);
     if (role === 'perimeter') {
       map.perimeter = points;
     } else if (role === 'exclusion') {
       map.exclusions.push({
         id: newId(),
-        name: feature.properties?.name || tr('exclusionN', { n: map.exclusions.length + 1 }),
+        name: importedExclusionName(feature?.properties, map.exclusions.length + 1),
         points,
       });
     } else if (role === 'dock' || role === 'dockpoints' || role === 'dockpath') {
       map.dockPoints = points;
+    } else if (role === 'waypoints' || role === 'waypoint') {
+      map.waypoints = points;
     }
   }
-  if (!map.perimeter.length && !map.exclusions.length && !map.dockPoints.length) {
+  if (!map.perimeter.length && !map.exclusions.length && !map.dockPoints.length && !map.waypoints.length) {
     throw new Error(tr('noGeoFeatures'));
   }
   return map;
@@ -3793,6 +3944,8 @@ function bindEvents() {
 
   // Karten
   ui.newMapBtn.addEventListener('click', () => createMapFromInput().catch(reportError));
+  [ui.positionModeSelect, ui.originLatInput, ui.originLonInput].forEach((input) => input
+    .addEventListener('change', () => updatePositionModeFromUi().catch(reportError)));
   ui.newMapName.addEventListener('keydown', (e) => { if (e.key === 'Enter') createMapFromInput().catch(reportError); });
   ui.deleteMapBtn.addEventListener('click', () => deleteActiveMap().catch(reportError));
   ui.mapSelect.addEventListener('change', () => setActiveMapById(ui.mapSelect.value));

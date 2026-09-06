@@ -17,6 +17,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'mapElements', 'renderElementList', 'deleteElement', 'activateElement',
   'pruneEmptyExclusions', 'localizedExclusionName', 'loadViewPreferences', 'applyHandedness',
   'insertPointAtSelection', 'capturePreconditionKey', 'insertNeighbourIndex', 'midpointBetween',
+  'renderPositionMode', 'updatePositionModeFromUi', 'mapToGeoJson', 'setActiveMapById',
   'canCloseAndStartNew', 'closeAndStartNewExclusion', 'currentExclusion',
   'setTheme', 'applyTheme', 'applyDriveZonePreferences', 'applyViewPreferencesToUi', 'updateViewPreferencesFromUi', 'JOYSTICK_SCALES', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine', 'lockIcon', 'toggleLanguage',
   'askConfirm', 'confirmDialogRespond', 'showNotice', 'reportError', 'reportBleError',
@@ -1077,6 +1078,81 @@ test('Rueckgaengig nimmt ein Einfuegen zurueck', async () => {
 
   await t.undoLastAction();
   assert.strictEqual(perimeterXs(t), '0,10,20', 'das Einfuegen ist zurueckgenommen');
+});
+
+// === Positionsmodus in der Kartenverwaltung ================================
+test('Der Positionsmodus ist relativ voreingestellt und blendet die Ursprungsfelder aus', () => {
+  const { t } = setup();
+  t.renderPositionMode();
+  assert.strictEqual(t.ui.positionModeSelect.value, 'relative');
+  assert.strictEqual(t.ui.originFields.hidden, true, 'ohne „Absolut“ kein Eingabefeld');
+});
+
+test('„Absolut“ zeigt die Ursprungsfelder und schreibt sie in die Karte', async () => {
+  const { t } = setup();
+  t.ui.positionModeSelect.value = 'absolute';
+  t.ui.originLatInput.value = '48.5';
+  t.ui.originLonInput.value = '9.25';
+  await t.updatePositionModeFromUi();
+
+  assert.strictEqual(t.state.activeMap.positionMode, 'absolute');
+  assert.strictEqual(t.state.activeMap.origin.lat, 48.5);
+  assert.strictEqual(t.state.activeMap.origin.lon, 9.25);
+  assert.strictEqual(t.ui.originFields.hidden, false, 'die Felder sind sichtbar');
+
+  // Zurueck auf relativ raeumt den Ursprung wieder ab.
+  t.ui.positionModeSelect.value = 'relative';
+  await t.updatePositionModeFromUi();
+  assert.strictEqual(t.state.activeMap.positionMode, 'relative');
+  assert.strictEqual(t.state.activeMap.origin, null);
+  assert.strictEqual(t.ui.originFields.hidden, true);
+});
+
+test('Ein unsinniger Ursprung erzeugt keine falschen Grad', async () => {
+  const { t } = setup();
+  t.ui.positionModeSelect.value = 'absolute';
+  t.ui.originLatInput.value = '200';       // ausserhalb -90..90
+  t.ui.originLonInput.value = '9.25';
+  await t.updatePositionModeFromUi();
+  assert.strictEqual(t.state.activeMap.origin, null, 'der Wert wird verworfen');
+
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:10,y:0},{x:10,y:10}];
+  const g = t.mapToGeoJson(t.state.activeMap);
+  assert.strictEqual(g.properties.coordinateSystem, 'sunray-local-xy-meters',
+    'ohne gueltigen Ursprung bleibt der Export bei lokalen Metern');
+});
+
+test('Der Positionsmodus gehoert zur Karte, nicht zur App', async () => {
+  const { t } = setup();
+  // Zweite Karte anlegen und die erste auf absolut stellen.
+  const second = t.normalizeMap(t.makeMap('Zweite'));
+  t.state.maps.push(second);
+  t.ui.positionModeSelect.value = 'absolute';
+  t.ui.originLatInput.value = '48.5';
+  t.ui.originLonInput.value = '9.25';
+  await t.updatePositionModeFromUi();
+  const firstId = t.state.activeMap.id;
+
+  t.setActiveMapById(second.id);
+  t.renderPositionMode();
+  assert.strictEqual(t.state.activeMap.positionMode, 'relative',
+    'die zweite Karte an einem anderen Ort bleibt unberuehrt');
+  assert.strictEqual(t.ui.positionModeSelect.value, 'relative');
+  assert.strictEqual(t.ui.originFields.hidden, true);
+
+  t.setActiveMapById(firstId);
+  t.renderPositionMode();
+  assert.strictEqual(t.ui.positionModeSelect.value, 'absolute', 'und die erste behaelt ihren Modus');
+  assert.strictEqual(t.ui.originLatInput.value, '48.5');
+});
+
+test('In einer gesperrten Karte laesst sich der Positionsmodus nicht aendern', async () => {
+  const { t } = setup();
+  t.state.activeMap.locked = true;
+  t.ui.positionModeSelect.value = 'absolute';
+  await t.updatePositionModeFromUi();
+  assert.strictEqual(t.state.activeMap.positionMode, 'relative', 'gesperrt heisst gesperrt');
+  assert.strictEqual(t.ui.positionModeSelect.disabled, true);
 });
 
 test('RTK-Badge zeigt Zustand und Satelliten als Mäher/Station', () => {
