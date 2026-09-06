@@ -252,6 +252,43 @@ test('Rechtshaender bleibt der unveraenderte Standard', () => {
   assert.strictEqual(resolve('.drive-meta', 'grid-column').value, '1', 'Fahrtanzeige links');
 });
 
+test('Flaechen und Texte der Kartenpruefung folgen den Theme-Tokens', () => {
+  // Der Fehler: `.validation-summary` hatte einen fest verdrahteten fast schwarzen Hintergrund,
+  // und der Hell-Modus ueberschrieb nur die Schriftfarbe. Ergebnis war dunkler Text auf
+  // dunklem Kasten — im Dunkel-Modus unauffaellig, im Hell-Modus unlesbar. Ein Token gilt fuer
+  // beide Modi, deshalb wird hier auf Tokens geprueft und nicht auf zwei Farbwerte.
+  const tokenised = (selector, property) => {
+    const value = resolve(selector, property).value || '';
+    assert.ok(/var\(--shell-/.test(value),
+      `${selector} { ${property}: ${value || '—'} } muss ein --shell-Token nutzen`);
+  };
+  for (const property of ['background', 'border', 'color']) tokenised('.validation-summary', property);
+
+  // Die Ergebnisliste darunter hat keinen eigenen Hintergrund, ihre Schriftfarbe war fuer den
+  // Hell-Modus aber schon gepflegt — das muss so bleiben.
+  assert.ok(/var\(--shell-/.test(resolve(':root[data-theme="light"] .validation-item', 'color').value || ''),
+    'die Meldungszeilen brauchen im Hell-Modus eine eigene Farbe');
+
+  // Kein fester Dunkelwert darf zurueckkommen.
+  const rule = css.slice(css.indexOf('.validation-summary {'));
+  const body = rule.slice(0, rule.indexOf('}'));
+  assert.ok(!/#[0-9a-fA-F]{3,6}/.test(body), `feste Farbe in .validation-summary: ${body.trim()}`);
+});
+
+test('Auch die Kaesten der Hilfe nutzen Theme-Tokens statt fester Dunkelwerte', () => {
+  // Dieselbe Ursache, gefunden beim Nachziehen der Kartenpruefung: diese Flaechen behielten im
+  // Hell-Modus ihren fast schwarzen Hintergrund (#0a1013), weil dort nur die Rahmenfarbe
+  // ueberschrieben war.
+  for (const selector of ['.help-status-row', '.compat-item', '.help-feature-grid > div',
+    '.format-card', '.faq-list details']) {
+    const value = resolve(selector, 'background').value || '';
+    assert.ok(/var\(--shell-/.test(value), `${selector} { background: ${value || '—'} }`);
+  }
+  assert.ok(!css.includes('#0a1013'), 'der feste Dunkelwert darf nirgends mehr stehen');
+  assert.ok(/var\(--shell-/.test(resolve('.view-divider', 'background').value || ''),
+    'auch die Trennlinie war fest dunkel');
+});
+
 test('Das hidden-Attribut blendet auch Knoepfe aus', () => {
   // `button { display: inline-flex }` schlaegt das display:none des Browsers fuer [hidden].
   // Ohne eine eigene Regel bleiben per element.hidden ausgeblendete Knoepfe sichtbar.

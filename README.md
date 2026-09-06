@@ -234,6 +234,21 @@ gelöschte Website-Daten bedeuten: Karten sind weg.
 
 **Erstelle regelmäßig JSON-Backups deiner wichtigen Karten.**
 
+### Positionsmodus: relativ oder absolut
+
+Jede Karte rechnet standardmäßig in **lokalen Metern** relativ zum Startpunkt des Mähers – das ist
+der Modus *Relativ*, und für die normale Nutzung ist dort nichts einzustellen.
+
+Der Modus *Absolut* im Menü unter **Karten** ist nur dann interessant, wenn du die Karte mit
+Programmen austauschen willst, die echte Weltkoordinaten erwarten. Dafür trägst du einmalig die
+GPS-Position des Nullpunkts ein, üblicherweise die der Ladestation; der GeoJSON-Export enthält
+danach absolute Längen- und Breitengrade statt Meter. Der Ursprung gehört zur **jeweiligen Karte**,
+nicht zur App – verschiedene Karten liegen meist an verschiedenen Orten – und wird mitexportiert,
+damit ein Import die Werte wieder zurückrechnen kann.
+
+Solange kein gültiger Ursprung eingetragen ist, bleibt alles bei lokalen Metern. Der JSON-Backup
+bleibt in jedem Fall in Metern, denn er ist die vollständige Sicherung der Karte selbst.
+
 ## Ohne Internet im Garten arbeiten
 
 1. Die Seite mindestens einmal **mit Internet** in Chrome öffnen.
@@ -513,6 +528,21 @@ or cleared site data means the maps are gone.
 - Both formats can be imported again.
 
 **Make regular JSON backups of the maps that matter to you.**
+
+### Position mode: relative or absolute
+
+By default every map works in **local metres** relative to the mower's starting point – that is the
+*Relative* mode, and for normal use there is nothing to configure.
+
+The *Absolute* mode in the menu under **Maps** is only of interest if you want to exchange the map
+with programs that expect real world coordinates. For that you enter the GPS position of the zero
+point once, usually that of the charging station; the GeoJSON export then contains absolute
+longitude and latitude instead of metres. The origin belongs to the **individual map**, not to the
+app – different maps usually sit in different places – and it is exported along with the file so
+that an import can convert the values back.
+
+As long as no valid origin is set, everything stays in local metres. The JSON backup always stays
+in metres, because it is the complete backup of the map itself.
 
 ## Working offline in the garden
 

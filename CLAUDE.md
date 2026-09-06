@@ -336,6 +336,17 @@ Neustart übernehmen. `startAutoCapture()` legt sofort einen Punkt und dann `set
 Farben laufen über die `--shell-*`-Tokens im v18-Layer von `styles.css`; die Hell-Palette steht
 dort zweimal (Attributselektor und Media-Query) und muss inhaltlich gleich bleiben.
 
+**Flächen und Texte gehören in die Grundregel als Token, nicht in einen Hell-Override.** Das ist
+zweimal schiefgegangen und hat dieselbe Signatur: eine Regel setzt einen festen dunklen
+Hintergrund, der Hell-Block überschreibt daneben **nur** die Schrift- oder Rahmenfarbe — im
+Dunkel-Modus fällt nichts auf, im Hell-Modus steht dunkler Text auf dunklem Kasten. Betroffen
+waren `.validation-summary` (gemeldet) sowie `.help-status-row`, `.compat-item`,
+`.help-feature-grid > div`, `.format-card`, `.faq-list details` und `.view-divider`. Alle nutzen
+jetzt `--shell-panel-2` / `--shell-border` / `--shell-text` / `--shell-muted` in der Grundregel,
+womit ein einziger Wert für beide Modi gilt. `tests/layout-test.js` prüft, dass Hintergrund,
+Rahmen und Schrift dieser Flächen `var(--shell-…)` sind und der Wert `#0a1013` nirgends
+zurückkehrt.
+
 **Der `viewBox` der Karte folgt der gemessenen Fläche** (`updateViewBox()`, `state.viewBox`):
 eine viewBox-Einheit ist genau ein CSS-Pixel. Vorher war er fest auf 1000 × 680 — auf einem
 hochkant gehaltenen Telefon passt das Seitenverhältnis nicht, und `preserveAspectRatio="meet"`
@@ -944,6 +955,27 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-06: **Positionsmodus in der Hilfe erklärt.** Neuer Eintrag „Positionsmodus“ in der
+  Karte *Karten erstellen & korrigieren* (DE/EN): relativ ist der Standard und braucht keine
+  Eingabe, absolut nur für den Austausch mit Programmen, die Weltkoordinaten erwarten, der
+  Ursprung gehört zur jeweiligen Karte, und ohne gültigen Ursprung bleibt alles bei lokalen
+  Metern. Dazu ein kurzer Abschnitt in der README (beide Sprachen) unter *Karten sichern und
+  übertragen* — dem Ort, an dem der Export ohnehin erklärt wird — mit dem zusätzlichen Hinweis,
+  dass der JSON-Backup in jedem Fall in Metern bleibt. `APP_VERSION` auf `v35`.
+
+- 2026-09-06: **Statuskasten der Kartenprüfung war im Hell-Modus unlesbar.** Ursache im CSS
+  bestätigt: `.validation-summary` hatte `background: #0c1518` und `border: #263a41` fest
+  verdrahtet, der Hell-Block überschrieb daneben **nur** `color` — dunkler Text auf fast
+  schwarzem Kasten. Jetzt `--shell-panel-2` / `--shell-border` / `--shell-text` in der
+  Grundregel, die beiden überflüssigen Hell-Overrides sind entfallen. **Ein Scan über alle im
+  Markup benutzten Selektoren mit festem dunklem Hintergrund ohne Hell-Override fand dieselbe
+  Ursache in fünf Hilfe-Flächen** (`.help-status-row`, `.compat-item`, `.help-feature-grid >
+  div`, `.format-card`, `.faq-list details`) und in `.view-divider`; alle mit umgestellt,
+  inklusive der Schriftfarben darin. `.connection-orb` und die Sprachumschaltung standen im
+  Treffer, sind aber durch eine spätere Regel längst auf `--accent-soft` — unverändert
+  gelassen. Zwei neue Testfälle (layout 25), gegen vier simulierte Rückfälle geprüft.
+  `APP_VERSION` auf `v34`.
 
 - 2026-09-06: **Optionaler Positionsmodus relativ/absolut.** Neue Einstellung im Menü unter
   *Karten*: „Relativ“ (Standard, alles unverändert) oder „Absolut“ mit einmalig einzutragendem

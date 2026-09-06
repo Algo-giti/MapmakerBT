@@ -1139,7 +1139,7 @@ footer {
 }
 .view-divider {
   height: 1px;
-  background: #23353b;
+  background: var(--shell-border);
   margin: 1px 0;
 }
 .mower-size-grid {
@@ -1350,10 +1350,12 @@ footer {
 .validation-controls { display: grid; gap: 6px; padding-bottom: 2px; }
 .validation-summary {
   padding: 7px 8px;
-  border: 1px solid #263a41;
+  /* Tokens statt fester Dunkelwerte: der Hell-Modus ueberschrieb hier nur die Schriftfarbe,
+     der fast schwarze Hintergrund blieb stehen — dunkler Text auf dunklem Kasten. */
+  border: 1px solid var(--shell-border);
   border-radius: 7px;
-  background: #0c1518;
-  color: #a9bec5;
+  background: var(--shell-panel-2);
+  color: var(--shell-text);
   font-size: .65rem;
   line-height: 1.35;
 }
@@ -1441,13 +1443,13 @@ footer {
   gap: 12px;
   min-width: 0;
   padding: 11px 12px;
-  border: 1px solid #24363c;
+  border: 1px solid var(--shell-border);
   border-radius: 9px;
-  background: #0a1013;
+  background: var(--shell-panel-2);
 }
 .help-status-row > span {
   min-width: 0;
-  color: #83959c;
+  color: var(--shell-muted);
   font-size: .78rem;
 }
 .status-value {
@@ -1494,9 +1496,9 @@ footer {
 .format-card {
   min-width: 0;
   padding: 13px;
-  border: 1px solid #24363c;
+  border: 1px solid var(--shell-border);
   border-radius: 10px;
-  background: #0a1013;
+  background: var(--shell-panel-2);
 }
 .compat-item { border-left-width: 3px; }
 .compat-item.good { border-left-color: #3ed87a; }
@@ -1507,14 +1509,14 @@ footer {
 .format-card strong {
   display: block;
   margin-bottom: 5px;
-  color: #d5e0e4;
+  color: var(--shell-text);
   font-size: .84rem;
 }
 .compat-item span,
 .help-feature-grid span,
 .format-card p {
   display: block;
-  color: #83959c;
+  color: var(--shell-muted);
   font-size: .79rem;
   line-height: 1.5;
 }
@@ -1533,9 +1535,9 @@ footer {
 }
 .faq-list { display: grid; gap: 7px; }
 .faq-list details {
-  border: 1px solid #24363c;
+  border: 1px solid var(--shell-border);
   border-radius: 9px;
-  background: #0a1013;
+  background: var(--shell-panel-2);
   overflow: hidden;
 }
 .faq-list summary {
@@ -2788,7 +2790,6 @@ body.menu-open .app-frame { visibility: hidden; }
 :root[data-theme="light"] .validation-item.error { border-color: var(--shell-danger); color: var(--shell-danger); }
 :root[data-theme="light"] .validation-item.warning { border-color: var(--shell-warn); color: var(--shell-warn); }
 :root[data-theme="light"] .validation-item.info { border-color: var(--shell-info); color: var(--shell-info); }
-:root[data-theme="light"] .validation-summary { color: var(--shell-text); }
 :root[data-theme="light"] .history-entry { background: var(--shell-panel-2); border-color: var(--shell-border); }
 :root[data-theme="light"] .history-entry strong { color: var(--shell-text); }
 :root[data-theme="light"] .history-entry small { color: var(--shell-muted); }
@@ -2855,7 +2856,6 @@ body.menu-open .app-frame { visibility: hidden; }
   :root:not([data-theme="dark"]) .validation-item.error { border-color: var(--shell-danger); color: var(--shell-danger); }
   :root:not([data-theme="dark"]) .validation-item.warning { border-color: var(--shell-warn); color: var(--shell-warn); }
   :root:not([data-theme="dark"]) .validation-item.info { border-color: var(--shell-info); color: var(--shell-info); }
-  :root:not([data-theme="dark"]) .validation-summary { color: var(--shell-text); }
   :root:not([data-theme="dark"]) .history-entry { background: var(--shell-panel-2); border-color: var(--shell-border); }
   :root:not([data-theme="dark"]) .history-entry strong { color: var(--shell-text); }
   :root:not([data-theme="dark"]) .history-entry small { color: var(--shell-muted); }
