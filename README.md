@@ -1,7 +1,19 @@
 # MapCreator für Ardumower
 
-Direkter Link:
-https://algo-giti.github.io/MapmakerBT/
+**[🇩🇪 Deutsch](#deutsch) · [🇬🇧 English](#english)**
+
+Direkter Link: https://algo-giti.github.io/MapmakerBT/
+
+<img src="https://github.com/Algo-giti/MapmakerBT/blob/main/screenshots/switch.jpg" alt="" width="300">
+<img src="https://github.com/Algo-giti/MapmakerBT/blob/main/screenshots/menu_speed.png" alt="" width="300">
+<img src="https://github.com/Algo-giti/MapmakerBT/blob/main/screenshots/demo_mode.jpg" alt="" width="300">
+<img src="https://github.com/Algo-giti/MapmakerBT/blob/main/screenshots/menu_connection.jpg" alt="" width="300">
+
+---
+
+<a id="deutsch"></a>
+
+# 🇩🇪 Deutsch
 
 MapCreator ist eine mobile Web-App, mit der du die Mähkarte deines Ardumower/Sunray direkt im
 Garten aufnimmst und pflegst. Die App verbindet sich per **Bluetooth Low Energy** direkt mit dem
@@ -9,35 +21,20 @@ Ardumower-ESP32 – ohne Internet, ohne Server, ohne Konto.
 
 Die Oberfläche lässt sich zwischen **Deutsch und Englisch** umschalten; Deutsch ist voreingestellt.
 
-Screenshots:
-
-
-<img src="https://github.com/Algo-giti/MapmakerBT/blob/main/screenshots/switch.jpg" alt="" width="300">
-
-<img src="https://github.com/Algo-giti/MapmakerBT/blob/main/screenshots/menu_speed.png" alt="" width="300">
-
-<img src="https://github.com/Algo-giti/MapmakerBT/blob/main/screenshots/demo_mode.jpg" alt="" width="300">
-
-<img src="https://github.com/Algo-giti/MapmakerBT/blob/main/screenshots/menu_connection.jpg" alt="" width="300">
-
-
-
-
-
-
-
 ## Was die App kann
 
 - Ardumower per Bluetooth verbinden
 - lokale Sunray-X/Y-Position, RTK-Status, Satelliten und Akkuspannung live anzeigen
 - **Perimeter**, mehrere **Ausschlussflächen**, **Wegpunkte** und **Dockpunkte** aufnehmen
+- Punkte automatisch setzen – wahlweise im Zeittakt oder nach gefahrener Strecke
 - vorhandene Karten nachträglich korrigieren: Punkt antippen, an die aktuelle Mäherposition
   verschieben oder löschen
+- die letzten 20 Bearbeitungsschritte einzeln rückgängig machen
 - Karten auf Geometrie- und RTK-Probleme prüfen
-- die letzte Änderung an einer Karte rückgängig machen
 - bis zu 10 Karten auf dem Gerät verwalten
 - Karten als JSON-Backup oder als GeoJSON exportieren und wieder importieren
 - den Mäher während der Aufnahme mit dem Daumen-Joystick manuell fahren
+- die gesamte Bedienung für Links- oder Rechtshänder spiegeln
 - Demo-Modus zum Ausprobieren ohne Mäher
 
 Ein Upload der fertigen Karte zu Sunray gehört **nicht** zum Funktionsumfang. MapCreator erzeugt
@@ -71,9 +68,12 @@ Das Passwort bleibt nur für die laufende Sitzung im Speicher und wird nicht mit
 Die App besteht aus drei Zonen:
 
 - **Kopfzeile** – Menü, Verbindungsstatus, Moduswahl, RTK-Status und Akku.
-- **Karte** – nimmt den größten Teil des Bildschirms ein und zeigt Mäherposition, aufgenommene
-  Punkte und deren Verbindungslinien.
-- **Fahrzone** unten – der Joystick für den Daumen.
+- **Karte** – nimmt den größten Teil des Bildschirms ein. Ganz oben liegt eine schmale
+  **Werkzeugleiste**: links Kartenname und Punktzahl samt Statuszeile, rechts die Werkzeuge
+  (Lösch-Werkzeug, Rückgängig, bei Bedarf „Schließen & neu“ und „Ansicht zurück“). Darunter die
+  Kartenfläche mit Mäherposition, aufgenommenen Punkten und deren Verbindungslinien, unten rechts
+  der Aufnahme-Knopf.
+- **Fahrzone** unten – der Joystick für den Daumen, daneben die Fahrtanzeige.
 
 Alle Einstellungen liegen auf einer eigenen **Menüseite** (☰) mit sechs Bereichen: Verbindung,
 Karten, Einstellungen, Kartenprüfung, Diagnose und Hilfe. Unter *Einstellungen* stecken
@@ -82,7 +82,7 @@ das Öffnen eines Bereichs klappt die anderen zu.
 
 ## Karte aufnehmen
 
-1. Im Menü unter **Karten** über **+ Neu** eine Karte anlegen.
+1. Im Menü unter **Karten** über **Neue Karte anlegen** eine Karte erstellen.
 2. Den **Moduswahl-Button** in der Kopfzeile antippen; es öffnet sich ein Auswahlfeld in der
    Bildschirmmitte mit **Perimeter, Ausschluss, Wegpunkt und Dock**. Der Button zeigt danach
    immer den aktiven Modus.
@@ -90,14 +90,23 @@ das Öffnen eines Bereichs klappt die anderen zu.
    **gedrückt halten**, bis der Ring einmal herumgelaufen ist. Das Halten verhindert, dass beim
    Schieben oder Zoomen der Karte versehentlich Punkte entstehen.
    - **Grün** bedeutet echter RTK FIX – nur dann ist der Punkt wirklich genau.
-   - Ist **„Nur bei RTK FIX"** aktiv, bleibt die Aufnahme bei FLOAT oder INVALID gesperrt.
-4. Für lange Strecken die **Automatik** einschalten: der kleine Knopf mit dem Play-Symbol über
+   - Ist **„Nur bei RTK FIX“** aktiv, bleibt die Aufnahme bei FLOAT oder INVALID gesperrt.
+4. Für lange Strecken die **Automatik** einschalten: der kleine Knopf mit dem Aufnahmesymbol über
    dem Aufnahme-Button. Solange sie läuft, ersetzt ein großer roter Knopf mit Pause-Symbol den
-   manuellen Button, und MapCreator setzt im eingestellten Takt selbstständig Punkte. Das
-   **Intervall** (Startwert 5 Sekunden) steht im Menü unter *Einstellungen › Aufnahme*.
+   manuellen Button. Es gibt zwei Betriebsarten, umschaltbar im Menü unter
+   *Einstellungen › Aufnahme*:
+   - **zeitbasiert** – alle *n* Sekunden ein Punkt (Startwert 5 s),
+   - **distanzbasiert** – ein Punkt, sobald der Mäher seit dem letzten automatischen Punkt weit
+     genug gefahren ist (Startwert 50 cm, Minimum 10 cm).
+
+   Die Beschriftung über dem Knopf zeigt den eingestellten Wert, also „Auto-Aufnahme (5s)“ oder
+   „Auto-Aufnahme (50cm)“. Auch die Automatik hält sich an „Nur bei RTK FIX“.
 5. Nähert sich der Mäher nach einem ausreichend langen Perimeter wieder dem Startpunkt, bietet
    die App an, den Perimeter zu **schließen**.
-6. Weitere Ausschlussflächen legst du im Menü unter *Karten* mit **+ Neu** an.
+6. Eine neue **Ausschlussfläche** brauchst du nicht anzulegen: sie entsteht von selbst, sobald du
+   im Ausschluss-Modus den ersten Punkt setzt. Für Reihen kleiner Flächen – etwa Bäume – gibt es
+   in der Werkzeugleiste **„Schließen & neu“**: ein Tipp schließt die laufende Fläche und beginnt
+   sofort die nächste.
 
 Beim Wechsel des Aufnahmemodus fragt die App nach, ob die verlassene Kontur geschlossen werden
 soll – aber nur, wenn sie mindestens drei Punkte hat und noch offen ist. Sagst du Nein, bleibt sie
@@ -119,9 +128,9 @@ Perimeter passiert das absichtlich nicht, sonst ließe sich die Karte nicht mehr
 
 Ein Tipp auf eine leere Stelle hebt die Auswahl wieder auf.
 
-### Der Lösch-Button oben rechts
+### Das Lösch-Werkzeug
 
-Ein Button, drei Aufgaben – die Beschriftung darüber sagt jeweils, was passiert:
+Ein Werkzeug, drei Aufgaben – die Beschriftung darunter sagt jeweils, was passiert:
 
 | Auswahl | Beschriftung | Wirkung |
 |---|---|---|
@@ -129,21 +138,45 @@ Ein Button, drei Aufgaben – die Beschriftung darüber sagt jeweils, was passie
 | ein Punkt | Punktauswahl löschen | löscht genau diesen Punkt |
 | eine Ausschlussfläche | Fläche löschen | löscht die ganze Fläche, nach Rückfrage |
 
-Während die Automatik läuft, ist der Button ausgeblendet.
+Während die Automatik läuft, ist das Werkzeug ausgeblendet.
+
+### Rückgängig
+
+Daneben steht **Rückgängig**. Es nimmt die letzten **20 Bearbeitungsschritte** einzeln zurück –
+nicht nur das Aufnehmen, sondern auch Verschieben, Löschen einzelner Punkte, das Löschen ganzer
+Flächen und das Schließen einer Kontur. Jeder Tipp geht einen Schritt zurück; ist der Verlauf
+leer, ist der Knopf ausgegraut. Der Verlauf gilt für die laufende Sitzung und die geöffnete Karte.
+
+### Kartenpflege
+
+Im Menü unter **Karten** stehen unter *Elemente der Karte* der Perimeter, alle Ausschlussflächen,
+die Wegpunkte und der Dockpfad mit ihrer Punktzahl. Ein Tipp auf eine Zeile macht das Element zum
+Aufnahmeziel, der Papierkorb daneben leert es.
+
+Ausschlussflächen **ohne einen einzigen Punkt** werden automatisch entfernt – sobald du den
+Ausschluss-Modus verlässt oder die Menüseite öffnest. Die Fläche, an der du gerade arbeitest,
+bleibt davon unberührt. Die verbleibenden Flächen werden lückenlos neu durchnummeriert.
 
 Fertige Karten kannst du im Menü unter **Karten** **sperren**, damit sie nicht mehr versehentlich
 verändert werden.
 
-## Kartenansicht
+## Kartenansicht und Bedienung
 
 - **Hell- und Dunkelmodus**: standardmäßig übernimmt die App die Einstellung des Geräts;
   unter *Einstellungen › Ansicht & Maßstab* lässt sich Hell oder Dunkel fest wählen.
+- **Bedienseite**: unter *Einstellungen › Fahrgeschwindigkeit* stellst du Rechts- oder
+  Linkshänder ein. Linkshänder spiegelt die **gesamte** Bedienung – Werkzeuge und Karteninfo in
+  der Werkzeugleiste, den Aufnahme-Knopf und die Fahrtanzeige.
+- **Joystick-Größe** in vier Stufen von Klein bis Sehr groß: größer heißt mehr Trefferfläche,
+  kleiner mehr Platz für die Karte.
 - **Pinch-to-Zoom** und Verschieben mit dem Finger; die Karte lässt sich nicht aus dem Bild
-  schieben, und der Button oben rechts stellt die automatische Ansicht wieder her.
+  schieben. Sobald du die Ansicht selbst verändert hast, erscheint in der Werkzeugleiste
+  **„Ansicht zurück“**.
 - Raster in 0,10 / 0,25 / 0,50 / 1 / 2 / 5 m oder automatisch
 - maßstäbliche Darstellung des Mähers samt Ausrichtung, Standard 0,60 × 0,35 m, anpassbar
 - Fahrspur während der Aufnahme
-- farbliche Bewertung der Punktqualität nach RTK-Lösung und Genauigkeit
+- **Punktfarben**: der Rand zeigt, zu welchem Element ein Punkt gehört, die Füllung die
+  RTK-Qualität im Moment der Aufnahme
 - Live-Abstand zum Perimeter bzw. zum ausgewählten Punkt
 - Bildschirm-Wachhalten während längerer Aufnahmen
 
@@ -153,8 +186,10 @@ Der Joystick liegt fest unter der Karte und ist für die Bedienung mit dem Daume
 
 - Die **Richtung** der Auslenkung ist die Fahrtrichtung, die **Stärke** der Auslenkung die
   Geschwindigkeit – wie bei einem RC-Fahrzeug. Ein separater Geschwindigkeitsregler entfällt.
-- **Minimale und maximale Geschwindigkeit** legst du im Menü unter **Fahren** fest; der volle
-  Ausschlag entspricht deinem Maximum.
+  Auch rückwärts stimmt die Lenkrichtung: hinten-links am Joystick fährt hinten-links.
+- **Minimale und maximale Geschwindigkeit** legst du im Menü unter
+  *Einstellungen › Fahrgeschwindigkeit* fest: das Minimum gilt ab der Totzone, das Maximum am
+  vollen Ausschlag.
 - Der Joystick ist eine **Totmannsteuerung**: beim Loslassen springt er in die Mitte zurück und
   der Mäher stoppt sofort.
 
@@ -172,8 +207,9 @@ Alle Karten liegen **lokal im Browser** dieses Geräts. Ein anderer Browser, ein
 gelöschte Website-Daten bedeuten: Karten sind weg.
 
 - **JSON-Export** ist das vollständige Backup einer Karte inklusive Metadaten.
-- **GeoJSON-Export** eignet sich zur Weiterverarbeitung; die Koordinaten bleiben dabei im lokalen
-  XY-Meter-System von Sunray, es sind keine Geokoordinaten.
+- **GeoJSON-Export** eignet sich zur Weiterverarbeitung: Perimeter und Ausschlussflächen werden
+  als Polygone exportiert, Wegpunkte und Dockpfad als LineString. Die Koordinaten bleiben dabei im
+  lokalen XY-Meter-System von Sunray, es sind keine Geokoordinaten.
 - Beide Formate lassen sich wieder importieren.
 
 **Erstelle regelmäßig JSON-Backups deiner wichtigen Karten.**
@@ -187,6 +223,9 @@ gelöschte Website-Daten bedeuten: Karten sind weg.
 Danach starten die App-Dateien aus dem lokalen Cache. Bluetooth, Kartenaufnahme, Bearbeitung und
 Datei-Export brauchen ohnehin keine Internetverbindung.
 
+Liegt eine neue Fassung der App bereit, erscheint oben eine schmale Hinweisleiste. Erst ein Tipp
+darauf lädt die neue Fassung – mitten in einer Aufnahme lädt die Seite nie ungefragt neu.
+
 ## Wenn etwas nicht funktioniert
 
 **Der Ardumower wird nicht gefunden.**
@@ -195,7 +234,7 @@ dass der ESP32 tatsächlich sendet. Ist bereits eine andere App verbunden, diese
 
 **Der Aufnahme-Button wird nicht grün.**
 Grün bedeutet echter RTK FIX. Prüfe den RTK-Empfang und die Live-Daten. Mit aktivierter Option
-„Nur bei RTK FIX" bleibt die Aufnahme bei FLOAT oder INVALID bewusst gesperrt.
+„Nur bei RTK FIX“ bleibt die Aufnahme bei FLOAT oder INVALID bewusst gesperrt.
 
 **Die Bluetooth-Verbindung bricht ab.**
 MapCreator versucht nach einem unerwarteten Abbruch automatisch, sich wieder zu verbinden.
@@ -216,3 +255,241 @@ wenn du ein Problem melden möchtest.
 ## Lizenz
 
 Siehe [LICENSE](LICENSE).
+
+---
+
+<a id="english"></a>
+
+# 🇬🇧 English
+
+MapCreator is a mobile web app for recording and maintaining the mowing map of your
+Ardumower/Sunray right there in the garden. It connects to the Ardumower ESP32 directly over
+**Bluetooth Low Energy** – no internet, no server, no account.
+
+The interface can be switched between **German and English**; German is the default.
+
+## What the app can do
+
+- connect to the Ardumower over Bluetooth
+- show the local Sunray X/Y position, RTK status, satellites and battery voltage live
+- record a **perimeter**, several **exclusion areas**, **waypoints** and **dock points**
+- place points automatically – either on a time interval or by distance travelled
+- correct existing maps afterwards: tap a point, move it to the current mower position, or delete it
+- undo the last 20 editing steps one at a time
+- check maps for geometry and RTK problems
+- keep up to 10 maps on the device
+- export maps as a JSON backup or as GeoJSON, and import them again
+- drive the mower manually with the thumb joystick while recording
+- mirror the entire layout for left- or right-handed use
+- demo mode for trying things out without a mower
+
+Uploading the finished map to Sunray is **not** part of the scope. MapCreator produces the map
+file; loading it onto the mower is done with your usual tool.
+
+## Requirements
+
+- **Android with Chrome** – recommended and tested.
+- **Samsung Internet** works as well.
+- **Firefox** does not support Web Bluetooth and will not work.
+- **iPhone/iPad** are not supported: on iOS/iPadOS neither Safari nor the Chromium browsers
+  expose Web Bluetooth to web pages.
+- The Ardumower's ESP32 must be running with BLE and be within range.
+
+## Getting started
+
+1. Open the MapCreator page in Chrome on the Android device.
+2. Turn on Bluetooth.
+3. Open the **menu** (☰) at the top left – or tap the Bluetooth icon directly – and enter the
+   **Sunray password** under **Connection** (`123456` by default).
+4. Tap **Search & connect** and pick the Ardumower from the list. The browser is only allowed to
+   start the device search after this tap.
+5. Back on the map, the Bluetooth icon turns green, the **RTK badge** shows
+   “Fix / Float / No Fix” with the satellites as *mower/RTK station*, and the battery voltage sits
+   next to it.
+
+The password is kept only for the running session and is never stored with the map.
+
+## The interface
+
+The app has three zones:
+
+- **Header** – menu, connection status, mode selection, RTK status and battery.
+- **Map** – takes up most of the screen. A slim **tool bar** sits at the very top: on the left the
+  map name and point count together with the status line, on the right the tools (delete tool,
+  undo, plus “Close & new” and “Reset view” when they apply). Below it the map itself with the
+  mower position, the recorded points and their connecting lines, and the capture button at the
+  bottom right.
+- **Drive zone** at the bottom – the joystick for your thumb, with the drive status beside it.
+
+All settings live on a separate **menu page** (☰) with six sections: Connection, Maps, Settings,
+Map check, Diagnostics and Help. *Settings* contains Drive speed, View & scale, and Capture. Only
+one section is open at a time; opening one collapses the others.
+
+## Recording a map
+
+1. Create a map in the menu under **Maps** with **Create new map**.
+2. Tap the **mode button** in the header; a dialog opens in the middle of the screen offering
+   **Perimeter, Exclusion, Waypoint and Dock**. The button then always shows the active mode.
+3. Drive the mower to the spot you want and **press and hold** the large button at the bottom
+   right until the ring has gone round once. Holding prevents points from appearing accidentally
+   while panning or zooming the map.
+   - **Green** means a real RTK FIX – only then is the point genuinely accurate.
+   - While **“Only with RTK FIX”** is on, capturing stays blocked on FLOAT or INVALID.
+4. For long stretches, switch on **automatic capture**: the small button with the record symbol
+   above the capture button. While it runs, a large red button with a pause symbol replaces the
+   manual one. There are two modes, switchable in the menu under *Settings › Capture*:
+   - **time-based** – one point every *n* seconds (5 s to start with),
+   - **distance-based** – one point as soon as the mower has travelled far enough since the last
+     automatic point (50 cm to start with, 10 cm minimum).
+
+   The label above the button shows the configured value, i.e. “Auto capture (5s)” or
+   “Auto capture (50cm)”. Automatic capture respects “Only with RTK FIX” too.
+5. Once a sufficiently long perimeter brings the mower back near its starting point, the app
+   offers to **close** the perimeter.
+6. You do not need to create a new **exclusion area**: one appears by itself as soon as you place
+   the first point in exclusion mode. For rows of small areas – trees, for instance – the tool bar
+   offers **“Close & new”**: one tap closes the current area and immediately starts the next.
+
+When you switch capture mode, the app asks whether the contour you are leaving should be closed –
+but only if it has at least three points and is still open. Say no and it stays open, so you can
+continue from exactly that point later. The **map check** also finds open contours and offers to
+close them.
+
+When capturing manually, MapCreator averages the positions of roughly the last two seconds. That
+damps the GPS noise without making you wait.
+
+## Correcting points
+
+Tap an existing point directly on the map. The hit area is considerably larger than the visible
+point so it stays reachable with a thumb. The selected point is highlighted and the large button
+at the bottom right becomes the **move** button: a single tap places the point at the current
+mower position.
+
+Tapping inside a finished **exclusion area** selects the whole area. This deliberately does not
+happen on the perimeter, otherwise you could no longer pan the map freely.
+
+Tapping an empty spot clears the selection again.
+
+### The delete tool
+
+One tool, three jobs – the label underneath says what will happen:
+
+| Selection | Label | Effect |
+|---|---|---|
+| none | Last point | deletes the most recently captured point, repeatedly if you like |
+| a point | Delete selected point | deletes exactly that point |
+| an exclusion area | Delete area | deletes the whole area, after a confirmation |
+
+While automatic capture is running the tool is hidden.
+
+### Undo
+
+Next to it sits **Undo**. It takes back the last **20 editing steps** one at a time – not just
+captures, but also moving points, deleting single points, deleting whole areas and closing a
+contour. Each tap goes one step back; when the history is empty the button is greyed out. The
+history belongs to the running session and the map you have open.
+
+### Map maintenance
+
+The menu under **Maps** lists, under *Map elements*, the perimeter, every exclusion area, the
+waypoints and the dock path with their point counts. Tapping a row makes that element the capture
+target; the bin next to it empties the element.
+
+Exclusion areas **without a single point** are removed automatically – as soon as you leave
+exclusion mode or open the menu page. The area you are currently working on is left alone. The
+remaining areas are renumbered without gaps.
+
+Finished maps can be **locked** in the menu under **Maps** so they cannot be changed by accident.
+
+## Map view and operation
+
+- **Light and dark mode**: by default the app follows the device setting; under
+  *Settings › View & scale* you can pin it to light or dark.
+- **Operating side**: choose right- or left-handed under *Settings › Drive speed*. Left-handed
+  mirrors the **entire** layout – tools and map info in the tool bar, the capture button and the
+  drive status.
+- **Joystick size** in four steps from small to very large: larger means a bigger target, smaller
+  means more room for the map.
+- **Pinch to zoom** and pan with one finger; the map cannot be pushed out of view. As soon as you
+  change the view yourself, **“Reset view”** appears in the tool bar.
+- grid at 0.10 / 0.25 / 0.50 / 1 / 2 / 5 m, or automatic
+- the mower drawn to scale including its heading, 0.60 × 0.35 m by default, adjustable
+- movement trail while recording
+- **Point colours**: the outline shows which element a point belongs to, the fill shows the RTK
+  quality at the moment it was captured
+- live distance to the perimeter or to the selected point
+- keeps the screen awake during longer recordings
+
+## Driving manually
+
+The joystick sits permanently below the map and is designed for thumb operation.
+
+- The **direction** of the deflection is the driving direction, the **amount** of deflection is
+  the speed – just like an RC vehicle. There is no separate speed slider. Steering is correct in
+  reverse as well: back-left on the joystick drives back-left.
+- **Minimum and maximum speed** are set in the menu under *Settings › Drive speed*: the minimum
+  applies from the dead zone on, the maximum at full deflection.
+- The joystick is a **dead man's control**: let go and it snaps back to the centre and the mower
+  stops immediately.
+
+This app deliberately does **not** control mowing: no start, no stop, no docking and no mowing
+motor control. It only records maps.
+
+> **Safety note**
+> If the Bluetooth connection drops, the web page can no longer send a stop command. Only use
+> manual driving within sight of the mower and keep its physical stop/emergency switch reachable.
+
+## Backing up and transferring maps
+
+All maps live **locally in the browser** of this device. A different browser, a different profile
+or cleared site data means the maps are gone.
+
+- **JSON export** is the complete backup of a map including metadata.
+- **GeoJSON export** is meant for further processing: perimeter and exclusion areas are exported
+  as polygons, waypoints and the dock path as LineStrings. The coordinates stay in Sunray's local
+  XY metre system – they are not geographic coordinates.
+- Both formats can be imported again.
+
+**Make regular JSON backups of the maps that matter to you.**
+
+## Working offline in the garden
+
+1. Open the page at least once **with internet** in Chrome.
+2. In the menu under **Help**, wait until the system check reports the offline cache as ready.
+3. Optionally install it as an app from the Chrome menu.
+
+After that the app files start from the local cache. Bluetooth, map recording, editing and file
+export do not need an internet connection anyway.
+
+When a new version of the app is available, a slim notice bar appears at the top. Only a tap on it
+loads the new version – the page never reloads unasked in the middle of a recording.
+
+## When something does not work
+
+**The Ardumower is not found.**
+Check Bluetooth on the device, use an up-to-date Chrome, reduce the distance and make sure the
+ESP32 is actually advertising. If another app is already connected, disconnect that one first.
+
+**The capture button does not turn green.**
+Green means a real RTK FIX. Check RTK reception and the live data. With “Only with RTK FIX”
+enabled, capturing stays deliberately blocked on FLOAT or INVALID.
+
+**The Bluetooth connection drops.**
+After an unexpected drop MapCreator tries to reconnect on its own. If that does not work, just tap
+**Search & connect** again. Device standby, too much distance or a browser restart always break
+the connection.
+
+**The app does not start without Wi-Fi.**
+The page must have been opened with internet once and the offline cache must have been reported as
+ready in the system check.
+
+**My maps have disappeared.**
+Maps only live locally in the browser. Cleared site data, a different browser or a different
+profile use separate storage. Import your most recent JSON backup.
+
+The menu under **Diagnostics** shows the full log of the Bluetooth communication. It helps when
+you want to report a problem.
+
+## License
+
+See [LICENSE](LICENSE).

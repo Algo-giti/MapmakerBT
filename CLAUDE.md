@@ -790,12 +790,35 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Halten, damit Karten-Gesten nichts auslösen.
 - `README.md` enthält ausschließlich Projekterklärung und Nutzungsanleitung — keine Versionshistorie,
   kein Deployment-/GitHub-Pages-Setup, keine Entwicklerhinweise (auf Wunsch des Nutzers, 2026-09-04).
+  Sie ist **zweisprachig in einer Datei**: Sprachnavigation und Screenshots oben, danach der
+  deutsche Abschnitt (`<a id="deutsch">`), dann der englische (`<a id="english">`). Bewusst keine
+  zweite Datei — ein Link bleibt ein Link, und beide Fassungen veralten sonst getrennt. **Beide
+  Sprachen müssen bei inhaltlichen Änderungen gemeinsam gepflegt werden.**
+- Die **In-App-Hilfe** beschreibt den tatsächlichen Funktionsumfang und ist bei jeder
+  Funktionsänderung mitzuziehen — in `I18N.de` **und** `I18N.en`. Der deutsche Text steht
+  zusätzlich als Fallback im Markup, wie bei allen anderen `data-i18n`-Elementen auch.
 - Änderungen an der ESP32-Firmware sind hier tabu; bei Bedarf dem Nutzer melden und vorschlagen.
 - **Bei jedem Deploy `APP_VERSION` in `sw.js` hochzählen.** Sonst erscheint keine Update-Leiste
   (der Browser sieht keinen neuen Worker) und die Offline-Rückfallebene serviert weiter die
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-06: **Hilfe und README auf den aktuellen Stand gebracht, README zweisprachig.**
+  In-App-Hilfe: die Karte „Karten erstellen & korrigieren“ ist von 10 auf 17 Einträge gewachsen
+  (Moduswechsel mit Schließen-Abfrage, Halte-Aufnahme, Flächenauswahl, Lösch-Werkzeug mit drei
+  Zuständen, Rückgängig über 20 Schritte, „Schließen & neu“, Automatik zeit-/distanzbasiert,
+  Elementliste, automatische Bereinigung leerer Ausschlussflächen), dazu eine neue Karte
+  „Ansicht & Bedienung“ (RTK-Anzeige, Nur bei RTK FIX, Zoomen, Hell/Dunkel, Bedienseite,
+  Joystick-Größe, Diagnose). **Entfernt**, weil die Funktionen nicht mehr existieren:
+  `helpSmartAuto*` (intelligente Auto-Aufnahme) und `helpVersions*` („Änderung zurücknehmen“
+  im Menü). Korrigiert: Punktqualität (Rand = Element, Füllung = RTK), Lösch-Werkzeug steht in
+  der Kartenleiste statt „oben rechts“, Fahrgeschwindigkeit unter *Einstellungen ›
+  Fahrgeschwindigkeit*, GeoJSON exportiert auch Wegpunkte. Alles in DE und EN.
+  README: gegen den Ist-Stand geprüft und korrigiert (kein „+ Neue Ausschlussfläche“ mehr,
+  Werkzeugleiste statt Eckknöpfe, Undo mit 20 Schritten, Distanz-Automatik, Bedienseite,
+  Joystick-Größe, Bereinigung leerer Flächen, Update-Leiste) und **zweisprachig** ausgebaut.
+  `APP_VERSION` auf `v28`.
 
 - 2026-09-06: **Karteninfo in die Werkzeugleiste, Händigkeit zentral.** (a) Kartenname,
   Punktzahl und Statuszeile stehen jetzt links in der Kartenleiste statt als halbtransparenter

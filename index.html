@@ -407,16 +407,35 @@
 <section class="card help-card">
 <h3 data-i18n="mappingHelpTitle">Karten erstellen &amp; korrigieren</h3>
 <div class="help-feature-grid">
-<div><strong data-i18n="helpPerimeterTitle">Perimeter</strong><span data-i18n="helpPerimeterText">Äußere Mähgrenze Punkt für Punkt oder automatisch nach Distanz aufnehmen.</span></div>
-<div><strong data-i18n="helpExclusionTitle">Ausschlussflächen</strong><span data-i18n="helpExclusionText">Mehrere geschlossene Bereiche innerhalb des Perimeters anlegen, die nicht gemäht werden sollen.</span></div>
+<div><strong data-i18n="helpPerimeterTitle">Perimeter</strong><span data-i18n="helpPerimeterText">Äußere Mähgrenze Punkt für Punkt aufnehmen. Ab drei Punkten schließt ein Tipp auf den ersten Punkt die Kontur.</span></div>
+<div><strong data-i18n="helpExclusionTitle">Ausschlussflächen</strong><span data-i18n="helpExclusionText">Geschlossene Bereiche innerhalb des Perimeters, die nicht gemäht werden. Eine neue Fläche entsteht von selbst, sobald du im Ausschluss-Modus den ersten Punkt setzt.</span></div>
 <div><strong data-i18n="helpWaypointTitle">Wegpunkte</strong><span data-i18n="helpWaypointText">Offene Punktfolge für Anfahrtswege innerhalb der Karte aufnehmen.</span></div>
 <div><strong data-i18n="helpDockTitle">Dockpfad</strong><span data-i18n="helpDockText">Offenen Punktpfad für den Dockbereich erfassen.</span></div>
-<div><strong data-i18n="helpEditTitle">Punkte bearbeiten</strong><span data-i18n="helpEditText">Punkt auf der Karte antippen: der Hauptbutton wird zum Verschieben-Button, das Werkzeug oben rechts löscht ihn.</span></div>
-<div><strong data-i18n="helpValidationTitle">Kartenprüfung</strong><span data-i18n="helpValidationText">Sucht Selbstüberschneidungen, problematische Abstände, Ausschlüsse außerhalb des Perimeters und fehlende RTK-FIX-Punkte.</span></div>
-<div><strong data-i18n="helpVersionsTitle">Änderung zurücknehmen</strong><span data-i18n="helpVersionsText">Die letzte Änderung an der Karte lässt sich im Menü unter „Karten“ rückgängig machen.</span></div>
-<div><strong data-i18n="helpQualityTitle">Punktqualität</strong><span data-i18n="helpQualityText">Kartenpunkte können abhängig von RTK-Lösung und Genauigkeit farblich bewertet werden.</span></div>
-<div><strong data-i18n="helpSmartAutoTitle">Intelligente Auto-Aufnahme</strong><span data-i18n="helpSmartAutoText">Auf Geraden werden weniger Punkte gesetzt, bei Richtungsänderungen automatisch dichter.</span></div>
+<div><strong data-i18n="helpModeTitle">Modus wechseln</strong><span data-i18n="helpModeText">Der Chip in der Kopfzeile öffnet die Auswahl. Hat die verlassene Kontur mindestens drei Punkte und ist noch offen, fragt die App einmal, ob sie geschlossen werden soll.</span></div>
+<div><strong data-i18n="helpCaptureTitle">Punkt aufnehmen</strong><span data-i18n="helpCaptureText">Den großen Knopf unten rechts kurz gedrückt halten. Das Halten verhindert, dass beim Wischen oder Zoomen versehentlich Punkte entstehen.</span></div>
+<div><strong data-i18n="helpEditTitle">Punkte bearbeiten</strong><span data-i18n="helpEditText">Punkt auf der Karte antippen: der große Knopf wird zum Verschieben-Knopf und setzt den Punkt auf die aktuelle Position; das Lösch-Werkzeug in der Kartenleiste entfernt ihn.</span></div>
+<div><strong data-i18n="helpAreaSelectTitle">Fläche auswählen</strong><span data-i18n="helpAreaSelectText">Ein Tipp in eine fertige Ausschlussfläche wählt sie ganz aus, um sie zu löschen. Beim Perimeter gibt es das bewusst nicht — dort würde jeder Tipp das Verschieben der Karte abfangen.</span></div>
+<div><strong data-i18n="helpDeleteToolTitle">Lösch-Werkzeug</strong><span data-i18n="helpDeleteToolText">Ein Werkzeug mit drei Aufgaben: ohne Auswahl entfernt es den zuletzt gesetzten Punkt, bei ausgewähltem Punkt genau diesen, bei ausgewählter Fläche die ganze Fläche (mit Rückfrage).</span></div>
+<div><strong data-i18n="helpUndoTitle">Rückgängig</strong><span data-i18n="helpUndoText">Nimmt die letzten 20 Bearbeitungsschritte einzeln zurück — Aufnehmen, Verschieben, Löschen, Konturschluss. Bei leerem Verlauf ist der Knopf ausgegraut.</span></div>
+<div><strong data-i18n="helpCloseNewTitle">Schließen &amp; neu</strong><span data-i18n="helpCloseNewText">Erscheint im Ausschluss-Modus ab drei Punkten: schließt die laufende Fläche und beginnt sofort die nächste. Gedacht für Reihen kleiner Flächen wie Bäume.</span></div>
+<div><strong data-i18n="helpAutoTitle">Automatik-Aufnahme</strong><span data-i18n="helpAutoText">Setzt Punkte selbstständig — wahlweise im Zeittakt oder nach gefahrener Strecke. Die Beschriftung über dem Knopf zeigt den eingestellten Wert, umgestellt wird er im Menü unter Aufnahme.</span></div>
+<div><strong data-i18n="helpQualityTitle">Punktqualität</strong><span data-i18n="helpQualityText">Der Rand eines Punktes zeigt, zu welchem Element er gehört, die Füllung die RTK-Qualität bei der Aufnahme.</span></div>
+<div><strong data-i18n="helpValidationTitle">Kartenprüfung</strong><span data-i18n="helpValidationText">Sucht Selbstüberschneidungen, problematische Abstände, Ausschlüsse außerhalb des Perimeters, offene Konturen und fehlende RTK-FIX-Punkte.</span></div>
+<div><strong data-i18n="helpElementsTitle">Elemente der Karte</strong><span data-i18n="helpElementsText">Im Menü unter Karten stehen Perimeter, alle Ausschlussflächen, Wegpunkte und Dockpfad mit Punktzahl. Ein Tipp macht ein Element zum Aufnahmeziel, der Papierkorb daneben leert es.</span></div>
+<div><strong data-i18n="helpCleanupTitle">Leere Flächen</strong><span data-i18n="helpCleanupText">Ausschlussflächen ohne Punkt werden automatisch entfernt, sobald du den Modus verlässt oder das Menü öffnest. Die verbleibenden werden lückenlos neu durchnummeriert.</span></div>
 <div><strong data-i18n="helpLockTitle">Kartensperre</strong><span data-i18n="helpLockText">Fertige Karten lassen sich gegen versehentliche Änderungen sperren.</span></div>
+</div>
+</section>
+<section class="card help-card">
+<h3 data-i18n="viewHelpTitle">Ansicht &amp; Bedienung</h3>
+<div class="help-feature-grid">
+<div><strong data-i18n="helpRtkTitle">RTK-Anzeige</strong><span data-i18n="helpRtkText">Das Abzeichen in der Kopfzeile zeigt Fix, Float oder No Fix und die Satelliten als Mäher/Station. Nur bei einem echten Fix ist die Position zentimetergenau.</span></div>
+<div><strong data-i18n="helpFixOnlyTitle">Nur bei RTK FIX</strong><span data-i18n="helpFixOnlyText">Im Menü unter Aufnahme. Ist die Option aktiv, bleibt jede Aufnahme bei Float oder No Fix gesperrt — auch die Automatik.</span></div>
+<div><strong data-i18n="helpZoomTitle">Zoomen &amp; Verschieben</strong><span data-i18n="helpZoomText">Zwei Finger zoomen, ein Finger verschiebt. Sobald du die Ansicht selbst verändert hast, erscheint „Ansicht zurück“ in der Kartenleiste.</span></div>
+<div><strong data-i18n="helpThemeTitle">Hell &amp; Dunkel</strong><span data-i18n="helpThemeText">Drei Stufen im Menü unter Ansicht &amp; Maßstab: Hell, Dunkel oder der Vorgabe des Systems folgen.</span></div>
+<div><strong data-i18n="helpHandedTitle">Bedienseite</strong><span data-i18n="helpHandedText">Die Umstellung auf Linkshänder spiegelt die gesamte Bedienung: Werkzeuge und Karteninfo in der Kartenleiste, Aufnahme-Knopf und Fahrtanzeige.</span></div>
+<div><strong data-i18n="helpJoystickSizeTitle">Joystick-Größe</strong><span data-i18n="helpJoystickSizeText">Vier Stufen von Klein bis Sehr groß. Größer heißt mehr Trefferfläche für den Daumen, kleiner mehr Platz für die Karte.</span></div>
+<div><strong data-i18n="helpDiagnosticsTitle">Diagnose</strong><span data-i18n="helpDiagnosticsText">Das Protokoll im Menü unter Diagnose zeigt gesendete Kommandos, Antworten und Fehler der Funkverbindung — hilfreich, wenn die Verbindung abreißt.</span></div>
 </div>
 </section>
 <section class="card help-card">

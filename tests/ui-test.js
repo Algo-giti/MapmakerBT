@@ -836,6 +836,44 @@ test('In einer gesperrten Karte wird nichts aufgeraeumt', () => {
   assert.strictEqual(t.state.activeMap.exclusions.length, 2, 'gesperrte Karten bleiben unangetastet');
 });
 
+test('Jeder Uebersetzungsschluessel existiert in beiden Sprachen und wird benutzt', () => {
+  // Die Hilfe ist der groesste Block an i18n-Text und veraltet am leichtesten. Dieser Fall
+  // faengt beide Richtungen ab: ein Schluessel, den nur eine Sprache kennt (die Oberflaeche
+  // zeigte dann den rohen Schluessel), und ein Schluessel ohne Verwendung (Beschreibung einer
+  // Funktion, die es nicht mehr gibt).
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const deStart = src.indexOf('  de: {');
+  const enStart = src.indexOf('  en: {');
+  const keysOf = (block) => new Set([...block.matchAll(/(?:^|[{,]\s*|\n\s{4})([A-Za-z][A-Za-z0-9_]*):\s/g)]
+    .map((m) => m[1]));
+  const de = keysOf(src.slice(deStart, enStart));
+  const en = keysOf(src.slice(enStart, src.indexOf('\n};', enStart)));
+  assert.ok(de.size > 100, 'die Schluessel muessen gefunden worden sein');
+
+  const onlyDe = [...de].filter((k) => !en.has(k));
+  const onlyEn = [...en].filter((k) => !de.has(k));
+  assert.strictEqual(onlyDe.join(','), '', 'diese Schluessel fehlen im Englischen');
+  assert.strictEqual(onlyEn.join(','), '', 'diese Schluessel fehlen im Deutschen');
+
+  const used = new Set([
+    ...[...html.matchAll(/data-i18n(?:-aria-label)?="([^"]+)"/g)].map((m) => m[1]),
+    ...[...src.matchAll(/\btr\('([^']+)'/g)].map((m) => m[1]),
+  ]);
+  const missing = [...used].filter((k) => !de.has(k) || !en.has(k));
+  assert.strictEqual(missing.join(','), '', 'benutzte Schluessel ohne Uebersetzung');
+
+  // Hilfetexte werden ausschliesslich ueber data-i18n eingesetzt — ein unbenutzter help*-
+  // Schluessel beschreibt also eine Funktion, die aus der Oberflaeche verschwunden ist.
+  const deadHelp = [...de].filter((k) => /^help[A-Z]/.test(k) && !used.has(k));
+  assert.strictEqual(deadHelp.join(','), '', 'Hilfetexte ohne Verwendung');
+
+  // Und die beiden ausdruecklich entfernten Themen duerfen nicht zurueckkommen.
+  for (const gone of ['helpSmartAutoTitle', 'helpVersionsTitle']) {
+    assert.ok(!de.has(gone), `${gone} beschreibt eine entfernte Funktion`);
+  }
+});
+
 test('RTK-Badge zeigt Zustand und Satelliten als Mäher/Station', () => {
   const { t } = setup();
   t.updateRtkBadge();
