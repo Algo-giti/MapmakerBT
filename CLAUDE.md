@@ -109,6 +109,27 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    **jeder** Bildschirmbreite; im Breitbild-Layout ist dafür die Fahrspalte auf
    `clamp(300px, 30vw, 520px)` verbreitert und der Joystick dort etwas zurückhaltender.
 
+   **Zwei Steuerungsarten** über `state.view.driveControl` ∈ `joystick | buttons`
+   (**Standard `joystick`**): der runde Joystick oder ein Kreuz aus **vier Richtungstasten**
+   (`.drive-pad`, keine Diagonalen — genau das ist der Zweck). Umschaltbar über `#driveModeBtn`
+   ganz rechts in der Kartenleiste (das Symbol zeigt den **aktiven** Modus) und, gleichwertig,
+   unter *Einstellungen › Fahrgeschwindigkeit*. Beide sitzen in **derselben Gitterspalte und
+   -zeile** der Fahrzone und nutzen dieselbe `--joystick-size`; Größeneinstellung, Fahrtanzeige
+   und Linkshänder-Spiegelung gelten damit unverändert für beide, ohne eine zweite Layoutlogik.
+
+   **Der Tastenmodus hat eine eigene Geschwindigkeit** `state.view.cursorSpeedCms` (Startwert
+   **15 cm/s**, Untergrenze 2 cm/s, Obergrenze die eingestellte `driveSpeedMax` in cm/s —
+   Rangieren darf nie schneller werden als der Joystick). Sie gilt für **alle vier** Tasten, das
+   Joystick-Maximum spielt hier keine Rolle. `cursorDriveVector(direction)`: vorwärts/rückwärts
+   ist `linear = ±v, angular = 0`; links/rechts ist **Drehen auf der Stelle** (`linear = 0`) —
+   genau das, was der Joystick bei reiner Seitwärtsauslenkung ohnehin sendet. Aus cm/s wird die
+   Drehrate über die halbe Spurweite (`v / (mowerWidth/2)`, die Mäherbreite führt die App
+   bereits), gedeckelt auf `driveTurnMax`. **Nicht ohne Gerät verifizierbar:** ob sich 15 cm/s
+   für Präzisionsmanöver richtig anfühlt.
+
+   Beide Modi teilen sich `startDriveHeartbeat()` — Sunray stoppt nach 1000 ms ohne neues `AT+M`,
+   der Takt ist also in beiden Fällen sicherheitsrelevant und existiert nur einmal.
+
    **Joystick-Größe** (`--joystick-size`): `clamp(110px, 25dvh × --joystick-scale,
    min(240px × --joystick-scale, 38dvh))`. Die bestehende bildschirmabhängige Rechnung bleibt, die
    Einstellung skaliert sie nur. `--joystick-scale` kommt aus `state.view.joystickScale`
@@ -363,7 +384,7 @@ geschoben wird. Trefferflächen der Punkte: `state.hitRadiusUnits` wird je Rende
 `svgMetrics()` so gesetzt, dass immer mindestens 44 × 44 px Touch-Ziel entstehen.
 
 **Bewusst nicht enthalten:** Mähsteuerung (Start/Stop/Dock/Mähmotor/PWM), Tab-Leiste, seitliche
-Schieber, Messwerkzeug, Teilstück-/Geraden-Bearbeitung,
+Schieber, Diagonalen im Tastenmodus, Messwerkzeug, Teilstück-/Geraden-Bearbeitung,
 Undo-Pfeil (im Lösch-Button aufgegangen), distanzbasierte Auto-Aufnahme, Versionsverwaltung
 („Versionen & Verlauf“ mit Speichern/Wiederherstellen — vom Nutzer als unübersichtlich verworfen),
 **jede sichtbare Versionsnummer der App**.
@@ -955,6 +976,19 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-06: **Zweiter Steuerungsmodus: vier Richtungstasten.** Umschaltbar über einen neuen
+  Knopf ganz rechts in der Kartenleiste (Symbol zeigt den aktiven Modus) und über
+  *Einstellungen › Fahrgeschwindigkeit*; die Wahl liegt in `state.view.driveControl` und
+  übersteht einen Neustart. Das Tastenkreuz sitzt in derselben Gitterzelle wie der Joystick und
+  nutzt dieselbe `--joystick-size` — Größeneinstellung, Fahrtanzeige und Linkshänder-Spiegelung
+  gelten dadurch ohne zweite Layoutlogik für beide. Eigene Geschwindigkeit
+  `cursorSpeedCms` (15 cm/s, 2 bis `driveSpeedMax`), die für alle vier Tasten gilt; der Joystick
+  bleibt beim RC-Prinzip. Links/rechts dreht auf der Stelle über den bestehenden `AT+M`-Weg
+  (`linear 0` plus Drehrate), die Drehrate kommt aus cm/s geteilt durch die halbe Spurweite
+  (Mäherbreite) und ist auf `driveTurnMax` gedeckelt. Beide Modi teilen sich einen
+  `startDriveHeartbeat()`. Acht neue ui-Fälle (99), gegen sechs simulierte Rückfälle geprüft;
+  Hilfe und README in beiden Sprachen ergänzt. `APP_VERSION` auf `v36`.
 
 - 2026-09-06: **Positionsmodus in der Hilfe erklärt.** Neuer Eintrag „Positionsmodus“ in der
   Karte *Karten erstellen & korrigieren* (DE/EN): relativ ist der Standard und braucht keine

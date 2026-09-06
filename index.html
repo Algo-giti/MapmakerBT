@@ -58,6 +58,9 @@
 <div class="map-tool-slot" hidden="" id="closeAndNewWrap">
 <button aria-label="Fläche schließen und neue beginnen" class="map-tool close-new-fab" data-i18n-aria-label="closeAndNew" id="closeAndNewBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 12.5 7.5 17 15 6"></path><path d="M18 14v7M14.5 17.5h7"></path></svg><span class="map-tool-label" data-i18n="closeAndNewShort">Schließen &amp; neu</span></button>
 </div>
+<div class="map-tool-slot" id="driveModeWrap">
+<button aria-label="Steuerung umschalten" class="map-tool drive-mode-tool mode-joystick" data-i18n-aria-label="driveModeToggle" id="driveModeBtn" type="button"><span aria-hidden="true" class="drive-mode-icon icon-joystick"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="2.6"></circle></svg></span><span aria-hidden="true" class="drive-mode-icon icon-pad"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"></path></svg></span><span class="map-tool-label" id="driveModeLabel">Joystick</span></button>
+</div>
 <button aria-label="Ansicht zurücksetzen" class="map-tool" data-i18n-aria-label="fitView" hidden="" id="fitViewBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span class="map-tool-label" data-i18n="fitViewShort">Ansicht zurück</span></button>
 </div>
 </div>
@@ -94,6 +97,12 @@
 <span class="joystick-ring ring-a"></span><span class="joystick-ring ring-b"></span>
 <span class="joystick-axis joystick-axis-x"></span><span class="joystick-axis joystick-axis-y"></span>
 <span class="joystick-knob" id="joystickKnob"><span class="joystick-dot"></span></span>
+</div>
+<div class="drive-pad" hidden="" id="driveButtons">
+<button aria-label="Vorwärts fahren" class="drive-key key-up" data-direction="up" data-i18n-aria-label="driveUp" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 19V6M6 12l6-6 6 6"></path></svg></button>
+<button aria-label="Links drehen" class="drive-key key-left" data-direction="left" data-i18n-aria-label="driveLeft" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M19 12H6M12 6l-6 6 6 6"></path></svg></button>
+<button aria-label="Rechts drehen" class="drive-key key-right" data-direction="right" data-i18n-aria-label="driveRight" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12h13M12 6l6 6-6 6"></path></svg></button>
+<button aria-label="Rückwärts fahren" class="drive-key key-down" data-direction="down" data-i18n-aria-label="driveDown" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v13M6 12l6 6 6-6"></path></svg></button>
 </div>
 <div class="drive-meta"><span data-i18n="driveIdle" id="driveState">Fahrt gestoppt</span></div>
 </section>
@@ -234,6 +243,14 @@
 </div>
 <label class="field compact"><span data-i18n="driveTurnMax">Maximale Drehrate</span><div class="unit-input"><input id="driveTurnMaxInput" inputmode="decimal" max="2" min="0.2" step="0.05" type="number" value="1.15"/><span>rad/s</span></div></label>
 <div class="view-divider"></div>
+<label class="field compact"><span data-i18n="driveControl">Steuerung</span>
+<select id="driveControlSelect">
+<option data-i18n="driveControlJoystick" selected="" value="joystick">Joystick</option>
+<option data-i18n="driveControlButtons" value="buttons">Richtungstasten</option>
+</select>
+</label>
+<label class="field compact" id="cursorSpeedRow"><span data-i18n="cursorSpeed">Geschwindigkeit im Cursor-Modus</span><div class="unit-input"><input id="cursorSpeedInput" inputmode="decimal" max="50" min="2" step="1" type="number" value="15"/><span>cm/s</span></div></label>
+<small class="view-note" data-i18n="driveControlHint">Die Richtungstasten fahren bewusst langsam und ohne seitliches Lenken — links und rechts drehen auf der Stelle. Der Joystick bleibt vom Cursor-Wert unberührt.</small>
 <label class="field compact"><span data-i18n="joystickSize">Größe des Joysticks</span>
 <select id="joystickSizeSelect">
 <option data-i18n="joystickSmall" value="0.75">Klein</option>
@@ -463,6 +480,7 @@
 <div><strong data-i18n="helpValidationTitle">Kartenprüfung</strong><span data-i18n="helpValidationText">Sucht Selbstüberschneidungen, problematische Abstände, Ausschlüsse außerhalb des Perimeters, offene Konturen und fehlende RTK-FIX-Punkte.</span></div>
 <div><strong data-i18n="helpElementsTitle">Elemente der Karte</strong><span data-i18n="helpElementsText">Im Menü unter Karten stehen Perimeter, alle Ausschlussflächen, Wegpunkte und Dockpfad mit Punktzahl. Ein Tipp macht ein Element zum Aufnahmeziel, der Papierkorb daneben leert es.</span></div>
 <div><strong data-i18n="helpCleanupTitle">Leere Flächen</strong><span data-i18n="helpCleanupText">Ausschlussflächen ohne Punkt werden automatisch entfernt, sobald du den Modus verlässt oder das Menü öffnest. Die verbleibenden werden lückenlos neu durchnummeriert.</span></div>
+<div><strong data-i18n="helpDriveControlTitle">Joystick oder Richtungstasten</strong><span data-i18n="helpDriveControlText">Der Knopf rechts in der Kartenleiste schaltet zwischen beidem um. Der Joystick fährt wie eine Fernsteuerung: Richtung und Stärke der Auslenkung. Die Richtungstasten kennen nur vorwärts, rückwärts und Drehen auf der Stelle — kein versehentliches Lenken beim Geradeausfahren. Sie fahren mit einer eigenen, langsamen Geschwindigkeit für genaues Rangieren, einstellbar unter Einstellungen › Fahrgeschwindigkeit.</span></div>
 <div><strong data-i18n="helpPositionModeTitle">Positionsmodus</strong><span data-i18n="helpPositionModeText">Jede Karte rechnet standardmäßig in lokalen Metern relativ zum Startpunkt des Mähers („Relativ“) — dafür ist keine Eingabe nötig. „Absolut“ brauchst du nur, wenn du die Karte mit Programmen austauschen willst, die echte Weltkoordinaten erwarten: dort trägst du im Menü unter Karten einmalig die GPS-Position des Nullpunkts ein, meist die der Ladestation. Der Ursprung gehört zur jeweiligen Karte, weil verschiedene Karten meist an verschiedenen Orten liegen. Fehlt ein gültiger Ursprung, bleibt der Export bei lokalen Metern — falsch machen kannst du dabei nichts.</span></div>
 <div><strong data-i18n="helpLockTitle">Kartensperre</strong><span data-i18n="helpLockText">Fertige Karten lassen sich gegen versehentliche Änderungen sperren.</span></div>
 </div>

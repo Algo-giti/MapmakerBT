@@ -162,12 +162,15 @@ test('Die Werkzeugleiste bricht Beschriftungen nicht um', () => {
   assert.strictEqual(resolve('.map-tool', 'display').value, 'grid', 'Symbol oben, Beschriftung darunter');
   assert.strictEqual(resolve('.map-tool', 'min-height').value, '44px', 'Daumenziel');
   const bar = html.slice(html.indexOf('id="mapToolbar"'), html.indexOf('id="mapCanvasArea"'));
-  const tools = ['deletePointBtn', 'insertBeforeBtn', 'insertAfterBtn', 'undoBtn', 'closeAndNewBtn', 'fitViewBtn'];
+  const tools = ['deletePointBtn', 'insertBeforeBtn', 'insertAfterBtn', 'undoBtn', 'closeAndNewBtn',
+    'driveModeBtn', 'fitViewBtn'];
   for (const id of tools) {
     assert.ok(bar.includes(`id="${id}"`), `${id} fehlt in der Werkzeugleiste`);
   }
   assert.strictEqual((bar.match(/map-tool-label/g) || []).length, tools.length, 'jedes Werkzeug ist beschriftet');
-  assert.strictEqual((bar.match(/<svg/g) || []).length, tools.length, 'jedes Werkzeug hat ein Symbol');
+  // Der Steuerungs-Umschalter traegt zwei Symbole und zeigt je nach Modus eines davon.
+  assert.strictEqual((bar.match(/<svg/g) || []).length, tools.length + 1, 'jedes Werkzeug hat ein Symbol');
+  assert.strictEqual((bar.match(/drive-mode-icon/g) || []).length, 2, 'Joystick- und Steuerkreuz-Symbol');
   // Nie alle gleichzeitig sichtbar: die beiden Einfuegen-Werkzeuge starten ausgeblendet und
   // erscheinen nur bei ausgewaehltem Punkt, „Schliessen & neu“ und „Ansicht zurueck“ ebenso.
   for (const id of ['insertBeforeWrap', 'insertAfterWrap', 'closeAndNewWrap']) {

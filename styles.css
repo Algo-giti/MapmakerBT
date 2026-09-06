@@ -2328,6 +2328,49 @@ body.menu-open .app-frame { visibility: hidden; }
 }
 /* Kugel anteilig zur Basis: skaliert automatisch mit jeder Groessenstufe mit. */
 .drive-zone .joystick-knob { width: 41%; height: 41%; }
+
+/* --- Richtungstasten statt Joystick ---------------------------------------
+   Das Kreuz sitzt in derselben Gitterspalte und benutzt dieselbe --joystick-size wie der
+   Joystick. Dadurch bleibt die Fahrzone gleich hoch, und Groesseneinstellung, Fahrtanzeige und
+   Linkshaender-Spiegelung gelten unveraendert fuer beide Steuerungsarten. Bewusst nur vier
+   Richtungen und keine Diagonalen — genau darum geht es. */
+.drive-zone .drive-pad {
+  --joystick-size: clamp(110px, calc(25dvh * var(--joystick-scale, 1)),
+    min(calc(240px * var(--joystick-scale, 1)), 38dvh));
+  grid-row: 1;
+  grid-column: 2;
+  align-self: center;
+  justify-self: center;
+  width: var(--joystick-size);
+  height: var(--joystick-size);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 4px;
+  touch-action: none;
+}
+.drive-key {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--shell-border);
+  border-radius: 12px;
+  background: var(--shell-panel);
+  color: var(--shell-text);
+  touch-action: none;
+}
+.drive-key svg { width: 42%; height: 42%; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.drive-key:active { background: var(--shell-hover); }
+.drive-key.key-up { grid-area: 1 / 2; }
+.drive-key.key-left { grid-area: 2 / 1; }
+.drive-key.key-right { grid-area: 2 / 3; }
+.drive-key.key-down { grid-area: 3 / 2; }
+
+/* Der Umschalter zeigt immer das Symbol des gerade aktiven Modus. */
+.drive-mode-tool .drive-mode-icon { display: none; }
+.drive-mode-tool.mode-joystick .icon-joystick,
+.drive-mode-tool.mode-buttons .icon-pad { display: grid; }
+.drive-mode-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .drive-meta {
   grid-row: 1;
   grid-column: 1;

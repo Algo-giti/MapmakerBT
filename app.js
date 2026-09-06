@@ -54,6 +54,10 @@ const I18N = {
   de: {
     joystickSize: 'Größe des Joysticks', joystickSmall: 'Klein', joystickMedium: 'Mittel', joystickLarge: 'Groß', joystickXLarge: 'Sehr groß',
     joystickSizeHint: '„Mittel“ passt sich der Bildschirmhöhe an. Größer heißt mehr Trefferfläche, kleiner mehr Karte.',
+    driveControl: 'Steuerung', driveControlJoystick: 'Joystick', driveControlButtons: 'Richtungstasten',
+    driveModeToggle: 'Steuerung umschalten', cursorSpeed: 'Geschwindigkeit im Cursor-Modus',
+    driveControlHint: 'Die Richtungstasten fahren bewusst langsam und ohne seitliches Lenken — links und rechts drehen auf der Stelle. Der Joystick bleibt vom Cursor-Wert unberührt.',
+    driveUp: 'Vorwärts fahren', driveDown: 'Rückwärts fahren', driveLeft: 'Links drehen', driveRight: 'Rechts drehen',
     handedness: 'Bedienseite', handedRight: 'Rechtshänder', handedLeft: 'Linkshänder',
     handednessHint: 'Spiegelt die gesamte Bedienung: Werkzeuge und Karteninfo in der Kartenleiste, Aufnahme-Knopf und Fahrtanzeige.',
     closeAndNewShort: 'Schließen & neu',
@@ -226,6 +230,7 @@ const I18N = {
     mapOverview: 'Kartenübersicht', lockCurrentMap: 'Karte sperren', unlockCurrentMap: 'Karte entsperren', mapLocked: 'Gesperrt', mapLockedHint: 'Diese Karte ist gesperrt. Zum Bearbeiten zuerst entsperren.', mapCardArea: '{area} m²', mapCardPoints: '{points} Punkte', mapCardChanged: 'Geändert {date}', selectMap: 'Karte auswählen', drive: 'Fahren', stopEverythingDone: 'STOP gesendet · Fahrt 0 · Mähmotor AUS · IDLE',
     manualDrive: 'Manuell fahren', driveSpeed: 'Tempo', reverse: 'Zurück', left: 'Links', stop: 'Stop', driveIdle: 'Fahrt gestoppt', driveNeedConnection: 'Für manuelle Fahrt zuerst per BLE verbinden.',
     helpQualityTitle: 'Punktqualität', helpQualityText: 'Der Rand eines Punktes zeigt, zu welchem Element er gehört, die Füllung die RTK-Qualität bei der Aufnahme.',
+    helpDriveControlTitle: 'Joystick oder Richtungstasten', helpDriveControlText: 'Der Knopf rechts in der Kartenleiste schaltet zwischen beidem um. Der Joystick fährt wie eine Fernsteuerung: Richtung und Stärke der Auslenkung. Die Richtungstasten kennen nur vorwärts, rückwärts und Drehen auf der Stelle — kein versehentliches Lenken beim Geradeausfahren. Sie fahren mit einer eigenen, langsamen Geschwindigkeit für genaues Rangieren, einstellbar unter Einstellungen › Fahrgeschwindigkeit.',
     helpPositionModeTitle: 'Positionsmodus', helpPositionModeText: 'Jede Karte rechnet standardmäßig in lokalen Metern relativ zum Startpunkt des Mähers („Relativ“) — dafür ist keine Eingabe nötig. „Absolut“ brauchst du nur, wenn du die Karte mit Programmen austauschen willst, die echte Weltkoordinaten erwarten: dort trägst du im Menü unter Karten einmalig die GPS-Position des Nullpunkts ein, meist die der Ladestation. Der Ursprung gehört zur jeweiligen Karte, weil verschiedene Karten meist an verschiedenen Orten liegen. Fehlt ein gültiger Ursprung, bleibt der Export bei lokalen Metern — falsch machen kannst du dabei nichts.',
     helpLockTitle: 'Kartensperre', helpLockText: 'Fertige Karten lassen sich gegen versehentliche Änderungen sperren.',
     viewHelpTitle: 'Ansicht & Bedienung',
@@ -241,6 +246,10 @@ const I18N = {
   en: {
     joystickSize: 'Joystick size', joystickSmall: 'Small', joystickMedium: 'Medium', joystickLarge: 'Large', joystickXLarge: 'Extra large',
     joystickSizeHint: '“Medium” adapts to the screen height. Larger means a bigger target, smaller leaves more map.',
+    driveControl: 'Control', driveControlJoystick: 'Joystick', driveControlButtons: 'Direction keys',
+    driveModeToggle: 'Switch control', cursorSpeed: 'Speed in cursor mode',
+    driveControlHint: 'The direction keys deliberately drive slowly and without any sideways steering — left and right turn on the spot. The joystick is unaffected by the cursor speed.',
+    driveUp: 'Drive forward', driveDown: 'Drive backward', driveLeft: 'Turn left', driveRight: 'Turn right',
     handedness: 'Operating side', handedRight: 'Right-handed', handedLeft: 'Left-handed',
     handednessHint: 'Mirrors the whole layout: tools and map info in the map bar, capture button and drive status.',
     closeAndNewShort: 'Close & new',
@@ -413,6 +422,7 @@ const I18N = {
     mapOverview: 'Map overview', lockCurrentMap: 'Lock map', unlockCurrentMap: 'Unlock map', mapLocked: 'Locked', mapLockedHint: 'This map is locked. Unlock it before editing.', mapCardArea: '{area} m²', mapCardPoints: '{points} points', mapCardChanged: 'Changed {date}', selectMap: 'Select map', drive: 'Drive', stopEverythingDone: 'STOP sent · drive 0 · mowing motor OFF · IDLE',
     manualDrive: 'Manual drive', driveSpeed: 'Speed', reverse: 'Reverse', left: 'Left', stop: 'Stop', driveIdle: 'Drive stopped', driveNeedConnection: 'Connect via BLE before using manual drive.',
     helpQualityTitle: 'Point quality', helpQualityText: 'The outline of a point shows which element it belongs to, the fill shows the RTK quality at the time it was captured.',
+    helpDriveControlTitle: 'Joystick or direction keys', helpDriveControlText: 'The button on the right of the map bar switches between the two. The joystick drives like a remote control: direction and amount of deflection. The direction keys only know forward, backward and turning on the spot — no accidental steering while driving straight. They use their own slow speed for precise manoeuvring, adjustable under Settings › Drive speed.',
     helpPositionModeTitle: 'Position mode', helpPositionModeText: 'By default every map works in local metres relative to the mower\u2019s starting point (“Relative”) — nothing to fill in. You only need “Absolute” if you want to exchange the map with programs that expect real world coordinates: there you enter the GPS position of the zero point once, in the menu under Maps, usually that of the charging station. The origin belongs to the individual map, because different maps usually sit in different places. Without a valid origin the export stays in local metres — you cannot get it wrong.',
     helpLockTitle: 'Map lock', helpLockText: 'Finished maps can be locked against accidental changes.',
     viewHelpTitle: 'View & operation',
@@ -496,6 +506,9 @@ const ui = {
   deletePointBtn: $('deletePointBtn'), deleteFabWrap: $('deleteFabWrap'), deleteBtnLabel: $('deleteBtnLabel'),
   closeAndNewWrap: $('closeAndNewWrap'), closeAndNewBtn: $('closeAndNewBtn'), fitViewBtn: $('fitViewBtn'),
   undoFabWrap: $('undoFabWrap'), undoBtn: $('undoBtn'),
+  driveModeWrap: $('driveModeWrap'), driveModeBtn: $('driveModeBtn'), driveModeLabel: $('driveModeLabel'),
+  driveButtons: $('driveButtons'), driveControlSelect: $('driveControlSelect'),
+  cursorSpeedInput: $('cursorSpeedInput'), cursorSpeedRow: $('cursorSpeedRow'),
   insertBeforeWrap: $('insertBeforeWrap'), insertBeforeBtn: $('insertBeforeBtn'),
   insertAfterWrap: $('insertAfterWrap'), insertAfterBtn: $('insertAfterBtn'),
   captureCluster: $('captureCluster'), autoFabWrap: $('autoFabWrap'), autoCaptureBtn: $('autoCaptureBtn'), autoCaptureLabel: $('autoCaptureLabel'),
@@ -595,6 +608,7 @@ const state = {
   driveDirection: null,
   driveVector: { linear: 0, angular: 0 },
   joystickPointerId: null,
+  cursorPointerId: null,
   lastDriveSentAt: 0,
 
   appliedMowPwm: null,
@@ -608,7 +622,7 @@ const state = {
     autoCaptureIntervalS: 5, autoCaptureMode: 'time', autoCaptureDistanceCm: AUTO_CAPTURE_DISTANCE_DEFAULT_CM,
     showTrail: true, showPointQuality: true, keepAwake: true,
     driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
-    joystickScale: '1', handed: 'right',
+    joystickScale: '1', handed: 'right', driveControl: 'joystick', cursorSpeedCms: 15,
   },
   telemetry: {
     x: null, y: null, delta: null, solution: null, age: null, accuracy: null,
@@ -683,6 +697,38 @@ function resetJoystickVisual() {
   if (ui.joystickKnob) ui.joystickKnob.style.transform = 'translate(-50%, -50%)';
 }
 
+/**
+ * Der Tastenmodus fahert bewusst mit **einer eigenen, langsamen Geschwindigkeit** — nicht mit
+ * dem Joystick-Maximum. Untergrenze 2 cm/s, Obergrenze die eingestellte Hoechstgeschwindigkeit:
+ * schneller als der Joystick darf das Rangieren nicht werden.
+ */
+const CURSOR_SPEED_MIN_CMS = 2;
+const CURSOR_SPEED_DEFAULT_CMS = 15;
+
+function cursorSpeedLimits() {
+  const max = Math.round(driveSpeedLimits().max * 100);
+  const value = Math.round(clampNumber(state.view.cursorSpeedCms, CURSOR_SPEED_MIN_CMS, max, CURSOR_SPEED_DEFAULT_CMS));
+  return { min: CURSOR_SPEED_MIN_CMS, max, value };
+}
+
+/**
+ * Fahrbefehl einer der vier Richtungstasten. Vorwaerts/rueckwaerts ist die eingestellte
+ * Geschwindigkeit als Laengsfahrt. Links/rechts ist eine **Drehung auf der Stelle**: linear 0,
+ * dazu eine Drehrate — genau das, was der Joystick bei reiner Seitwaertsauslenkung schon sendet.
+ * Aus cm/s wird die Drehrate ueber die halbe Spurweite: laufen beide Raeder gegenlaeufig mit v,
+ * dreht der Maeher mit v / (Breite/2). Die Breite fuehrt die App bereits als Maeherbreite.
+ * Gedeckelt auf die eingestellte Hoechst-Drehrate.
+ */
+function cursorDriveVector(direction) {
+  const { turn } = driveSpeedLimits();
+  const v = cursorSpeedLimits().value / 100;
+  if (direction === 'up') return { linear: v, angular: 0 };
+  if (direction === 'down') return { linear: -v, angular: 0 };
+  const halfTrack = clampNumber(state.view.mowerWidth, 0.10, 3.00, 0.35) / 2;
+  const omega = Math.min(turn, v / halfTrack);
+  return { linear: 0, angular: direction === 'left' ? omega : -omega };
+}
+
 function joystickVectorFromPointer(event) {
   const rect = ui.driveJoystick.getBoundingClientRect();
   const cx = rect.left + rect.width / 2;
@@ -734,9 +780,36 @@ function beginJoystick(event) {
   state.driveDirection = 'joystick';
   try { ui.driveJoystick.setPointerCapture(event.pointerId); } catch (_) {}
   updateJoystickFromPointer(event, { forceSend: true });
+  startDriveHeartbeat();
+}
+
+/**
+ * Totmann-Takt: Sunray stoppt nach 1000 ms ohne neues AT+M, deshalb schickt die App alle
+ * DRIVE_HEARTBEAT_MS den aktuellen Vektor nach. Beide Steuerungsarten nutzen denselben Takt.
+ */
+function startDriveHeartbeat() {
   state.driveTimer = setInterval(() => {
-    if (state.driveDirection === 'joystick') sendDriveVector(state.driveVector.linear, state.driveVector.angular, { force: true }).catch((error) => reportBleError('AT+M', error));
+    if (!state.driveDirection) return;
+    sendDriveVector(state.driveVector.linear, state.driveVector.angular, { force: true })
+      .catch((error) => reportBleError('AT+M', error));
   }, DRIVE_HEARTBEAT_MS);
+}
+
+/** Eine der vier Richtungstasten wird gedrueckt: fahren, bis sie losgelassen wird. */
+function beginCursorDrive(direction, event) {
+  if (event?.preventDefault) event.preventDefault();
+  if (!state.connected || state.demo || !state.characteristic) {
+    if (ui.driveState) ui.driveState.textContent = tr('driveNeedConnection');
+    return;
+  }
+  stopDrive({ send: false });
+  state.driveDirection = direction;
+  state.cursorPointerId = event?.pointerId ?? null;
+  state.driveVector = cursorDriveVector(direction);
+  try { event?.currentTarget?.setPointerCapture?.(event.pointerId); } catch (_) {}
+  sendDriveVector(state.driveVector.linear, state.driveVector.angular, { force: true })
+    .catch((error) => reportBleError('AT+M', error));
+  startDriveHeartbeat();
 }
 
 function stopDrive({ send = true } = {}) {
@@ -745,6 +818,7 @@ function stopDrive({ send = true } = {}) {
   const wasDriving = Boolean(state.driveDirection) || state.joystickPointerId !== null;
   state.driveDirection = null;
   state.joystickPointerId = null;
+  state.cursorPointerId = null;
   state.driveVector = { linear: 0, angular: 0 };
   resetJoystickVisual();
   if (ui.driveState) ui.driveState.textContent = tr('driveIdle');
@@ -811,9 +885,11 @@ function loadViewPreferences() {
     // Migration: die Einstellung hiess frueher driveLabelSide und meinte die Seite der
     // Fahrtanzeige — links bedeutete Rechtshaender. Jetzt ist es die Haendigkeit selbst.
     state.view.handed = saved.handed === 'left' || saved.driveLabelSide === 'right' ? 'left' : 'right';
+    state.view.driveControl = saved.driveControl === 'buttons' ? 'buttons' : 'joystick';
+    state.view.cursorSpeedCms = Number.isFinite(Number(saved.cursorSpeedCms)) ? Number(saved.cursorSpeedCms) : 15;
   } catch (_) {
     state.view = { showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, autoCaptureIntervalS: 5, autoCaptureMode: 'time', autoCaptureDistanceCm: AUTO_CAPTURE_DISTANCE_DEFAULT_CM, showTrail: true, showPointQuality: true, keepAwake: true, driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
-      joystickScale: '1', handed: 'right' };
+      joystickScale: '1', handed: 'right', driveControl: 'joystick', cursorSpeedCms: 15 };
   }
 }
 
@@ -849,6 +925,12 @@ function applyViewPreferencesToUi() {
   ui.driveTurnMaxInput.value = limits.turn.toFixed(2);
   ui.joystickSizeSelect.value = state.view.joystickScale;
   ui.handedSelect.value = state.view.handed;
+  ui.driveControlSelect.value = state.view.driveControl;
+  const cursor = cursorSpeedLimits();
+  ui.cursorSpeedInput.min = String(cursor.min);
+  ui.cursorSpeedInput.max = String(cursor.max);
+  ui.cursorSpeedInput.value = String(cursor.value);
+  applyDriveControlMode();
   applyDriveZonePreferences();
 }
 
@@ -870,6 +952,11 @@ function updateViewPreferencesFromUi() {
   state.view.driveTurnMax = clampNumber(ui.driveTurnMaxInput.value, 0.20, 2.00, state.view.driveTurnMax);
   state.view.joystickScale = JOYSTICK_SCALES.includes(ui.joystickSizeSelect.value) ? ui.joystickSizeSelect.value : '1';
   state.view.handed = ui.handedSelect.value === 'left' ? 'left' : 'right';
+  state.view.driveControl = ui.driveControlSelect.value === 'buttons' ? 'buttons' : 'joystick';
+  // Gegen die aktuelle Hoechstgeschwindigkeit pruefen: Rangieren darf nie schneller werden.
+  state.view.cursorSpeedCms = Math.round(clampNumber(ui.cursorSpeedInput.value,
+    CURSOR_SPEED_MIN_CMS, Math.round(driveSpeedLimits().max * 100), state.view.cursorSpeedCms));
+  applyDriveControlMode();
   applyDriveZonePreferences();
   saveViewPreferences();
   refreshControlUi();
@@ -1150,6 +1237,32 @@ const JOYSTICK_SCALES = ['0.75', '1', '1.25', '1.5'];
 function applyHandedness() {
   // setAttribute statt dataset — dieselbe Schreibweise wie applyTheme().
   document.documentElement.setAttribute('data-handed', state.view.handed === 'left' ? 'left' : 'right');
+}
+
+/**
+ * Schaltet zwischen Joystick und Richtungstasten um. Beide sitzen in derselben Gitterspalte der
+ * Fahrzone, es ist immer genau einer sichtbar — Groesseneinstellung, Fahrtanzeige und
+ * Linkshaender-Spiegelung gelten deshalb unveraendert fuer beide.
+ */
+function applyDriveControlMode() {
+  const buttons = state.view.driveControl === 'buttons';
+  ui.driveJoystick.hidden = buttons;
+  ui.driveButtons.hidden = !buttons;
+  ui.driveModeBtn.classList.toggle('mode-buttons', buttons);
+  ui.driveModeBtn.classList.toggle('mode-joystick', !buttons);
+  // Das Symbol zeigt den **aktuellen** Modus, nicht den, in den es wechselt.
+  ui.driveModeLabel.textContent = tr(buttons ? 'driveControlButtons' : 'driveControlJoystick');
+  ui.driveModeBtn.setAttribute('aria-pressed', String(buttons));
+  ui.cursorSpeedRow.hidden = !buttons;
+}
+
+/** Schnellumschalter in der Kartenleiste — dieselbe Einstellung wie im Menue. */
+function toggleDriveControl() {
+  stopDrive();
+  state.view.driveControl = state.view.driveControl === 'buttons' ? 'joystick' : 'buttons';
+  saveViewPreferences();
+  applyDriveControlMode();
+  applyViewPreferencesToUi();
 }
 
 function applyDriveZonePreferences() {
@@ -3922,12 +4035,22 @@ function bindEvents() {
   ui.addPointBtn.addEventListener('click', captureButtonTap);
 
   // Fahren
+  ui.driveModeBtn.addEventListener('click', toggleDriveControl);
+  ui.driveButtons.addEventListener('pointerdown', (event) => {
+    const key = event.target.closest?.('[data-direction]');
+    if (key) beginCursorDrive(key.dataset.direction, event);
+  });
+  ['pointerup', 'pointercancel', 'lostpointercapture', 'pointerleave'].forEach((name) => ui.driveButtons
+    .addEventListener(name, (event) => {
+      if (state.cursorPointerId === null || event.pointerId === state.cursorPointerId) stopDrive();
+    }));
   ui.driveJoystick.addEventListener('pointerdown', beginJoystick);
   ui.driveJoystick.addEventListener('pointermove', (event) => updateJoystickFromPointer(event));
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((name) => ui.driveJoystick.addEventListener(name, (event) => {
     if (state.joystickPointerId === null || event.pointerId === state.joystickPointerId) stopDrive();
   }));
-  [ui.driveSpeedMinInput, ui.driveSpeedMaxInput, ui.driveTurnMaxInput, ui.joystickSizeSelect, ui.handedSelect].forEach((input) => input.addEventListener('change', () => {
+  [ui.driveSpeedMinInput, ui.driveSpeedMaxInput, ui.driveTurnMaxInput, ui.joystickSizeSelect, ui.handedSelect,
+    ui.driveControlSelect, ui.cursorSpeedInput].forEach((input) => input.addEventListener('change', () => {
     updateViewPreferencesFromUi();
     applyViewPreferencesToUi();
   }));

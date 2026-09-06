@@ -35,6 +35,7 @@ Die Oberfläche lässt sich zwischen **Deutsch und Englisch** umschalten; Deutsc
 - bis zu 10 Karten auf dem Gerät verwalten
 - Karten als JSON-Backup oder als GeoJSON exportieren und wieder importieren
 - den Mäher während der Aufnahme mit dem Daumen-Joystick manuell fahren
+- wahlweise mit Joystick oder mit vier Richtungstasten fahren
 - die gesamte Bedienung für Links- oder Rechtshänder spiegeln
 - Demo-Modus zum Ausprobieren ohne Mäher
 
@@ -213,6 +214,14 @@ Der Joystick liegt fest unter der Karte und ist für die Bedienung mit dem Daume
 - Der Joystick ist eine **Totmannsteuerung**: beim Loslassen springt er in die Mitte zurück und
   der Mäher stoppt sofort.
 
+Für genaues Rangieren gibt es alternativ **vier Richtungstasten**. Der Knopf rechts in der
+Kartenleiste schaltet zwischen beidem um, sein Symbol zeigt den gerade aktiven Modus; dieselbe
+Wahl steht auch unter *Einstellungen › Fahrgeschwindigkeit*. Die Tasten kennen bewusst nur
+vorwärts, rückwärts und Drehen auf der Stelle – keine Diagonalen, damit beim Geradeausfahren
+nichts versehentlich lenkt. Sie fahren mit einer **eigenen, langsamen Geschwindigkeit**
+(Startwert 15 cm/s, nie schneller als die eingestellte Höchstgeschwindigkeit); der Joystick bleibt
+davon unberührt. Halten und Loslassen verhalten sich wie beim Joystick.
+
 Diese App steuert bewusst **kein Mähen**: kein Start, kein Stop, kein Docking und keine
 Mähmotor-Steuerung. Sie nimmt ausschließlich Karten auf.
 
@@ -339,6 +348,7 @@ The interface can be switched between **German and English**; German is the defa
 - keep up to 10 maps on the device
 - export maps as a JSON backup or as GeoJSON, and import them again
 - drive the mower manually with the thumb joystick while recording
+- drive either with the joystick or with four direction keys
 - mirror the entire layout for left- or right-handed use
 - demo mode for trying things out without a mower
 
@@ -508,6 +518,13 @@ The joystick sits permanently below the map and is designed for thumb operation.
   applies from the dead zone on, the maximum at full deflection.
 - The joystick is a **dead man's control**: let go and it snaps back to the centre and the mower
   stops immediately.
+
+For precise manoeuvring there are alternatively **four direction keys**. The button on the right of
+the map bar switches between the two and its icon shows the mode currently active; the same choice
+is available under *Settings › Drive speed*. The keys deliberately only know forward, backward and
+turning on the spot – no diagonals, so nothing steers by accident while driving straight. They use
+their **own slow speed** (15 cm/s to start with, never faster than the configured maximum); the
+joystick is unaffected. Press and release behave just like the joystick.
 
 This app deliberately does **not** control mowing: no start, no stop, no docking and no mowing
 motor control. It only records maps.

@@ -18,6 +18,8 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'pruneEmptyExclusions', 'localizedExclusionName', 'loadViewPreferences', 'applyHandedness',
   'insertPointAtSelection', 'capturePreconditionKey', 'insertNeighbourIndex', 'midpointBetween',
   'renderPositionMode', 'updatePositionModeFromUi', 'mapToGeoJson', 'setActiveMapById',
+  'applyDriveControlMode', 'toggleDriveControl', 'beginCursorDrive', 'cursorDriveVector', 'cursorSpeedLimits',
+  'stopDrive', 'saveViewPreferences',
   'canCloseAndStartNew', 'closeAndStartNewExclusion', 'currentExclusion',
   'setTheme', 'applyTheme', 'applyDriveZonePreferences', 'applyViewPreferencesToUi', 'updateViewPreferencesFromUi', 'JOYSTICK_SCALES', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine', 'lockIcon', 'toggleLanguage',
   'askConfirm', 'confirmDialogRespond', 'showNotice', 'reportError', 'reportBleError',
@@ -1153,6 +1155,166 @@ test('In einer gesperrten Karte laesst sich der Positionsmodus nicht aendern', a
   await t.updatePositionModeFromUi();
   assert.strictEqual(t.state.activeMap.positionMode, 'relative', 'gesperrt heisst gesperrt');
   assert.strictEqual(t.ui.positionModeSelect.disabled, true);
+});
+
+// === Richtungstasten statt Joystick ========================================
+/**
+ * Versetzt die App in einen Zustand, in dem Fahrbefehle tatsaechlich rausgehen, und schneidet
+ * mit, was gesendet wird. Der Fake-BLE-Stack wird hier nicht gebraucht — es geht nur um die
+ * erzeugten Kommandos.
+ */
+function readyToDrive(t) {
+  const chunks = [];
+  t.state.connected = true;
+  t.state.demo = false;
+  t.state.sendBusy = false;
+  t.state.encryptionEnabled = false;
+  t.state.characteristic = {
+    properties: { write: true },
+    writeValueWithResponse: async (chunk) => { chunks.push(Buffer.from(chunk).toString('utf8')); },
+  };
+  return {
+    drives: () => chunks.join('').split(/\r?\n/).filter((line) => line.startsWith('AT+M')),
+    last: () => chunks.join('').split(/\r?\n/).filter((line) => line.startsWith('AT+M')).pop(),
+  };
+}
+
+test('Der Umschalter tauscht Joystick und Richtungstasten', () => {
+  const { t } = setup();
+  assert.strictEqual(t.state.view.driveControl, 'joystick', 'Joystick bleibt der Standard');
+  t.applyDriveControlMode();
+  assert.strictEqual(t.ui.driveJoystick.hidden, false);
+  assert.strictEqual(t.ui.driveButtons.hidden, true);
+  assert.strictEqual(t.ui.driveModeLabel.textContent, 'Joystick', 'das Symbol zeigt den aktiven Modus');
+  assert.strictEqual(t.ui.cursorSpeedRow.hidden, true, 'ohne Tastenmodus keine Cursor-Geschwindigkeit');
+
+  t.toggleDriveControl();
+  assert.strictEqual(t.state.view.driveControl, 'buttons');
+  assert.strictEqual(t.ui.driveJoystick.hidden, true);
+  assert.strictEqual(t.ui.driveButtons.hidden, false);
+  assert.strictEqual(t.ui.driveModeLabel.textContent, 'Richtungstasten');
+  assert.strictEqual(t.ui.cursorSpeedRow.hidden, false);
+
+  t.toggleDriveControl();
+  assert.strictEqual(t.state.view.driveControl, 'joystick', 'und wieder zurueck');
+});
+
+test('Die Wahl der Steuerung uebersteht einen Neustart', () => {
+  const { t, sandbox } = setup();
+  t.toggleDriveControl();                       // auf Tasten
+  t.state.view.cursorSpeedCms = 9;
+  t.saveViewPreferences();
+  // Neu laden: die Einstellungen kommen aus dem localStorage zurueck.
+  t.state.view.driveControl = 'joystick';
+  t.state.view.cursorSpeedCms = 15;
+  t.loadViewPreferences();
+  assert.strictEqual(t.state.view.driveControl, 'buttons');
+  assert.strictEqual(t.state.view.cursorSpeedCms, 9);
+  void sandbox;
+});
+
+test('Jede Richtungstaste fahrt mit der eigenen Cursor-Geschwindigkeit', () => {
+  const { t } = setup();
+  t.state.view.driveSpeedMax = 0.30;   // Joystick-Maximum, darf hier keine Rolle spielen
+  t.state.view.cursorSpeedCms = 12;    // 0,12 m/s
+  t.state.view.mowerWidth = 0.40;      // halbe Spurweite 0,20 m
+
+  const up = t.cursorDriveVector('up');
+  assert.ok(Math.abs(up.linear - 0.12) < 1e-9, 'vorwaerts mit dem Cursor-Wert, nicht mit 0,30');
+  assert.strictEqual(up.angular, 0, 'kein seitliches Lenken — genau darum geht es');
+
+  const down = t.cursorDriveVector('down');
+  assert.ok(Math.abs(down.linear + 0.12) < 1e-9);
+  assert.strictEqual(down.angular, 0);
+
+  // Links/rechts drehen auf der Stelle: linear 0, Drehrate aus v / halber Spurweite.
+  const left = t.cursorDriveVector('left');
+  const right = t.cursorDriveVector('right');
+  assert.strictEqual(left.linear, 0, 'Drehung auf der Stelle');
+  assert.strictEqual(right.linear, 0);
+  assert.ok(Math.abs(left.angular - 0.6) < 1e-9, '0,12 / 0,20 = 0,6 rad/s');
+  assert.ok(Math.abs(right.angular + 0.6) < 1e-9, 'rechts ist genau gespiegelt');
+
+  // Die eingestellte Hoechst-Drehrate bleibt die Obergrenze.
+  t.state.view.driveTurnMax = 0.30;
+  assert.ok(Math.abs(t.cursorDriveVector('left').angular - 0.30) < 1e-9, 'gedeckelt auf turnMax');
+});
+
+test('Halten fahert, Loslassen stoppt sofort', async () => {
+  const { t, clock } = setup();
+  const tx = readyToDrive(t);
+  t.state.view.cursorSpeedCms = 20;
+  t.toggleDriveControl();
+
+  t.beginCursorDrive('up', { pointerId: 1, preventDefault() {} });
+  await clock.runFor(50);
+  assert.strictEqual(t.state.driveDirection, 'up');
+  assert.ok(tx.last().startsWith('AT+M,0.20,0.00'), `vorwaerts mit 0,20 m/s, gesendet: ${tx.last()}`);
+
+  // Der Totmann-Takt schickt denselben Vektor nach, solange gehalten wird.
+  const before = tx.drives().length;
+  await clock.runFor(1400);
+  assert.ok(tx.drives().length > before, 'Sunray stoppt ohne Nachschub nach 1 s — der Takt muss laufen');
+
+  t.stopDrive();
+  await clock.runFor(50);
+  assert.strictEqual(t.state.driveDirection, null);
+  assert.ok(tx.last().startsWith('AT+M,0,0'), `Loslassen stoppt sofort, gesendet: ${tx.last()}`);
+});
+
+test('Links dreht auf der Stelle, ohne Vortrieb', async () => {
+  const { t, clock } = setup();
+  const tx = readyToDrive(t);
+  t.state.view.cursorSpeedCms = 10;
+  t.state.view.mowerWidth = 0.40;
+  t.toggleDriveControl();
+
+  t.beginCursorDrive('left', { pointerId: 1, preventDefault() {} });
+  await clock.runFor(50);
+  assert.ok(tx.last().startsWith('AT+M,0.00,0.50'), `linear 0, Drehrate 0,10/0,20, gesendet: ${tx.last()}`);
+  t.stopDrive();
+});
+
+test('Die Cursor-Geschwindigkeit wird gegen die Hoechstgeschwindigkeit geprueft', () => {
+  const { t } = setup();
+  t.state.view.driveSpeedMax = 0.25;            // = 25 cm/s
+  t.applyViewPreferencesToUi();                 // die Eingabefelder tragen jetzt die Werte
+  t.ui.driveControlSelect.value = 'buttons';
+
+  t.ui.cursorSpeedInput.value = '0';
+  t.updateViewPreferencesFromUi();
+  assert.strictEqual(t.state.view.cursorSpeedCms, 2, 'null waere kein Fahren — Untergrenze 2 cm/s');
+
+  t.ui.cursorSpeedInput.value = '99';
+  t.updateViewPreferencesFromUi();
+  assert.strictEqual(t.state.view.cursorSpeedCms, 25, 'nie schneller als der Joystick');
+  assert.strictEqual(t.cursorSpeedLimits().max, 25, 'die Obergrenze folgt der Einstellung');
+
+  t.ui.cursorSpeedInput.value = '15';
+  t.updateViewPreferencesFromUi();
+  assert.strictEqual(t.state.view.cursorSpeedCms, 15);
+});
+
+test('Der Joystick bleibt vom Tastenmodus unberuehrt', () => {
+  const { t } = setup();
+  t.state.view.driveSpeedMin = 0.10;
+  t.state.view.driveSpeedMax = 0.30;
+  t.state.view.cursorSpeedCms = 5;   // darf die Joystick-Kennlinie nicht beeinflussen
+  const full = t.joystickVectorFromPointer({ clientX: 150, clientY: 150 - 116 });
+  assert.ok(Math.abs(full.linear - 0.30) < 1e-9, 'voller Ausschlag bleibt das Joystick-Maximum');
+  const half = t.joystickVectorFromPointer({ clientX: 150, clientY: 150 - 58 });
+  assert.ok(half.linear > 0.10 && half.linear < 0.30, 'die Kennlinie ist unveraendert');
+});
+
+test('Die Linkshaender-Spiegelung gilt auch fuer das Tastenkreuz', () => {
+  // Beide Steuerungsarten sitzen in derselben Gitterspalte — die Spiegelung betrifft die
+  // Fahrtanzeige daneben und gilt damit unveraendert fuer Joystick wie Tasten.
+  const css = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
+  const pad = css.slice(css.indexOf('.drive-zone .drive-pad {'));
+  const body = pad.slice(0, pad.indexOf('}'));
+  assert.ok(/grid-column:\s*2/.test(body), 'das Kreuz sitzt in derselben Spalte wie der Joystick');
+  assert.ok(/grid-row:\s*1/.test(body), 'und in derselben Zeile — sonst waechst die Zone');
+  assert.ok(/--joystick-size/.test(body), 'es nutzt dieselbe Groessenrechnung');
 });
 
 test('RTK-Badge zeigt Zustand und Satelliten als Mäher/Station', () => {
