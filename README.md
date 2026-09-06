@@ -30,6 +30,7 @@ Die Oberfläche lässt sich zwischen **Deutsch und Englisch** umschalten; Deutsc
 - vorhandene Karten nachträglich korrigieren: Punkt antippen, an die aktuelle Mäherposition
   verschieben oder löschen
 - nachträglich Punkte auf halber Strecke vor oder hinter einen ausgewählten Punkt einfügen
+- eine bereits geschlossene Kontur an einer beliebigen Kante wieder öffnen und verlängern
 - die letzten 20 Bearbeitungsschritte einzeln rückgängig machen
 - Karten auf Geometrie- und RTK-Probleme prüfen
 - bis zu 10 Karten auf dem Gerät verwalten
@@ -149,6 +150,27 @@ beim ersten Punkt gibt es kein „davor“, beim letzten kein „danach“; der 
 ausgegraut. Bei einer **geschlossenen** Kontur laufen beide über die Schlussstrecke vom letzten
 zum ersten Punkt um.
 
+### Eine geschlossene Kontur erweitern
+
+Ist ein Perimeter oder eine Ausschlussfläche bereits geschlossen, musst du sie nicht neu
+aufnehmen, um sie an einer Stelle zu verlängern. In der Kartenleiste erscheint dann
+**„Perimeter erweitern“** bzw. **„Fläche erweitern“**:
+
+1. Knopf antippen. Die Statuszeile bittet dich, **zwei direkt benachbarte Punkte** anzutippen –
+   also zwei Punkte, die durch eine Kante verbunden sind.
+2. Sind die beiden nicht benachbart, sagt die Statuszeile das und die Auswahl beginnt von vorn.
+   An der Kontur ändert sich dabei nichts.
+3. Passt es, wird die Kante zwischen ihnen aufgetrennt und die Kontur gilt wieder als offen. Der
+   **zuerst** angetippte Punkt ist ab jetzt das offene Ende.
+4. Nimm weitere Punkte auf wie sonst auch – Halte-Knopf, Automatik und Positions-Glättung
+   funktionieren unverändert. Die neuen Punkte landen genau zwischen den beiden gewählten.
+5. **„Fertig“** schließt die Kontur wieder; der zuletzt aufgenommene Punkt verbindet sich mit dem
+   zweiten der beiden gewählten.
+
+Brichst du vorher ab – etwa durch einen Moduswechsel –, bleibt die Kontur einfach **offen**. Das
+ist kein Sonderfall: die App fragt beim Moduswechsel ohnehin, ob eine offene Kontur geschlossen
+werden soll, und die **Kartenprüfung** findet offene Konturen und bietet an, sie zu schließen.
+
 ### Das Lösch-Werkzeug
 
 Ein Werkzeug, drei Aufgaben – die Beschriftung darunter sagt jeweils, was passiert:
@@ -220,9 +242,10 @@ Der Joystick liegt fest unter der Karte und ist für die Bedienung mit dem Daume
 - Der Joystick ist eine **Totmannsteuerung**: beim Loslassen springt er in die Mitte zurück und
   der Mäher stoppt sofort.
 
-Für genaues Rangieren gibt es alternativ **vier Richtungstasten**. Der Knopf rechts in der
-Kartenleiste schaltet zwischen beidem um, sein Symbol zeigt den gerade aktiven Modus; dieselbe
-Wahl steht auch unter *Einstellungen › Fahrgeschwindigkeit*. Die Tasten kennen bewusst nur
+Für genaues Rangieren gibt es alternativ **vier Richtungstasten**. Der kleine Knopf in der oberen
+Ecke des Fahrfelds schaltet zwischen beidem um, sein Symbol zeigt den gerade aktiven Modus – bei
+Linkshändern sitzt er gespiegelt in der anderen Ecke. Dieselbe Wahl steht auch unter
+*Einstellungen › Fahrgeschwindigkeit*. Die Tasten kennen bewusst nur
 vorwärts, rückwärts und Drehen auf der Stelle – keine Diagonalen, damit beim Geradeausfahren
 nichts versehentlich lenkt. Sie fahren mit einer **eigenen, langsamen Geschwindigkeit**
 (Startwert 15 cm/s, nie schneller als die eingestellte Höchstgeschwindigkeit); der Joystick bleibt
@@ -349,6 +372,7 @@ The interface can be switched between **German and English**; German is the defa
 - place points automatically – either on a time interval or by distance travelled
 - correct existing maps afterwards: tap a point, move it to the current mower position, or delete it
 - insert additional points halfway before or after a selected point afterwards
+- reopen an already closed contour at any edge and extend it
 - undo the last 20 editing steps one at a time
 - check maps for geometry and RTK problems
 - keep up to 10 maps on the device
@@ -463,6 +487,26 @@ ordered sequences. **At the edge of a contour that is still open** one side has 
 first point has no “before”, the last no “after”, and that button is greyed out. On a **closed**
 contour both wrap around the closing segment from the last point to the first.
 
+### Extending a closed contour
+
+If a perimeter or exclusion area is already closed, you do not have to record it again just to
+extend it in one place. The map bar then offers **“Extend perimeter”** or **“Extend area”**:
+
+1. Tap the button. The status line asks you to tap **two directly neighbouring points** – that is,
+   two points joined by an edge.
+2. If the two are not neighbours, the status line says so and the selection starts over. Nothing
+   on the contour is changed.
+3. If they fit, the edge between them is cut and the contour counts as open again. The point you
+   tapped **first** becomes the open end.
+4. Capture further points as usual – the hold button, automatic capture and position smoothing all
+   work unchanged. The new points land exactly between the two you picked.
+5. **“Done”** closes the contour again; the last captured point joins up with the second of the two
+   you picked.
+
+If you break off before that – by switching mode, for instance – the contour simply stays **open**.
+That is not a special case: the app asks on every mode change whether an open contour should be
+closed, and the **map check** finds open contours and offers to close them.
+
 ### The delete tool
 
 One tool, three jobs – the label underneath says what will happen:
@@ -531,9 +575,10 @@ The joystick sits permanently below the map and is designed for thumb operation.
 - The joystick is a **dead man's control**: let go and it snaps back to the centre and the mower
   stops immediately.
 
-For precise manoeuvring there are alternatively **four direction keys**. The button on the right of
-the map bar switches between the two and its icon shows the mode currently active; the same choice
-is available under *Settings › Drive speed*. The keys deliberately only know forward, backward and
+For precise manoeuvring there are alternatively **four direction keys**. The small button in the top
+corner of the drive field switches between the two and its icon shows the mode currently active –
+for left-handed use it sits mirrored in the other corner. The same choice is available under
+*Settings › Drive speed*. The keys deliberately only know forward, backward and
 turning on the spot – no diagonals, so nothing steers by accident while driving straight. They use
 their **own slow speed** (15 cm/s to start with, never faster than the configured maximum); the
 joystick is unaffected. Press and release behave just like the joystick.

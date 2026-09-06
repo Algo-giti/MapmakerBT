@@ -75,6 +75,17 @@ const I18N = {
     insertBefore: 'Punkt davor einfügen', insertBeforeShort: 'Punkt davor',
     insertAfter: 'Punkt danach einfügen', insertAfterShort: 'Punkt danach',
     pointInserted: 'Punkt auf halber Strecke an Position {n} eingefügt.',
+    extendPerimeter: 'Perimeter erweitern', extendPerimeterShort: 'Perimeter erweitern',
+    extendExclusion: 'Ausschlussfläche erweitern', extendExclusionShort: 'Fläche erweitern',
+    extendCancel: 'Erweitern abbrechen', extendCancelShort: 'Abbrechen',
+    extendDone: 'Erweiterung abschließen', extendDoneShort: 'Fertig',
+    extendPickFirst: 'Erweitern: den ersten von zwei benachbarten Punkten antippen — dort wird die Kontur geöffnet.',
+    extendPickSecond: 'Punkt {n} gewählt. Jetzt den direkt benachbarten Punkt antippen.',
+    extendNotAdjacent: 'Die beiden Punkte liegen nicht nebeneinander. Bitte zwei direkt verbundene Punkte wählen.',
+    extendWrongContour: 'Bitte einen Punkt der Kontur antippen, die erweitert werden soll.',
+    extendOpened: 'Kontur geöffnet. Jetzt weitere Punkte aufnehmen und danach „Fertig“ antippen.',
+    extendFinished: 'Erweiterung abgeschlossen, die Kontur ist wieder geschlossen.',
+    extendCancelled: 'Erweitern abgebrochen — an der Kontur wurde nichts geändert.',
     undoShort: 'Rückgängig', undoAction: 'Letzten Bearbeitungsschritt rückgängig machen',
     undoDone: 'Schritt zurückgenommen.', undoDoneLast: 'Schritt zurückgenommen – Verlauf ist jetzt leer.',
     bleResyncDone: 'Abgebrochenes Kommando abgeschlossen (Zeilenende nachgesendet).',
@@ -233,8 +244,9 @@ const I18N = {
     mapOverview: 'Kartenübersicht', lockCurrentMap: 'Karte sperren', unlockCurrentMap: 'Karte entsperren', mapLocked: 'Gesperrt', mapLockedHint: 'Diese Karte ist gesperrt. Zum Bearbeiten zuerst entsperren.', mapCardArea: '{area} m²', mapCardPoints: '{points} Punkte', mapCardChanged: 'Geändert {date}', selectMap: 'Karte auswählen', drive: 'Fahren', stopEverythingDone: 'STOP gesendet · Fahrt 0 · Mähmotor AUS · IDLE',
     manualDrive: 'Manuell fahren', driveSpeed: 'Tempo', reverse: 'Zurück', left: 'Links', stop: 'Stop', driveIdle: 'Fahrt gestoppt', driveNeedConnection: 'Für manuelle Fahrt zuerst per BLE verbinden.',
     helpQualityTitle: 'Punktqualität', helpQualityText: 'Der Rand eines Punktes zeigt, zu welchem Element er gehört, die Füllung die RTK-Qualität bei der Aufnahme.',
+    helpExtendTitle: 'Kontur nachträglich erweitern', helpExtendText: 'Ist ein Perimeter oder eine Ausschlussfläche schon geschlossen, öffnet „Erweitern“ in der Kartenleiste sie wieder: zwei direkt benachbarte Punkte antippen, dann wird die Kante zwischen ihnen aufgetrennt. Danach nimmst du wie gewohnt weitere Punkte auf — auch mit Automatik —, sie landen genau zwischen den beiden gewählten. „Fertig“ schließt die Kontur wieder.',
     helpMapToolsTitle: 'Karten umbenennen & kopieren', helpMapToolsText: 'In der Kartenübersicht trägt jede Karte zwei kleine Werkzeuge: der Stift benennt sie um (nur der Name ändert sich), das Kopiersymbol legt eine vollständige, unabhängige Kopie an — mit allen Punkten, dem Positionsmodus und dem Ursprung. Die Kopie bekommt automatisch einen freien Namen, die gerade aktive Karte bleibt aktiv.',
-    helpDriveControlTitle: 'Joystick oder Richtungstasten', helpDriveControlText: 'Der Knopf rechts in der Kartenleiste schaltet zwischen beidem um. Der Joystick fährt wie eine Fernsteuerung: Richtung und Stärke der Auslenkung. Die Richtungstasten kennen nur vorwärts, rückwärts und Drehen auf der Stelle — kein versehentliches Lenken beim Geradeausfahren. Sie fahren mit einer eigenen, langsamen Geschwindigkeit für genaues Rangieren, einstellbar unter Einstellungen › Fahrgeschwindigkeit.',
+    helpDriveControlTitle: 'Joystick oder Richtungstasten', helpDriveControlText: 'Der kleine Knopf in der oberen Ecke des Fahrfelds schaltet zwischen beidem um — bei Linkshändern gespiegelt auf der anderen Seite. Der Joystick fährt wie eine Fernsteuerung: Richtung und Stärke der Auslenkung. Die Richtungstasten kennen nur vorwärts, rückwärts und Drehen auf der Stelle — kein versehentliches Lenken beim Geradeausfahren. Sie fahren mit einer eigenen, langsamen Geschwindigkeit für genaues Rangieren, einstellbar unter Einstellungen › Fahrgeschwindigkeit.',
     helpPositionModeTitle: 'Positionsmodus', helpPositionModeText: 'Jede Karte rechnet standardmäßig in lokalen Metern relativ zum Startpunkt des Mähers („Relativ“) — dafür ist keine Eingabe nötig. „Absolut“ brauchst du nur, wenn du die Karte mit Programmen austauschen willst, die echte Weltkoordinaten erwarten: dort trägst du im Menü unter Karten einmalig die GPS-Position des Nullpunkts ein, meist die der Ladestation. Der Ursprung gehört zur jeweiligen Karte, weil verschiedene Karten meist an verschiedenen Orten liegen. Fehlt ein gültiger Ursprung, bleibt der Export bei lokalen Metern — falsch machen kannst du dabei nichts.',
     helpLockTitle: 'Kartensperre', helpLockText: 'Fertige Karten lassen sich gegen versehentliche Änderungen sperren.',
     viewHelpTitle: 'Ansicht & Bedienung',
@@ -271,6 +283,17 @@ const I18N = {
     insertBefore: 'Insert a point before this one', insertBeforeShort: 'Point before',
     insertAfter: 'Insert a point after this one', insertAfterShort: 'Point after',
     pointInserted: 'Point inserted halfway along, at position {n}.',
+    extendPerimeter: 'Extend perimeter', extendPerimeterShort: 'Extend perimeter',
+    extendExclusion: 'Extend exclusion area', extendExclusionShort: 'Extend area',
+    extendCancel: 'Cancel extending', extendCancelShort: 'Cancel',
+    extendDone: 'Finish extending', extendDoneShort: 'Done',
+    extendPickFirst: 'Extending: tap the first of two neighbouring points — that is where the contour opens.',
+    extendPickSecond: 'Point {n} selected. Now tap the directly neighbouring point.',
+    extendNotAdjacent: 'Those two points are not next to each other. Please pick two directly connected points.',
+    extendWrongContour: 'Please tap a point of the contour you want to extend.',
+    extendOpened: 'Contour opened. Capture further points, then tap “Done”.',
+    extendFinished: 'Extension finished, the contour is closed again.',
+    extendCancelled: 'Extending cancelled — nothing on the contour was changed.',
     undoShort: 'Undo', undoAction: 'Undo the last editing step',
     undoDone: 'Step undone.', undoDoneLast: 'Step undone – history is now empty.',
     bleResyncDone: 'Terminated the aborted command (sent a line break).',
@@ -429,8 +452,9 @@ const I18N = {
     mapOverview: 'Map overview', lockCurrentMap: 'Lock map', unlockCurrentMap: 'Unlock map', mapLocked: 'Locked', mapLockedHint: 'This map is locked. Unlock it before editing.', mapCardArea: '{area} m²', mapCardPoints: '{points} points', mapCardChanged: 'Changed {date}', selectMap: 'Select map', drive: 'Drive', stopEverythingDone: 'STOP sent · drive 0 · mowing motor OFF · IDLE',
     manualDrive: 'Manual drive', driveSpeed: 'Speed', reverse: 'Reverse', left: 'Left', stop: 'Stop', driveIdle: 'Drive stopped', driveNeedConnection: 'Connect via BLE before using manual drive.',
     helpQualityTitle: 'Point quality', helpQualityText: 'The outline of a point shows which element it belongs to, the fill shows the RTK quality at the time it was captured.',
+    helpExtendTitle: 'Extending a closed contour', helpExtendText: 'If a perimeter or exclusion area is already closed, “Extend” in the map bar reopens it: tap two directly neighbouring points and the edge between them is cut. Then capture further points as usual — automatic capture included — and they land exactly between the two you picked. “Done” closes the contour again.',
     helpMapToolsTitle: 'Renaming & copying maps', helpMapToolsText: 'In the map overview every map carries two small tools: the pencil renames it (only the name changes), the copy icon creates a complete, independent copy — with all points, the position mode and the origin. The copy automatically gets a free name, and the map you are working on stays active.',
-    helpDriveControlTitle: 'Joystick or direction keys', helpDriveControlText: 'The button on the right of the map bar switches between the two. The joystick drives like a remote control: direction and amount of deflection. The direction keys only know forward, backward and turning on the spot — no accidental steering while driving straight. They use their own slow speed for precise manoeuvring, adjustable under Settings › Drive speed.',
+    helpDriveControlTitle: 'Joystick or direction keys', helpDriveControlText: 'The small button in the top corner of the drive field switches between the two — mirrored to the other side for left-handed use. The joystick drives like a remote control: direction and amount of deflection. The direction keys only know forward, backward and turning on the spot — no accidental steering while driving straight. They use their own slow speed for precise manoeuvring, adjustable under Settings › Drive speed.',
     helpPositionModeTitle: 'Position mode', helpPositionModeText: 'By default every map works in local metres relative to the mower\u2019s starting point (“Relative”) — nothing to fill in. You only need “Absolute” if you want to exchange the map with programs that expect real world coordinates: there you enter the GPS position of the zero point once, in the menu under Maps, usually that of the charging station. The origin belongs to the individual map, because different maps usually sit in different places. Without a valid origin the export stays in local metres — you cannot get it wrong.',
     helpLockTitle: 'Map lock', helpLockText: 'Finished maps can be locked against accidental changes.',
     viewHelpTitle: 'View & operation',
@@ -515,9 +539,10 @@ const ui = {
   deletePointBtn: $('deletePointBtn'), deleteFabWrap: $('deleteFabWrap'), deleteBtnLabel: $('deleteBtnLabel'),
   closeAndNewWrap: $('closeAndNewWrap'), closeAndNewBtn: $('closeAndNewBtn'), fitViewBtn: $('fitViewBtn'),
   undoFabWrap: $('undoFabWrap'), undoBtn: $('undoBtn'),
-  driveModeWrap: $('driveModeWrap'), driveModeBtn: $('driveModeBtn'), driveModeLabel: $('driveModeLabel'),
+  driveModeBtn: $('driveModeBtn'), driveModeLabel: $('driveModeLabel'),
   driveButtons: $('driveButtons'), driveControlSelect: $('driveControlSelect'),
   cursorSpeedInput: $('cursorSpeedInput'), cursorSpeedRow: $('cursorSpeedRow'),
+  extendWrap: $('extendWrap'), extendBtn: $('extendBtn'), extendBtnLabel: $('extendBtnLabel'),
   insertBeforeWrap: $('insertBeforeWrap'), insertBeforeBtn: $('insertBeforeBtn'),
   insertAfterWrap: $('insertAfterWrap'), insertAfterBtn: $('insertAfterBtn'),
   captureCluster: $('captureCluster'), autoFabWrap: $('autoFabWrap'), autoCaptureBtn: $('autoCaptureBtn'), autoCaptureLabel: $('autoCaptureLabel'),
@@ -587,6 +612,8 @@ const state = {
   lastBleRxAt: 0,
   mode: 'perimeter',
   menuOpen: false,
+  // Nachtraegliches Erweitern einer geschlossenen Kontur, siehe startExtension().
+  extension: null,
   pendingConfirm: null,
   pendingConfirmText: false,
   pendingUpdate: null,
@@ -1562,7 +1589,11 @@ function refreshCaptureState() {
   ui.undoFabWrap.hidden = state.autoCaptureRunning || mapLocked || !state.activeMap;
   // Einfuegen ergibt nur mit ausgewaehltem Einzelpunkt Sinn — dort, wo der Hauptknopf auf
   // „Verschieben“ steht. Ohne Auswahl, bei Flaechenauswahl und waehrend der Automatik weg.
-  const canInsert = Boolean(selected) && !areaSelected && !state.autoCaptureRunning && !mapLocked;
+  refreshExtendButton();
+  // Waehrend einer Erweiterung waeren die Einfuegen-Werkzeuge nur verwechselbar: dort geht es um
+  // das Anhaengen am offenen Ende, nicht um Zwischenpunkte.
+  const canInsert = Boolean(selected) && !areaSelected && !state.autoCaptureRunning && !mapLocked
+    && !state.extension;
   ui.insertBeforeWrap.hidden = !canInsert;
   ui.insertAfterWrap.hidden = !canInsert;
   // Am Rand einer offenen Kontur fehlt die Strecke, auf der der neue Punkt liegen wuerde:
@@ -2337,6 +2368,7 @@ function setActiveMapById(mapId) {
   if (!next) return;
   stopAutoCapture();
   clearUndoStack();
+  state.extension = null;
   state.activeMap = normalizeMap(next);
   state.activeExclusionId = state.activeMap.exclusions?.[0]?.id || null;
   state.selectedPoint = null;
@@ -3151,6 +3183,13 @@ function isSelectedPoint(meta, index) {
   return pointRefMatches(state.selectedPoint, meta, index);
 }
 
+/** Der erste der beiden fuer die Erweiterung gewaehlten Punkte, damit er sichtbar markiert ist. */
+function isExtensionPick(meta, index) {
+  const ext = state.extension;
+  if (!ext || ext.phase !== 'picking' || ext.firstIndex !== index) return false;
+  return meta.role === ext.role && (ext.role !== 'exclusion' || meta.exclusionId === ext.exclusionId);
+}
+
 function drawPoints(points, tr, className, meta) {
   points.forEach((p, index) => {
     const s = toScreen(p, tr);
@@ -3171,14 +3210,16 @@ function drawPoints(points, tr, className, meta) {
     hit.appendChild(hitTitle);
     ui.shapeLayer.appendChild(hit);
 
+    const picked = isExtensionPick(meta, index);
     const qualityClass = state.view.showPointQuality ? ` quality-${pointQuality(p)}` : '';
     const circle = svgEl('circle', {
       cx: s.x, cy: s.y, r: selected ? 9 : 5,
-      class: `${className} map-point${qualityClass}${selected ? ' selected-map-point' : ''}`,
+      class: `${className} map-point${qualityClass}${selected ? ' selected-map-point' : ''}${picked ? ' extend-pick-point' : ''}`,
       'pointer-events': 'none', role: 'img', ...common,
     });
     ui.shapeLayer.appendChild(circle);
     if (selected) ui.shapeLayer.appendChild(svgEl('circle', { cx: s.x, cy: s.y, r: 15, class: 'edit-selected-ring', 'pointer-events': 'none' }));
+    if (picked) ui.shapeLayer.appendChild(svgEl('circle', { cx: s.x, cy: s.y, r: 15, class: 'extend-pick-ring', 'pointer-events': 'none' }));
   });
 }
 
@@ -3847,6 +3888,10 @@ function modeLabel(mode) {
 function setMode(mode, { preserveSelection = false } = {}) {
   if (!CAPTURE_MODES.includes(mode)) return;
   if (state.autoCaptureRunning) stopAutoCapture();
+  // Ein Wechsel auf eine andere Elementart beendet die Erweiterung. Die aufgetrennte Kontur
+  // bleibt dabei bewusst offen: dafuer gibt es bereits die Rueckfrage beim Moduswechsel und die
+  // Kartenpruefung, die offene Konturen meldet und zu schliessen anbietet.
+  if (state.extension && state.extension.role !== mode) state.extension = null;
   state.mode = mode;
   if (!preserveSelection) { state.selectedPoint = null; state.selectedArea = null; }
   ui.modeChipLabel.textContent = modeLabel(mode);
@@ -3895,6 +3940,195 @@ function openContours() {
     if (ex.points.length >= 3 && ex.closed === false) open.push({ role: 'exclusion', id: ex.id, label: localizedExclusionName(ex, index) });
   });
   return open;
+}
+
+/**
+ * Die Kontur, die der aktuelle Aufnahmemodus bearbeitet — aber nur dort, wo es ueberhaupt
+ * geschlossene Konturen gibt. Wegpunkte und Dockpfad sind offene Pfade und liefern null.
+ */
+function activeContour() {
+  if (!state.activeMap) return null;
+  if (state.mode === 'perimeter') {
+    return { role: 'perimeter', id: null, points: state.activeMap.perimeter, closed: Boolean(state.activeMap.perimeterClosed) };
+  }
+  if (state.mode === 'exclusion') {
+    const exclusion = currentExclusion();
+    return exclusion ? { role: 'exclusion', id: exclusion.id, points: exclusion.points, closed: exclusion.closed !== false } : null;
+  }
+  return null;
+}
+
+/** Die Punktfolge, die gerade erweitert wird — dieselbe Array-Referenz wie in der Karte. */
+function extensionPoints(ext = state.extension) {
+  if (!ext || !state.activeMap) return null;
+  if (ext.role === 'perimeter') return state.activeMap.perimeter;
+  return state.activeMap.exclusions.find((e) => e.id === ext.exclusionId)?.points || null;
+}
+
+function extensionIsClosed(ext = state.extension) {
+  if (!ext || !state.activeMap) return false;
+  if (ext.role === 'perimeter') return Boolean(state.activeMap.perimeterClosed);
+  const exclusion = state.activeMap.exclusions.find((e) => e.id === ext.exclusionId);
+  return Boolean(exclusion && exclusion.closed !== false);
+}
+
+/** Erweitern lohnt nur bei einer geschlossenen Kontur — eine offene laesst sich ohnehin fortsetzen. */
+function canStartExtension() {
+  if (!state.activeMap || state.activeMap.locked || state.autoCaptureRunning) return false;
+  const contour = activeContour();
+  return Boolean(contour && contour.closed && contour.points.length >= 3);
+}
+
+/**
+ * Sind zwei Punkte einer **geschlossenen** Kontur direkt durch eine Kante verbunden? Neben den
+ * benachbarten Listenplaetzen zaehlt dort auch die Schlussstrecke letzter↔erster Punkt.
+ */
+function areNeighbourIndices(a, b, length) {
+  if (a === b || length < 2) return false;
+  const gap = Math.abs(a - b);
+  return gap === 1 || gap === length - 1;
+}
+
+/**
+ * Ordnet die Punktfolge so um, dass die Kante zwischen den beiden gewaehlten Punkten aufgeht:
+ * die Liste beginnt beim **zweiten** gewaehlten Punkt, laeuft von der Kante weg im Ring herum
+ * und endet beim **ersten**. Damit ist der erste gewaehlte Punkt das neue Ende, an das angehaengt
+ * wird — neue Punkte landen also genau zwischen den beiden gewaehlten.
+ */
+function reorderForExtension(points, firstIndex, secondIndex) {
+  const n = points.length;
+  const forward = (firstIndex + 1) % n === secondIndex;
+  const out = [];
+  for (let k = 0; k < n; k += 1) {
+    out.push(points[forward ? (secondIndex + k) % n : ((secondIndex - k) % n + n) % n]);
+  }
+  return out;
+}
+
+/** Startet die Auswahl der beiden benachbarten Punkte; an der Kontur aendert sich dabei nichts. */
+function startExtension() {
+  if (!canStartExtension()) return;
+  const contour = activeContour();
+  state.extension = { role: contour.role, exclusionId: contour.id, phase: 'picking', firstIndex: null };
+  clearPointSelection({ render: false });
+  renderMap();
+  refreshCaptureState();
+  ui.pointStatus.textContent = tr('extendPickFirst');
+}
+
+/** Abbruch waehrend der Auswahl — es wurde noch nichts veraendert. */
+function cancelExtension() {
+  if (!state.extension) return;
+  state.extension = null;
+  renderMap();
+  refreshCaptureState();
+  ui.pointStatus.textContent = tr('extendCancelled');
+}
+
+/** Trennt die Kante zwischen den beiden gewaehlten Punkten auf: ein Undo-Schritt. */
+async function openContourForExtension(firstIndex, secondIndex) {
+  const ext = state.extension;
+  const points = extensionPoints(ext);
+  if (!ext || !points) return;
+  pushUndo();
+  points.splice(0, points.length, ...reorderForExtension(points, firstIndex, secondIndex));
+  if (ext.role === 'perimeter') state.activeMap.perimeterClosed = false;
+  else {
+    const exclusion = state.activeMap.exclusions.find((e) => e.id === ext.exclusionId);
+    if (exclusion) exclusion.closed = false;
+  }
+  ext.phase = 'adding';
+  ext.firstIndex = null;
+  state.validationResult = null;
+  await saveActiveMap();
+  renderMap();
+  refreshCaptureState();
+  ui.pointStatus.textContent = tr('extendOpened');
+}
+
+/** Ein Tipp waehrend der Auswahlphase. Trifft er keinen Punkt der Kontur, passiert nichts. */
+async function handleExtensionTap(item) {
+  const ext = state.extension;
+  const points = extensionPoints(ext);
+  if (!ext || !points) return;
+  const sameContour = item && item.role === ext.role
+    && (ext.role !== 'exclusion' || item.exclusionId === ext.exclusionId);
+  if (!sameContour) { ui.pointStatus.textContent = tr('extendWrongContour'); return; }
+  if (ext.firstIndex === null) {
+    ext.firstIndex = item.index;
+    renderMap();
+    ui.pointStatus.textContent = tr('extendPickSecond', { n: item.index + 1 });
+    return;
+  }
+  if (item.index === ext.firstIndex) {
+    ext.firstIndex = null;
+    renderMap();
+    ui.pointStatus.textContent = tr('extendPickFirst');
+    return;
+  }
+  if (!areNeighbourIndices(ext.firstIndex, item.index, points.length)) {
+    // Keine Aenderung an der Kontur — die Auswahl beginnt einfach von vorn.
+    ext.firstIndex = null;
+    renderMap();
+    ui.pointStatus.textContent = tr('extendNotAdjacent');
+    log('MAP', tr('extendNotAdjacent'));
+    return;
+  }
+  await openContourForExtension(ext.firstIndex, item.index);
+}
+
+/** „Fertig“: die Kontur wird ueber dieselbe Logik wie sonst wieder geschlossen. */
+async function finishExtension() {
+  const ext = state.extension;
+  if (!ext || ext.phase !== 'adding') return;
+  const points = extensionPoints(ext);
+  state.extension = null;
+  if (points && points.length >= 3) await closeContour({ role: ext.role, id: ext.exclusionId });
+  renderMap();
+  refreshCaptureState();
+  ui.pointStatus.textContent = tr('extendFinished');
+}
+
+/**
+ * Haelt den Erweiterungszustand mit der Karte im Einklang. Ein Undo kann die aufgetrennte Kante
+ * wieder geschlossen haben — dann gibt es nichts mehr anzuhaengen und der Zustand faellt weg.
+ * Wird die Karte gesperrt oder verschwindet die Flaeche, ebenso.
+ */
+function refreshExtensionState() {
+  const ext = state.extension;
+  if (!ext) return;
+  const points = extensionPoints(ext);
+  if (!points || state.activeMap?.locked || (ext.phase === 'adding' && extensionIsClosed(ext))) {
+    state.extension = null;
+  }
+}
+
+/** Der Knopf traegt drei Rollen: Erweitern starten, Auswahl abbrechen, Erweiterung abschliessen. */
+function refreshExtendButton() {
+  refreshExtensionState();
+  const ext = state.extension;
+  if (ext) {
+    ui.extendWrap.hidden = false;
+    const picking = ext.phase === 'picking';
+    ui.extendBtn.classList.toggle('extend-active', !picking);
+    ui.extendBtnLabel.textContent = tr(picking ? 'extendCancelShort' : 'extendDoneShort');
+    ui.extendBtn.setAttribute('aria-label', tr(picking ? 'extendCancel' : 'extendDone'));
+    return;
+  }
+  ui.extendBtn.classList.remove('extend-active');
+  const can = canStartExtension();
+  ui.extendWrap.hidden = !can;
+  if (!can) return;
+  const key = state.mode === 'perimeter' ? 'extendPerimeter' : 'extendExclusion';
+  ui.extendBtnLabel.textContent = tr(`${key}Short`);
+  ui.extendBtn.setAttribute('aria-label', tr(key));
+}
+
+function extendButtonAction() {
+  const ext = state.extension;
+  if (!ext) { startExtension(); return Promise.resolve(); }
+  if (ext.phase === 'picking') { cancelExtension(); return Promise.resolve(); }
+  return finishExtension();
 }
 
 async function closeContour(entry) {
@@ -4003,8 +4237,17 @@ function handleMapTap(event) {
     const distance = Math.hypot(tap.x - local.x, tap.y - local.y);
     if (distance < nearestDistance) { nearestDistance = distance; nearest = item; }
   }
+  const picking = state.extension?.phase === 'picking';
   if (nearest && nearestDistance <= state.hitRadiusUnits) {
+    if (picking) { handleExtensionTap(nearest).catch(reportError); return; }
     applyPointSelection({ role: nearest.role, index: nearest.index, exclusionId: nearest.exclusionId });
+    return;
+  }
+  // Waehrend der Erweiterung faengt kein Tipp die Flaeche ab: es geht ausschliesslich um die
+  // beiden Punkte der Kante — dieselbe Ueberlegung wie beim ausgeblendeten Papierkorb waehrend
+  // der Automatik.
+  if (state.extension) {
+    if (picking) ui.pointStatus.textContent = tr('extendPickFirst');
     return;
   }
   // Tap in die Flaeche einer fertigen Ausschlusskontur waehlt die ganze Flaeche aus.
@@ -4115,6 +4358,7 @@ function bindEvents() {
   ui.modeCycleBtn.addEventListener('click', openModeDialog);
   ui.closeAndNewBtn.addEventListener('click', () => closeAndStartNewExclusion().catch(reportError));
   ui.undoBtn.addEventListener('click', () => undoLastAction().catch(reportError));
+  ui.extendBtn.addEventListener('click', () => Promise.resolve(extendButtonAction()).catch(reportError));
   ui.insertBeforeBtn.addEventListener('click', () => insertPointAtSelection(0).catch(reportError));
   ui.insertAfterBtn.addEventListener('click', () => insertPointAtSelection(1).catch(reportError));
   ui.modeDialogCancel.addEventListener('click', closeModeDialog);

@@ -163,14 +163,14 @@ test('Die Werkzeugleiste bricht Beschriftungen nicht um', () => {
   assert.strictEqual(resolve('.map-tool', 'min-height').value, '44px', 'Daumenziel');
   const bar = html.slice(html.indexOf('id="mapToolbar"'), html.indexOf('id="mapCanvasArea"'));
   const tools = ['deletePointBtn', 'insertBeforeBtn', 'insertAfterBtn', 'undoBtn', 'closeAndNewBtn',
-    'driveModeBtn', 'fitViewBtn'];
+    'extendBtn', 'fitViewBtn'];
+  assert.ok(!bar.includes('id="driveModeBtn"'),
+    'der Steuerungs-Umschalter sitzt jetzt in der Ecke des Fahrfelds, nicht mehr in der Leiste');
   for (const id of tools) {
     assert.ok(bar.includes(`id="${id}"`), `${id} fehlt in der Werkzeugleiste`);
   }
   assert.strictEqual((bar.match(/map-tool-label/g) || []).length, tools.length, 'jedes Werkzeug ist beschriftet');
-  // Der Steuerungs-Umschalter traegt zwei Symbole und zeigt je nach Modus eines davon.
-  assert.strictEqual((bar.match(/<svg/g) || []).length, tools.length + 1, 'jedes Werkzeug hat ein Symbol');
-  assert.strictEqual((bar.match(/drive-mode-icon/g) || []).length, 2, 'Joystick- und Steuerkreuz-Symbol');
+  assert.strictEqual((bar.match(/<svg/g) || []).length, tools.length, 'jedes Werkzeug hat ein Symbol');
   // Nie alle gleichzeitig sichtbar: die beiden Einfuegen-Werkzeuge starten ausgeblendet und
   // erscheinen nur bei ausgewaehltem Punkt, „Schliessen & neu“ und „Ansicht zurueck“ ebenso.
   for (const id of ['insertBeforeWrap', 'insertAfterWrap', 'closeAndNewWrap']) {
@@ -292,6 +292,31 @@ test('Auch die Kaesten der Hilfe nutzen Theme-Tokens statt fester Dunkelwerte', 
     'auch die Trennlinie war fest dunkel');
 });
 
+test('Der Steuerungs-Umschalter sitzt in der Ecke des Fahrfelds und spiegelt mit', () => {
+  // Joystick und Tastenkreuz teilen sich ein gemeinsames Feld; nur dieses traegt Groesse und
+  // Gitterplatz. Dadurch liegt der Umschalter in beiden Modi an derselben Stelle.
+  const field = html.slice(html.indexOf('id="driveControlArea"'), html.indexOf('class="drive-meta"'));
+  for (const id of ['driveJoystick', 'driveButtons', 'driveModeBtn']) {
+    assert.ok(field.includes(`id="${id}"`), `${id} gehoert in das gemeinsame Fahrfeld`);
+  }
+  assert.strictEqual(resolve('.drive-zone .drive-control', 'position').value, 'relative',
+    'ohne Bezugsrahmen haengt der Umschalter an der Fahrzone statt am Feld');
+  assert.strictEqual(resolve('.drive-mode-corner', 'position').value, 'absolute');
+  assert.strictEqual(resolve('.drive-mode-corner', 'top').value, '0');
+  // Rechtshaender: oben links. Linkshaender: gespiegelt oben rechts.
+  assert.strictEqual(resolve('.drive-mode-corner', 'left').value, '0');
+  assert.strictEqual(resolve(':root[data-handed="left"] .drive-mode-corner', 'right').value, '0');
+  assert.strictEqual(resolve(':root[data-handed="left"] .drive-mode-corner', 'left').value, 'auto',
+    'ohne Zuruecksetzen von left waere der Knopf ueber die ganze Breite gespannt');
+  // Beide Steuerungen fuellen das Feld, damit die Ecke fuer beide dieselbe ist.
+  for (const selector of ['.drive-zone .joystick-base', '.drive-zone .drive-pad']) {
+    assert.strictEqual(resolve(selector, 'width').value, '100%', `${selector} fuellt das Feld`);
+    assert.strictEqual(resolve(selector, 'height').value, '100%');
+  }
+  // Die Symbolumschaltung selbst ist unveraendert geblieben.
+  assert.strictEqual((field.match(/drive-mode-icon/g) || []).length, 2, 'Joystick- und Steuerkreuz-Symbol');
+});
+
 test('Das hidden-Attribut blendet auch Knoepfe aus', () => {
   // `button { display: inline-flex }` schlaegt das display:none des Browsers fuer [hidden].
   // Ohne eine eigene Regel bleiben per element.hidden ausgeblendete Knoepfe sichtbar.
@@ -316,14 +341,14 @@ test('Die Fahrzone bleibt inhaltshoch, die Karte bekommt den Rest', () => {
   const drive = resolve('.app-frame > .drive-zone', 'flex').value || '';
   assert.ok(drive.startsWith('0 0'), `die Fahrzone darf weder wachsen noch schrumpfen, hat "${drive}"`);
   // Die Groesse haengt an der Bildschirmhoehe, ist aber nach oben und unten begrenzt.
-  const size = (resolve('.drive-zone .joystick-base', '--joystick-size').value || '').replace(/\s+/g, ' ');
+  const size = (resolve('.drive-zone .drive-control', '--joystick-size').value || '').replace(/\s+/g, ' ');
   assert.ok(size.startsWith('clamp('), `Joystick-Groesse muss anteilig begrenzt sein, ist "${size}"`);
   assert.ok(/dvh|vh|vw/.test(size), 'ohne Viewport-Einheit passt sich die Zone nicht an');
   assert.ok(size.includes('--joystick-scale'), 'die Einstellung muss einfliessen');
   // Selbst die groesste Stufe darf die Karte nicht verdraengen.
   assert.ok(size.includes('38dvh'), `harte Obergrenze in dvh fehlt: "${size}"`);
-  assert.strictEqual(resolve('.drive-zone .joystick-base', 'height').value, 'var(--joystick-size)');
-  assert.strictEqual(resolve('.drive-zone .joystick-base', 'align-self').value, 'center',
+  assert.strictEqual(resolve('.drive-zone .drive-control', 'height').value, 'var(--joystick-size)');
+  assert.strictEqual(resolve('.drive-zone .drive-control', 'align-self').value, 'center',
     'ohne align-self streckt das Grid den Joystick');
   assert.strictEqual(resolve('.drive-zone', 'align-content').value, 'center',
     'sonst zieht die Fahrzone ihre eigenen Zeilen auseinander');
@@ -364,7 +389,7 @@ test('Statusanzeige und Joystick ueberlappen in keiner Groessenstufe', () => {
   // Drei Spalten: der Joystick sitzt fest in der Mitte, die Anzeige in einer Aussenspalte.
   const columns = (resolve('.drive-zone', 'grid-template-columns').value || '').replace(/\s+/g, ' ');
   assert.strictEqual(columns, 'minmax(0, 1fr) auto minmax(0, 1fr)');
-  assert.strictEqual(resolve('.drive-zone .joystick-base', 'grid-column').value, '2');
+  assert.strictEqual(resolve('.drive-zone .drive-control', 'grid-column').value, '2');
   assert.strictEqual(resolve('.drive-meta', 'grid-column').value, '1', 'Standard: Anzeige links');
   assert.strictEqual(resolve(':root[data-handed="left"] .drive-meta', 'grid-column').value, '3');
   // Die Aussenspalten duerfen den Joystick nicht wegdruecken.
@@ -374,7 +399,7 @@ test('Statusanzeige und Joystick ueberlappen in keiner Groessenstufe', () => {
 test('Beide Haendigkeiten sind exakt gespiegelt und erzeugen keinen Zeilenumbruch', () => {
   // Ursache des frueheren Sprungs: ohne grid-row rutschte die linke Anzeige in eine zweite
   // Zeile, weil der Platzierungszeiger nach dem Joystick schon hinter Spalte 1 stand.
-  for (const selector of ['.drive-zone .joystick-base', '.drive-meta',
+  for (const selector of ['.drive-zone .drive-control', '.drive-meta',
     ':root[data-handed="left"] .drive-meta']) {
     assert.strictEqual(resolve(selector, 'grid-row').value, '1', `${selector} braucht eine feste Zeile`);
   }
@@ -391,7 +416,7 @@ test('Die seitliche Anzeige gilt auch im breiten Fenster', () => {
   assert.strictEqual(resolve('.drive-zone', 'grid-template-columns', wide).value, null,
     'die Spaltenaufteilung darf im breiten Fenster nicht ueberschrieben werden');
   assert.strictEqual(resolve('.drive-meta', 'grid-column', wide).value, null);
-  assert.strictEqual(resolve('.drive-zone .joystick-base', 'grid-column', wide).value, null);
+  assert.strictEqual(resolve('.drive-zone .drive-control', 'grid-column', wide).value, null);
   // Dafuer ist die Seitenspalte breit genug fuer Joystick und Anzeige nebeneinander.
   const columns = (resolve('.app-frame', 'grid-template-columns', wide).value || '').replace(/\s+/g, ' ');
   assert.ok(/clamp\(300px/.test(columns), `Fahrspalte muss breiter sein: "${columns}"`);

@@ -112,10 +112,17 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    **Zwei Steuerungsarten** über `state.view.driveControl` ∈ `joystick | buttons`
    (**Standard `joystick`**): der runde Joystick oder ein Kreuz aus **vier Richtungstasten**
    (`.drive-pad`, keine Diagonalen — genau das ist der Zweck). Umschaltbar über `#driveModeBtn`
-   ganz rechts in der Kartenleiste (das Symbol zeigt den **aktiven** Modus) und, gleichwertig,
-   unter *Einstellungen › Fahrgeschwindigkeit*. Beide sitzen in **derselben Gitterspalte und
-   -zeile** der Fahrzone und nutzen dieselbe `--joystick-size`; Größeneinstellung, Fahrtanzeige
-   und Linkshänder-Spiegelung gelten damit unverändert für beide, ohne eine zweite Layoutlogik.
+   **in der oberen Ecke des Fahrfelds** (das Symbol zeigt den **aktiven** Modus) und,
+   gleichwertig, unter *Einstellungen › Fahrgeschwindigkeit*.
+
+   **Gemeinsames Feld `.drive-control` (`#driveControlArea`):** Größe (`--joystick-size`) und
+   Gitterplatzierung stehen **nur dort**, Joystick und Tastenkreuz füllen es mit `100%` aus. Nur
+   deshalb liegt der Ecken-Umschalter in beiden Modi an derselben Stelle, ohne zweite
+   Positionslogik — und Größeneinstellung, Fahrtanzeige und Händigkeit gelten unverändert für
+   beide. Der Umschalter ist `position: absolute` im `position: relative`-Feld: **Rechtshänder
+   oben links, Linkshänder oben rechts** (`:root[data-handed="left"] .drive-mode-corner`), damit
+   er nie unter dem bedienenden Daumen liegt. Sein Textlabel `#driveModeLabel` ist `.sr-only`
+   geworden — die Umschaltlogik in `applyDriveControlMode()` blieb dadurch unverändert.
 
    **Der Tastenmodus hat eine eigene Geschwindigkeit** `state.view.cursorSpeedCms` (Startwert
    **15 cm/s**, Untergrenze 2 cm/s, Obergrenze die eingestellte `driveSpeedMax` in cm/s —
@@ -412,6 +419,46 @@ Versionsangabe ins Markup zurückkehrt.
 - `uniqueCopyName()` schneidet ein vorhandenes „(Kopie)“/„(copy)“ am Ende zuerst ab (sonst
   entstünde „… (Kopie) (Kopie)“) und zählt dann hoch, bis kein Anzeigename doppelt vorkommt. Der
   Kopie-Zusatz wird in die 60 Zeichen eingerechnet, ein sehr langer Name also gekürzt.
+
+**Geschlossene Kontur nachträglich erweitern** (`#extendBtn` in `#extendWrap`, Werkzeug in der
+Kartenleiste). Sichtbar nur, wenn `canStartExtension()`: Modus `perimeter` oder `exclusion`, die
+aktive Kontur **geschlossen** mit ≥ 3 Punkten, Karte nicht gesperrt, keine Automatik. Wegpunkte und
+Dockpfad sind offene Pfade — `activeContour()` liefert dort `null`.
+
+Der Knopf trägt **drei Rollen** (dasselbe Muster wie der Lösch-Button): „erweitern“ → „Abbrechen“
+(Auswahlphase) → „Fertig“ (Erweiterung läuft). `state.extension =
+{ role, exclusionId, phase: 'picking' | 'adding', firstIndex }`.
+
+- **Auswahlphase:** `handleMapTap()` leitet Punkttreffer an `handleExtensionTap()` um und lässt
+  **keinen** Tipp in die Innenfläche durch — während der Erweiterung geht es ausschließlich um die
+  Kante. Der erste gewählte Punkt ist über `isExtensionPick()` als `.extend-pick-point` markiert
+  (Warnfarbe, gestrichelter Ring — bewusst *nicht* die Auswahlfarbe, es ist keine Auswahl zum
+  Verschieben). Nicht benachbart → `areNeighbourIndices()` sagt nein, die Auswahl beginnt von
+  vorn, **an der Kontur ändert sich nichts**. Die Meldung läuft über die Statuszeile statt über
+  einen Dialog: Fehlgriffe sind auf kleinen Bildschirmen häufig, ein Modal je Mistipp wäre eine
+  Zumutung.
+- **Auftrennen** (`openContourForExtension()`, ein Undo-Schritt): `reorderForExtension()` ordnet
+  die Punktfolge so um, dass sie beim **zweiten** gewählten Punkt beginnt, im Ring von der Kante
+  weg läuft und beim **ersten** endet — der erste ist damit das neue offene Ende. Die Laufrichtung
+  ergibt sich daraus, ob der zweite Punkt im Array auf den ersten folgt oder ihm vorangeht; die
+  Schlussstrecke letzter↔erster zählt als Kante. Danach `perimeterClosed = false` bzw.
+  `exclusion.closed = false`. Umgeordnet wird **in place** (`points.splice(0, …)`), weil
+  `getActivePointArray()` dieselbe Array-Referenz liefert.
+- **Anhängen** braucht keinerlei Sonderweg: `appendCurrentPoint()` hängt hinten an, und hinten
+  steht der erste gewählte Punkt. Halte-Aufnahme, Automatik und Glättung gelten unverändert.
+- **„Fertig“** (`finishExtension()`) schließt über dasselbe `closeContour()` wie der Moduswechsel.
+- **Abbruch ohne „Fertig“** ändert bewusst nichts an der Geometrie: die Kontur bleibt **offen**,
+  und dafür gibt es bereits `offerToCloseContour()` beim Moduswechsel und die Kartenprüfung
+  (`openContours()` → `checkPerimeterOpen`/`checkAreaOpen` mit Angebot zum Schließen). `setMode()`
+  beendet die Erweiterung, sobald die Elementart wechselt; `setActiveMapById()` ebenso.
+- **`refreshExtensionState()`** hält den Zustand mit der Karte im Einklang: ein Undo, das die
+  Kante wieder schließt, beendet die Erweiterung — sonst zeigte der Knopf „Fertig“ für eine
+  längst geschlossene Kontur. Läuft aus `refreshExtendButton()` und damit aus jedem
+  `refreshCaptureState()`.
+- Während der Erweiterung sind **„Punkt davor/danach“ ausgeblendet** und die Flächenauswahl ist
+  abgeschaltet — dieselbe Überlegung wie beim ausgeblendeten Papierkorb während der Automatik.
+  **Nicht ohne Gerät verifizierbar:** ob die Zwei-Punkte-Auswahl auf kleinen Bildschirmen
+  zuverlässig zu treffen ist (Trefferflächen benachbarter Punkte überlappen bei dichten Konturen).
 
 **Elementliste** (Menü → *Karten*): `mapElements()` liefert Perimeter, jede Ausschlussfläche,
 Wegpunkte und Dockpfad mit Punktzahl; `renderElementList()` zeichnet sie als Zeilen. Ein Tipp auf
@@ -996,6 +1043,22 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-06: **Umschalter ans Fahrfeld, Konturen nachträglich erweiterbar.** (a) Der
+  Joystick/Tasten-Umschalter sitzt nicht mehr in der Werkzeugleiste, sondern in der oberen Ecke
+  des Fahrfelds — bei Rechtshändern links, bei Linkshändern gespiegelt rechts, über dasselbe
+  `data-handed`. Dafür teilen sich Joystick und Tastenkreuz jetzt das Feld `.drive-control`, das
+  allein Größe und Gitterplatz trägt; beide füllen es aus. Die Umschaltlogik selbst ist
+  unverändert, das Textlabel nur noch `.sr-only`. Vier Positions-Tests umgestellt, ein neuer
+  Fall für die Ecke und die Spiegelung. (b) Neues Werkzeug „Perimeter/Fläche erweitern“: zwei
+  benachbarte Punkte antippen trennt die Kante auf, `reorderForExtension()` macht den zuerst
+  gewählten Punkt zum offenen Ende, danach hängt das gewohnte Aufnehmen an — neue Punkte landen
+  genau zwischen den beiden gewählten. „Fertig“ schließt über `closeContour()`. Auftrennen und
+  jeder Punkt sind eigene Undo-Schritte; ein Undo, das die Kante wieder schließt, beendet die
+  Erweiterung (`refreshExtensionState()`). **Abbruch lässt die Kontur offen** — das deckt die
+  bestehende Logik für offene Konturen ab, es kam keine neue Sonderbehandlung dazu. Zehn neue
+  ui-Fälle (117), gegen neun simulierte Rückfälle geprüft; Hilfe und README in beiden Sprachen
+  ergänzt. `APP_VERSION` auf `v38`.
 
 - 2026-09-06: **Karte umbenennen und duplizieren.** Zwei Werkzeuge je Karte in der Übersicht.
   Umbenennen läuft über den neuen `askText()`, der **denselben** Dialog wie die Rückfragen mit

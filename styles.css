@@ -2338,7 +2338,10 @@ body.menu-open .app-frame { visibility: hidden; }
   background: var(--shell-bar);
   border-top: 1px solid var(--shell-border-soft);
 }
-.drive-zone .joystick-base {
+/* Gemeinsames Feld fuer Joystick UND Tastenkreuz. Groesse und Gitterplatzierung stehen nur
+   hier, die beiden Steuerungen fuellen es aus — dadurch bleibt der Ecken-Umschalter in beiden
+   Modi an derselben Stelle, ohne zweite Positionslogik. */
+.drive-zone .drive-control {
   /* Feste Groesse statt height:auto + aspect-ratio: als Grid-Kind wurde der Joystick sonst
      auf die Zeilenhoehe gestreckt, die Zeile wuchs mit — und die Fahrzone nahm den halben
      Bildschirm ein. align-self verhindert das Strecken zusaetzlich. */
@@ -2347,10 +2350,10 @@ body.menu-open .app-frame { visibility: hidden; }
      auch die groesste Stufe der Karte genug Platz laesst. */
   --joystick-size: clamp(110px, calc(25dvh * var(--joystick-scale, 1)),
     min(calc(240px * var(--joystick-scale, 1)), 38dvh));
+  position: relative;
   grid-column: 2;
   width: var(--joystick-size);
   height: var(--joystick-size);
-  aspect-ratio: auto;
   /* Beide Kinder ausdruecklich in Zeile 1: sonst wandert die Anzeige in Spalte 1 (links vom
      Joystick) in eine zweite Zeile, weil der Platzierungszeiger nach dem Joystick schon in
      Spalte 3 steht. Genau das war der sichtbare Layout-Sprung bei „Rechtshaender“. */
@@ -2358,8 +2361,35 @@ body.menu-open .app-frame { visibility: hidden; }
   align-self: center;
   justify-self: center;
   margin: 0;
+}
+.drive-zone .joystick-base {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  margin: 0;
   touch-action: none;
 }
+
+/* Der Umschalter sitzt in der oberen Ecke des Feldes — bei Rechtshaendern links, bei
+   Linkshaendern gespiegelt rechts, damit er nie unter dem bedienenden Daumen liegt.
+   Die Seite haengt am selben `data-handed` wie alles Uebrige. */
+.drive-mode-corner {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--shell-border);
+  border-radius: 10px;
+  background: var(--shell-panel);
+  color: var(--shell-muted);
+}
+:root[data-handed="left"] .drive-mode-corner { left: auto; right: 0; }
+.drive-mode-corner:active { background: var(--shell-hover); }
 /* Kugel anteilig zur Basis: skaliert automatisch mit jeder Groessenstufe mit. */
 .drive-zone .joystick-knob { width: 41%; height: 41%; }
 
@@ -2369,14 +2399,8 @@ body.menu-open .app-frame { visibility: hidden; }
    Linkshaender-Spiegelung gelten unveraendert fuer beide Steuerungsarten. Bewusst nur vier
    Richtungen und keine Diagonalen — genau darum geht es. */
 .drive-zone .drive-pad {
-  --joystick-size: clamp(110px, calc(25dvh * var(--joystick-scale, 1)),
-    min(calc(240px * var(--joystick-scale, 1)), 38dvh));
-  grid-row: 1;
-  grid-column: 2;
-  align-self: center;
-  justify-self: center;
-  width: var(--joystick-size);
-  height: var(--joystick-size);
+  width: 100%;
+  height: 100%;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
@@ -2399,6 +2423,14 @@ body.menu-open .app-frame { visibility: hidden; }
 .drive-key.key-left { grid-area: 2 / 1; }
 .drive-key.key-right { grid-area: 2 / 3; }
 .drive-key.key-down { grid-area: 3 / 2; }
+
+/* Das Erweitern-Werkzeug: im laufenden Vorgang („Fertig“) hervorgehoben, damit erkennbar ist,
+   dass die Kontur gerade offen ist. */
+.map-tool.extend-tool.extend-active {
+  color: var(--shell-warn);
+  border-color: var(--shell-warn-border);
+  background: var(--shell-warn-bg);
+}
 
 /* Der Umschalter zeigt immer das Symbol des gerade aktiven Modus. */
 .drive-mode-tool .drive-mode-icon { display: none; }
@@ -2525,6 +2557,10 @@ body.menu-open .app-frame { visibility: hidden; }
 }
 .point-waypoint { fill: var(--point-fill); stroke: var(--waypoint); stroke-width: 4; vector-effect: non-scaling-stroke; }
 .map-point.selected-map-point { stroke: var(--selection); stroke-width: 4; }
+/* Erster der beiden Punkte, an denen die Kontur aufgetrennt werden soll. Bewusst eine andere
+   Farbe als die Auswahl: es ist keine Auswahl zum Verschieben, sondern eine Kantenwahl. */
+.map-point.extend-pick-point { stroke: var(--shell-warn, #e7ad46); stroke-width: 4; }
+.extend-pick-ring { fill: none; stroke: var(--shell-warn, #e7ad46); stroke-width: 2; stroke-dasharray: 4 3; }
 
 
 /* ==========================================================================
@@ -3166,7 +3202,7 @@ body.menu-open .app-frame { visibility: hidden; }
   }
   /* Die Statusanzeige steht auch hier seitlich — gleiche Anordnung wie am Handy.
      Die Spalte ist dafuer breiter, der Joystick etwas zurueckhaltender. */
-  .drive-zone .joystick-base {
+  .drive-zone .drive-control {
     --joystick-size: clamp(150px, calc(14vw * var(--joystick-scale, 1)), calc(260px * var(--joystick-scale, 1)));
   }
   /* Der Modus-Chip soll auf breiten Schirmen nicht über die halbe Leiste wandern. */

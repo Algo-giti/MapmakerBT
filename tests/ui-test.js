@@ -21,6 +21,9 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'applyDriveControlMode', 'toggleDriveControl', 'beginCursorDrive', 'cursorDriveVector', 'cursorSpeedLimits',
   'renameMapById', 'duplicateMapById', 'uniqueCopyName', 'askText', 'localizedMapName', 'MAP_NAME_MAX',
   'stopDrive', 'saveViewPreferences',
+  'startExtension', 'cancelExtension', 'finishExtension', 'extendButtonAction', 'refreshExtendButton',
+  'canStartExtension', 'areNeighbourIndices', 'reorderForExtension', 'appendCurrentPoint', 'undoLastAction',
+  'setMode',
   'canCloseAndStartNew', 'closeAndStartNewExclusion', 'currentExclusion',
   'setTheme', 'applyTheme', 'applyDriveZonePreferences', 'applyViewPreferencesToUi', 'updateViewPreferencesFromUi', 'JOYSTICK_SCALES', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine', 'lockIcon', 'toggleLanguage',
   'askConfirm', 'confirmDialogRespond', 'showNotice', 'reportError', 'reportBleError',
@@ -1311,11 +1314,15 @@ test('Die Linkshaender-Spiegelung gilt auch fuer das Tastenkreuz', () => {
   // Beide Steuerungsarten sitzen in derselben Gitterspalte — die Spiegelung betrifft die
   // Fahrtanzeige daneben und gilt damit unveraendert fuer Joystick wie Tasten.
   const css = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
-  const pad = css.slice(css.indexOf('.drive-zone .drive-pad {'));
-  const body = pad.slice(0, pad.indexOf('}'));
-  assert.ok(/grid-column:\s*2/.test(body), 'das Kreuz sitzt in derselben Spalte wie der Joystick');
+  // Groesse und Gitterplatz liegen seit dem Ecken-Umschalter auf dem gemeinsamen Feld; Joystick
+  // und Kreuz fuellen es nur noch aus. Damit gilt die Spiegelung weiterhin fuer beide.
+  const field = css.slice(css.indexOf('.drive-zone .drive-control {'));
+  const body = field.slice(0, field.indexOf('}'));
+  assert.ok(/grid-column:\s*2/.test(body), 'das Feld sitzt in der mittleren Spalte');
   assert.ok(/grid-row:\s*1/.test(body), 'und in derselben Zeile — sonst waechst die Zone');
-  assert.ok(/--joystick-size/.test(body), 'es nutzt dieselbe Groessenrechnung');
+  assert.ok(/--joystick-size/.test(body), 'es traegt die Groessenrechnung fuer beide Steuerungen');
+  const pad = css.slice(css.indexOf('.drive-zone .drive-pad {'));
+  assert.ok(/width:\s*100%/.test(pad.slice(0, pad.indexOf('}'))), 'das Kreuz fuellt dasselbe Feld');
 });
 
 // === Karte umbenennen und duplizieren ======================================
@@ -1466,6 +1473,235 @@ test('Ist die Kartengrenze erreicht, wird nicht dupliziert', async () => {
   const before = t.state.maps.length;
   await t.duplicateMapById(source.id);
   assert.strictEqual(t.state.maps.length, before, 'die Obergrenze gilt auch fuers Duplizieren');
+});
+
+// === Kontur nachtraeglich erweitern ========================================
+/** Geschlossenes Quadrat als Perimeter: A(0,0) B(10,0) C(10,10) D(0,10). */
+function seedClosedPerimeter(t) {
+  t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }];
+  t.state.activeMap.perimeterClosed = true;
+  t.setMode('perimeter');
+  t.refreshCaptureState();
+}
+const perimeterXY = (t) => t.state.activeMap.perimeter.map((p) => `${p.x},${p.y}`).join(' | ');
+/** Laesst die angestossene asynchrone Kette (Speichern, Neuzeichnen) auslaufen. */
+const flush = async () => { for (let i = 0; i < 12; i += 1) await Promise.resolve(); };
+/** Tippt den Punkt mit dem angegebenen Index auf der Karte an — der echte Bedienweg. */
+function tapPoint(t, points, index) {
+  t.renderMap();
+  const screen = t.toScreen(points[index], t.state.currentTransform);
+  t.handleMapTap(tapAt(t, screen.x, screen.y));
+}
+
+test('Der Erweitern-Knopf erscheint nur bei geschlossener Perimeter-/Ausschlusskontur', () => {
+  const { t } = setup();
+  // Offene Kontur: nichts aufzutrennen, sie laesst sich ohnehin fortsetzen.
+  t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }];
+  t.setMode('perimeter');
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.extendWrap.hidden, true, 'offene Kontur braucht kein Erweitern');
+
+  seedClosedPerimeter(t);
+  assert.strictEqual(t.ui.extendWrap.hidden, false, 'geschlossen: der Knopf steht bereit');
+  assert.strictEqual(t.ui.extendBtnLabel.textContent, 'Perimeter erweitern');
+
+  // Wegpunkte und Dockpfad sind offene Pfade — dort gibt es keine geschlossene Kontur.
+  t.state.activeMap.waypoints = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }];
+  t.setMode('waypoint');
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.extendWrap.hidden, true, 'bei Wegpunkten nicht sichtbar');
+  t.setMode('dock');
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.extendWrap.hidden, true, 'beim Dockpfad nicht sichtbar');
+
+  // Geschlossene Ausschlussflaeche: eigene Beschriftung.
+  t.state.activeMap.exclusions = [{ id: 'ex1', name: 'Ausschluss 1', closed: true,
+    points: [{ x: 1, y: 1 }, { x: 2, y: 1 }, { x: 2, y: 2 }] }];
+  t.state.activeExclusionId = 'ex1';
+  t.setMode('exclusion');
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.extendWrap.hidden, false);
+  assert.strictEqual(t.ui.extendBtnLabel.textContent, 'Fläche erweitern');
+
+  // Gesperrte Karte: keine Aenderung moeglich.
+  t.state.activeMap.locked = true;
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.extendWrap.hidden, true, 'gesperrte Karte laesst nichts erweitern');
+});
+
+test('Nachbarschaft zaehlt im Ring, inklusive der Schlussstrecke', () => {
+  const { t } = setup();
+  assert.strictEqual(t.areNeighbourIndices(1, 2, 4), true);
+  assert.strictEqual(t.areNeighbourIndices(2, 1, 4), true, 'Reihenfolge egal');
+  assert.strictEqual(t.areNeighbourIndices(0, 3, 4), true, 'letzter und erster sind verbunden');
+  assert.strictEqual(t.areNeighbourIndices(0, 2, 4), false, 'gegenueber ist nicht benachbart');
+  assert.strictEqual(t.areNeighbourIndices(1, 1, 4), false, 'derselbe Punkt zaehlt nicht');
+});
+
+test('Zwei nicht benachbarte Punkte lassen die Kontur unveraendert', async () => {
+  const { t } = setup();
+  seedClosedPerimeter(t);
+  const before = perimeterXY(t);
+  t.startExtension();
+  assert.strictEqual(t.state.extension.phase, 'picking');
+  assert.strictEqual(t.ui.extendBtnLabel.textContent, 'Abbrechen', 'der Knopf bricht jetzt ab');
+
+  const points = t.state.activeMap.perimeter;
+  tapPoint(t, points, 0);                       // A
+  assert.strictEqual(t.state.extension.firstIndex, 0);
+  tapPoint(t, points, 2);                       // C — gegenueber, nicht benachbart
+  assert.ok(t.ui.pointStatus.textContent.includes('nicht nebeneinander'), t.ui.pointStatus.textContent);
+  assert.strictEqual(t.state.extension.firstIndex, null, 'die Auswahl beginnt von vorn');
+  assert.strictEqual(t.state.extension.phase, 'picking', 'die Auswahl laeuft weiter');
+  assert.strictEqual(perimeterXY(t), before, 'an der Kontur wurde nichts geaendert');
+  assert.strictEqual(t.state.activeMap.perimeterClosed, true, 'sie bleibt geschlossen');
+});
+
+test('Zwei benachbarte Punkte trennen die Kante auf und ordnen die Folge neu', async () => {
+  const { t } = setup();
+  seedClosedPerimeter(t);
+  t.startExtension();
+  const points = t.state.activeMap.perimeter;
+
+  tapPoint(t, points, 1);                       // B zuerst -> neues Ende
+  tapPoint(t, points, 2);                       // C daneben
+  await flush();
+
+  assert.strictEqual(t.state.activeMap.perimeterClosed, false, 'die Kontur ist jetzt offen');
+  assert.strictEqual(t.state.extension.phase, 'adding');
+  // Ab dem zweiten Punkt (C) im Ring herum bis zum ersten (B): C, D, A, B.
+  assert.strictEqual(perimeterXY(t), '10,10 | 0,10 | 0,0 | 10,0');
+  assert.strictEqual(t.ui.extendBtnLabel.textContent, 'Fertig');
+});
+
+test('Die Richtung folgt der Reihenfolge der Auswahl', () => {
+  const { t } = setup();
+  const square = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }];
+  const asText = (list) => list.map((p) => `${p.x},${p.y}`).join(' | ');
+  // Erst B, dann C: die Folge endet auf B.
+  assert.strictEqual(asText(t.reorderForExtension(square, 1, 2)), '10,10 | 0,10 | 0,0 | 10,0');
+  // Erst C, dann B: dieselbe Kante, aber die Folge endet auf C.
+  assert.strictEqual(asText(t.reorderForExtension(square, 2, 1)), '10,0 | 0,0 | 0,10 | 10,10');
+  // Ueber die Schlussstrecke: erst D, dann A.
+  assert.strictEqual(asText(t.reorderForExtension(square, 3, 0)), '0,0 | 10,0 | 10,10 | 0,10');
+});
+
+test('Neue Punkte landen zwischen den beiden gewaehlten und „Fertig“ schliesst wieder', async () => {
+  const { t } = setup();
+  seedClosedPerimeter(t);
+  t.startExtension();
+  const points = t.state.activeMap.perimeter;
+  tapPoint(t, points, 1);                       // B
+  tapPoint(t, points, 2);                       // C
+  await flush();
+
+  // Aufnehmen laeuft voellig unveraendert — dieselbe Funktion wie bei der Erstaufnahme.
+  t.state.telemetry.x = 20; t.state.telemetry.y = 5; t.state.fixHistory = [];
+  await t.appendCurrentPoint();
+  assert.strictEqual(perimeterXY(t), '10,10 | 0,10 | 0,0 | 10,0 | 20,5',
+    'der neue Punkt haengt am ersten gewaehlten Punkt (B) an');
+
+  await t.finishExtension();
+  assert.strictEqual(t.state.activeMap.perimeterClosed, true, 'die Kontur ist wieder geschlossen');
+  assert.strictEqual(t.state.extension, null);
+  assert.strictEqual(t.ui.extendWrap.hidden, false, 'geschlossen: erneutes Erweitern ist wieder moeglich');
+  assert.strictEqual(t.ui.extendBtnLabel.textContent, 'Perimeter erweitern');
+  // Im Ring liegt der neue Punkt genau zwischen B und C: … B, X, C …
+  const ring = t.state.activeMap.perimeter.map((p) => `${p.x},${p.y}`);
+  const at = ring.indexOf('20,5');
+  const n = ring.length;
+  assert.strictEqual(ring[(at - 1 + n) % n], '10,0', 'davor steht B');
+  assert.strictEqual(ring[(at + 1) % n], '10,10', 'dahinter steht C');
+});
+
+test('Abbrechen waehrend der Auswahl aendert nichts', () => {
+  const { t } = setup();
+  seedClosedPerimeter(t);
+  const before = perimeterXY(t);
+  t.startExtension();
+  tapPoint(t, t.state.activeMap.perimeter, 0);
+  t.cancelExtension();
+  assert.strictEqual(t.state.extension, null);
+  assert.strictEqual(perimeterXY(t), before);
+  assert.strictEqual(t.state.activeMap.perimeterClosed, true);
+});
+
+test('Auftrennen und jeder neue Punkt sind einzeln rueckgaengig zu machen', async () => {
+  const { t } = setup();
+  seedClosedPerimeter(t);
+  const before = perimeterXY(t);
+  const undoBefore = t.state.undoStack.length;
+  t.startExtension();
+  const points = t.state.activeMap.perimeter;
+  tapPoint(t, points, 1);
+  tapPoint(t, points, 2);
+  await flush();
+  assert.strictEqual(t.state.undoStack.length, undoBefore + 1, 'das Auftrennen ist ein Schritt');
+
+  t.state.telemetry.x = 20; t.state.fixHistory = [];
+  await t.appendCurrentPoint();
+  t.state.telemetry.x = 21; t.state.fixHistory = [];
+  await t.appendCurrentPoint();
+  assert.strictEqual(t.state.undoStack.length, undoBefore + 3, 'jeder Punkt ist ein eigener Schritt');
+
+  await t.undoLastAction();
+  assert.strictEqual(t.state.activeMap.perimeter.length, 5, 'nur der letzte Punkt faellt weg');
+  assert.ok(t.state.extension, 'die Erweiterung laeuft weiter');
+
+  await t.undoLastAction();
+  assert.strictEqual(t.state.activeMap.perimeter.length, 4);
+  await t.undoLastAction();
+  assert.strictEqual(perimeterXY(t), before, 'auch das Auftrennen laesst sich zuruecknehmen');
+  assert.strictEqual(t.state.activeMap.perimeterClosed, true, 'die Kontur ist wieder geschlossen');
+  assert.strictEqual(t.state.extension, null, 'damit endet auch die Erweiterung');
+});
+
+test('Waehrend der Erweiterung sind Einfuegen und Flaechenauswahl abgeschaltet', async () => {
+  const { t } = setup();
+  t.state.activeMap.exclusions = [{ id: 'ex1', name: 'Ausschluss 1', closed: true,
+    points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }] }];
+  t.state.activeExclusionId = 'ex1';
+  t.setMode('exclusion');
+  const points = t.state.activeMap.exclusions[0].points;
+
+  // Ohne Erweiterung greift die Flaechenauswahl beim Tipp in die Innenflaeche.
+  t.renderMap();
+  const inside = t.toScreen({ x: 5, y: 5 }, t.state.currentTransform);
+  t.handleMapTap(tapAt(t, inside.x, inside.y));
+  assert.strictEqual(t.state.selectedArea, 'ex1', 'normal waehlt der Tipp die Flaeche aus');
+  t.clearPointSelection();
+
+  t.startExtension();
+  t.handleMapTap(tapAt(t, inside.x, inside.y));
+  assert.strictEqual(t.state.selectedArea, null, 'waehrend der Erweiterung nicht');
+
+  tapPoint(t, points, 0);
+  tapPoint(t, points, 1);
+  await flush();
+  assert.strictEqual(t.state.extension.phase, 'adding');
+
+  // Ein Punkt laesst sich zwar noch auswaehlen, die Einfuegen-Werkzeuge bleiben aber weg.
+  t.applyPointSelection({ role: 'exclusion', index: 0, exclusionId: 'ex1' });
+  assert.strictEqual(t.ui.insertBeforeWrap.hidden, true, 'kein Einfuegen waehrend der Erweiterung');
+  assert.strictEqual(t.ui.insertAfterWrap.hidden, true);
+});
+
+test('Ein Moduswechsel beendet die Erweiterung und laesst die Kontur offen', async () => {
+  const { t } = setup();
+  seedClosedPerimeter(t);
+  t.startExtension();
+  const points = t.state.activeMap.perimeter;
+  tapPoint(t, points, 0);
+  tapPoint(t, points, 1);
+  await flush();
+  assert.strictEqual(t.state.activeMap.perimeterClosed, false);
+
+  t.setMode('waypoint');
+  assert.strictEqual(t.state.extension, null, 'die Erweiterung endet');
+  assert.strictEqual(t.state.activeMap.perimeterClosed, false,
+    'die Kontur bleibt offen — dafuer gibt es die Rueckfrage beim Moduswechsel und die Kartenpruefung');
+  // Und genau so findet die bestehende Logik sie wieder.
+  assert.ok(t.openContours().some((c) => c.role === 'perimeter'), 'sie zaehlt als offene Kontur');
 });
 
 test('RTK-Badge zeigt Zustand und Satelliten als Mäher/Station', () => {
