@@ -205,10 +205,19 @@ test('Die Karteninfo sitzt in der Leiste und schneidet ab, statt die Werkzeuge z
   // Werkzeugen keinen Platz wegnehmen: sie schrumpft (min-width: 0) und kuerzt je Zeile.
   assert.strictEqual(resolve('.map-toolbar', 'justify-content').value, 'space-between',
     'Karteninfo und Werkzeuge stehen an den beiden Enden der Zeile');
-  assert.strictEqual(resolve('.map-info', 'flex').value, '1 1 auto', 'die Info nimmt den Rest');
-  assert.strictEqual(resolve('.map-info', 'min-width').value, '0',
-    'ohne min-width:0 kann ein langer Kartenname die Werkzeuge aus der Leiste schieben');
-  assert.strictEqual(resolve('.map-tools', 'flex').value, '0 0 auto', 'die Werkzeuge geben nicht nach');
+  // Beide muessen schrumpfen koennen, sonst laeuft die Leiste ueber den Bildschirmrand hinaus
+  // und `.map-stage { overflow: hidden }` schneidet das letzte Werkzeug ab. Die Reihenfolge
+  // steuert das Schrumpfgewicht: die Info gibt zuerst nach, die Werkzeuge zuletzt.
+  const shrink = (selector) => Number((resolve(selector, 'flex').value || '').split(/\s+/)[1]);
+  assert.ok(shrink('.map-info') > 0, 'die Karteninfo muss nachgeben koennen');
+  assert.ok(shrink('.map-tools') > 0,
+    'mit shrink 0 waechst die Werkzeuggruppe ueber die Leiste hinaus — genau der abgeschnittene Knopf');
+  assert.ok(shrink('.map-info') > shrink('.map-tools'),
+    'die Karteninfo muss zuerst nachgeben, nicht die Werkzeuge');
+  for (const selector of ['.map-info', '.map-tools']) {
+    assert.strictEqual(resolve(selector, 'min-width').value, '0',
+      `${selector} braucht min-width:0, sonst unterschreitet das Flex-Kind seine Inhaltsbreite nie`);
+  }
   assert.strictEqual(resolve('.map-info', 'display').value, 'grid', 'zwei Zeilen untereinander');
   assert.strictEqual(resolve('.info-line', 'white-space').value, 'nowrap');
   assert.strictEqual(resolve('.info-line', 'text-overflow').value, 'ellipsis');
@@ -360,6 +369,47 @@ test('Der Hinweis zur Kontur-Erweiterung verdeckt die Karte nicht', () => {
   // In der Werkzeugleiste bleibt nur der Startknopf.
   const bar = html.slice(html.indexOf('id="mapToolbar"'), hint + stage.indexOf('id="mapStage"'));
   assert.ok(!bar.includes('id="extendDoneBtn"'), 'kein zweiter Knopf in der schmalen Leiste');
+});
+
+test('Kurzbeschriftungen der Werkzeuge bleiben kurz genug fuer die Leiste', () => {
+  // Gemeldet: „Perimeter erweitern“ wurde rechts abgeschnitten. Der Kurzschluessel trug
+  // schlicht denselben langen Text wie das aria-label. Die Leiste kann jetzt zwar schrumpfen
+  // und notfalls scrollen, aber ein ueberlanges Label schiebt trotzdem alles andere aus dem
+  // Bild — deshalb hier eine harte Obergrenze je Kurzbeschriftung.
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  const de = src.slice(src.indexOf('  de: {'), src.indexOf('  en: {'));
+  const shortKeys = ['deleteLastLabel', 'deletePointLabel', 'deleteAreaLabel', 'undoShort',
+    'insertBeforeShort', 'insertAfterShort', 'closeAndNewShort', 'fitViewShort',
+    'extendPerimeterShort', 'extendExclusionShort'];
+  for (const key of shortKeys) {
+    const hit = de.match(new RegExp(`${key}: '([^']*)'`));
+    assert.ok(hit, `${key} fehlt`);
+    assert.ok(hit[1].length <= 20, `${key} ist mit ${hit[1].length} Zeichen zu lang: „${hit[1]}“`);
+  }
+  // Entscheidend ist nicht die absolute Laenge, sondern dass eine „…Short“-Fassung wirklich
+  // kuerzer ist als die ausfuehrliche daneben. Genau daran fehlte es: extendPerimeterShort
+  // trug denselben Text wie extendPerimeter.
+  for (const short of shortKeys.filter((k) => k.endsWith('Short'))) {
+    const base = short.slice(0, -'Short'.length);
+    const longHit = de.match(new RegExp(`\\b${base}: '([^']*)'`));
+    if (!longHit) continue;
+    const shortHit = de.match(new RegExp(`${short}: '([^']*)'`));
+    assert.ok(shortHit[1].length < longHit[1].length,
+      `${short} („${shortHit[1]}“) muss kuerzer sein als ${base} („${longHit[1]}“)`);
+  }
+  assert.ok(/extendPerimeter: '[^']{15,}'/.test(de), 'die ausfuehrliche Fassung bleibt erhalten');
+});
+
+test('Die Werkzeugleiste passt sich schmalen Bildschirmen an', () => {
+  const narrow = { media: 'max-width: 430px' };
+  assert.ok(Number.parseInt(resolve('.map-tool', 'min-width', narrow).value, 10)
+    < Number.parseInt(resolve('.map-tool', 'min-width').value, 10),
+  'auf schmalen Geraeten muessen die Werkzeuge schmaler werden duerfen');
+  assert.ok(resolve('.map-tool', 'max-width').value, 'eine Obergrenze je Werkzeug fehlt');
+  assert.strictEqual(resolve('.map-tool-label', 'text-overflow').value, 'ellipsis',
+    'ein zu langes Label kuerzt, statt den Knopf zu verbreitern');
+  assert.strictEqual(resolve('.map-tool-label', 'white-space').value, 'nowrap',
+    'aber es bleibt einzeilig — keine Buchstabenkolonnen');
 });
 
 test('Das hidden-Attribut blendet auch Knoepfe aus', () => {

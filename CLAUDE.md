@@ -78,10 +78,24 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    `…Wrap`-Hüllen (`.map-tool-slot`) tragen weiterhin das `hidden`-Attribut, die Knöpfe selbst
    `disabled` — Zustände, Klick-Handler und Sichtbarkeitsregeln sind unverändert.
 
-   **Die Karteninfo darf die Werkzeuge nie verdrängen:** `.map-info` ist `flex: 1 1 auto` mit
-   **`min-width: 0`**, `.map-tools` ist `flex: 0 0 auto`, und jede `.info-line` kürzt per
-   `nowrap` + `text-overflow: ellipsis`. Ohne `min-width: 0` schöbe ein langer Kartenname die
-   Werkzeuge aus der Leiste — ein Flex-Kind unterschreitet sonst seine Inhaltsbreite nicht.
+   **Die Leiste kann nie breiter werden als der Bildschirm.** Beide Bereiche sind schrumpfbar
+   und haben `min-width: 0` — ohne das unterschreitet ein Flex-Kind seine Inhaltsbreite nie.
+   Die Reihenfolge steuert das **Schrumpfgewicht**: `.map-info` ist `flex: 1 10 auto`,
+   `.map-tools` ist `flex: 0 1 auto`, die Karteninfo gibt also zuerst nach (sie kürzt ohnehin
+   per Ellipse), erst danach scrollt die Werkzeuggruppe waagerecht. **Das war der Fehler hinter
+   „Perimeter erweitern wird rechts abgeschnitten“:** `.map-tools` stand auf `flex: 0 0 auto`,
+   nahm also immer die volle Inhaltsbreite ein, wuchs über die Leiste hinaus und wurde von
+   `.map-stage { overflow: hidden }` abgeschnitten — das `overflow-x: auto` darunter war
+   wirkungslos, weil der Kasten nie schmaler als sein Inhalt wurde. Zusätzlich deckelt
+   `.map-tool { max-width }` ein einzelnes Werkzeug und `.map-tool-label` kürzt per Ellipse
+   (weiterhin `nowrap` — keine Buchstabenkolonnen), und unter 430 px verkleinert eine
+   Media-Query Abstände, Mindestbreite und Schrift.
+
+   **Kurzbeschriftungen müssen wirklich kurz sein.** `extendPerimeterShort` trug denselben Text
+   wie `extendPerimeter` („Perimeter erweitern“) — die längste Beschriftung von allen, und genau
+   sie wurde abgeschnitten. `tests/layout-test.js` prüft deshalb nicht nur eine Längengrenze
+   (die 19 Zeichen hätten sie passiert), sondern dass jede `…Short`-Fassung **kürzer ist als die
+   ausführliche daneben**. Der lange Text lebt weiter im `aria-label`.
    Vorher stand dieselbe Information als halbtransparenter Kasten (`.map-hud`) auf der Karte und
    kostete Kartenfläche. **Nicht ohne Gerät verifizierbar:** ob lange Kartennamen auf kleinen
    Bildschirmen tatsächlich sauber abgeschnitten werden statt zu drängeln — der Test prüft die
@@ -1061,6 +1075,22 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-06: **„Perimeter erweitern“ wurde am Telefon rechts abgeschnitten.** Zwei Ursachen,
+  beide im CSS bzw. in den Texten bestätigt. (a) `.map-tools` war `flex: 0 0 auto` und konnte
+  damit nicht schrumpfen: die Gruppe nahm immer ihre volle Inhaltsbreite ein, wuchs über die
+  Leiste hinaus und wurde von `.map-stage { overflow: hidden }` gekappt — das dokumentierte
+  „scrollt notfalls waagerecht“ war nie erreichbar. Jetzt `flex: 0 1 auto; min-width: 0`, und
+  die Karteninfo gibt über ihr höheres Schrumpfgewicht (`1 10 auto`) zuerst nach. (b) Die
+  Kurzbeschriftung `extendPerimeterShort` war gar nicht kurz, sie trug den vollen Text
+  „Perimeter erweitern“ — jetzt „Erweitern“ (EN „Extend“), der lange Text bleibt im
+  `aria-label`. Dazu ein Deckel je Werkzeug (`max-width`), Ellipse statt Überlauf am Label und
+  eine Media-Query unter 430 px für Abstände, Mindestbreite und Schrift. Der bestehende
+  layout-Test hatte den Fehler festgeschrieben (`flex: 0 0 auto` als „die Werkzeuge geben nicht
+  nach“) — er prüft jetzt die Absicht über die Schrumpfgewichte. Zwei neue layout-Fälle (29),
+  gegen sechs simulierte Rückfälle geprüft; der Rückfall „langes Kurzlabel“ lief zunächst durch
+  eine reine Längengrenze durch, deshalb prüft der Test jetzt Kurz- gegen Langfassung.
+  `APP_VERSION` auf `v40`.
 
 - 2026-09-06: **Drei Korrekturen nach dem Gerätetest.** (a) Der Steuerungs-Umschalter zeigt jetzt
   das Symbol des Modus, in den er **wechselt**, nicht des aktiven — im Joystick-Modus also das

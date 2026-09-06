@@ -1506,7 +1506,7 @@ test('Der Erweitern-Knopf erscheint nur bei geschlossener Perimeter-/Ausschlussk
 
   seedClosedPerimeter(t);
   assert.strictEqual(t.ui.extendWrap.hidden, false, 'geschlossen: der Knopf steht bereit');
-  assert.strictEqual(t.ui.extendBtnLabel.textContent, 'Perimeter erweitern');
+  assert.strictEqual(t.ui.extendBtnLabel.textContent, 'Erweitern', 'kurz genug fuer die Leiste');
 
   // Wegpunkte und Dockpfad sind offene Pfade — dort gibt es keine geschlossene Kontur.
   t.state.activeMap.waypoints = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }];
@@ -1524,7 +1524,7 @@ test('Der Erweitern-Knopf erscheint nur bei geschlossener Perimeter-/Ausschlussk
   t.setMode('exclusion');
   t.refreshCaptureState();
   assert.strictEqual(t.ui.extendWrap.hidden, false);
-  assert.strictEqual(t.ui.extendBtnLabel.textContent, 'Fläche erweitern');
+  assert.strictEqual(t.ui.extendBtnLabel.textContent, 'Erweitern');
 
   // Gesperrte Karte: keine Aenderung moeglich.
   t.state.activeMap.locked = true;
@@ -1619,7 +1619,7 @@ test('Neue Punkte landen zwischen den beiden gewaehlten und „Fertig“ schlies
   assert.strictEqual(t.state.extension, null);
   assert.strictEqual(t.ui.extendPanel.hidden, true, 'der Hinweisbereich verschwindet wieder');
   assert.strictEqual(t.ui.extendWrap.hidden, false, 'geschlossen: erneutes Erweitern ist wieder moeglich');
-  assert.strictEqual(t.ui.extendBtnLabel.textContent, 'Perimeter erweitern');
+  assert.strictEqual(t.ui.extendBtnLabel.textContent, 'Erweitern', 'kurz genug fuer die Leiste');
   // Im Ring liegt der neue Punkt genau zwischen B und C: … B, X, C …
   const ring = t.state.activeMap.perimeter.map((p) => `${p.x},${p.y}`);
   const at = ring.indexOf('20,5');

@@ -2742,8 +2742,11 @@ body.menu-open .app-frame { visibility: hidden; }
 /* Die Karteninfo stand frueher als halbtransparenter Kasten auf der Karte. In der Leiste
    kostet sie keine Kartenflaeche mehr — dafuer muss sie sich zusammenstauchen lassen
    (min-width: 0) und je Zeile abschneiden statt die Werkzeuge zu verdraengen. */
+/* Schrumpfgewicht 10 gegen 1 bei den Werkzeugen: wird es eng, gibt **zuerst** die Karteninfo
+   nach (sie kuerzt ohnehin per Ellipse). Erst wenn dort nichts mehr zu holen ist, scrollt die
+   Werkzeuggruppe. */
 .map-info {
-  flex: 1 1 auto;
+  flex: 1 10 auto;
   min-width: 0;
   display: grid;
   gap: 0;
@@ -2755,8 +2758,14 @@ body.menu-open .app-frame { visibility: hidden; }
 .info-line { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .info-dim { color: var(--shell-muted); }
 .info-dim:empty { display: none; }
+/* `flex: 0 1 auto` + `min-width: 0`: die Werkzeuggruppe **muss** schrumpfen duerfen. Mit
+   `flex: 0 0 auto` nahm sie immer ihre volle Inhaltsbreite ein, wuchs ueber die Leiste hinaus
+   und wurde von `.map-stage { overflow: hidden }` rechts abgeschnitten — das `overflow-x: auto`
+   darunter war wirkungslos, weil der Kasten nie schmaler als sein Inhalt wurde. Zuerst gibt
+   die Karteninfo nach (`flex: 1 1 auto`), erst danach scrollt diese Gruppe. */
 .map-tools {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
   display: flex;
   align-items: stretch;
   gap: 6px;
@@ -2785,7 +2794,23 @@ body.menu-open .app-frame { visibility: hidden; }
   line-height: 1.15;
 }
 .map-tool svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.map-tool-label { white-space: nowrap; }
+/* Einzelne lange Beschriftung darf die Leiste nicht sprengen: eine Zeile bleibt eine Zeile
+   (kein Rueckfall auf Buchstabenkolonnen), zu lang wird gekuerzt statt breiter zu werden. */
+.map-tool { max-width: 96px; }
+.map-tool-label {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Schmale Telefone: die Leiste passt sich der Bildschirmbreite an, statt zu ueberlaufen. */
+@media (max-width: 430px) {
+  .map-toolbar { gap: 6px; padding: 4px 6px; }
+  .map-tools { gap: 4px; }
+  .map-tool { min-width: 52px; max-width: 78px; padding: 3px 5px; font-size: .52rem; }
+  .map-tool svg { width: 16px; height: 16px; }
+}
 .map-tool:active { background: var(--shell-hover); }
 .map-tool[disabled] { color: var(--shell-muted); border-color: var(--shell-border); background: var(--shell-panel); opacity: .55; }
 .map-tool.undo-map-fab { color: var(--shell-info); border-color: var(--shell-info-border); background: var(--shell-info-bg); }
