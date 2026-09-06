@@ -286,6 +286,11 @@ Klick auf einen der Knöpfe, Klick auf den Hintergrund oder Escape. Eine noch of
 gilt beim Öffnen der nächsten als abgelehnt, damit kein Promise hängen bleibt.
 `showNotice({ title, message, tone })` nutzt denselben Dialog mit `singleButton: true`
 (Abbrechen ausgeblendet, `.modal-actions.single`) und ersetzt `window.alert()`.
+`askText({ title, message, value, confirmLabel, maxLength })` ersetzt `window.prompt()` und nutzt
+**denselben** Dialog mit dem zusätzlichen Feld `#confirmDialogInput` — bewusst kein zweites Modal,
+Escape, Hintergrundklick und Knopflogik gibt es nur einmal. `state.pendingConfirmText` schaltet
+`confirmDialogRespond()` in den Textmodus: die Antwort ist dann der eingegebene Text bzw. `null`
+bei Abbruch statt eines Wahrheitswerts. Testadapter: `globalThis.__promptAdapter`.
 `reportError(error)` ist die Sammelstelle aller `.catch`-Zweige aus Nutzeraktionen: es
 protokolliert den Fehler **und** zeigt ihn als Meldung — vorher landete er nur in einer
 Browserbox. `reportBleError(context, error, { immediate })` meldet fehlgeschlagene Funkbefehle:
@@ -392,6 +397,21 @@ Undo-Pfeil (im Lösch-Button aufgegangen), distanzbasierte Auto-Aufnahme, Versio
 **Keine Versionsnummer im UI.** Die Version lebt nur noch in `sw.js` (`APP_VERSION` →
 Cache-Name); `app.js` führt keine Versionskonstante mehr. `tests/sw-test.js` prüft, dass keine
 Versionsangabe ins Markup zurückkehrt.
+
+**Karte umbenennen und duplizieren** (Werkzeuge auf jeder Karte der Übersicht):
+- `renameMapById()` ändert **nur** `map.name` — Geometrie, Positionsmodus, Ursprung und Kennung
+  bleiben unangetastet. Eingabe über `askText()`, getrimmt und auf `MAP_NAME_MAX` = 60 Zeichen
+  gekürzt (dieselbe Grenze wie das Eingabefeld für neue Karten, damit lange Namen die Kartenleiste
+  nicht sprengen); ein leerer Name wird abgelehnt. **Gesperrte Karten lassen sich nicht
+  umbenennen** — Umbenennen ist eine Änderung, und die Sperre schützt vor Änderungen.
+- `duplicateMapById()` kopiert **tief** über `JSON.parse(JSON.stringify(...))`, damit weder Punkte
+  noch Ausschlussflächen als gemeinsame Referenz hängen bleiben. Karte und jede Ausschlussfläche
+  bekommen neue Kennungen; Geometrie, Positionsmodus, Ursprung **und die Sperre** kommen 1:1 mit.
+  Die **aktive Karte wechselt nicht** — Duplizieren soll die laufende Arbeit nicht unterbrechen.
+  Die Obergrenze `MAX_MAPS` gilt auch hier.
+- `uniqueCopyName()` schneidet ein vorhandenes „(Kopie)“/„(copy)“ am Ende zuerst ab (sonst
+  entstünde „… (Kopie) (Kopie)“) und zählt dann hoch, bis kein Anzeigename doppelt vorkommt. Der
+  Kopie-Zusatz wird in die 60 Zeichen eingerechnet, ein sehr langer Name also gekürzt.
 
 **Elementliste** (Menü → *Karten*): `mapElements()` liefert Perimeter, jede Ausschlussfläche,
 Wegpunkte und Dockpfad mit Punktzahl; `renderElementList()` zeichnet sie als Zeilen. Ein Tipp auf
@@ -976,6 +996,17 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-06: **Karte umbenennen und duplizieren.** Zwei Werkzeuge je Karte in der Übersicht.
+  Umbenennen läuft über den neuen `askText()`, der **denselben** Dialog wie die Rückfragen mit
+  einem zusätzlichen Eingabefeld benutzt — kein zweites Modal und kein `window.prompt()`; ein
+  Test prüft das per Quelltextsuche. Validierung: getrimmt, leer abgelehnt, auf 60 Zeichen
+  gekürzt, gesperrte Karten bleiben gesperrt. Duplizieren kopiert tief (neue Kennungen für
+  Karte und Ausschlussflächen), übernimmt Geometrie, Positionsmodus, Ursprung und Sperre 1:1
+  und lässt die aktive Karte unangetastet. `uniqueCopyName()` schneidet ein vorhandenes
+  „(Kopie)“ ab und zählt hoch, sodass weder „(Kopie) (Kopie)“ noch doppelte Namen entstehen.
+  Acht neue ui-Fälle (107), gegen sechs simulierte Rückfälle geprüft; Hilfe und README in
+  beiden Sprachen ergänzt. `APP_VERSION` auf `v37`.
 
 - 2026-09-06: **Zweiter Steuerungsmodus: vier Richtungstasten.** Umschaltbar über einen neuen
   Knopf ganz rechts in der Kartenleiste (Symbol zeigt den aktiven Modus) und über

@@ -178,8 +178,14 @@ Ausschlussflächen **ohne einen einzigen Punkt** werden automatisch entfernt –
 Ausschluss-Modus verlässt oder die Menüseite öffnest. Die Fläche, an der du gerade arbeitest,
 bleibt davon unberührt. Die verbleibenden Flächen werden lückenlos neu durchnummeriert.
 
+In der Kartenübersicht trägt jede Karte zwei kleine Werkzeuge: der **Stift** benennt sie um – das
+ändert nur den Namen, nicht den Inhalt – und das **Kopiersymbol** legt eine vollständige,
+unabhängige Kopie an, mit allen Punkten, dem Positionsmodus und dem Ursprung. Die Kopie bekommt
+automatisch einen freien Namen („… (Kopie)“, dann „(Kopie 2)“ und so weiter); die Karte, an der du
+gerade arbeitest, bleibt aktiv.
+
 Fertige Karten kannst du im Menü unter **Karten** **sperren**, damit sie nicht mehr versehentlich
-verändert werden.
+verändert werden. Eine gesperrte Karte lässt sich auch nicht umbenennen.
 
 ## Kartenansicht und Bedienung
 
@@ -486,7 +492,13 @@ Exclusion areas **without a single point** are removed automatically – as soon
 exclusion mode or open the menu page. The area you are currently working on is left alone. The
 remaining areas are renumbered without gaps.
 
+In the map overview every map carries two small tools: the **pencil** renames it – that changes
+only the name, not the contents – and the **copy icon** creates a complete, independent copy with
+all points, the position mode and the origin. The copy automatically gets a free name (“… (copy)”,
+then “(copy 2)” and so on); the map you are currently working on stays active.
+
 Finished maps can be **locked** in the menu under **Maps** so they cannot be changed by accident.
+A locked map cannot be renamed either.
 
 ## Map view and operation
 

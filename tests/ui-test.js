@@ -19,6 +19,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'insertPointAtSelection', 'capturePreconditionKey', 'insertNeighbourIndex', 'midpointBetween',
   'renderPositionMode', 'updatePositionModeFromUi', 'mapToGeoJson', 'setActiveMapById',
   'applyDriveControlMode', 'toggleDriveControl', 'beginCursorDrive', 'cursorDriveVector', 'cursorSpeedLimits',
+  'renameMapById', 'duplicateMapById', 'uniqueCopyName', 'askText', 'localizedMapName', 'MAP_NAME_MAX',
   'stopDrive', 'saveViewPreferences',
   'canCloseAndStartNew', 'closeAndStartNewExclusion', 'currentExclusion',
   'setTheme', 'applyTheme', 'applyDriveZonePreferences', 'applyViewPreferencesToUi', 'updateViewPreferencesFromUi', 'JOYSTICK_SCALES', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine', 'lockIcon', 'toggleLanguage',
@@ -1315,6 +1316,156 @@ test('Die Linkshaender-Spiegelung gilt auch fuer das Tastenkreuz', () => {
   assert.ok(/grid-column:\s*2/.test(body), 'das Kreuz sitzt in derselben Spalte wie der Joystick');
   assert.ok(/grid-row:\s*1/.test(body), 'und in derselben Zeile — sonst waechst die Zone');
   assert.ok(/--joystick-size/.test(body), 'es nutzt dieselbe Groessenrechnung');
+});
+
+// === Karte umbenennen und duplizieren ======================================
+/** Legt eine zweite Karte mit Inhalt an und gibt sie zurueck. */
+function seedSecondMap(t, name = 'Vorgarten') {
+  const map = t.normalizeMap(t.makeMap(name));
+  map.perimeter = [{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 5, y: 5 }];
+  map.exclusions.push({ id: 'ex1', name: 'Apfelbaum', closed: true, points: [{ x: 1, y: 1 }, { x: 2, y: 1 }, { x: 2, y: 2 }] });
+  map.waypoints = [{ x: 7, y: 7 }];
+  map.dockPoints = [{ x: 0, y: 0 }, { x: 1, y: 0 }];
+  map.positionMode = 'absolute';
+  map.origin = { lat: 48.5, lon: 9.25 };
+  t.state.maps.push(map);
+  return map;
+}
+const mapNames = (t) => t.state.maps.map((m) => t.localizedMapName(m)).join(' | ');
+
+test('Umbenennen aendert nur den Namen', async () => {
+  const { t, sandbox } = setup();
+  const map = seedSecondMap(t);
+  const before = JSON.stringify({ p: map.perimeter, e: map.exclusions, o: map.origin, m: map.positionMode });
+
+  sandbox.__promptAdapter = () => 'Neuer Name';
+  await t.renameMapById(map.id);
+
+  assert.strictEqual(map.name, 'Neuer Name');
+  assert.strictEqual(JSON.stringify({ p: map.perimeter, e: map.exclusions, o: map.origin, m: map.positionMode }),
+    before, 'Punkte, Ursprung und Positionsmodus bleiben unangetastet');
+  assert.strictEqual(map.id, t.state.maps.find((m) => m.name === 'Neuer Name').id, 'die Kennung bleibt');
+});
+
+test('Umbenennen laeuft ueber den eigenen Dialog, nicht ueber window.prompt()', async () => {
+  // Kommentare zuerst entfernen — der Erklaertext nennt window.prompt() absichtlich.
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.ok(!/(?:window|globalThis)\.prompt\s*\(/.test(src), 'window.prompt() darf nirgends benutzt werden');
+  assert.ok(!/(?<![.\w])prompt\s*\(/.test(src), 'auch kein blankes prompt()');
+
+  const { t, sandbox } = setup();
+  delete sandbox.__promptAdapter;          // echter Dialogpfad
+  const map = seedSecondMap(t);
+  const pending = t.renameMapById(map.id);
+  assert.strictEqual(t.ui.confirmDialog.hidden, false, 'der eigene Dialog ist offen');
+  assert.strictEqual(t.ui.confirmDialogInput.hidden, false, 'mit Eingabefeld');
+  assert.strictEqual(t.ui.confirmDialogInput.value, 'Vorgarten', 'vorbelegt mit dem alten Namen');
+  assert.strictEqual(t.ui.confirmDialogInput.maxLength, t.MAP_NAME_MAX, 'Laenge begrenzt');
+  t.ui.confirmDialogInput.value = 'Hinterhof';
+  t.confirmDialogRespond(true);
+  await pending;
+  assert.strictEqual(map.name, 'Hinterhof');
+  assert.strictEqual(t.ui.confirmDialogInput.hidden, true, 'das Feld verschwindet wieder');
+
+  // Abbrechen laesst den Namen stehen.
+  const second = t.renameMapById(map.id);
+  t.ui.confirmDialogInput.value = 'Egal';
+  t.confirmDialogRespond(false);
+  await second;
+  assert.strictEqual(map.name, 'Hinterhof', 'Abbrechen aendert nichts');
+});
+
+test('Leere und zu lange Namen werden abgefangen', async () => {
+  const { t, sandbox } = setup();
+  const map = seedSecondMap(t);
+
+  sandbox.__promptAdapter = () => '   ';
+  await t.renameMapById(map.id);
+  assert.strictEqual(map.name, 'Vorgarten', 'ein leerer Name wird nicht uebernommen');
+
+  sandbox.__promptAdapter = () => 'x'.repeat(200);
+  await t.renameMapById(map.id);
+  assert.strictEqual(map.name.length, t.MAP_NAME_MAX, 'zu lange Namen werden gekuerzt');
+});
+
+test('Eine gesperrte Karte laesst sich nicht umbenennen', async () => {
+  const { t, sandbox } = setup();
+  const map = seedSecondMap(t);
+  map.locked = true;
+  sandbox.__promptAdapter = () => 'Neuer Name';
+  await t.renameMapById(map.id);
+  assert.strictEqual(map.name, 'Vorgarten');
+});
+
+test('Duplizieren kopiert alles und bleibt unabhaengig', async () => {
+  const { t } = setup();
+  const source = seedSecondMap(t);
+  const activeBefore = t.state.activeMap.id;
+
+  const copy = await t.duplicateMapById(source.id);
+  assert.ok(copy, 'die Kopie entsteht');
+  assert.notStrictEqual(copy.id, source.id, 'eigene Kennung');
+  assert.strictEqual(t.state.activeMap.id, activeBefore, 'die aktive Karte wechselt nicht');
+
+  // Inhalt vollstaendig uebernommen …
+  assert.strictEqual(copy.perimeter.map((p) => `${p.x},${p.y}`).join(' | '), '0,0 | 5,0 | 5,5');
+  assert.strictEqual(copy.exclusions.length, 1);
+  assert.strictEqual(copy.exclusions[0].name, 'Apfelbaum');
+  assert.strictEqual(copy.exclusions[0].points.length, 3);
+  assert.strictEqual(copy.waypoints.length, 1);
+  assert.strictEqual(copy.dockPoints.length, 2);
+  assert.strictEqual(copy.positionMode, 'absolute', 'Positionsmodus kommt mit');
+  assert.strictEqual(copy.origin.lat, 48.5, 'samt Ursprung');
+  // … aber die Ausschlussflaeche bekommt eine eigene Kennung, sonst kollidieren sie.
+  assert.notStrictEqual(copy.exclusions[0].id, source.exclusions[0].id);
+
+  // Unabhaengig: Aenderungen an der einen lassen die andere unberuehrt.
+  copy.perimeter.push({ x: 9, y: 9 });
+  copy.exclusions[0].points[0].x = 99;
+  copy.origin.lat = 1;
+  assert.strictEqual(source.perimeter.length, 3, 'das Original waechst nicht mit');
+  assert.strictEqual(source.exclusions[0].points[0].x, 1, 'keine geteilten Punkt-Objekte');
+  assert.strictEqual(source.origin.lat, 48.5, 'kein geteilter Ursprung');
+});
+
+test('Mehrfaches Duplizieren zaehlt weiter, ohne doppelte Namen', async () => {
+  const { t } = setup();
+  const source = seedSecondMap(t);
+  await t.duplicateMapById(source.id);
+  await t.duplicateMapById(source.id);
+  await t.duplicateMapById(source.id);
+
+  const names = mapNames(t);
+  assert.ok(names.includes('Vorgarten (Kopie)'), names);
+  assert.ok(names.includes('Vorgarten (Kopie 2)'), names);
+  assert.ok(names.includes('Vorgarten (Kopie 3)'), names);
+  const all = t.state.maps.map((m) => t.localizedMapName(m));
+  assert.strictEqual(new Set(all).size, all.length, 'kein Name kommt doppelt vor');
+
+  // Die Kopie einer Kopie haengt kein zweites „(Kopie)“ an.
+  const copy = t.state.maps.find((m) => t.localizedMapName(m) === 'Vorgarten (Kopie)');
+  const again = await t.duplicateMapById(copy.id);
+  assert.ok(!t.localizedMapName(again).includes('(Kopie) (Kopie)'), t.localizedMapName(again));
+  assert.strictEqual(t.localizedMapName(again), 'Vorgarten (Kopie 4)');
+});
+
+test('Ein sehr langer Name sprengt den Kopie-Namen nicht', () => {
+  const { t } = setup();
+  const long = 'W'.repeat(100);
+  const name = t.uniqueCopyName(long);
+  assert.ok(name.length <= t.MAP_NAME_MAX, `Kopie-Name ist ${name.length} Zeichen lang`);
+  assert.ok(name.endsWith('(Kopie)'));
+});
+
+test('Ist die Kartengrenze erreicht, wird nicht dupliziert', async () => {
+  const { t, sandbox } = setup();
+  const source = seedSecondMap(t);
+  while (t.state.maps.length < 10) t.state.maps.push(t.normalizeMap(t.makeMap(`Fueller ${t.state.maps.length}`)));
+  sandbox.__confirmAnswer = true;
+  const before = t.state.maps.length;
+  await t.duplicateMapById(source.id);
+  assert.strictEqual(t.state.maps.length, before, 'die Obergrenze gilt auch fuers Duplizieren');
 });
 
 test('RTK-Badge zeigt Zustand und Satelliten als Mäher/Station', () => {

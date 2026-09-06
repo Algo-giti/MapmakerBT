@@ -127,6 +127,9 @@ const I18N = {
     positionMode: 'Positionsmodus', positionModeRelative: 'Relativ (lokale Meter)', positionModeAbsolute: 'Absolut (GPS-Grad)',
     originLat: 'Breitengrad des Ursprungs', originLon: 'Längengrad des Ursprungs',
     positionModeHint: 'Gilt nur für diese Karte und nur für den GeoJSON-Export. „Relativ“ ist der Standard und lässt alles wie bisher. Für „Absolut“ trägst du einmalig die GPS-Position des Nullpunkts ein, üblicherweise die der Ladestation.',
+    renameMap: 'Karte umbenennen', renameMapHint: 'Neuer Name für diese Karte. Der Inhalt bleibt unverändert.',
+    duplicateMap: 'Karte duplizieren', copySuffix: '(Kopie)', copySuffixN: '(Kopie {n})',
+    nameEmpty: 'Der Name darf nicht leer sein.', save: 'Speichern',
     activeMapField: 'Aktive Karte', newMapField: 'Neue Karte', newMapPlaceholder: 'z. B. Hintergarten', createMap: 'Neue Karte anlegen', mapLimitReached: 'Maximal 10 Karten können lokal gespeichert werden. Lösche zuerst eine Karte.',
     backupManagement: 'Backup & Verwaltung', backupDescription: 'Die Kartendaten liegen in IndexedDB des Browsers. Ein Export ist die einfachste Sicherung.',
     saveJson: 'Als JSON speichern', saveGeoJson: 'Als GeoJSON speichern',
@@ -230,6 +233,7 @@ const I18N = {
     mapOverview: 'Kartenübersicht', lockCurrentMap: 'Karte sperren', unlockCurrentMap: 'Karte entsperren', mapLocked: 'Gesperrt', mapLockedHint: 'Diese Karte ist gesperrt. Zum Bearbeiten zuerst entsperren.', mapCardArea: '{area} m²', mapCardPoints: '{points} Punkte', mapCardChanged: 'Geändert {date}', selectMap: 'Karte auswählen', drive: 'Fahren', stopEverythingDone: 'STOP gesendet · Fahrt 0 · Mähmotor AUS · IDLE',
     manualDrive: 'Manuell fahren', driveSpeed: 'Tempo', reverse: 'Zurück', left: 'Links', stop: 'Stop', driveIdle: 'Fahrt gestoppt', driveNeedConnection: 'Für manuelle Fahrt zuerst per BLE verbinden.',
     helpQualityTitle: 'Punktqualität', helpQualityText: 'Der Rand eines Punktes zeigt, zu welchem Element er gehört, die Füllung die RTK-Qualität bei der Aufnahme.',
+    helpMapToolsTitle: 'Karten umbenennen & kopieren', helpMapToolsText: 'In der Kartenübersicht trägt jede Karte zwei kleine Werkzeuge: der Stift benennt sie um (nur der Name ändert sich), das Kopiersymbol legt eine vollständige, unabhängige Kopie an — mit allen Punkten, dem Positionsmodus und dem Ursprung. Die Kopie bekommt automatisch einen freien Namen, die gerade aktive Karte bleibt aktiv.',
     helpDriveControlTitle: 'Joystick oder Richtungstasten', helpDriveControlText: 'Der Knopf rechts in der Kartenleiste schaltet zwischen beidem um. Der Joystick fährt wie eine Fernsteuerung: Richtung und Stärke der Auslenkung. Die Richtungstasten kennen nur vorwärts, rückwärts und Drehen auf der Stelle — kein versehentliches Lenken beim Geradeausfahren. Sie fahren mit einer eigenen, langsamen Geschwindigkeit für genaues Rangieren, einstellbar unter Einstellungen › Fahrgeschwindigkeit.',
     helpPositionModeTitle: 'Positionsmodus', helpPositionModeText: 'Jede Karte rechnet standardmäßig in lokalen Metern relativ zum Startpunkt des Mähers („Relativ“) — dafür ist keine Eingabe nötig. „Absolut“ brauchst du nur, wenn du die Karte mit Programmen austauschen willst, die echte Weltkoordinaten erwarten: dort trägst du im Menü unter Karten einmalig die GPS-Position des Nullpunkts ein, meist die der Ladestation. Der Ursprung gehört zur jeweiligen Karte, weil verschiedene Karten meist an verschiedenen Orten liegen. Fehlt ein gültiger Ursprung, bleibt der Export bei lokalen Metern — falsch machen kannst du dabei nichts.',
     helpLockTitle: 'Kartensperre', helpLockText: 'Fertige Karten lassen sich gegen versehentliche Änderungen sperren.',
@@ -319,6 +323,9 @@ const I18N = {
     positionMode: 'Position mode', positionModeRelative: 'Relative (local metres)', positionModeAbsolute: 'Absolute (GPS degrees)',
     originLat: 'Latitude of the origin', originLon: 'Longitude of the origin',
     positionModeHint: 'Applies to this map only and only to the GeoJSON export. “Relative” is the default and keeps everything as before. For “Absolute” you enter the GPS position of the zero point once, usually that of the charging station.',
+    renameMap: 'Rename map', renameMapHint: 'New name for this map. Its contents stay unchanged.',
+    duplicateMap: 'Duplicate map', copySuffix: '(copy)', copySuffixN: '(copy {n})',
+    nameEmpty: 'The name must not be empty.', save: 'Save',
     activeMapField: 'Active map', newMapField: 'New map', newMapPlaceholder: 'e.g. Back garden', createMap: 'Create new map', mapLimitReached: 'A maximum of 10 maps can be stored locally. Delete a map first.',
     backupManagement: 'Backup & management', backupDescription: 'Map data is stored in the browser’s IndexedDB. Exporting is the easiest way to create a backup.',
     saveJson: 'Save as JSON', saveGeoJson: 'Save as GeoJSON',
@@ -422,6 +429,7 @@ const I18N = {
     mapOverview: 'Map overview', lockCurrentMap: 'Lock map', unlockCurrentMap: 'Unlock map', mapLocked: 'Locked', mapLockedHint: 'This map is locked. Unlock it before editing.', mapCardArea: '{area} m²', mapCardPoints: '{points} points', mapCardChanged: 'Changed {date}', selectMap: 'Select map', drive: 'Drive', stopEverythingDone: 'STOP sent · drive 0 · mowing motor OFF · IDLE',
     manualDrive: 'Manual drive', driveSpeed: 'Speed', reverse: 'Reverse', left: 'Left', stop: 'Stop', driveIdle: 'Drive stopped', driveNeedConnection: 'Connect via BLE before using manual drive.',
     helpQualityTitle: 'Point quality', helpQualityText: 'The outline of a point shows which element it belongs to, the fill shows the RTK quality at the time it was captured.',
+    helpMapToolsTitle: 'Renaming & copying maps', helpMapToolsText: 'In the map overview every map carries two small tools: the pencil renames it (only the name changes), the copy icon creates a complete, independent copy — with all points, the position mode and the origin. The copy automatically gets a free name, and the map you are working on stays active.',
     helpDriveControlTitle: 'Joystick or direction keys', helpDriveControlText: 'The button on the right of the map bar switches between the two. The joystick drives like a remote control: direction and amount of deflection. The direction keys only know forward, backward and turning on the spot — no accidental steering while driving straight. They use their own slow speed for precise manoeuvring, adjustable under Settings › Drive speed.',
     helpPositionModeTitle: 'Position mode', helpPositionModeText: 'By default every map works in local metres relative to the mower\u2019s starting point (“Relative”) — nothing to fill in. You only need “Absolute” if you want to exchange the map with programs that expect real world coordinates: there you enter the GPS position of the zero point once, in the menu under Maps, usually that of the charging station. The origin belongs to the individual map, because different maps usually sit in different places. Without a valid origin the export stays in local metres — you cannot get it wrong.',
     helpLockTitle: 'Map lock', helpLockText: 'Finished maps can be locked against accidental changes.',
@@ -500,6 +508,7 @@ const ui = {
   modeDialog: $('modeDialog'), modeDialogCancel: $('modeDialogCancel'), closeContoursBtn: $('closeContoursBtn'),
   confirmDialog: $('confirmDialog'), confirmDialogTitle: $('confirmDialogTitle'), confirmDialogText: $('confirmDialogText'),
   confirmDialogActions: $('confirmDialogActions'), confirmDialogCancel: $('confirmDialogCancel'), confirmDialogAccept: $('confirmDialogAccept'),
+  confirmDialogInput: $('confirmDialogInput'),
   rtkBadge: $('rtkBadge'), rtkText: $('rtkText'), rtkSats: $('rtkSats'), batteryChip: $('batteryChip'), batteryFill: $('batteryFill'), batteryValue: $('batteryValue'),
   // Kartenbuehne
   mapSvg: $('mapSvg'), gridLayer: $('gridLayer'), shapeLayer: $('shapeLayer'), robotLayer: $('robotLayer'),
@@ -579,6 +588,7 @@ const state = {
   mode: 'perimeter',
   menuOpen: false,
   pendingConfirm: null,
+  pendingConfirmText: false,
   pendingUpdate: null,
   lastBleErrorNoticeAt: 0,
   reloadingForUpdate: false,
@@ -1316,6 +1326,37 @@ function askConfirm({ title, message, confirmLabel, cancelLabel, tone = 'neutral
   });
 }
 
+/**
+ * Texteingabe im **selben** Dialog wie die Rueckfragen — ersetzt window.prompt(). Bewusst kein
+ * zweites Modal: Escape, Klick auf den Hintergrund und die Knopflogik gibt es schon, ein
+ * Nachbau waere eine zweite Stelle zum Pflegen. Liefert den eingegebenen Text oder null bei
+ * Abbruch. In Tests haengt sich `globalThis.__promptAdapter` davor, wie bei askConfirm().
+ */
+function askText({ title, message, value = '', confirmLabel, cancelLabel, maxLength = MAP_NAME_MAX }) {
+  if (typeof globalThis.__promptAdapter === 'function') {
+    const answer = globalThis.__promptAdapter({ title, message, value, confirmLabel, maxLength });
+    return Promise.resolve(answer === null || answer === undefined ? null : String(answer));
+  }
+  if (state.pendingConfirm) confirmDialogRespond(false);
+  return new Promise((resolve) => {
+    state.pendingConfirm = resolve;
+    state.pendingConfirmText = true;
+    ui.confirmDialogTitle.textContent = title;
+    ui.confirmDialogText.textContent = message || '';
+    ui.confirmDialogInput.hidden = false;
+    ui.confirmDialogInput.maxLength = maxLength;
+    ui.confirmDialogInput.value = String(value || '');
+    ui.confirmDialogCancel.textContent = cancelLabel || tr('cancel');
+    ui.confirmDialogCancel.hidden = false;
+    ui.confirmDialogActions.classList.remove('single');
+    ui.confirmDialogAccept.textContent = confirmLabel || tr('save');
+    ui.confirmDialogAccept.classList.remove('danger');
+    ui.confirmDialogAccept.classList.add('primary');
+    ui.confirmDialog.hidden = false;
+    ui.confirmDialogInput.focus?.();
+  });
+}
+
 /** Einseitige Meldung im selben Dialog — ersetzt window.alert(). */
 function showNotice({ title, message, tone = 'neutral' }) {
   return askConfirm({ title, message, confirmLabel: tr('okUnderstood'), tone, singleButton: true })
@@ -1348,9 +1389,15 @@ function reportError(error) {
 
 function confirmDialogRespond(answer) {
   const resolve = state.pendingConfirm;
+  const wasText = state.pendingConfirmText;
+  const text = ui.confirmDialogInput.value;
   state.pendingConfirm = null;
+  state.pendingConfirmText = false;
   ui.confirmDialog.hidden = true;
-  if (resolve) resolve(Boolean(answer));
+  ui.confirmDialogInput.hidden = true;
+  if (!resolve) return;
+  // Im Textmodus ist die Antwort der eingegebene Text, sonst wie bisher ein Wahrheitswert.
+  resolve(wasText ? (answer ? text : null) : Boolean(answer));
 }
 
 // --- Menueseite -----------------------------------------------------------
@@ -2203,7 +2250,21 @@ function renderMapGallery() {
     lock.appendChild(lockIcon(map.locked));
     const badge=document.createElement('small'); badge.textContent=tr(map.locked?'lockedBadge':'unlockedBadge'); lock.appendChild(badge);
     lock.title=tr(map.locked?'unlockCurrentMap':'lockCurrentMap'); lock.setAttribute('aria-label',lock.title);
-    card.append(select,lock); ui.mapGallery.appendChild(card);
+    const tools=document.createElement('div'); tools.className='map-card-tools';
+    const toolBtn=(cls,dataset,label,paths)=>{
+      const b=document.createElement('button'); b.type='button'; b.className=`map-card-tool ${cls}`;
+      Object.assign(b.dataset,dataset); b.title=label; b.setAttribute('aria-label',label);
+      const icon=svgEl('svg',{viewBox:'0 0 24 24','aria-hidden':'true'});
+      paths.forEach((d)=>icon.appendChild(svgEl('path',{d})));
+      b.appendChild(icon); return b;
+    };
+    tools.append(
+      toolBtn('rename',{mapRenameId:map.id},`${tr('renameMap')}: ${localizedMapName(map)}`,
+        ['M4 20h4L19 9l-4-4L4 16z','M14 6l4 4']),
+      toolBtn('copy',{mapCopyId:map.id},`${tr('duplicateMap')}: ${localizedMapName(map)}`,
+        ['M9 9h10v10H9z','M5 15V5h10']),
+    );
+    card.append(select,tools,lock); ui.mapGallery.appendChild(card);
   });
 }
 
@@ -2402,6 +2463,77 @@ async function createMapFromInput() {
   renderMapControls();
   await saveActiveMap();
   renderMap();
+}
+
+/** So lang wie das Eingabefeld fuer neue Karten — laengere Namen sprengen sonst die Leiste. */
+const MAP_NAME_MAX = 60;
+const COPY_SUFFIX_RE = /\s*\((?:Kopie|Copy|copy)(?:\s+\d+)?\)$/i;
+
+/**
+ * Ein freier Name fuer die Kopie. Ein bereits vorhandenes „(Kopie)“ am Ende wird zuerst
+ * abgeschnitten — sonst entstuende beim zweiten Duplizieren „… (Kopie) (Kopie)“. Danach wird
+ * hochgezaehlt, bis kein Name doppelt vorkommt.
+ */
+function uniqueCopyName(sourceName) {
+  const taken = new Set(state.maps.map((m) => localizedMapName(m)));
+  const base = String(sourceName).replace(COPY_SUFFIX_RE, '').trim() || tr('firstMapName');
+  const fit = (suffix) => `${base.slice(0, Math.max(1, MAP_NAME_MAX - suffix.length - 1))} ${suffix}`;
+  const first = fit(tr('copySuffix'));
+  if (!taken.has(first)) return first;
+  for (let n = 2; n <= MAX_MAPS + 2; n += 1) {
+    const candidate = fit(tr('copySuffixN', { n }));
+    if (!taken.has(candidate)) return candidate;
+  }
+  return fit(tr('copySuffixN', { n: Date.now() % 1000 }));
+}
+
+/** Benennt eine Karte um — nur den Anzeigenamen, sonst nichts. */
+async function renameMapById(mapId) {
+  const map = state.maps.find((m) => m.id === mapId);
+  if (!map) return;
+  if (map.locked) { await showNotice({ title: tr('renameMap'), message: tr('mapLockedHint'), tone: 'danger' }); return; }
+  const answer = await askText({
+    title: tr('renameMap'),
+    message: tr('renameMapHint'),
+    value: localizedMapName(map),
+    confirmLabel: tr('save'),
+    maxLength: MAP_NAME_MAX,
+  });
+  if (answer === null) return;
+  const name = answer.trim().slice(0, MAP_NAME_MAX);
+  if (!name) { await showNotice({ title: tr('renameMap'), message: tr('nameEmpty'), tone: 'danger' }); return; }
+  map.name = name;
+  map.updatedAt = new Date().toISOString();
+  await dbRequest('readwrite', (store) => store.put(map));
+  renderMapControls();
+  renderMap();
+}
+
+/**
+ * Legt eine vollstaendig eigenstaendige Kopie an: tiefe Kopie ueber JSON, damit weder Punkte
+ * noch Ausschlussflaechen als gemeinsame Referenz haengen bleiben. Neue Kennungen fuer Karte und
+ * Flaechen, alles Uebrige — Geometrie, Positionsmodus, Ursprung, Sperre — bleibt wie im Original.
+ * Die aktive Karte wechselt bewusst **nicht**: Duplizieren soll die laufende Arbeit nicht
+ * unterbrechen.
+ */
+async function duplicateMapById(mapId) {
+  const source = state.maps.find((m) => m.id === mapId);
+  if (!source) return;
+  if (state.maps.length >= MAX_MAPS) {
+    await showNotice({ title: tr('duplicateMap'), message: tr('mapLimitReached'), tone: 'danger' });
+    return;
+  }
+  const copy = normalizeMap(JSON.parse(JSON.stringify(source)));
+  copy.id = newId();
+  copy.exclusions.forEach((exclusion) => { exclusion.id = newId(); });
+  copy.name = uniqueCopyName(localizedMapName(source));
+  const now = new Date().toISOString();
+  copy.createdAt = now;
+  copy.updatedAt = now;
+  await dbRequest('readwrite', (store) => store.put(copy));
+  state.maps.push(copy);
+  renderMapControls();
+  return copy;
 }
 
 async function deleteActiveMap() {
@@ -4075,6 +4207,10 @@ function bindEvents() {
   ui.deleteMapBtn.addEventListener('click', () => deleteActiveMap().catch(reportError));
   ui.mapSelect.addEventListener('change', () => setActiveMapById(ui.mapSelect.value));
   ui.mapGallery.addEventListener('click', (event) => {
+    const rename = event.target.closest('[data-map-rename-id]');
+    if (rename) { renameMapById(rename.dataset.mapRenameId).catch(reportError); return; }
+    const copy = event.target.closest('[data-map-copy-id]');
+    if (copy) { duplicateMapById(copy.dataset.mapCopyId).catch(reportError); return; }
     const lock = event.target.closest('[data-map-lock-id]');
     if (lock) { toggleMapLockById(lock.dataset.mapLockId).catch(reportError); return; }
     const select = event.target.closest('[data-map-card-id]');

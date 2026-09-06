@@ -1604,7 +1604,7 @@ footer {
   position: relative;
   min-width: 0;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   overflow: hidden;
   border: 1px solid #27383e;
   border-radius: 12px;
@@ -1631,6 +1631,40 @@ footer {
 .map-card-copy { min-width: 0; display: grid; gap: 3px; }
 .map-card-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #dce8eb; }
 .map-card-copy small { color: #82949b; font-size: .72rem; }
+/* Umbenennen und Duplizieren als schmale Spalte zwischen Karte und Schloss. */
+.map-card-tools {
+  align-self: stretch;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 6px 5px;
+  border-left: 1px solid var(--shell-border-soft);
+  background: var(--shell-panel-2);
+}
+.map-card-tool {
+  display: grid;
+  place-items: center;
+  width: 36px; height: 36px;
+  padding: 0;
+  border: 1px solid var(--shell-border);
+  border-radius: 9px;
+  background: var(--shell-panel);
+  color: var(--shell-muted);
+}
+.map-card-tool svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.map-card-tool:active { background: var(--shell-hover); }
+
+.modal-input {
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--shell-border);
+  border-radius: 9px;
+  background: var(--shell-panel-2);
+  color: var(--shell-text);
+  font: inherit;
+}
+
 .map-card-lock {
   align-self: stretch;
   width: 72px;
