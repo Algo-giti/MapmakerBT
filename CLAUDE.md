@@ -112,8 +112,12 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    **Zwei Steuerungsarten** über `state.view.driveControl` ∈ `joystick | buttons`
    (**Standard `joystick`**): der runde Joystick oder ein Kreuz aus **vier Richtungstasten**
    (`.drive-pad`, keine Diagonalen — genau das ist der Zweck). Umschaltbar über `#driveModeBtn`
-   **in der oberen Ecke des Fahrfelds** (das Symbol zeigt den **aktiven** Modus) und,
-   gleichwertig, unter *Einstellungen › Fahrgeschwindigkeit*.
+   **neben dem Fahrfeld** und, gleichwertig, unter *Einstellungen › Fahrgeschwindigkeit*.
+   **Das Symbol zeigt den Modus, in den der Knopf wechselt**, nicht den aktiven — wie ein
+   Hell/Dunkel-Schalter, der im Hellen den Mond zeigt. Die CSS-Klasse benennt weiterhin den
+   aktiven Modus, nur das gezeigte Symbol ist das jeweils andere
+   (`.mode-joystick .icon-pad`); `tests/layout-test.js` nagelt genau diese Zuordnung fest, weil
+   sie rein in CSS steckt und ein Test auf die Beschriftung sie nicht mitfängt.
 
    **Gemeinsames Feld `.drive-control` (`#driveControlArea`):** Größe (`--joystick-size`) und
    Gitterplatzierung stehen **nur dort**, Joystick und Tastenkreuz füllen es mit `100%` aus. Nur
@@ -121,8 +125,12 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    Positionslogik — und Größeneinstellung, Fahrtanzeige und Händigkeit gelten unverändert für
    beide. Der Umschalter ist `position: absolute` im `position: relative`-Feld: **Rechtshänder
    oben links, Linkshänder oben rechts** (`:root[data-handed="left"] .drive-mode-corner`), damit
-   er nie unter dem bedienenden Daumen liegt. Sein Textlabel `#driveModeLabel` ist `.sr-only`
-   geworden — die Umschaltlogik in `applyDriveControlMode()` blieb dadurch unverändert.
+   er nie unter dem bedienenden Daumen liegt. Er steht **vollständig außerhalb** des Kreises
+   (`right: 100%` bzw. gespiegelt `left: 100%`) — mit `left: 0` überlappte er ihn. Den Platz
+   dafür reserviert der Außenabstand `--drive-toggle-gap` am Feld, sonst liefe der Knopf in die
+   Fahrtanzeige der Nachbarspalte. Sein Textlabel `#driveModeLabel` ist `.sr-only` und benennt
+   das **Ziel** („Zu Richtungstasten wechseln“); ein festes `aria-label` am Knopf gibt es nicht
+   mehr, sonst hätte es diesen Text überschrieben.
 
    **Der Tastenmodus hat eine eigene Geschwindigkeit** `state.view.cursorSpeedCms` (Startwert
    **15 cm/s**, Untergrenze 2 cm/s, Obergrenze die eingestellte `driveSpeedMax` in cm/s —
@@ -425,18 +433,26 @@ Kartenleiste). Sichtbar nur, wenn `canStartExtension()`: Modus `perimeter` oder 
 aktive Kontur **geschlossen** mit ≥ 3 Punkten, Karte nicht gesperrt, keine Automatik. Wegpunkte und
 Dockpfad sind offene Pfade — `activeContour()` liefert dort `null`.
 
-Der Knopf trägt **drei Rollen** (dasselbe Muster wie der Lösch-Button): „erweitern“ → „Abbrechen“
-(Auswahlphase) → „Fertig“ (Erweiterung läuft). `state.extension =
-{ role, exclusionId, phase: 'picking' | 'adding', firstIndex }`.
+Der Knopf in der Leiste **startet** nur; geführt wird der Ablauf danach im **Hinweisstreifen**
+`#extendPanel` (`.map-hint`). Der sitzt als eigene Zeile **zwischen Werkzeugleiste und
+Zeichenfläche** — bewusst kein Overlay und kein blockierendes Modal: die Anweisung hat die volle
+Breite (in der schmalen Werkzeugleiste wurde sie abgeschnitten) und verdeckt die Karte nicht,
+denn während der Auswahl muss weiter auf Punkte getippt werden. Er trägt den Schritttext
+(`aria-live="polite"`), „Abbrechen“ (nur in der Auswahlphase, dort ist noch nichts verändert) und
+„Fertig“ (sobald die Kante offen ist). `state.extension =
+{ role, exclusionId, phase: 'picking' | 'adding', firstIndex, hintKey, hintVars }`;
+`setExtensionHint()` merkt sich den Schlüssel, damit `refreshExtendPanel()` den Text jederzeit
+neu zeichnen kann.
 
 - **Auswahlphase:** `handleMapTap()` leitet Punkttreffer an `handleExtensionTap()` um und lässt
   **keinen** Tipp in die Innenfläche durch — während der Erweiterung geht es ausschließlich um die
   Kante. Der erste gewählte Punkt ist über `isExtensionPick()` als `.extend-pick-point` markiert
   (Warnfarbe, gestrichelter Ring — bewusst *nicht* die Auswahlfarbe, es ist keine Auswahl zum
   Verschieben). Nicht benachbart → `areNeighbourIndices()` sagt nein, die Auswahl beginnt von
-  vorn, **an der Kontur ändert sich nichts**. Die Meldung läuft über die Statuszeile statt über
-  einen Dialog: Fehlgriffe sind auf kleinen Bildschirmen häufig, ein Modal je Mistipp wäre eine
-  Zumutung.
+  vorn, **an der Kontur ändert sich nichts**; der Hinweisstreifen zeigt den Fehler in Warnfarbe
+  (`.map-hint.is-error`) und fordert erneut auf. Bewusst kein Dialog je Fehlgriff: die Auswahl
+  zweier benachbarter Punkte misslingt auf kleinen Bildschirmen leicht, ein Modal je Mistipp wäre
+  eine Zumutung — und ein blockierendes Modal verböte ohnehin das nötige Tippen auf die Karte.
 - **Auftrennen** (`openContourForExtension()`, ein Undo-Schritt): `reorderForExtension()` ordnet
   die Punktfolge so um, dass sie beim **zweiten** gewählten Punkt beginnt, im Ring von der Kante
   weg läuft und beim **ersten** endet — der erste ist damit das neue offene Ende. Die Laufrichtung
@@ -458,7 +474,9 @@ Der Knopf trägt **drei Rollen** (dasselbe Muster wie der Lösch-Button): „erw
 - Während der Erweiterung sind **„Punkt davor/danach“ ausgeblendet** und die Flächenauswahl ist
   abgeschaltet — dieselbe Überlegung wie beim ausgeblendeten Papierkorb während der Automatik.
   **Nicht ohne Gerät verifizierbar:** ob die Zwei-Punkte-Auswahl auf kleinen Bildschirmen
-  zuverlässig zu treffen ist (Trefferflächen benachbarter Punkte überlappen bei dichten Konturen).
+  zuverlässig zu treffen ist (Trefferflächen benachbarter Punkte überlappen bei dichten Konturen),
+  und ob der Hinweisstreifen dort vollständig lesbar bleibt, ohne der Karte zu viel Höhe zu
+  nehmen.
 
 **Elementliste** (Menü → *Karten*): `mapElements()` liefert Perimeter, jede Ausschlussfläche,
 Wegpunkte und Dockpfad mit Punktzahl; `renderElementList()` zeichnet sie als Zeilen. Ein Tipp auf
@@ -1043,6 +1061,22 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-06: **Drei Korrekturen nach dem Gerätetest.** (a) Der Steuerungs-Umschalter zeigt jetzt
+  das Symbol des Modus, in den er **wechselt**, nicht des aktiven — im Joystick-Modus also das
+  Steuerkreuz. Das steckt rein in CSS; der vorhandene Test auf die Beschriftung hätte einen
+  Rückfall nicht gefangen, deshalb gibt es jetzt einen eigenen Fall für die Symbolzuordnung
+  (beim Sabotage-Durchlauf aufgefallen). Das `.sr-only`-Label benennt ebenfalls das Ziel, das
+  feste `aria-label` am Knopf ist entfallen — es hätte den Text überschrieben. (b) Der Knopf
+  überlappte den Kreis; er steht jetzt **vollständig daneben** (`right: 100%`, gespiegelt
+  `left: 100%`), und `--drive-toggle-gap` reserviert den Platz, damit er nicht in die
+  Fahrtanzeige läuft. (c) Die Anleitung zum Kontur-Erweitern wurde in der schmalen
+  Werkzeugleiste abgeschnitten. Sie läuft jetzt über den Hinweisstreifen `#extendPanel`
+  zwischen Leiste und Zeichenfläche — volle Breite, `aria-live`, Fehler in Warnfarbe, und
+  „Fertig“/„Abbrechen“ sitzen mit darin. Bewusst **kein** Overlay und kein blockierendes Modal:
+  während der Auswahl muss die Karte antippbar bleiben. In der Leiste steht nur noch der
+  Startknopf. Ein neuer layout-Fall (27) plus ein neuer für die Symbolzuordnung, sechs ui-Fälle
+  angepasst; gegen sieben simulierte Rückfälle geprüft. `APP_VERSION` auf `v39`.
 
 - 2026-09-06: **Umschalter ans Fahrfeld, Konturen nachträglich erweiterbar.** (a) Der
   Joystick/Tasten-Umschalter sitzt nicht mehr in der Werkzeugleiste, sondern in der oberen Ecke

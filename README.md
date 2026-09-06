@@ -156,15 +156,17 @@ Ist ein Perimeter oder eine Ausschlussfläche bereits geschlossen, musst du sie 
 aufnehmen, um sie an einer Stelle zu verlängern. In der Kartenleiste erscheint dann
 **„Perimeter erweitern“** bzw. **„Fläche erweitern“**:
 
-1. Knopf antippen. Die Statuszeile bittet dich, **zwei direkt benachbarte Punkte** anzutippen –
-   also zwei Punkte, die durch eine Kante verbunden sind.
-2. Sind die beiden nicht benachbart, sagt die Statuszeile das und die Auswahl beginnt von vorn.
-   An der Kontur ändert sich dabei nichts.
+1. Knopf antippen. Über der Karte erscheint ein **Hinweisstreifen**, der dich Schritt für Schritt
+   führt und dabei die Karte nicht verdeckt – du kannst also weiter auf Punkte tippen. Er bittet
+   dich, **zwei direkt benachbarte Punkte** anzutippen – also zwei Punkte, die durch eine Kante
+   verbunden sind.
+2. Sind die beiden nicht benachbart, sagt der Hinweisstreifen das und die Auswahl beginnt von
+   vorn. An der Kontur ändert sich dabei nichts.
 3. Passt es, wird die Kante zwischen ihnen aufgetrennt und die Kontur gilt wieder als offen. Der
    **zuerst** angetippte Punkt ist ab jetzt das offene Ende.
 4. Nimm weitere Punkte auf wie sonst auch – Halte-Knopf, Automatik und Positions-Glättung
    funktionieren unverändert. Die neuen Punkte landen genau zwischen den beiden gewählten.
-5. **„Fertig“** schließt die Kontur wieder; der zuletzt aufgenommene Punkt verbindet sich mit dem
+5. **„Fertig“** im Hinweisstreifen schließt die Kontur wieder; der zuletzt aufgenommene Punkt verbindet sich mit dem
    zweiten der beiden gewählten.
 
 Brichst du vorher ab – etwa durch einen Moduswechsel –, bleibt die Kontur einfach **offen**. Das
@@ -242,10 +244,10 @@ Der Joystick liegt fest unter der Karte und ist für die Bedienung mit dem Daume
 - Der Joystick ist eine **Totmannsteuerung**: beim Loslassen springt er in die Mitte zurück und
   der Mäher stoppt sofort.
 
-Für genaues Rangieren gibt es alternativ **vier Richtungstasten**. Der kleine Knopf in der oberen
-Ecke des Fahrfelds schaltet zwischen beidem um, sein Symbol zeigt den gerade aktiven Modus – bei
-Linkshändern sitzt er gespiegelt in der anderen Ecke. Dieselbe Wahl steht auch unter
-*Einstellungen › Fahrgeschwindigkeit*. Die Tasten kennen bewusst nur
+Für genaues Rangieren gibt es alternativ **vier Richtungstasten**. Der kleine Knopf **neben** dem
+Fahrfeld schaltet zwischen beidem um; er zeigt das Symbol des Modus, in den er wechselt – im
+Joystick-Modus also das Steuerkreuz. Bei Rechtshändern steht er links vom Feld, bei Linkshändern
+gespiegelt rechts. Dieselbe Wahl steht auch unter *Einstellungen › Fahrgeschwindigkeit*. Die Tasten kennen bewusst nur
 vorwärts, rückwärts und Drehen auf der Stelle – keine Diagonalen, damit beim Geradeausfahren
 nichts versehentlich lenkt. Sie fahren mit einer **eigenen, langsamen Geschwindigkeit**
 (Startwert 15 cm/s, nie schneller als die eingestellte Höchstgeschwindigkeit); der Joystick bleibt
@@ -492,15 +494,16 @@ contour both wrap around the closing segment from the last point to the first.
 If a perimeter or exclusion area is already closed, you do not have to record it again just to
 extend it in one place. The map bar then offers **“Extend perimeter”** or **“Extend area”**:
 
-1. Tap the button. The status line asks you to tap **two directly neighbouring points** – that is,
-   two points joined by an edge.
-2. If the two are not neighbours, the status line says so and the selection starts over. Nothing
+1. Tap the button. A **hint strip** appears above the map, guiding you step by step without
+   covering the map – so you can keep tapping points. It asks you to tap **two directly
+   neighbouring points** – that is, two points joined by an edge.
+2. If the two are not neighbours, the hint strip says so and the selection starts over. Nothing
    on the contour is changed.
 3. If they fit, the edge between them is cut and the contour counts as open again. The point you
    tapped **first** becomes the open end.
 4. Capture further points as usual – the hold button, automatic capture and position smoothing all
    work unchanged. The new points land exactly between the two you picked.
-5. **“Done”** closes the contour again; the last captured point joins up with the second of the two
+5. **“Done”** in the hint strip closes the contour again; the last captured point joins up with the second of the two
    you picked.
 
 If you break off before that – by switching mode, for instance – the contour simply stays **open**.
@@ -575,9 +578,10 @@ The joystick sits permanently below the map and is designed for thumb operation.
 - The joystick is a **dead man's control**: let go and it snaps back to the centre and the mower
   stops immediately.
 
-For precise manoeuvring there are alternatively **four direction keys**. The small button in the top
-corner of the drive field switches between the two and its icon shows the mode currently active –
-for left-handed use it sits mirrored in the other corner. The same choice is available under
+For precise manoeuvring there are alternatively **four direction keys**. The small button **beside**
+the drive field switches between the two; it shows the icon of the mode it switches to – so in
+joystick mode it shows the direction pad. For right-handed use it sits to the left of the field,
+for left-handed use mirrored to the right. The same choice is available under
 *Settings › Drive speed*. The keys deliberately only know forward, backward and
 turning on the spot – no diagonals, so nothing steers by accident while driving straight. They use
 their **own slow speed** (15 cm/s to start with, never faster than the configured maximum); the

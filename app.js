@@ -55,7 +55,7 @@ const I18N = {
     joystickSize: 'Größe des Joysticks', joystickSmall: 'Klein', joystickMedium: 'Mittel', joystickLarge: 'Groß', joystickXLarge: 'Sehr groß',
     joystickSizeHint: '„Mittel“ passt sich der Bildschirmhöhe an. Größer heißt mehr Trefferfläche, kleiner mehr Karte.',
     driveControl: 'Steuerung', driveControlJoystick: 'Joystick', driveControlButtons: 'Richtungstasten',
-    driveModeToggle: 'Steuerung umschalten', cursorSpeed: 'Geschwindigkeit im Cursor-Modus',
+    driveModeToggle: 'Steuerung umschalten', driveModeToJoystick: 'Zu Joystick wechseln', driveModeToButtons: 'Zu Richtungstasten wechseln', cursorSpeed: 'Geschwindigkeit im Cursor-Modus',
     driveControlHint: 'Die Richtungstasten fahren bewusst langsam und ohne seitliches Lenken — links und rechts drehen auf der Stelle. Der Joystick bleibt vom Cursor-Wert unberührt.',
     driveUp: 'Vorwärts fahren', driveDown: 'Rückwärts fahren', driveLeft: 'Links drehen', driveRight: 'Rechts drehen',
     handedness: 'Bedienseite', handedRight: 'Rechtshänder', handedLeft: 'Linkshänder',
@@ -79,8 +79,8 @@ const I18N = {
     extendExclusion: 'Ausschlussfläche erweitern', extendExclusionShort: 'Fläche erweitern',
     extendCancel: 'Erweitern abbrechen', extendCancelShort: 'Abbrechen',
     extendDone: 'Erweiterung abschließen', extendDoneShort: 'Fertig',
-    extendPickFirst: 'Erweitern: den ersten von zwei benachbarten Punkten antippen — dort wird die Kontur geöffnet.',
-    extendPickSecond: 'Punkt {n} gewählt. Jetzt den direkt benachbarten Punkt antippen.',
+    extendPickFirst: 'Schritt 1 von 2: Den ersten Punkt der Kante antippen, an der die Kontur geöffnet werden soll.',
+    extendPickSecond: 'Schritt 2 von 2: Punkt {n} ist gewählt. Jetzt einen direkt benachbarten Punkt antippen.',
     extendNotAdjacent: 'Die beiden Punkte liegen nicht nebeneinander. Bitte zwei direkt verbundene Punkte wählen.',
     extendWrongContour: 'Bitte einen Punkt der Kontur antippen, die erweitert werden soll.',
     extendOpened: 'Kontur geöffnet. Jetzt weitere Punkte aufnehmen und danach „Fertig“ antippen.',
@@ -244,9 +244,9 @@ const I18N = {
     mapOverview: 'Kartenübersicht', lockCurrentMap: 'Karte sperren', unlockCurrentMap: 'Karte entsperren', mapLocked: 'Gesperrt', mapLockedHint: 'Diese Karte ist gesperrt. Zum Bearbeiten zuerst entsperren.', mapCardArea: '{area} m²', mapCardPoints: '{points} Punkte', mapCardChanged: 'Geändert {date}', selectMap: 'Karte auswählen', drive: 'Fahren', stopEverythingDone: 'STOP gesendet · Fahrt 0 · Mähmotor AUS · IDLE',
     manualDrive: 'Manuell fahren', driveSpeed: 'Tempo', reverse: 'Zurück', left: 'Links', stop: 'Stop', driveIdle: 'Fahrt gestoppt', driveNeedConnection: 'Für manuelle Fahrt zuerst per BLE verbinden.',
     helpQualityTitle: 'Punktqualität', helpQualityText: 'Der Rand eines Punktes zeigt, zu welchem Element er gehört, die Füllung die RTK-Qualität bei der Aufnahme.',
-    helpExtendTitle: 'Kontur nachträglich erweitern', helpExtendText: 'Ist ein Perimeter oder eine Ausschlussfläche schon geschlossen, öffnet „Erweitern“ in der Kartenleiste sie wieder: zwei direkt benachbarte Punkte antippen, dann wird die Kante zwischen ihnen aufgetrennt. Danach nimmst du wie gewohnt weitere Punkte auf — auch mit Automatik —, sie landen genau zwischen den beiden gewählten. „Fertig“ schließt die Kontur wieder.',
+    helpExtendTitle: 'Kontur nachträglich erweitern', helpExtendText: 'Ist ein Perimeter oder eine Ausschlussfläche schon geschlossen, öffnet „Erweitern“ in der Kartenleiste sie wieder. Ein Hinweisstreifen über der Karte führt Schritt für Schritt: zwei direkt benachbarte Punkte antippen, dann wird die Kante zwischen ihnen aufgetrennt. Danach nimmst du wie gewohnt weitere Punkte auf — auch mit Automatik —, sie landen genau zwischen den beiden gewählten. „Fertig“ im Hinweisstreifen schließt die Kontur wieder.',
     helpMapToolsTitle: 'Karten umbenennen & kopieren', helpMapToolsText: 'In der Kartenübersicht trägt jede Karte zwei kleine Werkzeuge: der Stift benennt sie um (nur der Name ändert sich), das Kopiersymbol legt eine vollständige, unabhängige Kopie an — mit allen Punkten, dem Positionsmodus und dem Ursprung. Die Kopie bekommt automatisch einen freien Namen, die gerade aktive Karte bleibt aktiv.',
-    helpDriveControlTitle: 'Joystick oder Richtungstasten', helpDriveControlText: 'Der kleine Knopf in der oberen Ecke des Fahrfelds schaltet zwischen beidem um — bei Linkshändern gespiegelt auf der anderen Seite. Der Joystick fährt wie eine Fernsteuerung: Richtung und Stärke der Auslenkung. Die Richtungstasten kennen nur vorwärts, rückwärts und Drehen auf der Stelle — kein versehentliches Lenken beim Geradeausfahren. Sie fahren mit einer eigenen, langsamen Geschwindigkeit für genaues Rangieren, einstellbar unter Einstellungen › Fahrgeschwindigkeit.',
+    helpDriveControlTitle: 'Joystick oder Richtungstasten', helpDriveControlText: 'Der kleine Knopf neben dem Fahrfeld schaltet zwischen beidem um; er zeigt das Symbol des Modus, in den er wechselt. Bei Rechtshändern steht er links vom Feld, bei Linkshändern gespiegelt rechts. Der Joystick fährt wie eine Fernsteuerung: Richtung und Stärke der Auslenkung. Die Richtungstasten kennen nur vorwärts, rückwärts und Drehen auf der Stelle — kein versehentliches Lenken beim Geradeausfahren. Sie fahren mit einer eigenen, langsamen Geschwindigkeit für genaues Rangieren, einstellbar unter Einstellungen › Fahrgeschwindigkeit.',
     helpPositionModeTitle: 'Positionsmodus', helpPositionModeText: 'Jede Karte rechnet standardmäßig in lokalen Metern relativ zum Startpunkt des Mähers („Relativ“) — dafür ist keine Eingabe nötig. „Absolut“ brauchst du nur, wenn du die Karte mit Programmen austauschen willst, die echte Weltkoordinaten erwarten: dort trägst du im Menü unter Karten einmalig die GPS-Position des Nullpunkts ein, meist die der Ladestation. Der Ursprung gehört zur jeweiligen Karte, weil verschiedene Karten meist an verschiedenen Orten liegen. Fehlt ein gültiger Ursprung, bleibt der Export bei lokalen Metern — falsch machen kannst du dabei nichts.',
     helpLockTitle: 'Kartensperre', helpLockText: 'Fertige Karten lassen sich gegen versehentliche Änderungen sperren.',
     viewHelpTitle: 'Ansicht & Bedienung',
@@ -263,7 +263,7 @@ const I18N = {
     joystickSize: 'Joystick size', joystickSmall: 'Small', joystickMedium: 'Medium', joystickLarge: 'Large', joystickXLarge: 'Extra large',
     joystickSizeHint: '“Medium” adapts to the screen height. Larger means a bigger target, smaller leaves more map.',
     driveControl: 'Control', driveControlJoystick: 'Joystick', driveControlButtons: 'Direction keys',
-    driveModeToggle: 'Switch control', cursorSpeed: 'Speed in cursor mode',
+    driveModeToggle: 'Switch control', driveModeToJoystick: 'Switch to joystick', driveModeToButtons: 'Switch to direction keys', cursorSpeed: 'Speed in cursor mode',
     driveControlHint: 'The direction keys deliberately drive slowly and without any sideways steering — left and right turn on the spot. The joystick is unaffected by the cursor speed.',
     driveUp: 'Drive forward', driveDown: 'Drive backward', driveLeft: 'Turn left', driveRight: 'Turn right',
     handedness: 'Operating side', handedRight: 'Right-handed', handedLeft: 'Left-handed',
@@ -287,8 +287,8 @@ const I18N = {
     extendExclusion: 'Extend exclusion area', extendExclusionShort: 'Extend area',
     extendCancel: 'Cancel extending', extendCancelShort: 'Cancel',
     extendDone: 'Finish extending', extendDoneShort: 'Done',
-    extendPickFirst: 'Extending: tap the first of two neighbouring points — that is where the contour opens.',
-    extendPickSecond: 'Point {n} selected. Now tap the directly neighbouring point.',
+    extendPickFirst: 'Step 1 of 2: tap the first point of the edge where the contour should open.',
+    extendPickSecond: 'Step 2 of 2: point {n} is selected. Now tap a directly neighbouring point.',
     extendNotAdjacent: 'Those two points are not next to each other. Please pick two directly connected points.',
     extendWrongContour: 'Please tap a point of the contour you want to extend.',
     extendOpened: 'Contour opened. Capture further points, then tap “Done”.',
@@ -452,9 +452,9 @@ const I18N = {
     mapOverview: 'Map overview', lockCurrentMap: 'Lock map', unlockCurrentMap: 'Unlock map', mapLocked: 'Locked', mapLockedHint: 'This map is locked. Unlock it before editing.', mapCardArea: '{area} m²', mapCardPoints: '{points} points', mapCardChanged: 'Changed {date}', selectMap: 'Select map', drive: 'Drive', stopEverythingDone: 'STOP sent · drive 0 · mowing motor OFF · IDLE',
     manualDrive: 'Manual drive', driveSpeed: 'Speed', reverse: 'Reverse', left: 'Left', stop: 'Stop', driveIdle: 'Drive stopped', driveNeedConnection: 'Connect via BLE before using manual drive.',
     helpQualityTitle: 'Point quality', helpQualityText: 'The outline of a point shows which element it belongs to, the fill shows the RTK quality at the time it was captured.',
-    helpExtendTitle: 'Extending a closed contour', helpExtendText: 'If a perimeter or exclusion area is already closed, “Extend” in the map bar reopens it: tap two directly neighbouring points and the edge between them is cut. Then capture further points as usual — automatic capture included — and they land exactly between the two you picked. “Done” closes the contour again.',
+    helpExtendTitle: 'Extending a closed contour', helpExtendText: 'If a perimeter or exclusion area is already closed, “Extend” in the map bar reopens it. A hint strip above the map guides you step by step: tap two directly neighbouring points and the edge between them is cut. Then capture further points as usual — automatic capture included — and they land exactly between the two you picked. “Done” in the hint strip closes the contour again.',
     helpMapToolsTitle: 'Renaming & copying maps', helpMapToolsText: 'In the map overview every map carries two small tools: the pencil renames it (only the name changes), the copy icon creates a complete, independent copy — with all points, the position mode and the origin. The copy automatically gets a free name, and the map you are working on stays active.',
-    helpDriveControlTitle: 'Joystick or direction keys', helpDriveControlText: 'The small button in the top corner of the drive field switches between the two — mirrored to the other side for left-handed use. The joystick drives like a remote control: direction and amount of deflection. The direction keys only know forward, backward and turning on the spot — no accidental steering while driving straight. They use their own slow speed for precise manoeuvring, adjustable under Settings › Drive speed.',
+    helpDriveControlTitle: 'Joystick or direction keys', helpDriveControlText: 'The small button beside the drive field switches between the two; it shows the icon of the mode it switches to. For right-handed use it sits to the left of the field, for left-handed use mirrored to the right. The joystick drives like a remote control: direction and amount of deflection. The direction keys only know forward, backward and turning on the spot — no accidental steering while driving straight. They use their own slow speed for precise manoeuvring, adjustable under Settings › Drive speed.',
     helpPositionModeTitle: 'Position mode', helpPositionModeText: 'By default every map works in local metres relative to the mower\u2019s starting point (“Relative”) — nothing to fill in. You only need “Absolute” if you want to exchange the map with programs that expect real world coordinates: there you enter the GPS position of the zero point once, in the menu under Maps, usually that of the charging station. The origin belongs to the individual map, because different maps usually sit in different places. Without a valid origin the export stays in local metres — you cannot get it wrong.',
     helpLockTitle: 'Map lock', helpLockText: 'Finished maps can be locked against accidental changes.',
     viewHelpTitle: 'View & operation',
@@ -543,6 +543,8 @@ const ui = {
   driveButtons: $('driveButtons'), driveControlSelect: $('driveControlSelect'),
   cursorSpeedInput: $('cursorSpeedInput'), cursorSpeedRow: $('cursorSpeedRow'),
   extendWrap: $('extendWrap'), extendBtn: $('extendBtn'), extendBtnLabel: $('extendBtnLabel'),
+  extendPanel: $('extendPanel'), extendPanelText: $('extendPanelText'),
+  extendCancelBtn: $('extendCancelBtn'), extendDoneBtn: $('extendDoneBtn'),
   insertBeforeWrap: $('insertBeforeWrap'), insertBeforeBtn: $('insertBeforeBtn'),
   insertAfterWrap: $('insertAfterWrap'), insertAfterBtn: $('insertAfterBtn'),
   captureCluster: $('captureCluster'), autoFabWrap: $('autoFabWrap'), autoCaptureBtn: $('autoCaptureBtn'), autoCaptureLabel: $('autoCaptureLabel'),
@@ -1287,8 +1289,9 @@ function applyDriveControlMode() {
   ui.driveButtons.hidden = !buttons;
   ui.driveModeBtn.classList.toggle('mode-buttons', buttons);
   ui.driveModeBtn.classList.toggle('mode-joystick', !buttons);
-  // Das Symbol zeigt den **aktuellen** Modus, nicht den, in den es wechselt.
-  ui.driveModeLabel.textContent = tr(buttons ? 'driveControlButtons' : 'driveControlJoystick');
+  // Symbol und Beschriftung benennen das **Ziel** des Tippens, nicht den Ist-Zustand — wie ein
+  // Hell/Dunkel-Schalter, der im Hellen den Mond zeigt.
+  ui.driveModeLabel.textContent = tr(buttons ? 'driveModeToJoystick' : 'driveModeToButtons');
   ui.driveModeBtn.setAttribute('aria-pressed', String(buttons));
   ui.cursorSpeedRow.hidden = !buttons;
 }
@@ -4011,9 +4014,9 @@ function startExtension() {
   const contour = activeContour();
   state.extension = { role: contour.role, exclusionId: contour.id, phase: 'picking', firstIndex: null };
   clearPointSelection({ render: false });
+  setExtensionHint('extendPickFirst');
   renderMap();
   refreshCaptureState();
-  ui.pointStatus.textContent = tr('extendPickFirst');
 }
 
 /** Abbruch waehrend der Auswahl — es wurde noch nichts veraendert. */
@@ -4040,10 +4043,10 @@ async function openContourForExtension(firstIndex, secondIndex) {
   ext.phase = 'adding';
   ext.firstIndex = null;
   state.validationResult = null;
+  setExtensionHint('extendOpened');
   await saveActiveMap();
   renderMap();
   refreshCaptureState();
-  ui.pointStatus.textContent = tr('extendOpened');
 }
 
 /** Ein Tipp waehrend der Auswahlphase. Trifft er keinen Punkt der Kontur, passiert nichts. */
@@ -4053,24 +4056,24 @@ async function handleExtensionTap(item) {
   if (!ext || !points) return;
   const sameContour = item && item.role === ext.role
     && (ext.role !== 'exclusion' || item.exclusionId === ext.exclusionId);
-  if (!sameContour) { ui.pointStatus.textContent = tr('extendWrongContour'); return; }
+  if (!sameContour) { setExtensionHint('extendWrongContour'); return; }
   if (ext.firstIndex === null) {
     ext.firstIndex = item.index;
+    setExtensionHint('extendPickSecond', { n: item.index + 1 });
     renderMap();
-    ui.pointStatus.textContent = tr('extendPickSecond', { n: item.index + 1 });
     return;
   }
   if (item.index === ext.firstIndex) {
     ext.firstIndex = null;
+    setExtensionHint('extendPickFirst');
     renderMap();
-    ui.pointStatus.textContent = tr('extendPickFirst');
     return;
   }
   if (!areNeighbourIndices(ext.firstIndex, item.index, points.length)) {
     // Keine Aenderung an der Kontur — die Auswahl beginnt einfach von vorn.
     ext.firstIndex = null;
+    setExtensionHint('extendNotAdjacent');
     renderMap();
-    ui.pointStatus.textContent = tr('extendNotAdjacent');
     log('MAP', tr('extendNotAdjacent'));
     return;
   }
@@ -4103,32 +4106,43 @@ function refreshExtensionState() {
   }
 }
 
-/** Der Knopf traegt drei Rollen: Erweitern starten, Auswahl abbrechen, Erweiterung abschliessen. */
+/** Merkt sich die aktuelle Anweisung, damit der Hinweisbereich sie jederzeit neu zeichnen kann. */
+function setExtensionHint(key, vars = {}) {
+  if (!state.extension) return;
+  state.extension.hintKey = key;
+  state.extension.hintVars = vars;
+  refreshExtendPanel();
+}
+
+/**
+ * Der Hinweisbereich fuehrt durch die Erweiterung. Er sitzt als eigene Zeile **zwischen**
+ * Werkzeugleiste und Zeichenflaeche, nicht als Overlay darueber: die Anweisung hat damit die
+ * volle Breite (in der schmalen Werkzeugleiste wurde sie abgeschnitten) und verdeckt trotzdem
+ * nichts — waehrend der Auswahl muss die Karte antippbar bleiben, ein blockierendes Modal
+ * verboete sich also.
+ */
+function refreshExtendPanel() {
+  const ext = state.extension;
+  ui.extendPanel.hidden = !ext;
+  if (!ext) return;
+  const picking = ext.phase === 'picking';
+  ui.extendPanelText.textContent = tr(ext.hintKey || (picking ? 'extendPickFirst' : 'extendOpened'), ext.hintVars || {});
+  ui.extendPanel.classList.toggle('is-error', ext.hintKey === 'extendNotAdjacent');
+  // Abbrechen gibt es nur, solange nichts veraendert wurde; danach fuehrt „Fertig“ heraus.
+  ui.extendCancelBtn.hidden = !picking;
+  ui.extendDoneBtn.hidden = picking;
+}
+
+/** Der Knopf in der Leiste startet die Erweiterung; gefuehrt wird sie danach im Hinweisbereich. */
 function refreshExtendButton() {
   refreshExtensionState();
-  const ext = state.extension;
-  if (ext) {
-    ui.extendWrap.hidden = false;
-    const picking = ext.phase === 'picking';
-    ui.extendBtn.classList.toggle('extend-active', !picking);
-    ui.extendBtnLabel.textContent = tr(picking ? 'extendCancelShort' : 'extendDoneShort');
-    ui.extendBtn.setAttribute('aria-label', tr(picking ? 'extendCancel' : 'extendDone'));
-    return;
-  }
-  ui.extendBtn.classList.remove('extend-active');
-  const can = canStartExtension();
+  refreshExtendPanel();
+  const can = canStartExtension() && !state.extension;
   ui.extendWrap.hidden = !can;
   if (!can) return;
   const key = state.mode === 'perimeter' ? 'extendPerimeter' : 'extendExclusion';
   ui.extendBtnLabel.textContent = tr(`${key}Short`);
   ui.extendBtn.setAttribute('aria-label', tr(key));
-}
-
-function extendButtonAction() {
-  const ext = state.extension;
-  if (!ext) { startExtension(); return Promise.resolve(); }
-  if (ext.phase === 'picking') { cancelExtension(); return Promise.resolve(); }
-  return finishExtension();
 }
 
 async function closeContour(entry) {
@@ -4247,7 +4261,6 @@ function handleMapTap(event) {
   // beiden Punkte der Kante — dieselbe Ueberlegung wie beim ausgeblendeten Papierkorb waehrend
   // der Automatik.
   if (state.extension) {
-    if (picking) ui.pointStatus.textContent = tr('extendPickFirst');
     return;
   }
   // Tap in die Flaeche einer fertigen Ausschlusskontur waehlt die ganze Flaeche aus.
@@ -4358,7 +4371,9 @@ function bindEvents() {
   ui.modeCycleBtn.addEventListener('click', openModeDialog);
   ui.closeAndNewBtn.addEventListener('click', () => closeAndStartNewExclusion().catch(reportError));
   ui.undoBtn.addEventListener('click', () => undoLastAction().catch(reportError));
-  ui.extendBtn.addEventListener('click', () => Promise.resolve(extendButtonAction()).catch(reportError));
+  ui.extendBtn.addEventListener('click', () => startExtension());
+  ui.extendCancelBtn.addEventListener('click', () => cancelExtension());
+  ui.extendDoneBtn.addEventListener('click', () => finishExtension().catch(reportError));
   ui.insertBeforeBtn.addEventListener('click', () => insertPointAtSelection(0).catch(reportError));
   ui.insertAfterBtn.addEventListener('click', () => insertPointAtSelection(1).catch(reportError));
   ui.modeDialogCancel.addEventListener('click', closeModeDialog);

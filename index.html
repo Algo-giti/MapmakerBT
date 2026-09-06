@@ -65,6 +65,14 @@
 </div>
 </div>
 
+<div aria-live="polite" class="map-hint" hidden="" id="extendPanel" role="status">
+<p class="map-hint-text" id="extendPanelText">Erweitern</p>
+<div class="map-hint-actions">
+<button aria-label="Erweitern abbrechen" class="ghost" data-i18n="extendCancelShort" data-i18n-aria-label="extendCancel" id="extendCancelBtn" type="button">Abbrechen</button>
+<button aria-label="Erweiterung abschließen" class="primary" data-i18n="extendDoneShort" data-i18n-aria-label="extendDone" hidden="" id="extendDoneBtn" type="button">Fertig</button>
+</div>
+</div>
+
 <div class="map-canvas-area" id="mapCanvasArea">
 <svg aria-label="Aufgenommene Mähkarte" data-i18n-aria-label="mapPreviewAria" id="mapSvg" role="img" viewBox="0 0 1000 680">
 <g id="gridLayer"></g>
@@ -105,7 +113,7 @@
 <button aria-label="Rechts drehen" class="drive-key key-right" data-direction="right" data-i18n-aria-label="driveRight" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12h13M12 6l6 6-6 6"></path></svg></button>
 <button aria-label="Rückwärts fahren" class="drive-key key-down" data-direction="down" data-i18n-aria-label="driveDown" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v13M6 12l6 6 6-6"></path></svg></button>
 </div>
-<button aria-label="Steuerung umschalten" class="drive-mode-corner drive-mode-tool mode-joystick" data-i18n-aria-label="driveModeToggle" id="driveModeBtn" type="button"><span aria-hidden="true" class="drive-mode-icon icon-joystick"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="2.6"></circle></svg></span><span aria-hidden="true" class="drive-mode-icon icon-pad"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"></path></svg></span><span class="sr-only" id="driveModeLabel">Joystick</span></button>
+<button class="drive-mode-corner drive-mode-tool mode-joystick" id="driveModeBtn" type="button"><span aria-hidden="true" class="drive-mode-icon icon-joystick"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="2.6"></circle></svg></span><span aria-hidden="true" class="drive-mode-icon icon-pad"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"></path></svg></span><span class="sr-only" id="driveModeLabel">Zu Richtungstasten wechseln</span></button>
 </div>
 <div class="drive-meta"><span data-i18n="driveIdle" id="driveState">Fahrt gestoppt</span></div>
 </section>
@@ -484,9 +492,9 @@
 <div><strong data-i18n="helpValidationTitle">Kartenprüfung</strong><span data-i18n="helpValidationText">Sucht Selbstüberschneidungen, problematische Abstände, Ausschlüsse außerhalb des Perimeters, offene Konturen und fehlende RTK-FIX-Punkte.</span></div>
 <div><strong data-i18n="helpElementsTitle">Elemente der Karte</strong><span data-i18n="helpElementsText">Im Menü unter Karten stehen Perimeter, alle Ausschlussflächen, Wegpunkte und Dockpfad mit Punktzahl. Ein Tipp macht ein Element zum Aufnahmeziel, der Papierkorb daneben leert es.</span></div>
 <div><strong data-i18n="helpCleanupTitle">Leere Flächen</strong><span data-i18n="helpCleanupText">Ausschlussflächen ohne Punkt werden automatisch entfernt, sobald du den Modus verlässt oder das Menü öffnest. Die verbleibenden werden lückenlos neu durchnummeriert.</span></div>
-<div><strong data-i18n="helpExtendTitle">Kontur nachträglich erweitern</strong><span data-i18n="helpExtendText">Ist ein Perimeter oder eine Ausschlussfläche schon geschlossen, öffnet „Erweitern“ in der Kartenleiste sie wieder: zwei direkt benachbarte Punkte antippen, dann wird die Kante zwischen ihnen aufgetrennt. Danach nimmst du wie gewohnt weitere Punkte auf — auch mit Automatik —, sie landen genau zwischen den beiden gewählten. „Fertig“ schließt die Kontur wieder.</span></div>
+<div><strong data-i18n="helpExtendTitle">Kontur nachträglich erweitern</strong><span data-i18n="helpExtendText">Ist ein Perimeter oder eine Ausschlussfläche schon geschlossen, öffnet „Erweitern“ in der Kartenleiste sie wieder. Ein Hinweisstreifen über der Karte führt Schritt für Schritt: zwei direkt benachbarte Punkte antippen, dann wird die Kante zwischen ihnen aufgetrennt. Danach nimmst du wie gewohnt weitere Punkte auf — auch mit Automatik —, sie landen genau zwischen den beiden gewählten. „Fertig“ im Hinweisstreifen schließt die Kontur wieder.</span></div>
 <div><strong data-i18n="helpMapToolsTitle">Karten umbenennen &amp; kopieren</strong><span data-i18n="helpMapToolsText">In der Kartenübersicht trägt jede Karte zwei kleine Werkzeuge: der Stift benennt sie um (nur der Name ändert sich), das Kopiersymbol legt eine vollständige, unabhängige Kopie an — mit allen Punkten, dem Positionsmodus und dem Ursprung. Die Kopie bekommt automatisch einen freien Namen, die gerade aktive Karte bleibt aktiv.</span></div>
-<div><strong data-i18n="helpDriveControlTitle">Joystick oder Richtungstasten</strong><span data-i18n="helpDriveControlText">Der kleine Knopf in der oberen Ecke des Fahrfelds schaltet zwischen beidem um — bei Linkshändern gespiegelt auf der anderen Seite. Der Joystick fährt wie eine Fernsteuerung: Richtung und Stärke der Auslenkung. Die Richtungstasten kennen nur vorwärts, rückwärts und Drehen auf der Stelle — kein versehentliches Lenken beim Geradeausfahren. Sie fahren mit einer eigenen, langsamen Geschwindigkeit für genaues Rangieren, einstellbar unter Einstellungen › Fahrgeschwindigkeit.</span></div>
+<div><strong data-i18n="helpDriveControlTitle">Joystick oder Richtungstasten</strong><span data-i18n="helpDriveControlText">Der kleine Knopf neben dem Fahrfeld schaltet zwischen beidem um; er zeigt das Symbol des Modus, in den er wechselt. Bei Rechtshändern steht er links vom Feld, bei Linkshändern gespiegelt rechts. Der Joystick fährt wie eine Fernsteuerung: Richtung und Stärke der Auslenkung. Die Richtungstasten kennen nur vorwärts, rückwärts und Drehen auf der Stelle — kein versehentliches Lenken beim Geradeausfahren. Sie fahren mit einer eigenen, langsamen Geschwindigkeit für genaues Rangieren, einstellbar unter Einstellungen › Fahrgeschwindigkeit.</span></div>
 <div><strong data-i18n="helpPositionModeTitle">Positionsmodus</strong><span data-i18n="helpPositionModeText">Jede Karte rechnet standardmäßig in lokalen Metern relativ zum Startpunkt des Mähers („Relativ“) — dafür ist keine Eingabe nötig. „Absolut“ brauchst du nur, wenn du die Karte mit Programmen austauschen willst, die echte Weltkoordinaten erwarten: dort trägst du im Menü unter Karten einmalig die GPS-Position des Nullpunkts ein, meist die der Ladestation. Der Ursprung gehört zur jeweiligen Karte, weil verschiedene Karten meist an verschiedenen Orten liegen. Fehlt ein gültiger Ursprung, bleibt der Export bei lokalen Metern — falsch machen kannst du dabei nichts.</span></div>
 <div><strong data-i18n="helpLockTitle">Kartensperre</strong><span data-i18n="helpLockText">Fertige Karten lassen sich gegen versehentliche Änderungen sperren.</span></div>
 </div>

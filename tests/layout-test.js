@@ -292,7 +292,7 @@ test('Auch die Kaesten der Hilfe nutzen Theme-Tokens statt fester Dunkelwerte', 
     'auch die Trennlinie war fest dunkel');
 });
 
-test('Der Steuerungs-Umschalter sitzt in der Ecke des Fahrfelds und spiegelt mit', () => {
+test('Der Steuerungs-Umschalter steht neben dem Fahrfeld und spiegelt mit', () => {
   // Joystick und Tastenkreuz teilen sich ein gemeinsames Feld; nur dieses traegt Groesse und
   // Gitterplatz. Dadurch liegt der Umschalter in beiden Modi an derselben Stelle.
   const field = html.slice(html.indexOf('id="driveControlArea"'), html.indexOf('class="drive-meta"'));
@@ -303,18 +303,63 @@ test('Der Steuerungs-Umschalter sitzt in der Ecke des Fahrfelds und spiegelt mit
     'ohne Bezugsrahmen haengt der Umschalter an der Fahrzone statt am Feld');
   assert.strictEqual(resolve('.drive-mode-corner', 'position').value, 'absolute');
   assert.strictEqual(resolve('.drive-mode-corner', 'top').value, '0');
-  // Rechtshaender: oben links. Linkshaender: gespiegelt oben rechts.
-  assert.strictEqual(resolve('.drive-mode-corner', 'left').value, '0');
-  assert.strictEqual(resolve(':root[data-handed="left"] .drive-mode-corner', 'right').value, '0');
-  assert.strictEqual(resolve(':root[data-handed="left"] .drive-mode-corner', 'left').value, 'auto',
-    'ohne Zuruecksetzen von left waere der Knopf ueber die ganze Breite gespannt');
+  // Vollstaendig **ausserhalb** des Kreises: `right: 100%` setzt die rechte Kante des Knopfes an
+  // die linke Kante des Feldes, es kann also nichts ueberlappen. `left: 0` tat das noch.
+  assert.strictEqual(resolve('.drive-mode-corner', 'right').value, '100%',
+    'der Knopf darf den Kreis nicht mehr ueberlappen');
+  assert.strictEqual(resolve(':root[data-handed="left"] .drive-mode-corner', 'left').value, '100%',
+    'Linkshaender: gespiegelt auf die andere Seite');
+  assert.strictEqual(resolve(':root[data-handed="left"] .drive-mode-corner', 'right').value, 'auto',
+    'ohne Zuruecksetzen von right waere der Knopf ueber die ganze Breite gespannt');
+  // Der Platz daneben ist reserviert, sonst laeuft der Knopf in die Fahrtanzeige.
+  const gap = resolve('.drive-zone .drive-control', 'margin').value || '';
+  assert.ok(gap.includes('var(--drive-toggle-gap)'), `das Feld braucht Platz fuer den Knopf: ${gap}`);
+  assert.ok((resolve(':root[data-handed="left"] .drive-zone .drive-control', 'margin').value || '')
+    .includes('var(--drive-toggle-gap)'), 'auch auf der gespiegelten Seite');
   // Beide Steuerungen fuellen das Feld, damit die Ecke fuer beide dieselbe ist.
   for (const selector of ['.drive-zone .joystick-base', '.drive-zone .drive-pad']) {
     assert.strictEqual(resolve(selector, 'width').value, '100%', `${selector} fuellt das Feld`);
     assert.strictEqual(resolve(selector, 'height').value, '100%');
   }
-  // Die Symbolumschaltung selbst ist unveraendert geblieben.
   assert.strictEqual((field.match(/drive-mode-icon/g) || []).length, 2, 'Joystick- und Steuerkreuz-Symbol');
+  // Gezeigt wird das Symbol des **Ziels**, nicht des Ist-Zustands — wie ein Hell/Dunkel-Schalter,
+  // der im Hellen den Mond zeigt. Die Klasse benennt weiterhin den aktiven Modus.
+  assert.strictEqual(resolve('.drive-mode-tool.mode-joystick .icon-pad', 'display').value, 'grid',
+    'im Joystick-Modus zeigt der Knopf das Steuerkreuz');
+  assert.strictEqual(resolve('.drive-mode-tool.mode-buttons .icon-joystick', 'display').value, 'grid',
+    'im Tastenmodus zeigt er den Joystick');
+  for (const wrong of ['.drive-mode-tool.mode-joystick .icon-joystick',
+    '.drive-mode-tool.mode-buttons .icon-pad']) {
+    assert.notStrictEqual(resolve(wrong, 'display').value, 'grid', `${wrong} zeigt den Ist-Zustand`);
+  }
+});
+
+test('Der Hinweis zur Kontur-Erweiterung verdeckt die Karte nicht', () => {
+  // In der schmalen Werkzeugleiste wurde die Anweisung abgeschnitten. Sie steht jetzt als eigene
+  // Zeile zwischen Leiste und Zeichenflaeche — volle Breite, und da sie kein Overlay ist, bleibt
+  // die Karte darunter antippbar. Genau das braucht der Ablauf: man waehlt Punkte auf der Karte.
+  assert.strictEqual(resolve('.map-hint', 'flex').value, '0 0 auto',
+    'der Hinweis kostet nur seine Inhaltshoehe');
+  assert.notStrictEqual(resolve('.map-hint', 'position').value, 'absolute',
+    'kein Overlay ueber der Karte');
+  assert.notStrictEqual(resolve('.map-hint', 'position').value, 'fixed');
+  assert.strictEqual(resolve('.map-hint-text', 'min-width').value, '0',
+    'ohne min-width:0 kann der Text die Knoepfe aus der Zeile schieben');
+  // Im Markup steht er zwischen Werkzeugleiste und Zeichenflaeche, nicht darin.
+  const stage = html.slice(html.indexOf('id="mapStage"'));
+  const hint = stage.indexOf('id="extendPanel"');
+  assert.ok(hint > stage.indexOf('id="mapToolbar"') && hint < stage.indexOf('id="mapCanvasArea"'),
+    'der Hinweis sitzt zwischen Leiste und Zeichenflaeche');
+  // Anleitung und Abschluss liegen zusammen, damit die Leiste nicht ueberlaeuft.
+  // Ab dem oeffnenden Tag schneiden: die Attribute stehen alphabetisch, `aria-live` also vor `id`.
+  const panel = stage.slice(stage.lastIndexOf('<div', hint), stage.indexOf('id="mapCanvasArea"'));
+  for (const id of ['extendPanelText', 'extendCancelBtn', 'extendDoneBtn']) {
+    assert.ok(panel.includes(`id="${id}"`), `${id} gehoert in den Hinweisbereich`);
+  }
+  assert.ok(panel.includes('aria-live="polite"'), 'Schrittwechsel muessen angesagt werden');
+  // In der Werkzeugleiste bleibt nur der Startknopf.
+  const bar = html.slice(html.indexOf('id="mapToolbar"'), hint + stage.indexOf('id="mapStage"'));
+  assert.ok(!bar.includes('id="extendDoneBtn"'), 'kein zweiter Knopf in der schmalen Leiste');
 });
 
 test('Das hidden-Attribut blendet auch Knoepfe aus', () => {

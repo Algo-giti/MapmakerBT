@@ -21,7 +21,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'applyDriveControlMode', 'toggleDriveControl', 'beginCursorDrive', 'cursorDriveVector', 'cursorSpeedLimits',
   'renameMapById', 'duplicateMapById', 'uniqueCopyName', 'askText', 'localizedMapName', 'MAP_NAME_MAX',
   'stopDrive', 'saveViewPreferences',
-  'startExtension', 'cancelExtension', 'finishExtension', 'extendButtonAction', 'refreshExtendButton',
+  'startExtension', 'cancelExtension', 'finishExtension', 'refreshExtendButton', 'refreshExtendPanel',
   'canStartExtension', 'areNeighbourIndices', 'reorderForExtension', 'appendCurrentPoint', 'undoLastAction',
   'setMode',
   'canCloseAndStartNew', 'closeAndStartNewExclusion', 'currentExclusion',
@@ -1189,14 +1189,17 @@ test('Der Umschalter tauscht Joystick und Richtungstasten', () => {
   t.applyDriveControlMode();
   assert.strictEqual(t.ui.driveJoystick.hidden, false);
   assert.strictEqual(t.ui.driveButtons.hidden, true);
-  assert.strictEqual(t.ui.driveModeLabel.textContent, 'Joystick', 'das Symbol zeigt den aktiven Modus');
+  // Der Knopf benennt das **Ziel** des Tippens, nicht den Ist-Zustand.
+  assert.strictEqual(t.ui.driveModeLabel.textContent, 'Zu Richtungstasten wechseln',
+    'im Joystick-Modus fuehrt der Knopf zu den Richtungstasten');
   assert.strictEqual(t.ui.cursorSpeedRow.hidden, true, 'ohne Tastenmodus keine Cursor-Geschwindigkeit');
 
   t.toggleDriveControl();
   assert.strictEqual(t.state.view.driveControl, 'buttons');
   assert.strictEqual(t.ui.driveJoystick.hidden, true);
   assert.strictEqual(t.ui.driveButtons.hidden, false);
-  assert.strictEqual(t.ui.driveModeLabel.textContent, 'Richtungstasten');
+  assert.strictEqual(t.ui.driveModeLabel.textContent, 'Zu Joystick wechseln',
+    'und umgekehrt zurueck zum Joystick');
   assert.strictEqual(t.ui.cursorSpeedRow.hidden, false);
 
   t.toggleDriveControl();
@@ -1544,13 +1547,21 @@ test('Zwei nicht benachbarte Punkte lassen die Kontur unveraendert', async () =>
   const before = perimeterXY(t);
   t.startExtension();
   assert.strictEqual(t.state.extension.phase, 'picking');
-  assert.strictEqual(t.ui.extendBtnLabel.textContent, 'Abbrechen', 'der Knopf bricht jetzt ab');
+  // Gefuehrt wird im Hinweisbereich, nicht in der schmalen Werkzeugleiste.
+  assert.strictEqual(t.ui.extendPanel.hidden, false, 'der Hinweisbereich erscheint');
+  assert.strictEqual(t.ui.extendWrap.hidden, true, 'der Startknopf tritt dafuer zurueck');
+  assert.ok(t.ui.extendPanelText.textContent.includes('Schritt 1'), t.ui.extendPanelText.textContent);
+  assert.strictEqual(t.ui.extendCancelBtn.hidden, false, 'abbrechen geht, solange nichts geaendert ist');
+  assert.strictEqual(t.ui.extendDoneBtn.hidden, true);
 
   const points = t.state.activeMap.perimeter;
   tapPoint(t, points, 0);                       // A
   assert.strictEqual(t.state.extension.firstIndex, 0);
+  assert.ok(t.ui.extendPanelText.textContent.includes('Schritt 2'), t.ui.extendPanelText.textContent);
   tapPoint(t, points, 2);                       // C — gegenueber, nicht benachbart
-  assert.ok(t.ui.pointStatus.textContent.includes('nicht nebeneinander'), t.ui.pointStatus.textContent);
+  assert.ok(t.ui.extendPanelText.textContent.includes('nicht nebeneinander'), t.ui.extendPanelText.textContent);
+  assert.ok(t.ui.extendPanel.classList.contains('is-error'), 'der Fehler ist im Hinweis hervorgehoben');
+  assert.strictEqual(t.ui.extendPanel.hidden, false, 'und die Anleitung bleibt stehen');
   assert.strictEqual(t.state.extension.firstIndex, null, 'die Auswahl beginnt von vorn');
   assert.strictEqual(t.state.extension.phase, 'picking', 'die Auswahl laeuft weiter');
   assert.strictEqual(perimeterXY(t), before, 'an der Kontur wurde nichts geaendert');
@@ -1571,7 +1582,9 @@ test('Zwei benachbarte Punkte trennen die Kante auf und ordnen die Folge neu', a
   assert.strictEqual(t.state.extension.phase, 'adding');
   // Ab dem zweiten Punkt (C) im Ring herum bis zum ersten (B): C, D, A, B.
   assert.strictEqual(perimeterXY(t), '10,10 | 0,10 | 0,0 | 10,0');
-  assert.strictEqual(t.ui.extendBtnLabel.textContent, 'Fertig');
+  assert.strictEqual(t.ui.extendDoneBtn.hidden, false, '„Fertig“ steht im Hinweisbereich');
+  assert.strictEqual(t.ui.extendCancelBtn.hidden, true, 'abbrechen geht jetzt nicht mehr');
+  assert.strictEqual(t.ui.extendPanel.hidden, false, 'die Anleitung bleibt waehrend des Aufnehmens sichtbar');
 });
 
 test('Die Richtung folgt der Reihenfolge der Auswahl', () => {
@@ -1604,6 +1617,7 @@ test('Neue Punkte landen zwischen den beiden gewaehlten und „Fertig“ schlies
   await t.finishExtension();
   assert.strictEqual(t.state.activeMap.perimeterClosed, true, 'die Kontur ist wieder geschlossen');
   assert.strictEqual(t.state.extension, null);
+  assert.strictEqual(t.ui.extendPanel.hidden, true, 'der Hinweisbereich verschwindet wieder');
   assert.strictEqual(t.ui.extendWrap.hidden, false, 'geschlossen: erneutes Erweitern ist wieder moeglich');
   assert.strictEqual(t.ui.extendBtnLabel.textContent, 'Perimeter erweitern');
   // Im Ring liegt der neue Punkt genau zwischen B und C: … B, X, C …

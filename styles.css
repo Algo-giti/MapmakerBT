@@ -2360,8 +2360,12 @@ body.menu-open .app-frame { visibility: hidden; }
   grid-row: 1;
   align-self: center;
   justify-self: center;
-  margin: 0;
+  /* Aussenabstand auf der Seite des Umschalters: er steht ausserhalb des Kreises und braucht
+     eigenen Platz, sonst ueberlappt er die Fahrtanzeige in der Nachbarspalte. */
+  --drive-toggle-gap: 50px;
+  margin: 0 0 0 var(--drive-toggle-gap);
 }
+:root[data-handed="left"] .drive-zone .drive-control { margin: 0 var(--drive-toggle-gap) 0 0; }
 .drive-zone .joystick-base {
   width: 100%;
   height: 100%;
@@ -2370,25 +2374,34 @@ body.menu-open .app-frame { visibility: hidden; }
   touch-action: none;
 }
 
-/* Der Umschalter sitzt in der oberen Ecke des Feldes — bei Rechtshaendern links, bei
-   Linkshaendern gespiegelt rechts, damit er nie unter dem bedienenden Daumen liegt.
-   Die Seite haengt am selben `data-handed` wie alles Uebrige. */
+/* Der Umschalter steht **neben** dem Feld, nicht darauf: `right: 100%` setzt ihn vollstaendig
+   ausserhalb, sonst ueberlappte er den Kreis und lag unter dem bedienenden Daumen. Die Seite
+   haengt am selben `data-handed` wie alles Uebrige — Rechtshaender links, Linkshaender rechts.
+   Den Platz dafuer reserviert der Aussenabstand am Feld (siehe `--drive-toggle-gap`), damit der
+   Knopf nicht in die Fahrtanzeige der Nachbarspalte laeuft. */
 .drive-mode-corner {
+  --drive-toggle-size: 34px;
   position: absolute;
   z-index: 2;
   top: 0;
-  left: 0;
+  right: 100%;
+  margin-right: 8px;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: var(--drive-toggle-size);
+  height: var(--drive-toggle-size);
   padding: 0;
   border: 1px solid var(--shell-border);
   border-radius: 10px;
   background: var(--shell-panel);
   color: var(--shell-muted);
 }
-:root[data-handed="left"] .drive-mode-corner { left: auto; right: 0; }
+:root[data-handed="left"] .drive-mode-corner {
+  right: auto;
+  left: 100%;
+  margin-right: 0;
+  margin-left: 8px;
+}
 .drive-mode-corner:active { background: var(--shell-hover); }
 /* Kugel anteilig zur Basis: skaliert automatisch mit jeder Groessenstufe mit. */
 .drive-zone .joystick-knob { width: 41%; height: 41%; }
@@ -2432,10 +2445,12 @@ body.menu-open .app-frame { visibility: hidden; }
   background: var(--shell-warn-bg);
 }
 
-/* Der Umschalter zeigt immer das Symbol des gerade aktiven Modus. */
+/* Der Umschalter zeigt das Symbol des Modus, in den er **wechselt** — wie ein Hell/Dunkel-
+   Schalter, der im Hellen den Mond zeigt. Die Klasse benennt weiterhin den aktiven Modus,
+   nur das gezeigte Symbol ist das jeweils andere. */
 .drive-mode-tool .drive-mode-icon { display: none; }
-.drive-mode-tool.mode-joystick .icon-joystick,
-.drive-mode-tool.mode-buttons .icon-pad { display: grid; }
+.drive-mode-tool.mode-joystick .icon-pad,
+.drive-mode-tool.mode-buttons .icon-joystick { display: grid; }
 .drive-mode-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .drive-meta {
   grid-row: 1;
@@ -2682,6 +2697,32 @@ body.menu-open .app-frame { visibility: hidden; }
   text-align: left;
 }
 .capture-cluster { z-index: 2; }
+
+/* --- Hinweisbereich fuer die Kontur-Erweiterung ---------------------------
+   Eigene Zeile zwischen Werkzeugleiste und Zeichenflaeche, bewusst **kein** Overlay: die
+   Anweisung hat die volle Breite (in der schmalen Werkzeugleiste wurde sie abgeschnitten) und
+   verdeckt die Karte nicht — waehrend der Auswahl muss weiter auf Punkte getippt werden. */
+.map-hint {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--shell-border);
+  background: var(--shell-info-bg);
+  color: var(--shell-text);
+}
+.map-hint.is-error { background: var(--shell-warn-bg); }
+.map-hint-text {
+  min-width: 0;
+  margin: 0;
+  font-size: .68rem;
+  line-height: 1.35;
+  color: var(--shell-text);
+}
+.map-hint-actions { flex: 0 0 auto; display: flex; gap: 6px; }
+.map-hint-actions button { min-height: 34px; padding: 4px 12px; font-size: .7rem; }
 
 /* --- Werkzeugleiste oben auf der Karte ------------------------------------
    Loesen loest das eigentliche Problem der frueheren Eckbeschriftungen: dort stand nur die
