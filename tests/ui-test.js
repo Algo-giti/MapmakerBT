@@ -16,6 +16,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'toggleAutoCapture', 'startAutoCapture', 'stopAutoCapture', 'refreshDeleteButton', 'bindAccordion',
   'mapElements', 'renderElementList', 'deleteElement', 'activateElement',
   'pruneEmptyExclusions', 'localizedExclusionName', 'loadViewPreferences', 'applyHandedness',
+  'insertPointAtSelection', 'capturePreconditionKey', 'insertNeighbourIndex', 'midpointBetween',
   'canCloseAndStartNew', 'closeAndStartNewExclusion', 'currentExclusion',
   'setTheme', 'applyTheme', 'applyDriveZonePreferences', 'applyViewPreferencesToUi', 'updateViewPreferencesFromUi', 'JOYSTICK_SCALES', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine', 'lockIcon', 'toggleLanguage',
   'askConfirm', 'confirmDialogRespond', 'showNotice', 'reportError', 'reportBleError',
@@ -872,6 +873,210 @@ test('Jeder Uebersetzungsschluessel existiert in beiden Sprachen und wird benutz
   for (const gone of ['helpSmartAutoTitle', 'helpVersionsTitle']) {
     assert.ok(!de.has(gone), `${gone} beschreibt eine entfernte Funktion`);
   }
+});
+
+// === Punkt geometrisch davor/danach einfuegen ==============================
+/** Legt eine Perimeter-Kontur mit den angegebenen x-Werten an (y = 0). */
+function seedPerimeter(t, xs, { closed = false } = {}) {
+  t.state.activeMap.perimeter = xs.map((x) => ({ x, y: 0, gps: { solution: 2, accuracy: 0.02 } }));
+  t.state.activeMap.perimeterClosed = closed;
+  t.setMode('perimeter');
+}
+const perimeterXs = (t) => t.state.activeMap.perimeter.map((p) => p.x).join(',');
+
+test('„Punkt davor“ setzt den neuen Punkt auf die Mitte zum Vorgaenger', async () => {
+  const { t } = setup();
+  seedPerimeter(t, [0, 10, 20, 30]);          // A B C D
+  t.applyPointSelection({ role: 'perimeter', index: 1, exclusionId: null }); // B
+  // Die Live-Position ist bewusst weit weg: sie darf keine Rolle spielen.
+  t.state.telemetry.x = 999; t.state.fixHistory = [];
+
+  await t.insertPointAtSelection(0);
+  assert.strictEqual(perimeterXs(t), '0,5,10,20,30', 'A-[Mitte AB]-B-C-D');
+});
+
+test('„Punkt danach“ setzt den neuen Punkt auf die Mitte zum Nachfolger', async () => {
+  const { t } = setup();
+  seedPerimeter(t, [0, 10, 20, 30]);
+  t.applyPointSelection({ role: 'perimeter', index: 1, exclusionId: null }); // B
+  t.state.telemetry.x = 999; t.state.fixHistory = [];
+
+  await t.insertPointAtSelection(1);
+  assert.strictEqual(perimeterXs(t), '0,10,15,20,30', 'A-B-[Mitte BC]-C-D');
+});
+
+test('Der Mittelpunkt wird in beiden Achsen gebildet', async () => {
+  const { t } = setup();
+  t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 4, y: 6 }];
+  t.setMode('perimeter');
+  t.applyPointSelection({ role: 'perimeter', index: 1, exclusionId: null });
+  await t.insertPointAtSelection(0);
+  const mid = t.state.activeMap.perimeter[1];
+  assert.strictEqual(mid.x, 2);
+  assert.strictEqual(mid.y, 3);
+  assert.strictEqual(mid.interpolated, true, 'der Punkt ist als konstruiert gekennzeichnet');
+});
+
+test('Die Live-Position spielt keine Rolle — auch ohne Verbindung geht es', async () => {
+  const { t } = setup();
+  seedPerimeter(t, [0, 10, 20]);
+  t.applyPointSelection({ role: 'perimeter', index: 1, exclusionId: null });
+  // Weder frische Telemetrie noch RTK FIX: rein geometrisch ist beides egal.
+  t.ui.fixOnly.checked = true;
+  t.state.telemetry.solution = 0;
+  t.state.telemetry.receivedAt = 0;
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.insertBeforeBtn.disabled, false, '„Nur bei RTK FIX“ greift hier nicht');
+
+  await t.insertPointAtSelection(0);
+  assert.strictEqual(perimeterXs(t), '0,5,10,20');
+});
+
+test('Am Rand einer offenen Kontur fehlt die Strecke', async () => {
+  const { t } = setup();
+  seedPerimeter(t, [0, 10, 20]);              // offen
+
+  // Erster Punkt: „davor“ hat keinen Vorgaenger.
+  t.applyPointSelection({ role: 'perimeter', index: 0, exclusionId: null });
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.insertBeforeBtn.disabled, true, 'kein Vorgaenger, also gesperrt');
+  assert.strictEqual(t.ui.insertAfterBtn.disabled, false, 'nach hinten geht es');
+  assert.strictEqual(await t.insertPointAtSelection(0), null, 'und der Aufruf tut nichts');
+  assert.strictEqual(perimeterXs(t), '0,10,20', 'die Punktfolge bleibt unveraendert');
+
+  // Letzter Punkt: „danach“ hat keinen Nachfolger.
+  t.applyPointSelection({ role: 'perimeter', index: 2, exclusionId: null });
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.insertAfterBtn.disabled, true, 'kein Nachfolger, also gesperrt');
+  assert.strictEqual(t.ui.insertBeforeBtn.disabled, false);
+  assert.strictEqual(await t.insertPointAtSelection(1), null);
+  assert.strictEqual(perimeterXs(t), '0,10,20');
+});
+
+test('In einer geschlossenen Kontur laeuft der Rand ueber die Schlussstrecke um', async () => {
+  const { t } = setup();
+  seedPerimeter(t, [0, 10, 20], { closed: true });
+
+  // Erster Punkt, „davor“: Mitte der Schlussstrecke letzter→erster, also zwischen 20 und 0.
+  t.applyPointSelection({ role: 'perimeter', index: 0, exclusionId: null });
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.insertBeforeBtn.disabled, false, 'geschlossen: es gibt einen Nachbarn');
+  await t.insertPointAtSelection(0);
+  assert.strictEqual(perimeterXs(t), '10,0,10,20',
+    'der neue Punkt (10) steht vorn, die Kontur schliesst von 20 auf ihn');
+
+  // Letzter Punkt, „danach“: ebenfalls die Schlussstrecke.
+  seedPerimeter(t, [0, 10, 20], { closed: true });
+  t.applyPointSelection({ role: 'perimeter', index: 2, exclusionId: null });
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.insertAfterBtn.disabled, false);
+  await t.insertPointAtSelection(1);
+  assert.strictEqual(perimeterXs(t), '0,10,20,10', 'der neue Punkt haengt hinten an');
+});
+
+test('Einfuegen gilt in jeder Elementart', async () => {
+  const { t } = setup();
+  // Wegpunkte sind ein offener Pfad mit fester Reihenfolge — „davor/danach“ ist dort eindeutig.
+  t.state.activeMap.waypoints = [{ x: 0, y: 0 }, { x: 8, y: 0 }];
+  t.setMode('waypoint');
+  t.applyPointSelection({ role: 'waypoint', index: 0, exclusionId: null });
+  await t.insertPointAtSelection(1);
+  assert.strictEqual(t.state.activeMap.waypoints.map((p) => p.x).join(','), '0,4,8');
+
+  // Dockpfad, ebenfalls offen.
+  t.state.activeMap.dockPoints = [{ x: 0, y: 0 }, { x: 6, y: 0 }];
+  t.setMode('dock');
+  t.applyPointSelection({ role: 'dock', index: 1, exclusionId: null });
+  await t.insertPointAtSelection(0);
+  assert.strictEqual(t.state.activeMap.dockPoints.map((p) => p.x).join(','), '0,3,6');
+
+  // Ausschlussflaeche, geschlossen: der Umlauf gilt auch hier.
+  t.state.activeMap.exclusions = [{ id: 'ex1', name: 'Ausschluss 1', closed: true,
+    points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }] }];
+  t.state.activeExclusionId = 'ex1';
+  t.setMode('exclusion');
+  t.applyPointSelection({ role: 'exclusion', index: 0, exclusionId: 'ex1' });
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.insertBeforeBtn.disabled, false, 'geschlossene Flaeche laeuft um');
+  await t.insertPointAtSelection(0);
+  assert.strictEqual(t.state.activeMap.exclusions[0].points.map((p) => `${p.x}/${p.y}`).join(','),
+    '5/5,0/0,10/0,10/10');
+});
+
+test('Ein eingefuegter Punkt erbt die schlechtere Guete seiner Nachbarn', async () => {
+  const { t } = setup();
+  t.state.activeMap.perimeter = [
+    { x: 0, y: 0, gps: { solution: 2, accuracy: 0.02 } },   // FIX
+    { x: 10, y: 0, gps: { solution: 1, accuracy: 0.40 } },  // Float
+  ];
+  t.setMode('perimeter');
+  t.applyPointSelection({ role: 'perimeter', index: 1, exclusionId: null });
+  await t.insertPointAtSelection(0);
+  const mid = t.state.activeMap.perimeter[1];
+  assert.strictEqual(mid.gps.solution, 1,
+    'ein konstruierter Punkt ist hoechstens so gut wie die schlechtere Seite seiner Strecke');
+  assert.strictEqual(mid.interpolated, true);
+});
+
+test('Nach dem Einfuegen faellt die Oberflaeche in den Normalzustand zurueck', async () => {
+  const { t } = setup();
+  seedPerimeter(t, [0, 10, 20, 30]);
+  t.applyPointSelection({ role: 'perimeter', index: 1, exclusionId: null });
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.insertBeforeWrap.hidden, false, 'mit Auswahl sichtbar');
+  assert.strictEqual(t.ui.insertAfterWrap.hidden, false);
+  assert.strictEqual(t.ui.deleteBtnLabel.textContent, 'Punktauswahl löschen');
+
+  await t.insertPointAtSelection(1);
+
+  assert.strictEqual(t.state.selectedPoint, null, 'die Auswahl ist aufgehoben');
+  assert.strictEqual(t.ui.insertBeforeWrap.hidden, true, 'ohne Auswahl wieder weg');
+  assert.strictEqual(t.ui.insertAfterWrap.hidden, true);
+  assert.strictEqual(t.ui.deleteBtnLabel.textContent, 'Letzten Punkt', 'der Papierkorb ist zurueck im Normalzustand');
+  assert.ok(t.ui.pointStatus.textContent.includes('3'), 'die Meldung nennt die Einfuegeposition');
+});
+
+test('Die Einfuegen-Werkzeuge erscheinen nur bei ausgewaehltem Einzelpunkt', () => {
+  const { t } = setup();
+  seedPerimeter(t, [0, 10, 20]);
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.insertBeforeWrap.hidden, true, 'ohne Auswahl nicht vorhanden');
+  assert.strictEqual(t.ui.insertAfterWrap.hidden, true);
+
+  // Bei ausgewaehlter Flaeche gibt es keinen Punkt, zu dessen Nachbarn man messen koennte.
+  t.state.activeMap.exclusions = [{ id: 'ex1', name: 'Ausschluss 1', closed: true, points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }] }];
+  t.state.activeExclusionId = 'ex1';
+  t.state.selectedArea = 'ex1';
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.insertBeforeWrap.hidden, true, 'Flaechenauswahl ist kein Einzelpunkt');
+  t.state.selectedArea = null;
+
+  // Waehrend der Automatik bleiben sie weg — wie der Papierkorb.
+  t.applyPointSelection({ role: 'perimeter', index: 0, exclusionId: null });
+  t.state.autoCaptureRunning = true;
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.insertBeforeWrap.hidden, true, 'gleiche Regel wie beim Papierkorb');
+  assert.strictEqual(t.ui.deleteFabWrap.hidden, true);
+  t.state.autoCaptureRunning = false;
+
+  // Gesperrte Karte: nichts einzufuegen.
+  t.state.activeMap.locked = true;
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.insertBeforeWrap.hidden, true, 'gesperrte Karte laesst nichts einfuegen');
+});
+
+test('Rueckgaengig nimmt ein Einfuegen zurueck', async () => {
+  const { t } = setup();
+  seedPerimeter(t, [0, 10, 20]);
+  t.applyPointSelection({ role: 'perimeter', index: 1, exclusionId: null });
+  const before = t.state.undoStack.length;
+
+  await t.insertPointAtSelection(0);
+  assert.strictEqual(perimeterXs(t), '0,5,10,20');
+  assert.strictEqual(t.state.undoStack.length, before + 1, 'genau ein Schritt');
+
+  await t.undoLastAction();
+  assert.strictEqual(perimeterXs(t), '0,10,20', 'das Einfuegen ist zurueckgenommen');
 });
 
 test('RTK-Badge zeigt Zustand und Satelliten als Mäher/Station', () => {

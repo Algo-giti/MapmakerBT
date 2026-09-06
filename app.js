@@ -67,6 +67,10 @@ const I18N = {
     lockedBadge: 'Gesperrt',
     bleWriteFailedTitle: 'Senden fehlgeschlagen', bleWriteFailedShort: 'Senden fehlgeschlagen: {message}',
     fitViewShort: 'Ansicht zurück',
+    insertNoNeighbour: 'Dort gibt es keine Strecke: die Kontur ist an dieser Seite offen.',
+    insertBefore: 'Punkt davor einfügen', insertBeforeShort: 'Punkt davor',
+    insertAfter: 'Punkt danach einfügen', insertAfterShort: 'Punkt danach',
+    pointInserted: 'Punkt auf halber Strecke an Position {n} eingefügt.',
     undoShort: 'Rückgängig', undoAction: 'Letzten Bearbeitungsschritt rückgängig machen',
     undoDone: 'Schritt zurückgenommen.', undoDoneLast: 'Schritt zurückgenommen – Verlauf ist jetzt leer.',
     bleResyncDone: 'Abgebrochenes Kommando abgeschlossen (Zeilenende nachgesendet).',
@@ -190,6 +194,7 @@ const I18N = {
     helpModeTitle: 'Modus wechseln', helpModeText: 'Der Chip in der Kopfzeile öffnet die Auswahl. Hat die verlassene Kontur mindestens drei Punkte und ist noch offen, fragt die App einmal, ob sie geschlossen werden soll.',
     helpCaptureTitle: 'Punkt aufnehmen', helpCaptureText: 'Den großen Knopf unten rechts kurz gedrückt halten. Das Halten verhindert, dass beim Wischen oder Zoomen versehentlich Punkte entstehen.',
     helpEditTitle: 'Punkte bearbeiten', helpEditText: 'Punkt auf der Karte antippen: der große Knopf wird zum Verschieben-Knopf und setzt den Punkt auf die aktuelle Position; das Lösch-Werkzeug in der Kartenleiste entfernt ihn.',
+    helpInsertTitle: 'Punkt einfügen', helpInsertText: 'Bei ausgewähltem Punkt setzen „Punkt davor“ und „Punkt danach“ einen neuen Punkt genau auf die Mitte der Strecke zum Nachbarpunkt — rein geometrisch, der Mäher muss dafür nirgends hinfahren. Am offenen Ende einer Kontur ist die jeweilige Seite ausgegraut.',
     helpAreaSelectTitle: 'Fläche auswählen', helpAreaSelectText: 'Ein Tipp in eine fertige Ausschlussfläche wählt sie ganz aus, um sie zu löschen. Beim Perimeter gibt es das bewusst nicht — dort würde jeder Tipp das Verschieben der Karte abfangen.',
     helpDeleteToolTitle: 'Lösch-Werkzeug', helpDeleteToolText: 'Ein Werkzeug mit drei Aufgaben: ohne Auswahl entfernt es den zuletzt gesetzten Punkt, bei ausgewähltem Punkt genau diesen, bei ausgewählter Fläche die ganze Fläche (mit Rückfrage).',
     helpUndoTitle: 'Rückgängig', helpUndoText: 'Nimmt die letzten 20 Bearbeitungsschritte einzeln zurück — Aufnehmen, Verschieben, Löschen, Konturschluss. Bei leerem Verlauf ist der Knopf ausgegraut.',
@@ -233,6 +238,10 @@ const I18N = {
     lockedBadge: 'Locked',
     bleWriteFailedTitle: 'Sending failed', bleWriteFailedShort: 'Sending failed: {message}',
     fitViewShort: 'Reset view',
+    insertNoNeighbour: 'No segment there: the contour is open on this side.',
+    insertBefore: 'Insert a point before this one', insertBeforeShort: 'Point before',
+    insertAfter: 'Insert a point after this one', insertAfterShort: 'Point after',
+    pointInserted: 'Point inserted halfway along, at position {n}.',
     undoShort: 'Undo', undoAction: 'Undo the last editing step',
     undoDone: 'Step undone.', undoDoneLast: 'Step undone – history is now empty.',
     bleResyncDone: 'Terminated the aborted command (sent a line break).',
@@ -356,6 +365,7 @@ const I18N = {
     helpModeTitle: 'Switching mode', helpModeText: 'The chip in the header opens the selection. If the contour you leave has at least three points and is still open, the app asks once whether to close it.',
     helpCaptureTitle: 'Capturing a point', helpCaptureText: 'Press and hold the large button at the bottom right for a moment. Holding prevents points from appearing accidentally while panning or zooming.',
     helpEditTitle: 'Edit points', helpEditText: 'Tap a point on the map: the large button turns into the move button and places the point at the current position; the delete tool in the map bar removes it.',
+    helpInsertTitle: 'Inserting a point', helpInsertText: 'With a point selected, “Point before” and “Point after” place a new point exactly halfway to the neighbouring point — purely geometric, the mower does not have to drive anywhere. At the open end of a contour that side is greyed out.',
     helpAreaSelectTitle: 'Selecting an area', helpAreaSelectText: 'Tapping inside a finished exclusion area selects the whole area so you can delete it. This deliberately does not apply to the perimeter — there every tap would swallow panning the map.',
     helpDeleteToolTitle: 'Delete tool', helpDeleteToolText: 'One tool with three jobs: with nothing selected it removes the last point placed, with a point selected exactly that point, with an area selected the whole area (after a confirmation).',
     helpUndoTitle: 'Undo', helpUndoText: 'Takes back the last 20 editing steps one at a time — capturing, moving, deleting, closing a contour. The button is greyed out when the history is empty.',
@@ -454,6 +464,8 @@ const ui = {
   deletePointBtn: $('deletePointBtn'), deleteFabWrap: $('deleteFabWrap'), deleteBtnLabel: $('deleteBtnLabel'),
   closeAndNewWrap: $('closeAndNewWrap'), closeAndNewBtn: $('closeAndNewBtn'), fitViewBtn: $('fitViewBtn'),
   undoFabWrap: $('undoFabWrap'), undoBtn: $('undoBtn'),
+  insertBeforeWrap: $('insertBeforeWrap'), insertBeforeBtn: $('insertBeforeBtn'),
+  insertAfterWrap: $('insertAfterWrap'), insertAfterBtn: $('insertAfterBtn'),
   captureCluster: $('captureCluster'), autoFabWrap: $('autoFabWrap'), autoCaptureBtn: $('autoCaptureBtn'), autoCaptureLabel: $('autoCaptureLabel'),
   captureFabWrap: $('captureFabWrap'), addPointBtn: $('addPointBtn'), captureProgress: $('captureProgress'), captureButtonTitle: $('captureButtonTitle'), captureButtonHint: $('captureButtonHint'),
   mapSummary: $('mapSummary'), mapDistanceInfo: $('mapDistanceInfo'), pointStatus: $('pointStatus'), activeMapName: $('activeMapName'), saveState: $('saveState'),
@@ -1354,6 +1366,19 @@ function refreshCaptureState() {
   // Der Rueckgaengig-Knopf folgt derselben Regel wie der Papierkorb: waehrend der Automatik
   // ausgeblendet, damit ueber der Fahrzone nur der grosse Pause-Knopf steht.
   ui.undoFabWrap.hidden = state.autoCaptureRunning || mapLocked || !state.activeMap;
+  // Einfuegen ergibt nur mit ausgewaehltem Einzelpunkt Sinn — dort, wo der Hauptknopf auf
+  // „Verschieben“ steht. Ohne Auswahl, bei Flaechenauswahl und waehrend der Automatik weg.
+  const canInsert = Boolean(selected) && !areaSelected && !state.autoCaptureRunning && !mapLocked;
+  ui.insertBeforeWrap.hidden = !canInsert;
+  ui.insertAfterWrap.hidden = !canInsert;
+  // Am Rand einer offenen Kontur fehlt die Strecke, auf der der neue Punkt liegen wuerde:
+  // der Knopf bleibt sichtbar (kein Springen der Leiste), ist aber ausgegraut.
+  const insertTarget = canInsert ? getSelectedPointArray() : null;
+  const insertClosed = canInsert && selectedContourClosed(state.selectedPoint);
+  const neighbourFor = (offset) => (insertTarget
+    ? insertNeighbourIndex(insertTarget, state.selectedPoint.index, offset, insertClosed) : -1);
+  ui.insertBeforeBtn.disabled = neighbourFor(0) < 0;
+  ui.insertAfterBtn.disabled = neighbourFor(1) < 0;
   refreshUndoButton();
   ui.closeAndNewWrap.hidden = !canCloseAndStartNew();
   // Im Verschieben-Zustand gibt es kein Halten: eine laufende Halteaktion wird verworfen.
@@ -2330,6 +2355,98 @@ async function relearnSelectedPoint() {
   ui.pointStatus.textContent = tr('pointRelearned', { n: sel.index + 1, x: point.x.toFixed(2), y: point.y.toFixed(2) });
 }
 
+/**
+ * Gemeinsame Vorbedingung fuer jedes Setzen eines Punktes an der Live-Position — aufnehmen wie
+ * einfuegen. Liefert den i18n-Schluessel des Hinderungsgrunds oder null, wenn es losgehen kann.
+ * Bewusst eine Stelle: „Nur bei RTK FIX“ muss ueberall gleich gelten.
+ */
+function capturePreconditionKey() {
+  if (!telemetryIsFresh()) return 'noCurrentPosition';
+  if (ui.fixOnly.checked && !telemetryHasFix()) return 'noRtkFix';
+  return null;
+}
+
+/** Ist die Kontur des ausgewaehlten Punktes geschlossen? Nur dann gibt es eine Verbindung
+ *  zwischen letztem und erstem Punkt, ueber die „davor/danach“ umlaufen darf.
+ *  Wegpunkte und Dockpfad sind immer offene Pfade. */
+function selectedContourClosed(sel) {
+  if (!state.activeMap || !sel) return false;
+  if (sel.role === 'perimeter') return Boolean(state.activeMap.perimeterClosed);
+  if (sel.role === 'exclusion') {
+    const exclusion = state.activeMap.exclusions.find((e) => e.id === sel.exclusionId);
+    return Boolean(exclusion && exclusion.closed !== false);
+  }
+  return false;
+}
+
+/**
+ * Index des Nachbarn, zwischen dem und dem ausgewaehlten Punkt der neue liegen soll — oder -1,
+ * wenn es dort keine Strecke gibt. Am Anfang einer **offenen** Kontur hat „davor“ keinen
+ * Vorgaenger, am Ende hat „danach“ keinen Nachfolger. Bei geschlossenen Konturen laeuft beides
+ * ueber die Schlussstrecke letzter↔erster Punkt um.
+ */
+function insertNeighbourIndex(target, index, offset, closed) {
+  if (!Array.isArray(target) || index < 0 || index >= target.length) return -1;
+  if (offset === 0) {
+    if (index > 0) return index - 1;
+    return closed && target.length >= 2 ? target.length - 1 : -1;
+  }
+  if (index < target.length - 1) return index + 1;
+  return closed && target.length >= 2 ? 0 : -1;
+}
+
+/** Rangfolge fuer „welcher der beiden Nachbarn ist der schlechtere“. */
+const QUALITY_RANK = { excellent: 3, good: 2, warning: 1, bad: 0 };
+
+/**
+ * Der geometrische Mittelpunkt zweier Kartenpunkte. Er traegt `interpolated: true` und **keine
+ * eigene Messung** — er ist konstruiert, nicht gefahren. Die Guetedaten erbt er vom
+ * schlechteren der beiden Nachbarn: ein konstruierter Punkt ist hoechstens so verlaesslich wie
+ * die Strecke, auf der er liegt. Ohne dieses Erben zaehlte jeder eingefuegte Punkt in der
+ * Kartenpruefung als „ohne RTK FIX aufgenommen“ und waere auf der Karte rot.
+ */
+function midpointBetween(a, b) {
+  const worse = QUALITY_RANK[pointQuality(a)] <= QUALITY_RANK[pointQuality(b)] ? a : b;
+  return {
+    x: Number(((a.x + b.x) / 2).toFixed(3)),
+    y: Number(((a.y + b.y) / 2).toFixed(3)),
+    capturedAt: new Date().toISOString(),
+    interpolated: true,
+    gps: worse.gps ? { ...worse.gps } : null,
+  };
+}
+
+/**
+ * Fuegt einen Punkt auf halber Strecke zwischen dem ausgewaehlten Punkt und seinem Vorgaenger
+ * (offset 0) bzw. Nachfolger (offset 1) in dessen Punktfolge ein. Rein geometrisch — die
+ * aktuelle Maeherposition spielt keine Rolle, deshalb greift hier auch „Nur bei RTK FIX“ nicht.
+ * Alle vier Elementarten sind geordnete Arrays; auch Wegpunkte und Dockpfad sind offene Pfade
+ * mit fester Reihenfolge, „davor/danach“ ist also ueberall wohldefiniert.
+ */
+async function insertPointAtSelection(offset) {
+  if (!ensureMapEditable()) return null;
+  const target = getSelectedPointArray();
+  const sel = state.selectedPoint;
+  if (!target || !sel || !target[sel.index]) return null;
+  const neighbour = insertNeighbourIndex(target, sel.index, offset, selectedContourClosed(sel));
+  if (neighbour < 0) { ui.pointStatus.textContent = tr('insertNoNeighbour'); return null; }
+  pushUndo();
+  const point = midpointBetween(target[sel.index], target[neighbour]);
+  // „Davor“ schiebt sich auf den Platz des ausgewaehlten Punktes, „danach“ dahinter. Beim
+  // Umlauf einer geschlossenen Kontur trifft das genau die Schlussstrecke.
+  const at = offset === 0 ? sel.index : sel.index + 1;
+  target.splice(at, 0, point);
+  // Wie nach dem Verschieben: die Auswahl ist erledigt, die Oberflaeche faellt in den
+  // Normalzustand zurueck.
+  clearPointSelection({ render: false });
+  state.validationResult = null;
+  await saveActiveMap();
+  renderMap();
+  refreshCaptureState();
+  ui.pointStatus.textContent = tr('pointInserted', { n: at + 1 });
+  return point;
+}
+
 async function appendCurrentPoint({ automatic = false, targetOverride = null, save = true } = {}) {
   if (!ensureMapEditable()) return null;
   // Schnappschuss vor jeder Nebenwirkung: legt der Aufruf noch eine leere Ausschlussflaeche an,
@@ -2343,8 +2460,7 @@ async function appendCurrentPoint({ automatic = false, targetOverride = null, sa
     try { await createExclusion(); } finally { state.undoSuspended = nested; }
     target = getActivePointArray();
   }
-  if (!target || !telemetryIsFresh()) return null;
-  if (ui.fixOnly.checked && !telemetryHasFix()) return null;
+  if (!target || capturePreconditionKey()) return null;
   const point = pointFromTelemetry();
   commitUndo(before);
   target.push(point);
@@ -3579,6 +3695,8 @@ function bindEvents() {
   ui.modeCycleBtn.addEventListener('click', openModeDialog);
   ui.closeAndNewBtn.addEventListener('click', () => closeAndStartNewExclusion().catch(reportError));
   ui.undoBtn.addEventListener('click', () => undoLastAction().catch(reportError));
+  ui.insertBeforeBtn.addEventListener('click', () => insertPointAtSelection(0).catch(reportError));
+  ui.insertAfterBtn.addEventListener('click', () => insertPointAtSelection(1).catch(reportError));
   ui.modeDialogCancel.addEventListener('click', closeModeDialog);
   ui.confirmDialogAccept.addEventListener('click', () => confirmDialogRespond(true));
   ui.confirmDialogCancel.addEventListener('click', () => confirmDialogRespond(false));

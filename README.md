@@ -29,6 +29,7 @@ Die Oberfläche lässt sich zwischen **Deutsch und Englisch** umschalten; Deutsc
 - Punkte automatisch setzen – wahlweise im Zeittakt oder nach gefahrener Strecke
 - vorhandene Karten nachträglich korrigieren: Punkt antippen, an die aktuelle Mäherposition
   verschieben oder löschen
+- nachträglich Punkte auf halber Strecke vor oder hinter einen ausgewählten Punkt einfügen
 - die letzten 20 Bearbeitungsschritte einzeln rückgängig machen
 - Karten auf Geometrie- und RTK-Probleme prüfen
 - bis zu 10 Karten auf dem Gerät verwalten
@@ -127,6 +128,25 @@ Tippst du mitten in eine fertige **Ausschlussfläche**, wird die ganze Fläche a
 Perimeter passiert das absichtlich nicht, sonst ließe sich die Karte nicht mehr frei verschieben.
 
 Ein Tipp auf eine leere Stelle hebt die Auswahl wieder auf.
+
+### Punkte nachträglich einfügen
+
+Solange ein Punkt ausgewählt ist, stehen in der Werkzeugleiste zusätzlich **„Punkt davor“** und
+**„Punkt danach“**. Ein Tipp setzt einen neuen Punkt genau auf die **Mitte der Strecke** zum
+jeweiligen Nachbarn – praktisch, wenn eine Kontur an einer Stelle zu grob geraten ist. Aus der
+Folge A-B-C-D wird mit ausgewähltem B also A-[Mitte AB]-B-C-D bzw. A-B-[Mitte BC]-C-D. Danach ist
+die Auswahl aufgehoben und die Oberfläche wieder im Normalzustand.
+
+Das ist eine **rein geometrische** Ergänzung: die aktuelle Mäherposition spielt keine Rolle, der
+Mäher muss dafür nirgends hinfahren, und „Nur bei RTK FIX“ greift hier nicht. Der neue Punkt wird
+als konstruiert vermerkt und erbt die Qualitätsangabe des schlechteren seiner beiden Nachbarn – er
+ist höchstens so verlässlich wie die Strecke, auf der er liegt.
+
+Es gilt für alle vier Elementarten: Perimeter, Ausschlussflächen, Wegpunkte und Dockpfad sind
+geordnete Punktfolgen. **Am Rand einer noch offenen Kontur** fehlt auf einer Seite die Strecke –
+beim ersten Punkt gibt es kein „davor“, beim letzten kein „danach“; der jeweilige Knopf ist dann
+ausgegraut. Bei einer **geschlossenen** Kontur laufen beide über die Schlussstrecke vom letzten
+zum ersten Punkt um.
 
 ### Das Lösch-Werkzeug
 
@@ -275,6 +295,7 @@ The interface can be switched between **German and English**; German is the defa
 - record a **perimeter**, several **exclusion areas**, **waypoints** and **dock points**
 - place points automatically – either on a time interval or by distance travelled
 - correct existing maps afterwards: tap a point, move it to the current mower position, or delete it
+- insert additional points halfway before or after a selected point afterwards
 - undo the last 20 editing steps one at a time
 - check maps for geometry and RTK problems
 - keep up to 10 maps on the device
@@ -369,6 +390,24 @@ Tapping inside a finished **exclusion area** selects the whole area. This delibe
 happen on the perimeter, otherwise you could no longer pan the map freely.
 
 Tapping an empty spot clears the selection again.
+
+### Inserting points afterwards
+
+While a point is selected, the tool bar additionally offers **“Point before”** and
+**“Point after”**. One tap places a new point exactly **halfway along the segment** to the
+respective neighbour – handy when a contour turned out too coarse in one spot. With B selected,
+the sequence A-B-C-D becomes A-[midpoint AB]-B-C-D or A-B-[midpoint BC]-C-D. Afterwards the
+selection is cleared and the interface returns to its normal state.
+
+This is a **purely geometric** addition: the current mower position plays no part, the mower does
+not have to drive anywhere, and “Only with RTK FIX” does not apply here. The new point is marked
+as constructed and inherits the quality rating of the worse of its two neighbours – it is only as
+trustworthy as the segment it sits on.
+
+It applies to all four element types: perimeter, exclusion areas, waypoints and the dock path are
+ordered sequences. **At the edge of a contour that is still open** one side has no segment – the
+first point has no “before”, the last no “after”, and that button is greyed out. On a **closed**
+contour both wrap around the closing segment from the last point to the first.
 
 ### The delete tool
 

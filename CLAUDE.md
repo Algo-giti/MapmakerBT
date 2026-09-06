@@ -66,10 +66,15 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
 
    **Werkzeugleiste** (`.map-toolbar`, waagerecht am oberen Rand der Karte) hat **zwei
    Bereiche**: `.map-info` mit Kartenname/Punktzahl (`#mapSummary`) und Statuszeile
-   (`#pointStatus`, `aria-live`), daneben `.map-tools` mit vier Werkzeugen (Symbol **oben**,
+   (`#pointStatus`, `aria-live`), daneben `.map-tools` mit sechs Werkzeugen (Symbol **oben**,
    Beschriftung **darunter**) — Lösch-Werkzeug (`#deletePointBtn` in
-   `#deleteFabWrap`), Rückgängig (`#undoBtn` in `#undoFabWrap`), „Schließen & neu“
-   (`#closeAndNewBtn` in `#closeAndNewWrap`) und „Ansicht zurück“ (`#fitViewBtn`). Die
+   `#deleteFabWrap`), „Punkt davor“/„Punkt danach“ (`#insertBeforeBtn`/`#insertAfterBtn` in
+   `#insertBeforeWrap`/`#insertAfterWrap`, nur bei ausgewähltem Punkt), Rückgängig (`#undoBtn`
+   in `#undoFabWrap`), „Schließen & neu“ (`#closeAndNewBtn` in `#closeAndNewWrap`) und
+   „Ansicht zurück“ (`#fitViewBtn`). Gleichzeitig sichtbar sind höchstens fünf: ohne Auswahl
+   fehlen die beiden Einfügen-Werkzeuge, mit Auswahl fehlt „Schließen & neu“. **Nicht ohne
+   Gerät verifizierbar:** ob die Leiste damit auf kleinen Bildschirmen noch bequem zu treffen
+   ist — sie scrollt notfalls waagerecht, jedes Werkzeug hält `min-height: 44px`. Die
    `…Wrap`-Hüllen (`.map-tool-slot`) tragen weiterhin das `hidden`-Attribut, die Knöpfe selbst
    `disabled` — Zustände, Klick-Handler und Sichtbarkeitsregeln sind unverändert.
 
@@ -208,6 +213,41 @@ Trefferfläche hängt nicht daran, sie kommt aus dem unsichtbaren `map-point-hit
 (`quality-excellent/good/warning/bad`). Die Qualitätsregeln dürfen deshalb **kein `stroke`**
 setzen — vorher taten sie das mit `!important` und alle Punkte sahen unabhängig vom Element
 gleich aus. `tests/layout-test.js` prüft beides.
+
+**Punkte nachträglich einfügen** (`insertPointAtSelection(offset)`, `offset` 0 = davor,
+1 = danach): setzt einen Punkt auf den **geometrischen Mittelpunkt** der Strecke zwischen dem
+ausgewählten Punkt und seinem Vorgänger bzw. Nachfolger. **Die Live-Position spielt keine Rolle**
+— es wird nichts gemessen, sondern gerechnet, und deshalb greift „Nur bei RTK FIX“ hier
+ausdrücklich **nicht**. Aus A-B-C-D wird mit ausgewähltem B also A-[Mitte AB]-B-C-D bzw.
+A-B-[Mitte BC]-C-D.
+
+**Alle vier Elementarten sind geordnete Arrays** — auch Wegpunkte und Dockpfad sind offene Pfade,
+die als Polylinie gezeichnet und als LineString exportiert werden —, „davor/danach“ ist dort also
+genauso wohldefiniert wie beim Perimeter. Eingefügt wird bei `offset 0` an `sel.index`, bei
+`offset 1` an `sel.index + 1`.
+
+**Ränder** über `insertNeighbourIndex(target, index, offset, closed)`: am Anfang einer **offenen**
+Kontur hat „davor“ keinen Vorgänger, am Ende hat „danach“ keinen Nachfolger — die Funktion liefert
+dann `-1`, und `refreshCaptureState()` graut genau diesen Knopf aus (nicht ausblenden, sonst
+springt die Leiste). Bei **geschlossenen** Konturen laufen beide über die Schlussstrecke
+letzter↔erster Punkt um; `selectedContourClosed()` liest dafür `perimeterClosed` bzw.
+`exclusion.closed`, Wegpunkte und Dockpfad gelten immer als offen.
+
+**Der eingefügte Punkt trägt `interpolated: true` und keine eigene Messung.** Die Gütedaten
+(`gps`) erbt `midpointBetween()` vom **schlechteren** der beiden Nachbarn: ein konstruierter Punkt
+ist höchstens so verlässlich wie die Strecke, auf der er liegt. Ohne dieses Erben hätte
+`pointQuality()` jeden eingefügten Punkt als `bad` (rot) gezeichnet und `pointQualityStats()` ihn
+in der Kartenprüfung als „ohne RTK FIX aufgenommen“ gezählt.
+
+Nach dem Einfügen hebt die Funktion die Auswahl auf, damit die Oberfläche wie nach dem Verschieben
+in den Normalzustand zurückfällt. Sichtbar sind die beiden Werkzeuge nur bei ausgewähltem
+**Einzelpunkt** (nicht bei Flächenauswahl), nicht während der Automatik und nicht in gesperrten
+Karten.
+
+**`capturePreconditionKey()`** ist die gemeinsame Vorbedingung für jedes Setzen eines Punktes an
+der **Live-Position**. Sie liefert `noCurrentPosition` bei alter Telemetrie, `noRtkFix` wenn
+„Nur bei RTK FIX“ greift, sonst `null`. Benutzt wird sie von `appendCurrentPoint()` — das
+Einfügen misst nicht und fragt sie deshalb nicht.
 
 **Auswahl:** `state.selectedPoint` (Einzelpunkt) und `state.selectedArea` (Ausschluss-ID).
 `handleMapTap()` prüft zuerst die Punkte im Touch-Radius, dann per `pointInPolygon()` die
@@ -803,6 +843,29 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-06: **Einfügen ist geometrisch, nicht positionsbasiert** (Korrektur der Vorgabe vom
+  selben Tag). „Punkt davor/danach“ setzt den neuen Punkt auf die **Mitte der Strecke** zum
+  Nachbarn statt an die Mäherposition; damit entfällt jede Abhängigkeit von Telemetrie und
+  „Nur bei RTK FIX“. Neu: `insertNeighbourIndex()` für die Ränder (offene Kontur → Knopf
+  ausgegraut, geschlossene → Umlauf über die Schlussstrecke), `selectedContourClosed()` und
+  `midpointBetween()`. Dabei ist aufgefallen, dass ein Punkt ohne `gps` von `pointQuality()`
+  als `bad` gilt und in der Kartenprüfung als „ohne RTK FIX“ zählte — der eingefügte Punkt
+  trägt deshalb `interpolated: true` und erbt die Güte des **schlechteren** Nachbarn.
+  Vier weitere ui-Fälle (86), gegen fünf simulierte Rückfälle geprüft; Hilfe und README in
+  beiden Sprachen nachgezogen. `APP_VERSION` auf `v30`.
+
+- 2026-09-06: **Punkt davor/danach einfügen.** Zwei neue Werkzeuge in der Kartenleiste, sichtbar
+  nur bei ausgewähltem Einzelpunkt: `insertPointAtSelection(offset)` setzt per
+  `splice(sel.index + offset, 0, point)` einen Punkt an der Live-Position in die Punktfolge.
+  Datenstruktur geprüft: alle vier Elementarten sind geordnete Arrays, auch Wegpunkte und
+  Dockpfad (offene Pfade, LineString-Export) — „davor/danach“ ist überall eindeutig, es war
+  also nichts abzugrenzen. Position und Glättung kommen unverändert aus `pointFromTelemetry()`.
+  Die RTK-Vorbedingung ist dabei zu `capturePreconditionKey()` zusammengezogen worden, damit
+  „Nur bei RTK FIX“ für Aufnehmen und Einfügen dieselbe Stelle hat. Ein Einfügen ist ein
+  Undo-Schritt, danach fällt die Oberfläche wie nach dem Verschieben in den Normalzustand.
+  Sieben neue ui-Fälle (82), gegen fünf simulierte Rückfälle geprüft; Hilfe und README in
+  beiden Sprachen ergänzt. `APP_VERSION` auf `v29`.
 
 - 2026-09-06: **Hilfe und README auf den aktuellen Stand gebracht, README zweisprachig.**
   In-App-Hilfe: die Karte „Karten erstellen & korrigieren“ ist von 10 auf 17 Einträge gewachsen

@@ -162,11 +162,17 @@ test('Die Werkzeugleiste bricht Beschriftungen nicht um', () => {
   assert.strictEqual(resolve('.map-tool', 'display').value, 'grid', 'Symbol oben, Beschriftung darunter');
   assert.strictEqual(resolve('.map-tool', 'min-height').value, '44px', 'Daumenziel');
   const bar = html.slice(html.indexOf('id="mapToolbar"'), html.indexOf('id="mapCanvasArea"'));
-  for (const id of ['deletePointBtn', 'undoBtn', 'closeAndNewBtn', 'fitViewBtn']) {
+  const tools = ['deletePointBtn', 'insertBeforeBtn', 'insertAfterBtn', 'undoBtn', 'closeAndNewBtn', 'fitViewBtn'];
+  for (const id of tools) {
     assert.ok(bar.includes(`id="${id}"`), `${id} fehlt in der Werkzeugleiste`);
   }
-  assert.strictEqual((bar.match(/map-tool-label/g) || []).length, 4, 'jedes Werkzeug ist beschriftet');
-  assert.strictEqual((bar.match(/<svg/g) || []).length, 4, 'jedes Werkzeug hat ein Symbol');
+  assert.strictEqual((bar.match(/map-tool-label/g) || []).length, tools.length, 'jedes Werkzeug ist beschriftet');
+  assert.strictEqual((bar.match(/<svg/g) || []).length, tools.length, 'jedes Werkzeug hat ein Symbol');
+  // Nie alle gleichzeitig sichtbar: die beiden Einfuegen-Werkzeuge starten ausgeblendet und
+  // erscheinen nur bei ausgewaehltem Punkt, „Schliessen & neu“ und „Ansicht zurueck“ ebenso.
+  for (const id of ['insertBeforeWrap', 'insertAfterWrap', 'closeAndNewWrap']) {
+    assert.ok(new RegExp(`hidden=""[^>]*id="${id}"`).test(bar), `${id} startet ausgeblendet`);
+  }
 });
 
 test('Keine Beschriftung bricht mehr mitten im Wort', () => {
