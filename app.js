@@ -109,7 +109,7 @@ const I18N = {
     appDescription: 'MapCreator für Ardumower – mobile Kartenaufnahme über Web Bluetooth und Sunray.',
     languageToggleLabel: 'Auf Englisch umschalten', tabMaps: 'Karten', tabConnection: 'Verbindung', tabHelp: 'Hilfe', tabDebug: 'Diagnose',
     activeMap: 'AKTIVE KARTE', battery: 'Akku', perimeter: 'Perimeter', exclusion: 'Ausschluss', dock: 'Dock',
-    exclusionArea: 'Ausschlussfläche', newExclusion: '+ Neue Ausschlussfläche', delete: 'Löschen',
+    exclusionArea: 'Ausschlussfläche', delete: 'Löschen',
     onlyRtkFix: 'Nur bei RTK FIX',
     viewScale: 'Ansicht & Maßstab', showGrid: 'Raster anzeigen', gridSpacing: 'Rasterweite', gridAuto: 'Automatisch',
     showMower: 'Mäher anzeigen', mowerLength: 'Länge', mowerWidth: 'Breite', mowerScaleNote: 'Der Mäher wird maßstäblich zur Karte dargestellt.', mowerTooltip: 'Mäher {length} × {width} m',
@@ -251,7 +251,7 @@ const I18N = {
     appDescription: 'MapCreator für Ardumower – mobile map recording via Web Bluetooth and Sunray.',
     languageToggleLabel: 'Switch to German', tabMaps: 'Maps', tabConnection: 'Connection', tabHelp: 'Help', tabDebug: 'Diagnostics',
     activeMap: 'ACTIVE MAP', battery: 'Battery', perimeter: 'Perimeter', exclusion: 'Exclusion', dock: 'Dock',
-    exclusionArea: 'Exclusion area', newExclusion: '+ New exclusion area', delete: 'Delete',
+    exclusionArea: 'Exclusion area', delete: 'Delete',
     onlyRtkFix: 'RTK FIX only',
     viewScale: 'View & scale', showGrid: 'Show grid', gridSpacing: 'Grid spacing', gridAuto: 'Automatic',
     showMower: 'Show mower', mowerLength: 'Length', mowerWidth: 'Width', mowerScaleNote: 'The mower is drawn to scale on the map.', mowerTooltip: 'Mower {length} × {width} m',
@@ -424,7 +424,7 @@ const ui = {
   mapSelect: $('mapSelect'), newMapName: $('newMapName'), newMapBtn: $('newMapBtn'), deleteMapBtn: $('deleteMapBtn'), lockMapBtn: $('lockMapBtn'),
   exportJsonBtn: $('exportJsonBtn'), exportGeoJsonBtn: $('exportGeoJsonBtn'), importInput: $('importInput'),
   mapGallery: $('mapGallery'), mapCountBadge: $('mapCountBadge'),
-  elementList: $('elementList'), newExclusionBtn: $('newExclusionBtn'),
+  elementList: $('elementList'),
   fixOnly: $('fixOnly'),
   autoCaptureIntervalInput: $('autoCaptureIntervalInput'), autoCaptureState: $('autoCaptureState'),
   showGrid: $('showGrid'), gridStepSelect: $('gridStepSelect'), showMower: $('showMower'), mowerLengthInput: $('mowerLengthInput'), mowerWidthInput: $('mowerWidthInput'),
@@ -1140,6 +1140,9 @@ function setMenuOpen(open, { section = null } = {}) {
   if (state.menuOpen) {
     stopDrive();
     if (state.autoCaptureRunning) stopAutoCapture();
+    // Altlasten aus frueheren Sitzungen: die Kartenuebersicht zeigt keine leeren Platzhalter.
+    if (pruneEmptyExclusions()) saveActiveMap().catch(reportError);
+    renderElementList();
     if (section) { const el = document.getElementById(section); if (el) el.open = true; }
     ui.menuPage.scrollTop = 0;
   } else {
@@ -1796,10 +1799,59 @@ function localizedMapName(map) {
   return name || tr('firstMapName');
 }
 
-function localizedExclusionName(exclusion, index = 0) {
+/** Ein Name, den die App selbst vergeben hat — im Gegensatz zu einem eigenen Namen des Nutzers. */
+const DEFAULT_EXCLUSION_NAME_RE = /^(?:Ausschluss|Exclusion)\s+\d+$/i;
+
+function isDefaultExclusionName(exclusion) {
   const name = String(exclusion?.name || '').trim();
-  if (!name || /^(?:Ausschluss|Exclusion)\s+\d+$/i.test(name)) return tr('exclusionN', { n: index + 1 });
-  return name;
+  return !name || DEFAULT_EXCLUSION_NAME_RE.test(name);
+}
+
+function localizedExclusionName(exclusion, index = 0) {
+  if (isDefaultExclusionName(exclusion)) return tr('exclusionN', { n: index + 1 });
+  return String(exclusion.name).trim();
+}
+
+/**
+ * Schreibt die Standardnamen auf die laufende Nummer 1..x um; eigene Namen bleiben unberuehrt.
+ * In der Oberflaeche waere das nicht noetig — localizedExclusionName() bildet die Nummer ohnehin
+ * aus dem Listenindex. Der Export nimmt aber das Feld `name`, und dort stuende sonst weiter
+ * „Ausschluss 5“, obwohl die Flaeche in der Liste als 2 gefuehrt wird.
+ */
+function renumberDefaultExclusionNames(map) {
+  map.exclusions.forEach((exclusion, index) => {
+    if (isDefaultExclusionName(exclusion)) exclusion.name = tr('exclusionN', { n: index + 1 });
+  });
+}
+
+/**
+ * Entfernt Ausschlussflaechen ohne einen einzigen Punkt und nummeriert den Rest lueckenlos neu.
+ *
+ * Solche Platzhalter sammelten sich an, weil sie beim Moduswechsel entstanden und sich in der
+ * Elementliste nicht einmal von Hand loeschen liessen (der Papierkorb dort ist bei null Punkten
+ * gesperrt). Ausgenommen bleibt die **gerade bearbeitete** Flaeche: im Ausschluss-Modus wuerde
+ * man sonst unmittelbar nach dem Moduswechsel wieder herausfallen, bevor der erste Punkt steht.
+ *
+ * Bewusst synchron und ohne Undo-Schritt: es geht nur Leergut verloren, und ein Undo-Eintrag
+ * dafuer wuerde den auf 20 Schritte begrenzten Stapel mit Nichts fuellen. Speichern erledigt der
+ * Aufrufer, damit er es mit seinen uebrigen Aenderungen buendeln kann.
+ *
+ * @returns {number} Anzahl der entfernten Flaechen.
+ */
+function pruneEmptyExclusions() {
+  const map = state.activeMap;
+  if (!map || map.locked) return 0;
+  const keepId = state.mode === 'exclusion' ? state.activeExclusionId : null;
+  const before = map.exclusions.length;
+  map.exclusions = map.exclusions.filter((e) => e.points.length > 0 || e.id === keepId);
+  const removed = before - map.exclusions.length;
+  if (!removed) return 0;
+  if (!map.exclusions.some((e) => e.id === state.activeExclusionId)) {
+    state.activeExclusionId = map.exclusions[0]?.id || null;
+  }
+  if (state.selectedArea && !map.exclusions.some((e) => e.id === state.selectedArea)) state.selectedArea = null;
+  renumberDefaultExclusionNames(map);
+  return removed;
 }
 
 function makeMap(name) {
@@ -1989,7 +2041,6 @@ function renderElementList() {
   if (!ui.elementList) return;
   ui.elementList.innerHTML = '';
   const locked = Boolean(state.activeMap?.locked);
-  ui.newExclusionBtn.disabled = !state.activeMap || locked;
   if (!state.activeMap) { ui.elementList.textContent = tr('noMapLoaded'); return; }
   const exclusions = state.activeMap.exclusions;
   if (!exclusions.some((e) => e.id === state.activeExclusionId)) state.activeExclusionId = exclusions[0]?.id || null;
@@ -3228,6 +3279,13 @@ async function requestModeChange(mode) {
   if (!CAPTURE_MODES.includes(mode) || mode === state.mode) return;
   await offerToCloseContour(state.mode);
   setMode(mode);
+  // Erst nach setMode(): beim Verlassen ist der Modus dann nicht mehr `exclusion`, die eben
+  // verlassene leere Kontur also nicht mehr geschuetzt und wird sofort mit aufgeraeumt.
+  if (pruneEmptyExclusions()) {
+    renderElementList();
+    renderMap();
+    await saveActiveMap();
+  }
 }
 
 function openContours() {
@@ -3556,7 +3614,6 @@ function bindEvents() {
   ui.fixOnly.addEventListener('change', refreshCaptureState);
   [ui.autoCaptureIntervalInput, ui.autoCaptureModeSelect, ui.autoCaptureDistanceInput].forEach((input) => input
     .addEventListener('change', () => { updateViewPreferencesFromUi(); applyViewPreferencesToUi(); refreshCaptureState(); }));
-  ui.newExclusionBtn.addEventListener('click', () => createExclusion().then(renderElementList).catch(reportError));
   ui.elementList.addEventListener('click', (event) => {
     const remove = event.target.closest('[data-delete-role]');
     if (remove) { deleteElement(remove.dataset.deleteRole, remove.dataset.deleteExclusion || null).catch(reportError); return; }

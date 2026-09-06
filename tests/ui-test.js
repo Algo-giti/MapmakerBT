@@ -15,6 +15,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'deleteAction', 'deleteSelectedArea', 'selectedExclusion', 'createExclusion', 'validateActiveMap',
   'toggleAutoCapture', 'startAutoCapture', 'stopAutoCapture', 'refreshDeleteButton', 'bindAccordion',
   'mapElements', 'renderElementList', 'deleteElement', 'activateElement',
+  'pruneEmptyExclusions', 'localizedExclusionName',
   'canCloseAndStartNew', 'closeAndStartNewExclusion', 'currentExclusion',
   'setTheme', 'applyTheme', 'applyDriveZonePreferences', 'applyViewPreferencesToUi', 'updateViewPreferencesFromUi', 'JOYSTICK_SCALES', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine', 'lockIcon', 'toggleLanguage',
   'askConfirm', 'confirmDialogRespond', 'showNotice', 'reportError', 'reportBleError',
@@ -728,6 +729,111 @@ test('Der Distanzmodus prueft im Takt der Positionsabfragen', async () => {
   await clock.runFor(1200);
   assert.ok(t.state.activeMap.perimeter.length >= 2,
     `nach 1,2 s muss der eigene Takt gelaufen sein, Punkte: ${t.state.activeMap.perimeter.length}`);
+});
+
+// === Leere Ausschlussflaechen ==============================================
+/** Legt Ausschlussflaechen mit den angegebenen Punktzahlen an und gibt ihre Ids zurueck. */
+function seedExclusions(t, counts) {
+  t.state.activeMap.exclusions = counts.map((count, i) => ({
+    id: `ex${i + 1}`,
+    name: `Ausschluss ${i + 1}`,
+    closed: false,
+    points: Array.from({ length: count }, (_, n) => ({ x: n, y: n })),
+  }));
+  return t.state.activeMap.exclusions.map((e) => e.id);
+}
+
+const exclusionLabels = (t) => t.mapElements().filter((i) => i.role === 'exclusion').map((i) => i.label).join(' | ');
+const exclusionIds = (t) => t.state.activeMap.exclusions.map((e) => e.id).join(' | ');
+const exclusionNames = (t) => t.state.activeMap.exclusions.map((e) => e.name).join(' | ');
+
+test('Der Knopf „Neue Ausschlussfläche“ ist aus der Elementliste verschwunden', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  assert.ok(!html.includes('newExclusionBtn'), 'der Knopf darf nicht mehr im Markup stehen');
+  assert.ok(!src.includes('newExclusionBtn'), 'und auch nicht mehr verdrahtet sein');
+  assert.ok(!src.includes("newExclusion:"), 'der tote Uebersetzungsschluessel ist entfernt');
+  // Die Flaechen entstehen weiterhin von selbst beim ersten Punkt im Ausschluss-Modus.
+  assert.ok(src.includes('await createExclusion();'), 'createExclusion() bleibt als Automatik erhalten');
+});
+
+test('Beim Verlassen des Ausschluss-Modus verschwindet die leere Kontur', async () => {
+  const { t } = setup();
+  seedExclusions(t, [3, 0]);
+  t.setMode('exclusion');
+  t.state.activeExclusionId = 'ex2';
+
+  // Solange sie bearbeitet wird, bleibt sie stehen — sonst fiele man beim Moduswechsel
+  // sofort wieder heraus.
+  assert.strictEqual(t.pruneEmptyExclusions(), 0, 'die aktive Aufnahme ist geschuetzt');
+  assert.strictEqual(t.state.activeMap.exclusions.length, 2);
+
+  await t.requestModeChange('perimeter');
+  assert.strictEqual(t.state.activeMap.exclusions.length, 1, 'nach dem Verlassen ist sie weg');
+  assert.strictEqual(t.state.activeMap.exclusions[0].id, 'ex1', 'die gefuellte bleibt');
+  assert.strictEqual(t.state.activeExclusionId, 'ex1', 'das Aufnahmeziel wandert mit');
+});
+
+test('Eine leere, aber nicht aktive Flaeche wird auch im Ausschluss-Modus entfernt', () => {
+  const { t } = setup();
+  seedExclusions(t, [0, 0, 2]);
+  t.setMode('exclusion');
+  t.state.activeExclusionId = 'ex1'; // nur diese wird gerade bearbeitet
+  assert.strictEqual(t.pruneEmptyExclusions(), 1, 'ex2 faellt weg, ex1 ist geschuetzt');
+  assert.strictEqual(exclusionIds(t), 'ex1 | ex3');
+});
+
+test('Nach dem Aufraeumen sind die Flaechen lueckenlos von 1 an nummeriert', () => {
+  const { t } = setup();
+  seedExclusions(t, [2, 0, 3, 0, 4]);
+  t.setMode('perimeter'); // kein Schutz aktiv
+  assert.strictEqual(t.pruneEmptyExclusions(), 2);
+  // Anzeige …
+  assert.strictEqual(exclusionLabels(t), 'Ausschluss 1 | Ausschluss 2 | Ausschluss 3');
+  // … und der gespeicherte Name, den der Export mitnimmt.
+  assert.strictEqual(exclusionNames(t), 'Ausschluss 1 | Ausschluss 2 | Ausschluss 3');
+  // Die Ids bleiben, was sie waren — die Nummer ist reine Beschriftung.
+  assert.strictEqual(exclusionIds(t), 'ex1 | ex3 | ex5');
+});
+
+test('Eigene Namen ueberleben die Neunummerierung', () => {
+  const { t } = setup();
+  seedExclusions(t, [1, 0, 1]);
+  t.state.activeMap.exclusions[2].name = 'Apfelbaum';
+  t.setMode('perimeter');
+  assert.strictEqual(t.pruneEmptyExclusions(), 1);
+  assert.strictEqual(exclusionNames(t), 'Ausschluss 1 | Apfelbaum');
+  assert.strictEqual(exclusionLabels(t), 'Ausschluss 1 | Apfelbaum');
+});
+
+test('Das Oeffnen des Menues raeumt Altlasten frueherer Sitzungen weg', () => {
+  const { t } = setup();
+  seedExclusions(t, [0, 4, 0, 0]);
+  t.setMode('perimeter');
+  t.setMenuOpen(true);
+  assert.strictEqual(t.state.activeMap.exclusions.length, 1, 'nur die gefuellte bleibt uebrig');
+  assert.strictEqual(exclusionLabels(t), 'Ausschluss 1');
+  t.setMenuOpen(false);
+});
+
+test('Im Ausschluss-Modus ueberlebt die aktive Aufnahme auch das Oeffnen des Menues', () => {
+  const { t } = setup();
+  seedExclusions(t, [2, 0, 0]);
+  t.setMode('exclusion');
+  t.state.activeExclusionId = 'ex3';
+  t.setMenuOpen(true);
+  assert.strictEqual(exclusionIds(t), 'ex1 | ex3');
+  assert.strictEqual(t.state.activeExclusionId, 'ex3', 'das Aufnahmeziel bleibt erhalten');
+  t.setMenuOpen(false);
+});
+
+test('In einer gesperrten Karte wird nichts aufgeraeumt', () => {
+  const { t } = setup();
+  seedExclusions(t, [0, 1]);
+  t.setMode('perimeter');
+  t.state.activeMap.locked = true;
+  assert.strictEqual(t.pruneEmptyExclusions(), 0);
+  assert.strictEqual(t.state.activeMap.exclusions.length, 2, 'gesperrte Karten bleiben unangetastet');
 });
 
 test('RTK-Badge zeigt Zustand und Satelliten als Mäher/Station', () => {

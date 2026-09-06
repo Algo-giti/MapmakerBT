@@ -294,7 +294,32 @@ Wegpunkte und Dockpfad mit Punktzahl; `renderElementList()` zeichnet sie als Zei
 die Zeile macht das Element zum Aufnahmeziel (`activateElement()`), der Papierkorb daneben leert
 es bzw. entfernt eine Ausschlussfläche ganz (`deleteElement()`, mit Rückfrage). Das ersetzt das
 frühere Auswahlfeld, das nur Ausschlussflächen kannte und nur im Ausschluss-Modus sichtbar war,
-sowie „Aktuelles Element leeren“. Neue Ausschlussflächen legt der Knopf unter der Liste an.
+sowie „Aktuelles Element leeren“. **Einen Knopf „+ Neue Ausschlussfläche“ gibt es hier nicht
+mehr** — Flächen entstehen von selbst, sobald im Ausschluss-Modus der erste Punkt fällt
+(`appendCurrentPoint()` → `createExclusion()`); der Knopf erzeugte nur leere Platzhalter.
+
+**Leere Ausschlussflächen räumt `pruneEmptyExclusions()` weg.** Sie hatten sich angesammelt und
+ließen sich nicht einmal von Hand entfernen, weil der Papierkorb in der Elementliste bei null
+Punkten gesperrt ist. Entfernt wird jede Fläche ohne Punkt — **außer der gerade bearbeiteten**
+(`state.mode === 'exclusion'` und `state.activeExclusionId`), sonst fiele man unmittelbar nach
+dem Moduswechsel wieder aus dem Modus heraus, bevor der erste Punkt steht. Gesperrte Karten
+bleiben unangetastet. Zwei Auslöser:
+- `requestModeChange()` **nach** `setMode()` — beim Verlassen ist der Modus dann nicht mehr
+  `exclusion`, die eben verlassene leere Kontur also nicht mehr geschützt.
+- `setMenuOpen(true)` — damit Altlasten aus früheren Sitzungen beim Öffnen der Übersicht
+  verschwinden.
+
+Die Funktion ist bewusst **synchron und ohne Undo-Schritt** (es geht nur Leergut verloren, ein
+Eintrag dafür würde den 20er-Stapel mit Nichts füllen); Speichern erledigt der Aufrufer.
+
+**Die Nummer einer Ausschlussfläche ist reine Beschriftung, keine Referenz.** Alles Technische
+läuft über `exclusion.id` (`state.activeExclusionId`, `state.selectedArea`, `data-exclusion-id`,
+Undo-Schnappschüsse). `localizedExclusionName()` bildet die Nummer ohnehin aus dem **Listenindex**
+und ignoriert dabei einen gespeicherten Standardnamen — die Anzeige ist nach jedem Entfernen
+automatisch wieder 1..x. Zusätzlich schreibt `renumberDefaultExclusionNames()` das Feld `name`
+mit um, denn **der Export nimmt dieses Feld**; sonst stünde in der Datei weiter „Ausschluss 5“,
+während die Liste 2 zeigt. Eigene Namen (etwa aus einem GeoJSON-Import) erkennt
+`isDefaultExclusionName()` am Muster `Ausschluss|Exclusion N` und lässt sie unberührt.
 
 **Sperrzustand** ist auf drei Wegen erkennbar, weil Farbe allein auf dem Gerät nicht reichte:
 Bügelform (offen/geschlossen, `lockIcon()` mit Schlüsselloch nur im gesperrten Zustand), Farbe
@@ -739,6 +764,19 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-06: **Leere Ausschlussflächen räumen sich selbst auf.** Der Knopf „+ Neue
+  Ausschlussfläche“ unter der Elementliste ist entfallen — er erzeugte genau die leeren
+  Platzhalter, die sich in der Übersicht sammelten, während Flächen längst automatisch beim
+  ersten Punkt entstehen. Neu: `pruneEmptyExclusions()`, ausgelöst beim Verlassen des
+  Ausschluss-Modus (nach `setMode()`, damit die eben verlassene Kontur nicht mehr geschützt
+  ist) und beim Öffnen der Menüseite (Altlasten früherer Sitzungen). Geschützt ist nur die
+  gerade bearbeitete Fläche, gesperrte Karten bleiben unangetastet. **Zur Nummerierung geprüft:**
+  die Nummer ist reine Anzeige, `localizedExclusionName()` bildet sie aus dem Listenindex,
+  Referenzen laufen über `exclusion.id` — es war also nichts zu reparieren. Ergänzt wurde nur
+  `renumberDefaultExclusionNames()`, weil der **Export** das Feld `name` mitnimmt und dort sonst
+  die alte Nummer stünde; eigene Namen bleiben. Acht neue ui-Fälle (72), gegen fünf simulierte
+  Rückfälle geprüft. `APP_VERSION` auf `v26`.
 
 - 2026-09-05: **Werkzeugleiste oben statt Knöpfe in den Kartenecken.** Gemeldet: auf schmalen
   Bildschirmen brachen die Beschriftungen an den Eckknöpfen Buchstabe für Buchstabe
