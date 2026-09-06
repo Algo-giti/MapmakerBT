@@ -238,10 +238,33 @@ gelöschte Website-Daten bedeuten: Karten sind weg.
 
 1. Die Seite mindestens einmal **mit Internet** in Chrome öffnen.
 2. Im Menü unter **Hilfe** warten, bis der Systemcheck den Offline-Cache als bereit meldet.
-3. Optional über das Chrome-Menü als App installieren.
+3. Optional als App installieren – siehe unten.
 
 Danach starten die App-Dateien aus dem lokalen Cache. Bluetooth, Kartenaufnahme, Bearbeitung und
 Datei-Export brauchen ohnehin keine Internetverbindung.
+
+### Als App installieren (PWA)
+
+MapCreator ist eine **Progressive Web App**: eine Webseite, die sich wie eine installierte App
+verhält. Sie bekommt ein eigenes Symbol auf dem Startbildschirm, startet im Vollbild ohne
+Adressleiste und lädt ihre Dateien aus dem lokalen Zwischenspeicher – deshalb läuft sie im Garten
+auch ohne Internet. Ein App-Store ist nicht beteiligt, es wird nichts zusätzlich heruntergeladen.
+
+**Android / Chrome**
+
+1. Die Seite einmal mit Internet öffnen und warten, bis der Systemcheck den Offline-Zwischenspeicher
+   als bereit meldet.
+2. Oben rechts das Browser-Menü (⋮) öffnen.
+3. **„App installieren“** antippen – je nach Chrome-Fassung heißt der Eintrag
+   *„Zum Startbildschirm hinzufügen“*. Manchmal schlägt Chrome es auch von selbst unten vor.
+4. Danach startet MapCreator über das neue Symbol auf dem Startbildschirm.
+
+**iPhone / iPad (Safari)**: Teilen-Symbol → *„Zum Home-Bildschirm“*. Beachte, dass unter iOS und
+iPadOS kein Browser Web Bluetooth bereitstellt: die installierte App kann dort **keine Verbindung
+zum Ardumower** aufbauen. Karten ansehen, importieren und exportieren funktioniert, aufnehmen nicht.
+
+Deinstallieren geht wie bei jeder App über das Symbol. Die gespeicherten Karten liegen im Browser
+und bleiben davon unberührt, solange die Website-Daten nicht gelöscht werden.
 
 Liegt eine neue Fassung der App bereit, erscheint oben eine schmale Hinweisleiste. Erst ein Tipp
 darauf lädt die neue Fassung – mitten in einer Aufnahme lädt die Seite nie ungefragt neu.
@@ -495,10 +518,33 @@ or cleared site data means the maps are gone.
 
 1. Open the page at least once **with internet** in Chrome.
 2. In the menu under **Help**, wait until the system check reports the offline cache as ready.
-3. Optionally install it as an app from the Chrome menu.
+3. Optionally install it as an app – see below.
 
 After that the app files start from the local cache. Bluetooth, map recording, editing and file
 export do not need an internet connection anyway.
+
+### Installing it as an app (PWA)
+
+MapCreator is a **Progressive Web App**: a web page that behaves like an installed app. It gets
+its own icon on the home screen, starts full screen without an address bar and loads its files
+from the local cache – which is why it works in the garden without internet. No app store is
+involved and nothing extra is downloaded.
+
+**Android / Chrome**
+
+1. Open the page once with internet and wait until the system check reports the offline cache as
+   ready.
+2. Open the browser menu (⋮) at the top right.
+3. Tap **“Install app”** – depending on the Chrome version the entry is called
+   *“Add to Home screen”*. Chrome sometimes offers it by itself at the bottom of the screen.
+4. MapCreator then starts from the new icon on your home screen.
+
+**iPhone / iPad (Safari)**: share icon → *“Add to Home Screen”*. Note that on iOS and iPadOS no
+browser provides Web Bluetooth: the installed app **cannot connect to the Ardumower** there.
+Viewing, importing and exporting maps works, recording does not.
+
+Uninstalling works like any other app, via the icon. The stored maps live in the browser and are
+not affected, as long as the site data is not cleared.
 
 When a new version of the app is available, a slim notice bar appears at the top. Only a tap on it
 loads the new version – the page never reloads unasked in the middle of a recording.

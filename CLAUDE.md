@@ -844,6 +844,19 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
 
 ## Änderungsprotokoll
 
+- 2026-09-06: **PWA-Installation erklärt.** Die Hilfe empfahl das Installieren, ohne zu sagen,
+  was eine PWA ist oder wie es geht. Neuer Abschnitt in der Karte *Offline im Garten*: kurze
+  Erklärung (eigenes Symbol, Vollbild ohne Adressleiste, läuft aus dem Zwischenspeicher, kein
+  App-Store), nummerierte Schritte für Android/Chrome und der Safari-Weg für iPhone/iPad —
+  letzterer **mit dem ausdrücklichen Hinweis**, dass iOS kein Web Bluetooth kennt und die App
+  dort keine Verbindung aufbauen kann; ohne diesen Satz wäre die Anleitung eine Falle. Dazu ein
+  Hinweis, dass Deinstallieren die gespeicherten Karten nicht anfasst. Alles in DE und EN, dazu
+  derselbe Inhalt in der README (beide Sprachen) statt einer abweichenden Zweitfassung.
+  **Kein externer Link:** in der Hilfe gibt es kein `<a href>`-Muster, und ein Auswärtslink wäre
+  in einer offline gedachten App genau dann tot, wenn man ihn braucht. Nebenbei den veralteten
+  Fallback-Text von `offlineWorks4` im Markup nachgezogen (die Übersetzung war schon aktuell).
+  `APP_VERSION` auf `v31`.
+
 - 2026-09-06: **Einfügen ist geometrisch, nicht positionsbasiert** (Korrektur der Vorgabe vom
   selben Tag). „Punkt davor/danach“ setzt den neuen Punkt auf die **Mitte der Strecke** zum
   Nachbarn statt an die Mäherposition; damit entfällt jede Abhängigkeit von Telemetrie und

@@ -1524,6 +1524,8 @@ footer {
   gap: 10px;
 }
 .help-note { margin-top: 12px; }
+/* Der PWA-Abschnitt folgt direkt auf das zweispaltige Offline-Raster und braucht Luft. */
+.help-card .help-two-col + h4 { margin-top: 16px; }
 .notice.info {
   background: #0d2228;
   color: #9dcbd3;
