@@ -243,8 +243,14 @@ test('Die Karteninfo liegt als einzeiliges Overlay oben auf der Karte', () => {
   assert.strictEqual(resolve('.info-line', 'text-overflow').value, 'ellipsis');
   const shrink = Number((resolve('.info-line', 'flex').value || '').split(/\s+/)[1]);
   assert.ok(shrink > 0, 'jede Angabe muss nachgeben koennen, sonst sprengt sie den Streifen');
-  // Konturstatus: eigenes Feld, das leer nicht einmal Platz kostet.
-  assert.strictEqual(resolve('.info-chip:empty', 'display').value, 'none');
+  // Konturfeld: traegt Name **und** Zustand, muss deshalb schrumpfen und kuerzen koennen —
+  // als reines Zustandswort war es kurz, jetzt steht ein Konturname davor.
+  assert.strictEqual(resolve('.info-chip:empty', 'display').value, 'none',
+    'leer darf es nicht einmal Platz kosten');
+  const chipShrink = Number((resolve('.info-chip', 'flex').value || '').split(/\s+/)[1]);
+  assert.ok(chipShrink > 0, 'mit shrink 0 schiebt ein langer Konturname den Rest aus dem Streifen');
+  assert.strictEqual(resolve('.info-chip', 'min-width').value, '0');
+  assert.strictEqual(resolve('.info-chip', 'text-overflow').value, 'ellipsis');
   const area = html.slice(html.indexOf('id="mapCanvasArea"'));
   const info = area.slice(area.indexOf('id="mapInfo"'), area.indexOf('id="fitViewBtn"'));
   for (const id of ['mapSummary', 'contourStatus', 'pointStatus']) {

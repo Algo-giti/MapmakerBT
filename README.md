@@ -32,7 +32,7 @@ Die Oberfläche lässt sich zwischen **Deutsch und Englisch** umschalten; Deutsc
 - nachträglich Punkte auf halber Strecke vor oder hinter einen ausgewählten Punkt einfügen
 - eine bereits geschlossene Kontur an einer beliebigen Kante wieder öffnen und verlängern
 - die letzten 20 Bearbeitungsschritte einzeln rückgängig machen
-- auf der Karte ablesen, ob die bearbeitete Kontur offen oder geschlossen ist
+- auf der Karte ablesen, welche Kontur gerade offen und welche geschlossen ist
 - Karten auf Geometrie- und RTK-Probleme prüfen
 - bis zu 10 Karten auf dem Gerät verwalten
 - Karten als JSON-Backup oder als GeoJSON exportieren und wieder importieren
@@ -77,8 +77,11 @@ Die App besteht aus drei Zonen:
   „Schließen & neu“ und „Erweitern“; ist keines davon sichtbar, verschwindet die Leiste ganz.
   Darunter die Kartenfläche mit Mäherposition, aufgenommenen Punkten und deren Verbindungslinien.
   Auf der Karte selbst liegen vier Dinge: oben in der einen Ecke ein schmaler Streifen mit
-  Kartenname, Punktzahl, Konturstatus und Positionsmeldung, oben in der anderen Ecke das Symbol
-  zum Zurücksetzen der Ansicht, unten der Aufnahme-Knopf und ihm gegenüber der Rückgängig-Knopf.
+  Kartenname, Punktzahl, der betroffenen Kontur samt Zustand („Perimeter · geschlossen“) und der
+  Positionsmeldung, oben in der anderen Ecke das Symbol zum Zurücksetzen der Ansicht, unten der
+  Aufnahme-Knopf und ihm gegenüber der Rückgängig-Knopf. Der Zustand steht immer direkt hinter
+  der Bezeichnung der Kontur, die er meint — bei ausgewähltem Punkt also hinter dessen
+  Bezeichnung („Ausschluss 1 · Punkt 3 · offen“).
 - **Fahrzone** unten – der Joystick für den Daumen, daneben die Fahrtanzeige.
 
 Alle Einstellungen liegen auf einer eigenen **Menüseite** (☰) mit sechs Bereichen: Verbindung,
@@ -381,7 +384,7 @@ The interface can be switched between **German and English**; German is the defa
 - insert additional points halfway before or after a selected point afterwards
 - reopen an already closed contour at any edge and extend it
 - undo the last 20 editing steps one at a time
-- see on the map whether the contour you are editing is open or closed
+- see on the map which contour is currently open and which is closed
 - check maps for geometry and RTK problems
 - keep up to 10 maps on the device
 - export maps as a JSON backup or as GeoJSON, and import them again
@@ -425,8 +428,11 @@ The app has three zones:
   tool and, whenever they apply, “Insert before/after”, “Close & new” and “Extend”; when none of
   them is visible the bar disappears entirely. Below it the map itself with the mower position,
   the recorded points and their connecting lines. Four things sit on the map: a slim strip in one
-  top corner with the map name, point count, contour state and position message, the reset-view
-  icon in the other top corner, the capture button at the bottom and the undo button opposite it.
+  top corner with the map name, point count, the contour concerned together with its state
+  (“Perimeter · closed”) and the position message, the reset-view icon in the other top corner,
+  the capture button at the bottom and the undo button opposite it. The state always sits directly
+  behind the name of the contour it refers to, so with a point selected it follows that point
+  (“Exclusion 1 · point 3 · open”).
 - **Drive zone** at the bottom – the joystick for your thumb, with the drive status beside it.
 
 All settings live on a separate **menu page** (☰) with six sections: Connection, Maps, Settings,

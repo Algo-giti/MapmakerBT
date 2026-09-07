@@ -255,7 +255,7 @@ const I18N = {
     helpThemeTitle: 'Hell & Dunkel', helpThemeText: 'Drei Stufen im Menü unter Ansicht & Maßstab: Hell, Dunkel oder der Vorgabe des Systems folgen.',
     helpHandedTitle: 'Bedienseite', helpHandedText: 'Die Umstellung auf Linkshänder spiegelt die gesamte Bedienung: Werkzeuge und Karteninfo in der Kartenleiste, Aufnahme-Knopf und Fahrtanzeige.',
     helpJoystickSizeTitle: 'Joystick-Größe', helpJoystickSizeText: 'Vier Stufen von Klein bis Sehr groß. Größer heißt mehr Trefferfläche für den Daumen, kleiner mehr Platz für die Karte.',
-    helpMapInfoTitle: 'Karteninfo auf der Karte', helpMapInfoText: 'Der schmale Streifen in der oberen Kartenecke zeigt Kartenname, Punktzahl, den Status der bearbeiteten Kontur und die letzte Positionsmeldung. Der Konturstatus steht nur im Perimeter- und im Ausschluss-Modus: „offen“ heißt, dass zwischen letztem und erstem Punkt noch keine Verbindung besteht, „geschlossen“ heißt, dass die Fläche fertig umrundet ist. Wegpunkte und Dockpfad sind immer offene Pfade und zeigen deshalb keinen Status.',
+    helpMapInfoTitle: 'Karteninfo auf der Karte', helpMapInfoText: 'Der schmale Streifen in der oberen Kartenecke zeigt Kartenname, Punktzahl, die betroffene Kontur samt Zustand und die letzte Positionsmeldung. Der Zustand steht immer unmittelbar hinter der Bezeichnung der Kontur, auf die er sich bezieht: „Perimeter · geschlossen“ oder „Ausschluss 2 · offen“, und bei ausgewähltem Punkt an dessen Bezeichnung, also „Ausschluss 1 · Punkt 3 · offen“. So ist auch bei mehreren Ausschlussflächen eindeutig, welche gemeint ist. „Offen“ heißt, dass zwischen letztem und erstem Punkt noch keine Verbindung besteht, „geschlossen“ heißt, dass die Fläche fertig umrundet ist. Wegpunkte und Dockpfad sind immer offene Pfade und zeigen deshalb keinen Zustand.',
     helpZoomTitle: 'Zoomen & Verschieben', helpZoomText: 'Zwei Finger zoomen, ein Finger verschiebt. Sobald du die Ansicht selbst verändert hast, erscheint in der oberen Kartenecke ein Symbol, das sie wieder auf die ganze Karte zurücksetzt.',
     helpDiagnosticsTitle: 'Diagnose', helpDiagnosticsText: 'Das Protokoll im Menü unter Diagnose zeigt gesendete Kommandos, Antworten und Fehler der Funkverbindung — hilfreich, wenn die Verbindung abreißt.',
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
@@ -464,7 +464,7 @@ const I18N = {
     helpThemeTitle: 'Light & dark', helpThemeText: 'Three settings in the menu under View & scale: light, dark, or follow the system setting.',
     helpHandedTitle: 'Operating side', helpHandedText: 'Switching to left-handed mirrors the whole layout: tools and map info in the map bar, capture button and drive status.',
     helpJoystickSizeTitle: 'Joystick size', helpJoystickSizeText: 'Four steps from small to very large. Larger means a bigger target for your thumb, smaller means more room for the map.',
-    helpMapInfoTitle: 'Map info on the map', helpMapInfoText: 'The slim strip in the top corner of the map shows the map name, the point count, the state of the contour you are editing and the latest position message. The contour state only appears in perimeter and exclusion mode: “open” means there is still no link between the last and the first point, “closed” means the area is fully enclosed. Waypoints and the dock path are always open paths and therefore show no state.',
+    helpMapInfoTitle: 'Map info on the map', helpMapInfoText: 'The slim strip in the top corner of the map shows the map name, the point count, the contour concerned together with its state, and the latest position message. The state always sits directly behind the name of the contour it refers to: “Perimeter · closed” or “Exclusion 2 · open”, and with a point selected behind that point, as in “Exclusion 1 · point 3 · open”. That keeps it unambiguous even with several exclusion areas. “Open” means there is still no link between the last and the first point, “closed” means the area is fully enclosed. Waypoints and the dock path are always open paths and therefore show no state.',
     helpZoomTitle: 'Zoom & pan', helpZoomText: 'Two fingers zoom, one finger pans. As soon as you change the view yourself, an icon appears in the top corner of the map that resets it to the whole map.',
     helpDiagnosticsTitle: 'Diagnostics', helpDiagnosticsText: 'The log in the menu under Diagnostics shows sent commands, replies and radio errors — useful when the connection drops.',
     solutionInvalid: 'INVALID', solutionUnknown: 'UNKNOWN', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
@@ -1163,7 +1163,8 @@ function selectedPointLabel() {
     const ex = exIndex >= 0 ? state.activeMap.exclusions[exIndex] : null;
     label = ex ? localizedExclusionName(ex, exIndex) : tr('exclusionArea');
   }
-  return tr('selectedPointInfo', { label, n: sel.index + 1 });
+  // Der Konturzustand haengt unmittelbar an der Bezeichnung: „Ausschluss 1 · Punkt 3 · offen“.
+  return tr('selectedPointInfo', { label, n: sel.index + 1 }) + contourStateSuffix(sel.role, sel.exclusionId);
 }
 
 function mowerDistanceToSelected() {
@@ -2728,13 +2729,33 @@ function capturePreconditionKey() {
  *  zwischen letztem und erstem Punkt, ueber die „davor/danach“ umlaufen darf.
  *  Wegpunkte und Dockpfad sind immer offene Pfade. */
 function selectedContourClosed(sel) {
-  if (!state.activeMap || !sel) return false;
-  if (sel.role === 'perimeter') return Boolean(state.activeMap.perimeterClosed);
-  if (sel.role === 'exclusion') {
-    const exclusion = state.activeMap.exclusions.find((e) => e.id === sel.exclusionId);
-    return Boolean(exclusion && exclusion.closed !== false);
+  return contourClosedState(sel?.role, sel?.exclusionId) === true;
+}
+
+/**
+ * Offen/geschlossen **einer bestimmten** Kontur: `true`, `false` — oder `null`, wo es das
+ * Konzept gar nicht gibt. Wegpunkte und Dockpfad sind immer offene Pfade, und eine nicht mehr
+ * vorhandene Ausschlussflaeche hat ebenfalls keinen Zustand. `null` ist deshalb ausdruecklich
+ * etwas anderes als „offen“: nur daran haengt, ob ueberhaupt etwas angezeigt wird.
+ */
+function contourClosedState(role, exclusionId) {
+  if (!state.activeMap) return null;
+  if (role === 'perimeter') return Boolean(state.activeMap.perimeterClosed);
+  if (role === 'exclusion') {
+    const exclusion = state.activeMap.exclusions.find((e) => e.id === exclusionId);
+    return exclusion ? exclusion.closed !== false : null;
   }
-  return false;
+  return null;
+}
+
+/**
+ * Der Zustand als **Anhaengsel an eine Konturbezeichnung** („ · geschlossen“), nie als
+ * eigenstaendiges Wort. Genau das war der Fehler: als freistehendes Feld in der Karteninfo war
+ * nicht erkennbar, auf welche der Konturen er sich bezieht.
+ */
+function contourStateSuffix(role, exclusionId) {
+  const closed = contourClosedState(role, exclusionId);
+  return closed === null ? '' : ` · ${tr(closed ? 'contourClosed' : 'contourOpen')}`;
 }
 
 /**
@@ -2989,8 +3010,36 @@ function clearUndoStack() {
  */
 function refreshContourStatus() {
   if (!ui.contourStatus) return;
+  ui.contourStatus.textContent = contourStatusChipText();
+}
+
+/**
+ * Text des Konturfeldes in der Karteninfo: **Name der betroffenen Kontur plus ihr Zustand**,
+ * etwa „Perimeter · geschlossen“ oder „Ausschluss 2 · offen“ — nie der Zustand allein.
+ *
+ * Welche Kontur betroffen ist, entscheidet sich in dieser Reihenfolge:
+ *   1. Ein ausgewaehlter **Einzelpunkt** bringt seine Kontur schon in der Statuszeile daneben
+ *      mit („Ausschluss 1 · Punkt 3 · offen“, aus `selectedPointLabel()`, von jedem
+ *      Telemetrie-Takt neu geschrieben). Das Feld bleibt dann leer, sonst stuende der Name
+ *      zweimal in derselben Zeile.
+ *   2. Eine ausgewaehlte **Flaeche** — deren Auswahlmeldung ist nur voruebergehend, das Feld
+ *      muss den Namen also selbst tragen.
+ *   3. Sonst die Kontur des aktiven Modus (`activeContour()`).
+ * Bei Wegpunkten und Dockpfad bleibt es leer und verschwindet per `.info-chip:empty` ganz.
+ */
+function contourStatusChipText() {
+  if (!state.activeMap) return '';
+  if (state.selectedPoint) return '';
+  const named = (exclusion) => (exclusion
+    ? `${localizedExclusionName(exclusion, state.activeMap.exclusions.indexOf(exclusion))}`
+      + contourStateSuffix('exclusion', exclusion.id)
+    : '');
+  const area = selectedExclusion();
+  if (area) return named(area);
   const contour = activeContour();
-  ui.contourStatus.textContent = contour ? tr(contour.closed ? 'contourClosed' : 'contourOpen') : '';
+  if (!contour) return '';
+  if (contour.role === 'perimeter') return tr('perimeter') + contourStateSuffix('perimeter', null);
+  return named(currentExclusion());
 }
 
 /** Blendet die Werkzeugleiste ein bzw. aus, je nachdem ob ueberhaupt ein Werkzeug sichtbar ist. */
@@ -4301,7 +4350,8 @@ function handleMapTap(event) {
     state.activeExclusionId = area.id;
     setMode('exclusion', { preserveSelection: true });
     renderElementList();
-    ui.pointStatus.textContent = tr('areaSelected', { name: localizedExclusionName(area, state.activeMap.exclusions.indexOf(area)) });
+    ui.pointStatus.textContent = tr('areaSelected', { name: localizedExclusionName(area, state.activeMap.exclusions.indexOf(area)) })
+      + contourStateSuffix('exclusion', area.id);
     renderMap(); refreshCaptureState();
     return;
   }

@@ -2798,10 +2798,16 @@ body.menu-open .app-frame { visibility: hidden; }
   pointer-events: none;
 }
 .info-line { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Konturstatus „offen“/„geschlossen“ — nur im Perimeter- und Ausschluss-Modus gefuellt,
-   bei Wegpunkten und Dockpfad leer und damit unsichtbar. */
+/* Konturfeld: **Name der betroffenen Kontur samt Zustand** („Perimeter · geschlossen“), nie
+   der Zustand allein — als freistehendes Wort war nicht erkennbar, welche Kontur gemeint ist.
+   Die Pillenform fasst beides sichtbar zu einer Einheit zusammen. Nur im Perimeter- und
+   Ausschluss-Modus gefuellt, bei Wegpunkten und Dockpfad leer und damit unsichtbar. Weil hier
+   jetzt ein Name steht, muss das Feld schrumpfen koennen und kuerzt per Ellipse. */
 .info-chip {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   padding: 0 5px;
   border-radius: 999px;
   background: var(--shell-panel-2);

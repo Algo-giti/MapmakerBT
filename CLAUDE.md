@@ -94,11 +94,34 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    **Warum zurück auf die Karte:** in der Leiste konkurrierte sie mit den Werkzeugen um die
    Breite (das war die Ursache des abgeschnittenen „Perimeter erweitern“).
 
-   **Konturstatus `#contourStatus`** (`refreshContourStatus()`, gerufen aus `renderMap()` **und**
-   `refreshCaptureState()`): zeigt `contourClosed`/`contourOpen`, gespeist aus `activeContour()`.
-   Das liefert nur für Perimeter und Ausschlussfläche etwas — **Wegpunkte und Dockpfad sind
-   offene Pfade, dort gibt es kein sinnvolles Offen/Geschlossen**, das Feld bleibt leer und
-   verschwindet per `.info-chip:empty { display: none }` ganz.
+   **Konturzustand: immer als Anhängsel an eine Bezeichnung, nie als freistehendes Wort.**
+   Das war ein gemeldeter Fehler — „geschlossen“ stand an fester Stelle der Karteninfo, und bei
+   mehreren Ausschlussflächen war nicht erkennbar, welche gemeint ist. Der Zustand wird deshalb
+   nur noch über `contourStateSuffix(role, exclusionId)` erzeugt, das ein
+   ` · geschlossen`/` · offen` **an einen vorhandenen Namen anhängt**.
+
+   `contourClosedState(role, exclusionId)` ist die einzige Quelle des Zustands und liefert
+   ausdrücklich drei Werte: `true`, `false` und **`null`** für „das Konzept gibt es hier nicht“
+   (Wegpunkte, Dockpfad, nicht mehr vorhandene Fläche). Nur an `null` hängt, ob überhaupt etwas
+   angezeigt wird; `selectedContourClosed()` delegiert dorthin.
+
+   Angehängt wird an genau zwei Stellen:
+   - `selectedPointLabel()` → „Ausschluss 1 · Punkt 3 · offen“ (Statuszeile, von jedem
+     Telemetrie-Takt neu geschrieben) und die Auswahlmeldung `areaSelected`.
+   - `#contourStatus` über `contourStatusChipText()` → **Name plus Zustand** als eine Einheit,
+     etwa „Perimeter · geschlossen“ oder „Ausschluss 2 · offen“.
+
+   `contourStatusChipText()` entscheidet in dieser Reihenfolge, welche Kontur betroffen ist:
+   1. **Ausgewählter Einzelpunkt** → Feld bleibt leer. Die Statuszeile daneben trägt den Namen
+      bereits, sonst stünde er zweimal in derselben Zeile.
+   2. **Ausgewählte Fläche** (`selectedExclusion()`) → deren Name und Zustand. Bewusst nicht
+      über die Auswahlmeldung: die ist nur vorübergehend, der nächste Telemetrie-Takt
+      überschreibt `#pointStatus` wieder.
+   3. Sonst die Kontur des aktiven Modus (`activeContour()` bzw. `currentExclusion()`).
+
+   Gerufen wird `refreshContourStatus()` aus `renderMap()` **und** `refreshCaptureState()`. Weil
+   im Feld jetzt ein Name steht, ist `.info-chip` schrumpfbar (`flex: 0 1 auto; min-width: 0`)
+   und kürzt per Ellipse; leer verschwindet es weiterhin per `.info-chip:empty`.
 
    **Ansicht zurücksetzen `#fitViewBtn`** ist ein **reines Symbol** ohne Knopffläche und Rahmen
    (`border: 0; background: none`), wie in Kartenprogrammen üblich; ein Schlagschatten hält es
@@ -833,7 +856,7 @@ Kein Runner, kein `package.json`, keine Abhängigkeiten — reine Node-Skripte.
 | `tests/ble-test.js` | Die BLE-Szenarien (28 Fälle), inklusive der Absicherung aller vier umgesetzten App-Fixes. Stacktraces mit `BLE_TEST_STACK=1`. |
 | `tests/sw-test.js` | Prüft die **Auslieferung** (7 Fälle): Cache-Version an genau einer Stelle in `sw.js`, App-Dateien network-first mit `cache: 'no-cache'` und Cache als Rückfallebene, `cache: 'reload'` beim Cache-Aufbau, alle von `index.html` geladenen Dateien im Cache, alte Caches werden entfernt, Neuladen bei `controllerchange` — und dass **keine** Versionsangabe im UI auftaucht. |
 | `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (35 Fälle). `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
-| `tests/ui-test.js` | Die Kartier-Oberfläche (120 Fälle): Bestätigungs- und Meldungsdialog (Titel/Text/Beschriftung, beide Antworten, verdrängte Rückfrage, Einknopf-Meldung, `reportError` protokolliert und zeigt, keine `window.confirm()`/`window.alert()`-Aufrufe mehr), Moduswahl per Dialog, Rückfrage zum Schließen von Konturen, Kartenprüfung mit Konturschluss, Aufnahme/Löschen in allen drei Button-Zuständen, Flächenauswahl, Automatik (Ersetzen des manuellen Knopfs und Intervall), Positions-Glättung, Hell/Dunkel, Akkordeon, Auswahl per Tap, Touch-Zielgröße, Zoom-Grenzen, Tap-vs-Ziehen, Pinch, Halte-Aufnahme, Joystick-Kennlinie, RTK-Badge, Menüseite, gesperrte Karte, `init()`-Startpfad. Stacktraces mit `UI_TEST_STACK=1`. Antworten auf `confirm()` steuert der Test über `sandbox.__confirmAnswer`. |
+| `tests/ui-test.js` | Die Kartier-Oberfläche (122 Fälle): Bestätigungs- und Meldungsdialog (Titel/Text/Beschriftung, beide Antworten, verdrängte Rückfrage, Einknopf-Meldung, `reportError` protokolliert und zeigt, keine `window.confirm()`/`window.alert()`-Aufrufe mehr), Moduswahl per Dialog, Rückfrage zum Schließen von Konturen, Kartenprüfung mit Konturschluss, Aufnahme/Löschen in allen drei Button-Zuständen, Flächenauswahl, Automatik (Ersetzen des manuellen Knopfs und Intervall), Positions-Glättung, Hell/Dunkel, Akkordeon, Auswahl per Tap, Touch-Zielgröße, Zoom-Grenzen, Tap-vs-Ziehen, Pinch, Halte-Aufnahme, Joystick-Kennlinie, RTK-Badge, Menüseite, gesperrte Karte, `init()`-Startpfad. Stacktraces mit `UI_TEST_STACK=1`. Antworten auf `confirm()` steuert der Test über `sandbox.__confirmAnswer`. |
 
 ### Was `tests/fake-ble.js` simulieren kann
 
@@ -1120,6 +1143,23 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-07: **Konturstatus war nicht zuordenbar.** Gemeldet: „geschlossen“/„offen“ stand als
+  freistehendes Wort an fester Stelle der Karteninfo, mal zwischen Punktzahl und
+  Positionsmeldung, mal zwischen Punktzahl und „Ausschluss 1 · Punkt 3“ — bei mehreren
+  Ausschlussflächen war nicht erkennbar, auf welche es sich bezieht. Ursache im Code bestätigt:
+  `refreshContourStatus()` schrieb nur das Zustandswort in ein eigenes Feld, ohne jede Bindung
+  an eine Bezeichnung. Der Zustand entsteht jetzt ausschließlich über `contourStateSuffix()` als
+  **Anhängsel an einen Namen**: die Punktbezeichnung wird zu „Ausschluss 1 · Punkt 3 · offen“,
+  das Feld selbst trägt „Perimeter · geschlossen“ bzw. „Ausschluss 2 · offen“. Bei ausgewähltem
+  Einzelpunkt bleibt das Feld leer, damit der Name nicht zweimal in derselben Zeile steht; eine
+  ausgewählte Fläche schlägt dagegen den Modus, weil ihre Auswahlmeldung nur vorübergehend ist.
+  Neu ist `contourClosedState()` als einzige Quelle mit drei Werten (`true`/`false`/`null`);
+  `selectedContourClosed()` delegiert dorthin, statt die Prüfung ein zweites Mal zu führen. Das
+  Feld kann jetzt schrumpfen und kürzen, weil ein Name darin steht. Drei ui-Fälle neu bzw.
+  umgeschrieben (122) — darunter zwei Ausschlussflächen mit **gleichzeitig verschiedenem**
+  Zustand — plus eine layout-Zusicherung; gegen sieben simulierte Rückfälle geprüft. Hilfe und
+  README in beiden Sprachen nachgezogen. `APP_VERSION` auf `v44`.
 
 - 2026-09-07: **Joystick-Umschalter saß zu tief.** Am Gerät gemeldet: der Knopf klebte unten
   neben der Fahrtanzeige statt oben unter dem Rückgängig-Knopf der Karte. Ursache im CSS

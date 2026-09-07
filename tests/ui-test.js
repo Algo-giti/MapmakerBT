@@ -24,6 +24,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'startExtension', 'cancelExtension', 'finishExtension', 'refreshExtendButton', 'refreshExtendPanel',
   'canStartExtension', 'areNeighbourIndices', 'reorderForExtension', 'appendCurrentPoint', 'undoLastAction',
   'setMode', 'refreshContourStatus', 'activeContour', 'refreshToolbarVisibility',
+  'contourStatusChipText', 'selectedPointLabel', 'contourStateSuffix',
   'canCloseAndStartNew', 'closeAndStartNewExclusion', 'currentExclusion',
   'setTheme', 'applyTheme', 'applyDriveZonePreferences', 'applyViewPreferencesToUi', 'updateViewPreferencesFromUi', 'JOYSTICK_SCALES', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine', 'lockIcon', 'toggleLanguage',
   'askConfirm', 'confirmDialogRespond', 'showNotice', 'reportError', 'reportBleError',
@@ -1313,35 +1314,80 @@ test('Der Joystick bleibt vom Tastenmodus unberuehrt', () => {
   assert.ok(half.linear > 0.10 && half.linear < 0.30, 'die Kennlinie ist unveraendert');
 });
 
-test('Der Konturstatus steht nur bei Perimeter und Ausschlussflaeche in der Karteninfo', async () => {
-  // Wegpunkte und Dockpfad sind offene Pfade — „offen/geschlossen“ waere dort sinnlos und
-  // bleibt deshalb leer, wodurch das Feld per `.info-chip:empty` ganz verschwindet.
+test('Der Konturstatus haengt an der Bezeichnung der Kontur, nicht an fester Stelle', async () => {
+  // Der Fehler: „geschlossen“ stand als freistehendes Wort an fester Stelle der Karteninfo,
+  // ohne erkennbaren Bezug — bei mehreren Ausschlussflaechen war nicht ablesbar, welche gemeint
+  // ist. Jetzt traegt das Feld immer Name **und** Zustand als eine Einheit.
   const { t, elements } = setup();
   const chip = elements.get('contourStatus');
   t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }];
   t.state.activeMap.perimeterClosed = false;
   t.setMode('perimeter');
   t.refreshContourStatus();
-  assert.strictEqual(chip.textContent, 'offen', 'offener Perimeter');
+  assert.strictEqual(chip.textContent, 'Perimeter · offen');
   t.state.activeMap.perimeterClosed = true;
   t.refreshContourStatus();
-  assert.strictEqual(chip.textContent, 'geschlossen', 'geschlossener Perimeter');
-
-  t.setMode('exclusion');
-  await t.createExclusion();
-  t.currentExclusion().points = [{ x: 1, y: 1 }, { x: 2, y: 1 }, { x: 2, y: 2 }];
-  t.currentExclusion().closed = false;
-  t.refreshContourStatus();
-  assert.strictEqual(chip.textContent, 'offen', 'offene Ausschlussflaeche');
-  t.currentExclusion().closed = true;
-  t.refreshContourStatus();
-  assert.strictEqual(chip.textContent, 'geschlossen', 'geschlossene Ausschlussflaeche');
-
+  assert.strictEqual(chip.textContent, 'Perimeter · geschlossen');
   for (const mode of ['waypoint', 'dock']) {
     t.setMode(mode);
     t.refreshContourStatus();
     assert.strictEqual(chip.textContent, '', `${mode} kennt kein offen/geschlossen`);
   }
+});
+
+test('Bei mehreren Ausschlussflaechen nennt der Status genau die betroffene', async () => {
+  // Zwei Flaechen mit **unterschiedlichem** Zustand gleichzeitig im Modell: der Status muss der
+  // aktiven bzw. ausgewaehlten folgen und darf nicht die andere beschreiben.
+  const { t, elements } = setup();
+  const chip = elements.get('contourStatus');
+  t.setMode('exclusion');
+  await t.createExclusion();
+  const first = t.currentExclusion();
+  first.points = [{ x: 1, y: 1 }, { x: 2, y: 1 }, { x: 2, y: 2 }];
+  first.closed = true;
+  await t.createExclusion();
+  const second = t.currentExclusion();
+  second.points = [{ x: 5, y: 5 }, { x: 6, y: 5 }, { x: 6, y: 6 }];
+  second.closed = false;
+  // Aktiv ist die zuletzt angelegte.
+  assert.strictEqual(t.currentExclusion().id, second.id);
+  t.refreshContourStatus();
+  assert.strictEqual(chip.textContent, 'Ausschluss 2 · offen');
+  t.state.activeExclusionId = first.id;
+  t.refreshContourStatus();
+  assert.strictEqual(chip.textContent, 'Ausschluss 1 · geschlossen', 'die andere Flaeche, anderer Zustand');
+  // Eine ausgewaehlte Flaeche schlaegt den Modus: ihre Auswahlmeldung ist nur voruebergehend,
+  // das Feld muss den Namen deshalb selbst tragen.
+  t.state.activeExclusionId = first.id;
+  t.state.selectedArea = second.id;
+  t.refreshContourStatus();
+  assert.strictEqual(chip.textContent, 'Ausschluss 2 · offen', 'die ausgewaehlte Flaeche gewinnt');
+});
+
+test('Ein ausgewaehlter Punkt traegt den Zustand in seiner eigenen Bezeichnung', async () => {
+  // Beispiel aus der Vorgabe: „Ausschluss 1 · Punkt 3 · offen“. Das Feld daneben bleibt dann
+  // leer, sonst stuende der Name zweimal in derselben Zeile.
+  const { t, elements } = setup();
+  const chip = elements.get('contourStatus');
+  t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }];
+  t.state.activeMap.perimeterClosed = true;
+  t.setMode('perimeter');
+  t.applyPointSelection({ role: 'perimeter', index: 2 });
+  assert.strictEqual(t.selectedPointLabel(), 'Perimeter · Punkt 3 · geschlossen');
+  t.refreshContourStatus();
+  assert.strictEqual(chip.textContent, '', 'kein zweiter Name in derselben Zeile');
+
+  t.setMode('exclusion');
+  await t.createExclusion();
+  const ex = t.currentExclusion();
+  ex.points = [{ x: 1, y: 1 }, { x: 2, y: 1 }, { x: 2, y: 2 }];
+  ex.closed = false;
+  t.applyPointSelection({ role: 'exclusion', exclusionId: ex.id, index: 2 });
+  assert.strictEqual(t.selectedPointLabel(), 'Ausschluss 1 · Punkt 3 · offen');
+  // Wegpunkte und Dockpfad bleiben ohne Zustand, auch am ausgewaehlten Punkt.
+  t.state.activeMap.waypoints = [{ x: 0, y: 0 }, { x: 1, y: 1 }];
+  t.applyPointSelection({ role: 'waypoint', index: 1 });
+  assert.strictEqual(t.selectedPointLabel(), 'Wegpunkte · Punkt 2');
 });
 
 test('Der Konturstatus folgt jedem Neuzeichnen und jeder Zustandsauffrischung', () => {
@@ -1353,13 +1399,13 @@ test('Der Konturstatus folgt jedem Neuzeichnen und jeder Zustandsauffrischung', 
   t.state.activeMap.perimeterClosed = false;
   t.setMode('perimeter');
   t.renderMap();
-  assert.strictEqual(chip.textContent, 'offen');
+  assert.strictEqual(chip.textContent, 'Perimeter · offen');
   t.state.activeMap.perimeterClosed = true;
   t.renderMap();
-  assert.strictEqual(chip.textContent, 'geschlossen', 'renderMap zieht den Status mit');
+  assert.strictEqual(chip.textContent, 'Perimeter · geschlossen', 'renderMap zieht den Status mit');
   t.state.activeMap.perimeterClosed = false;
   t.refreshCaptureState();
-  assert.strictEqual(chip.textContent, 'offen', 'refreshCaptureState ebenfalls');
+  assert.strictEqual(chip.textContent, 'Perimeter · offen', 'refreshCaptureState ebenfalls');
 });
 
 test('Die Werkzeugleiste verschwindet, wenn kein einziges Werkzeug sichtbar ist', () => {
