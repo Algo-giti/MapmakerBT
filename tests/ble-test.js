@@ -10,7 +10,9 @@ const { createFakeBluetooth, ESP32_NOTIFY_PAYLOAD } = require('./fake-ble.js');
 
 const EXPORTS = ['state', 'ui', 'bleAdapter', 'connectBluetooth', 'disconnectBluetooth', 'onDisconnected',
   'establishGatt', 'sendSunray', 'handleLine', 'onNotification', 'scheduleReconnect', 'startPolling', 'stopPolling',
-  'initializeSunrayHandshake', 'emergencyStop', 'reportBleError'];
+  'initializeSunrayHandshake', 'emergencyStop', 'reportBleError',
+  'stopIdleStopTicker', 'startIdleStopTicker', 'sendIdleStop', 'stopDrive',
+  'startDriveHeartbeat', 'driveInputActive', 'DRIVE_IDLE_STOP_INTERVAL_MS'];
 
 function setup(fakeOptions = {}) {
   const clock = createClock();
@@ -73,7 +75,10 @@ test('Polling: alle 500 ms ein AT+S, Telemetrie wird uebernommen', async () => {
 // === 2. MTU-Limit ==========================================================
 test('MTU: Schreibvorgaenge sind auf 15 Byte gestueckelt', async () => {
   const ctx = await connect(setup());
-  ctx.t.stopPolling(); // Polling wuerde sonst Schreibvorgaenge dazwischenschieben
+  // Polling und Ruhezustand-Stopp wuerden sonst Schreibvorgaenge dazwischenschieben.
+  ctx.t.stopPolling();
+  ctx.t.stopIdleStopTicker();
+  ctx.t.stopIdleStopTicker();
   const writesBefore = ctx.sim.writes.length;
   const pending = ctx.t.sendSunray('AT+C,-1,-1,-1,-1,-1,-1,-1,-1,128');
   await ctx.clock.runFor(200);
@@ -87,6 +92,7 @@ test('MTU: Schreibvorgaenge sind auf 15 Byte gestueckelt', async () => {
 test('MTU: eine lange S-Zeile kommt in mehreren Notifies und wird als eine Zeile verarbeitet', async () => {
   const ctx = await connect(setup());
   ctx.t.stopPolling();
+  ctx.t.stopIdleStopTicker();
   const linesBefore = ctx.t.state.bleRxLines;
   const packetsBefore = ctx.sim.stats.notifyPackets;
   ctx.sim.answer(ctx.sim.stateLine());
@@ -150,6 +156,7 @@ test('Abgerissene Notify-Kette: Teilpaket bleibt im rxBuffer, Rest im TX-Puffer 
   const ctx = setup({ notifyAck: false });
   await connect(ctx, 4200);
   ctx.t.stopPolling();
+  ctx.t.stopIdleStopTicker();
   // Die V-Antwort tropft nur in 15-Byte-Haeppchen durch und ist nach 2x1800 ms noch nicht komplett:
   // der Handshake laeuft in beide Timeouts.
   assert.strictEqual(ctx.sim.commands.filter((c) => c.startsWith('AT+V')).length, 2);
@@ -291,6 +298,7 @@ test('Reconnect mit frischem Characteristic: genau ein Listener, keine Doppelver
   ctx.sim.dropLink();
   await ctx.clock.runFor(2000);
   ctx.t.stopPolling();
+  ctx.t.stopIdleStopTicker();
   assert.strictEqual(ctx.t.state.connected, true);
   assert.strictEqual(ctx.sim.characteristic().listenerCount, 1);
   const before = ctx.t.state.bleRxLines;
@@ -307,6 +315,7 @@ test('Reconnect auf demselben Characteristic-Objekt: keine Doppelverarbeitung', 
   ctx.sim.dropLink();
   await ctx.clock.runFor(2000);
   ctx.t.stopPolling();
+  ctx.t.stopIdleStopTicker();
   assert.strictEqual(ctx.t.state.connected, true);
   assert.strictEqual(ctx.sim.stats.listenerAdds, 2, 'die App haengt den Listener zweimal ein');
   assert.strictEqual(ctx.sim.stats.listenerRemoves, 0, 'und raeumt ihn nie ab');
@@ -353,6 +362,7 @@ test('Manueller Neuversuch nach dem Aufgeben funktioniert', async () => {
 test('rxBuffer erholt sich nach Muell, sobald ein \\n kommt', async () => {
   const ctx = await connect(setup());
   ctx.t.stopPolling();
+  ctx.t.stopIdleStopTicker();
   ctx.sim.telemetry.x = 3.25;
   ctx.sim.inject(`${'?'.repeat(4000)}\n${ctx.sim.stateLine()}\r\n`);
   await ctx.clock.runFor(50);
@@ -363,6 +373,7 @@ test('rxBuffer erholt sich nach Muell, sobald ein \\n kommt', async () => {
 test('rxBuffer ist gedeckelt: Muell ohne Zeilenende wird verworfen', async () => {
   const ctx = await connect(setup());
   ctx.t.stopPolling();
+  ctx.t.stopIdleStopTicker();
   ctx.sim.silent = true;
   ctx.sim.inject('A'.repeat(200000));
   await ctx.clock.runFor(50);
@@ -373,6 +384,7 @@ test('rxBuffer ist gedeckelt: Muell ohne Zeilenende wird verworfen', async () =>
 test('Nach dem Ueberlauf wird der Datenstrom wieder korrekt ausgewertet', async () => {
   const ctx = await connect(setup());
   ctx.t.stopPolling();
+  ctx.t.stopIdleStopTicker();
   ctx.sim.silent = true;
   ctx.sim.telemetry.x = 7.5;
   ctx.sim.inject('B'.repeat(9000));           // ein Ueberlauf
@@ -386,6 +398,7 @@ test('Nach dem Ueberlauf wird der Datenstrom wieder korrekt ausgewertet', async 
 test('Lange, aber gueltige Zeilen werden nicht abgeschnitten', async () => {
   const ctx = await connect(setup());
   ctx.t.stopPolling();
+  ctx.t.stopIdleStopTicker();
   const before = ctx.t.state.bleRxLines;
   ctx.sim.telemetry.x = 1.25;
   // Deutlich laenger als jede echte Sunray-Zeile, aber unterhalb des Limits.
@@ -415,6 +428,7 @@ test('Wiederholter Ueberlauf gilt als kaputter Datenstrom und trennt die Verbind
 test('IST: ein vereinzelter Schreibfehler wird gemeldet und nicht wiederholt', async () => {
   const ctx = await connect(setup());
   ctx.t.stopPolling();
+  ctx.t.stopIdleStopTicker();
   const before = ctx.sim.commands.length;
   ctx.sim.failWriteChunks = 1; // genau der naechste Chunk scheitert
   let rejected = null;
@@ -435,6 +449,7 @@ test('IST: ein vereinzelter Schreibfehler wird gemeldet und nicht wiederholt', a
 test('Ein Fehler mitten im Kommando wird durch ein nachgesendetes Zeilenende abgeschlossen', async () => {
   const ctx = await connect(setup());
   ctx.t.stopPolling();
+  ctx.t.stopIdleStopTicker();
   // AT+C,… ist drei Chunks lang, dazwischen liegen 12 ms Pause: erst Chunk 1 durchlassen,
   // dann genau den naechsten Chunk abweisen.
   const long = 'AT+C,-1,-1,-1,-1,-1,-1,-1,-1,128';
@@ -464,6 +479,7 @@ test('Ein Fehler mitten im Kommando wird durch ein nachgesendetes Zeilenende abg
 test('IST: ohne bereits gesendeten Chunk wird nichts nachgeschickt', async () => {
   const ctx = await connect(setup());
   ctx.t.stopPolling();
+  ctx.t.stopIdleStopTicker();
   const writesBefore = ctx.sim.writes.length;
   ctx.sim.failWriteChunks = 1; // schon der erste Chunk scheitert
   let rejected = null;
@@ -491,6 +507,7 @@ test('IST: dauerhaft scheiternde Schreibvorgaenge trennen erst ueber den RX-Watc
 test('IST: scheiternder Fahr-Heartbeat meldet sich und wird im naechsten Takt erneut versucht', async () => {
   const ctx = await connect(setup());
   ctx.t.stopPolling();
+  ctx.t.stopIdleStopTicker();
   ctx.t.state.driveDirection = 'joystick';
   ctx.t.state.driveVector = { linear: 0.2, angular: 0 };
   ctx.sim.failWriteChunks = 1;
@@ -507,6 +524,137 @@ test('IST: scheiternder Fahr-Heartbeat meldet sich und wird im naechsten Takt er
   await ctx.clock.runFor(200);
   await again;
   assert.strictEqual(ctx.sim.commands.length, before + 1, 'der naechste Takt kommt an');
+});
+
+// === Ruhezustand: laufender Stopp-Takt =====================================
+// Sicherheitsebene neben der Fehlermeldung: solange keine Fahreingabe anliegt, geht laufend
+// ein AT+M,0,0 raus. Ein einzelnes verlorenes Stopp-Paket heilt sich dadurch im naechsten Takt,
+// ganz ohne Fehlererkennung.
+const stopCount = (ctx) => ctx.sim.commands.filter((c) => c.startsWith('AT+M,0,0')).length;
+const driveCount = (ctx) => ctx.sim.commands.filter((c) => c.startsWith('AT+M,') && !c.startsWith('AT+M,0,0')).length;
+
+test('Im Ruhezustand geht laufend ein Stopp raus, nicht nur einmal', async () => {
+  const ctx = await connect(setup());
+  ctx.t.stopPolling();                       // Telemetrie stoert die Zaehlung nur
+  const before = stopCount(ctx);
+  await ctx.clock.runFor(3000);
+  const sent = stopCount(ctx) - before;
+  assert.ok(sent > 1, `im Ruhezustand muss laufend gestoppt werden, gesendet: ${sent}`);
+  // 3 s bei 500 ms Takt = 6 Stopps. Ein Ausreisser nach oben waere unnoetige Funklast.
+  const expected = Math.round(3000 / ctx.t.DRIVE_IDLE_STOP_INTERVAL_MS);
+  assert.ok(Math.abs(sent - expected) <= 1, `erwartet rund ${expected}, gesendet ${sent}`);
+});
+
+test('Der Ruhe-Takt ist bewusst nicht aggressiver als das Polling', async () => {
+  const ctx = await connect(setup());
+  assert.strictEqual(ctx.t.DRIVE_IDLE_STOP_INTERVAL_MS, 500,
+    'eine Kadenz fuer beides — und zwei Stopps je 1000-ms-Totmannfenster von Sunray');
+  // In Sunrays Fenster muessen mindestens zwei Stopps fallen, sonst heilt ein Verlust nicht.
+  assert.ok(1000 / ctx.t.DRIVE_IDLE_STOP_INTERVAL_MS >= 2,
+    'ein einzelner Stopp je Totmannfenster koennte durch einen Paketverlust ausfallen');
+  ctx.t.stopPolling();
+  const before = stopCount(ctx);
+  await ctx.clock.runFor(1000);
+  assert.ok(stopCount(ctx) - before <= 3, 'kein Dauerfeuer auf einem 15-Byte-Link');
+});
+
+test('Waehrend aktiver Fahrt schweigt der Ruhe-Takt und der Fahrbefehl laeuft weiter', async () => {
+  const ctx = await connect(setup());
+  ctx.t.stopPolling();
+  // Fahreingabe wie beim gehaltenen Joystick/Cursor.
+  ctx.t.state.driveDirection = 'joystick';
+  ctx.t.state.driveVector = { linear: 0.2, angular: 0 };
+  ctx.t.startDriveHeartbeat();
+  assert.strictEqual(ctx.t.driveInputActive(), true);
+
+  const stopsBefore = stopCount(ctx);
+  const drivesBefore = driveCount(ctx);
+  await ctx.clock.runFor(2600);
+  assert.strictEqual(stopCount(ctx) - stopsBefore, 0, 'kein Stopp, solange gefahren wird');
+  // Der Fahrbefehl geht dabei **laufend** raus, nicht nur einmal beim Antippen.
+  assert.ok(driveCount(ctx) - drivesBefore >= 3,
+    `der Fahr-Heartbeat muss laufen, gesendet: ${driveCount(ctx) - drivesBefore}`);
+  ctx.t.stopDrive();
+});
+
+test('Loslassen stoppt sofort und geht nahtlos in den Ruhe-Takt ueber', async () => {
+  const ctx = await connect(setup());
+  ctx.t.stopPolling();
+  ctx.t.state.driveDirection = 'joystick';
+  ctx.t.state.driveVector = { linear: 0.2, angular: 0 };
+  ctx.t.startDriveHeartbeat();
+  await ctx.clock.runFor(700);
+
+  const before = stopCount(ctx);
+  ctx.t.stopDrive();                          // Loslassen
+  await ctx.clock.runFor(50);
+  assert.strictEqual(stopCount(ctx) - before, 1, 'beim Loslassen sofort genau ein Stopp');
+  assert.strictEqual(ctx.t.driveInputActive(), false);
+  // Und danach laeuft der Ruhe-Takt weiter, ohne dass etwas neu gestartet werden muesste.
+  await ctx.clock.runFor(2000);
+  assert.ok(stopCount(ctx) - before >= 4, 'der Ruhe-Takt uebernimmt nahtlos');
+});
+
+test('Ein verlorenes Stopp-Paket heilt sich im naechsten Takt', async () => {
+  const ctx = await connect(setup());
+  ctx.t.stopPolling();
+  ctx.sim.failWriteChunks = 5;                // der naechste Stopp geht verloren
+  const before = ctx.sim.commands.length;
+  await ctx.clock.runFor(600);
+  assert.strictEqual(ctx.sim.commands.length, before, 'der Stopp kam nicht an');
+  // Genau das ist der Sinn: ohne jede Fehlererkennung ersetzt der naechste Takt ihn.
+  ctx.sim.failWriteChunks = 0;
+  const healed = stopCount(ctx);
+  await ctx.clock.runFor(1200);
+  assert.ok(stopCount(ctx) - healed >= 1, 'der naechste Takt muss den Stopp ersetzen');
+});
+
+test('Ohne Verbindung wird kein Stopp ins Leere geschickt', async () => {
+  const ctx = await connect(setup());
+  ctx.t.stopPolling();
+  ctx.sim.connectFailures = 999;              // kein Reconnect dazwischen
+  ctx.t.disconnectBluetooth();
+  await ctx.clock.runFor(50);
+  const after = ctx.sim.commands.length;
+  await ctx.clock.runFor(3000);
+  assert.strictEqual(ctx.sim.commands.length, after, 'getrennt heisst still');
+  assert.strictEqual(ctx.t.state.idleStopTimer, null, 'der Takt ist mit der Verbindung beendet');
+
+  // Auch der direkte Aufruf haelt sich daran — und zwar **stillschweigend**. Ohne die
+  // Verbindungspruefung liefe er in sendSunray()s „nicht verbunden“ und meldete dem Nutzer
+  // einen Sendefehler, obwohl gar nichts zu senden war.
+  ctx.elements.get('pointStatus').textContent = 'unberuehrt';
+  ctx.t.sendIdleStop();
+  await ctx.clock.runFor(50);
+  assert.strictEqual(ctx.sim.commands.length, after);
+  assert.strictEqual(ctx.elements.get('pointStatus').textContent, 'unberuehrt',
+    'ohne Verbindung darf kein Sendefehler gemeldet werden');
+  assert.strictEqual(ctx.t.state.idleStopFailing, false, 'und kein Fehlerzustand entstehen');
+});
+
+test('Dauerhaft scheiternde Ruhe-Stopps melden sich einmal, nicht bei jedem Takt', async () => {
+  const ctx = await connect(setup());
+  ctx.t.stopPolling();
+  ctx.sandbox.__lastConfirmRequest = null;
+  ctx.sim.failWrites = true;
+  await ctx.clock.runFor(3000);
+  assert.strictEqual(ctx.t.state.idleStopFailing, true, 'der Fehlerzustand ist gemerkt');
+  assert.ok((ctx.logText().match(/GATT Error Unknown/g) || []).length >= 2,
+    'jeder Fehlschlag steht im Protokoll — verschluckt wird nichts');
+  assert.ok(ctx.elements.get('pointStatus').textContent.includes('Senden fehlgeschlagen'),
+    'der erste Fehlschlag ist sichtbar gemeldet');
+
+  // Und danach eben **nicht** mehr: bei zwei Stopps je Sekunde wuerde jede weitere Meldung die
+  // Statuszeile zuschuetten. Geprueft am sichtbaren Ergebnis — die Zeile bleibt, wie sie ist.
+  ctx.elements.get('pointStatus').textContent = 'unberuehrt';
+  await ctx.clock.runFor(2000);
+  assert.strictEqual(ctx.elements.get('pointStatus').textContent, 'unberuehrt',
+    'weitere Fehlschlaege duerfen die Statuszeile nicht ueberschreiben');
+
+  // Geht es wieder, faellt der Zustand zurueck — die naechste Stoerung meldet sich erneut.
+  ctx.sim.failWrites = false;
+  await ctx.clock.runFor(1200);
+  assert.strictEqual(ctx.t.state.idleStopFailing, false);
 });
 
 // ---------------------------------------------------------------------------

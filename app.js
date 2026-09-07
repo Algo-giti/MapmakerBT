@@ -42,6 +42,15 @@ const UNDO_STACK_LIMIT = 20;
 const POSITION_SMOOTHING_WINDOW_MS = 2000;
 const POSITION_SMOOTHING_MAX_SAMPLES = 10;
 const DRIVE_POINTER_MIN_INTERVAL_MS = 160;
+/**
+ * Im Ruhezustand (keine Fahreingabe) geht laufend ein `AT+M,0,0` raus, damit ein **einzelnes
+ * verlorenes Stopp-Paket** sich im naechsten Takt von selbst heilt, ohne dass dafuer ein Fehler
+ * erkannt werden muesste. 500 ms sind bewusst gewaehlt: gleiche Taktung wie das Polling (eine
+ * Kadenz statt zweier), und in Sunrays 1000-ms-Totmannfenster fallen damit **zwei** Stopps —
+ * geht einer verloren, landet der andere. Schneller waere reine Zusatzlast auf einem Link, der
+ * ohnehin mit 15-Byte-Paketen arbeitet.
+ */
+const DRIVE_IDLE_STOP_INTERVAL_MS = BLE_POLL_INTERVAL_MS;
 const DB_NAME = 'ardumower-bt-mapper';
 const DB_VERSION = 1;
 const MAP_STORE = 'maps';
@@ -122,7 +131,7 @@ const I18N = {
     driveHelpTitle: 'Manuell fahren',
     driveHelp1: 'Der Joystick unten steuert wie bei einem RC-Fahrzeug: die Richtung der Auslenkung ist die Fahrtrichtung, die Stärke der Auslenkung die Geschwindigkeit. Loslassen sendet sofort Stop.',
     driveHelp2: 'Minimale und maximale Geschwindigkeit werden im Menü unter „Einstellungen › Fahrgeschwindigkeit“ festgelegt: das Minimum gilt ab der Totzone, das Maximum am vollen Ausschlag.',
-    driveHelp3: 'Wichtig: Bei Bluetooth-Funkverlust kann die Webseite keinen neuen Stop-Befehl mehr übertragen. Deshalb nur bei Sichtkontakt arbeiten und den physischen Stop/Not-Aus am Mäher erreichbar halten.',
+    driveHelp3: 'Im Ruhezustand — Joystick losgelassen, keine Richtungstaste gehalten — schickt die App laufend alle 500 ms einen Stopp-Befehl. Geht einer davon verloren, ersetzt ihn der nächste von selbst. Wichtig bleibt trotzdem: Bei Bluetooth-Funkverlust kann die Webseite keinen neuen Stop-Befehl mehr übertragen. Deshalb nur bei Sichtkontakt arbeiten und den physischen Stop/Not-Aus am Mäher erreichbar halten.',
     driveHelp4: 'Diese App steuert bewusst kein Mähen: kein Start, kein Stop, kein Docking. Sie nimmt ausschließlich Karten auf.',
     appTitle: 'MapCreator für Ardumower',
     appDescription: 'MapCreator für Ardumower – mobile Kartenaufnahme über Web Bluetooth und Sunray.',
@@ -331,7 +340,7 @@ const I18N = {
     driveHelpTitle: 'Manual driving',
     driveHelp1: 'The joystick at the bottom works like an RC car: the direction of deflection is the direction of travel, the amount of deflection is the speed. Releasing sends stop immediately.',
     driveHelp2: 'Minimum and maximum speed are set in the menu under “Settings › Drive speed”: the minimum applies from the dead zone on, the maximum at full deflection.',
-    driveHelp3: 'Important: if the Bluetooth link is lost, the website cannot transmit a new stop command. Use only with line of sight and keep the mower’s physical stop/emergency control accessible.',
+    driveHelp3: 'While idle — joystick released, no direction key held — the app keeps sending a stop command every 500 ms. If one of them is lost, the next one replaces it by itself. It still matters that: if the Bluetooth link is lost, the website cannot transmit a new stop command. Use only with line of sight and keep the mower’s physical stop/emergency control accessible.',
     driveHelp4: 'This app deliberately does not control mowing: no start, no stop, no docking. It only captures maps.',
     appTitle: 'MapCreator für Ardumower',
     appDescription: 'MapCreator für Ardumower – mobile map recording via Web Bluetooth and Sunray.',
@@ -651,6 +660,8 @@ const state = {
   driveVector: { linear: 0, angular: 0 },
   joystickPointerId: null,
   cursorPointerId: null,
+  idleStopTimer: null,
+  idleStopFailing: false,
   lastDriveSentAt: 0,
 
   appliedMowPwm: null,
@@ -823,6 +834,48 @@ function beginJoystick(event) {
   try { ui.driveJoystick.setPointerCapture(event.pointerId); } catch (_) {}
   updateJoystickFromPointer(event, { forceSend: true });
   startDriveHeartbeat();
+}
+
+/** Fahreingabe aktiv? Joystick ausgelenkt oder Richtungstaste gehalten. */
+function driveInputActive() {
+  return Boolean(state.driveDirection);
+}
+
+/**
+ * Ruhezustand-Stopp: solange **keine** Fahreingabe anliegt, geht alle
+ * DRIVE_IDLE_STOP_INTERVAL_MS ein `AT+M,0,0` raus. Das ist die selbstheilende Ebene neben der
+ * Fehlermeldung: ein verlorenes Stopp-Paket wird schlicht im naechsten Takt ersetzt, ohne dass
+ * die App den Verlust ueberhaupt bemerken muss. Waehrend gefahren wird, schweigt dieser Takt —
+ * dort schickt startDriveHeartbeat() den aktuellen Vektor.
+ */
+function startIdleStopTicker() {
+  stopIdleStopTicker();
+  state.idleStopTimer = setInterval(() => { sendIdleStop(); }, DRIVE_IDLE_STOP_INTERVAL_MS);
+}
+
+function stopIdleStopTicker() {
+  if (state.idleStopTimer) clearInterval(state.idleStopTimer);
+  state.idleStopTimer = null;
+  state.idleStopFailing = false;
+}
+
+function sendIdleStop() {
+  // Nur bei tatsaechlich stehender Verbindung — ins Leere zu senden bringt nichts.
+  if (!state.connected || state.demo || !state.characteristic) return;
+  if (driveInputActive()) return;
+  sendSunray('AT+M,0,0').then(() => {
+    state.idleStopFailing = false;
+  }).catch((error) => {
+    // Bei 2 Stopps je Sekunde wuerde jede Meldung die Statuszeile zuschuetten. Deshalb nur der
+    // **Uebergang** von "geht" zu "geht nicht" wird gemeldet, jeder weitere Fehlschlag nur
+    // protokolliert — die Drosselung in reportBleError() greift zusaetzlich.
+    if (!state.idleStopFailing) {
+      state.idleStopFailing = true;
+      reportBleError('AT+M,0,0', error);
+    } else {
+      log('AT+M,0,0', error?.message || String(error));
+    }
+  });
 }
 
 /**
@@ -1925,6 +1978,7 @@ function checkRxWatchdog() {
 function dropStaleLink(reasonKey) {
   stopRxWatchdog();
   stopPolling();
+  stopIdleStopTicker();
   state.disconnectReasonKey = reasonKey;
   const device = state.device;
   if (device?.gatt?.connected) {
@@ -1960,6 +2014,7 @@ async function establishGatt(device, { reconnecting = false } = {}) {
   await initializeSunrayHandshake();
   startPolling();
   startRxWatchdog();
+  startIdleStopTicker();
   state.reconnectAttempts = 0;
   if (reconnecting) log('BLE', 'automatic reconnect successful');
 }
@@ -2011,6 +2066,7 @@ function giveUpReconnect(device) {
   if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
   stopPolling();
   stopRxWatchdog();
+  stopIdleStopTicker();
   const target = device || state.device;
   if (target?.removeEventListener) {
     try { target.removeEventListener('gattserverdisconnected', onDisconnected); } catch (error) { log('BLE', error.message); }
@@ -2030,6 +2086,7 @@ function onDisconnected() {
   state.disconnectReasonKey = null;
   stopPolling();
   stopRxWatchdog();
+  stopIdleStopTicker();
   state.characteristic = null;
   state.server = null;
   state.sendBusy = false;

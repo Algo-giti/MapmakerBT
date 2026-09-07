@@ -252,6 +252,11 @@ Der Joystick liegt fest unter der Karte und ist für die Bedienung mit dem Daume
   vollen Ausschlag.
 - Der Joystick ist eine **Totmannsteuerung**: beim Loslassen springt er in die Mitte zurück und
   der Mäher stoppt sofort.
+- **Im Ruhezustand wird der Stopp laufend wiederholt.** Solange keine Fahreingabe anliegt – also
+  Joystick losgelassen und keine Richtungstaste gehalten –, schickt die App alle 500 ms erneut
+  einen Stopp-Befehl, solange eine Bluetooth-Verbindung besteht. Geht ein einzelner Stopp
+  unterwegs verloren, ersetzt ihn der nächste von selbst; es braucht dafür keine Fehlererkennung.
+  Während des Fahrens gilt das Gegenstück: dort geht laufend der aktuelle Fahrbefehl raus.
 
 Für genaues Rangieren gibt es alternativ **vier Richtungstasten**. Der kleine Knopf **neben** dem
 Fahrfeld schaltet zwischen beidem um; er zeigt das Symbol des Modus, in den er wechselt – im
@@ -595,6 +600,11 @@ The joystick sits permanently below the map and is designed for thumb operation.
   applies from the dead zone on, the maximum at full deflection.
 - The joystick is a **dead man's control**: let go and it snaps back to the centre and the mower
   stops immediately.
+- **While idle, the stop is repeated continuously.** As long as there is no drive input – joystick
+  released and no direction key held – the app sends another stop command every 500 ms, for as
+  long as a Bluetooth connection exists. If a single stop is lost on the way, the next one
+  replaces it by itself; no error detection is needed for that. While driving the counterpart
+  applies: there the current drive command goes out continuously.
 
 For precise manoeuvring there are alternatively **four direction keys**. The small button **beside**
 the drive field switches between the two; it shows the icon of the mode it switches to – so in

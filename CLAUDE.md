@@ -302,7 +302,37 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    für Präzisionsmanöver richtig anfühlt.
 
    Beide Modi teilen sich `startDriveHeartbeat()` — Sunray stoppt nach 1000 ms ohne neues `AT+M`,
-   der Takt ist also in beiden Fällen sicherheitsrelevant und existiert nur einmal.
+   der Takt ist also in beiden Fällen sicherheitsrelevant und existiert nur einmal. Er läuft
+   **laufend**, nicht nur einmal beim Antippen (per Test festgehalten).
+
+   **Ruhezustand: der Stopp wird laufend wiederholt** (`startIdleStopTicker()`, `sendIdleStop()`,
+   `DRIVE_IDLE_STOP_INTERVAL_MS` = **500 ms** = `BLE_POLL_INTERVAL_MS`). Solange **keine**
+   Fahreingabe anliegt (`driveInputActive()` prüft `state.driveDirection`), geht alle 500 ms ein
+   `AT+M,0,0` raus — nur bei tatsächlich stehender Verbindung (`connected`, kein `demo`,
+   Characteristic vorhanden). **Zweck:** ein einzelnes verlorenes Stopp-Paket heilt sich im
+   nächsten Takt von selbst, ganz **ohne** Fehlererkennung. Das ergänzt die Meldung bei
+   fehlgeschlagenen Schreibvorgängen, ersetzt sie nicht.
+
+   **Warum 500 ms:** dieselbe Kadenz wie das Polling (eine Taktung statt zweier), und in Sunrays
+   1000-ms-Totmannfenster fallen damit **zwei** Stopps — geht einer verloren, landet der andere.
+   Schneller wäre reine Zusatzlast auf einem Link mit 15-Byte-Paketen. Die Leerlauflast steigt
+   dadurch von 2 auf 4 Schreibvorgängen je Sekunde.
+
+   **Lebenszyklus** hängt an der Verbindung, wie `startPolling()`/`startRxWatchdog()`: gestartet
+   in `establishGatt()`, beendet in `dropStaleLink()`, `onDisconnected()` und
+   `giveUpReconnect()`. `stopDrive()` schickt beim Loslassen weiterhin **sofort** einen Stopp;
+   der Ruhe-Takt übernimmt danach ohne eigenes Zutun, weil er nur `driveInputActive()` prüft.
+
+   **Fehler werden nur beim Übergang gemeldet** (`state.idleStopFailing`): zwei Stopps je Sekunde
+   würden die Statuszeile sonst zuschütten. Der erste Fehlschlag läuft über `reportBleError()`,
+   jeder weitere nur ins Diagnoseprotokoll; geht es wieder, fällt der Zustand zurück und die
+   nächste Störung meldet sich erneut. Ohne Verbindung wird **gar nicht** gesendet — sonst liefe
+   der Aufruf in „nicht verbunden“ und meldete dem Nutzer einen Sendefehler, obwohl nichts zu
+   senden war.
+
+   **Sunrays eigene 1000-ms-Abschaltung bleibt die unterste Ebene** und ist von alldem
+   unberührt: selbst wenn App und Funk komplett ausfallen, hält der Mäher nach spätestens einer
+   Sekunde ohne neues `AT+M` an. Der Ruhe-Takt ist die Ebene darüber.
 
    **Joystick-Größe** (`--joystick-size`): `clamp(110px, 25dvh × --joystick-scale,
    min(240px × --joystick-scale, 38dvh))`. Die bestehende bildschirmabhängige Rechnung bleibt, die
@@ -1225,6 +1255,23 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-07: **Kontinuierlicher Stopp im Ruhezustand (Sicherheit).** Solange keine Fahreingabe
+  anliegt, schickt `startIdleStopTicker()` alle **500 ms** ein `AT+M,0,0` — ein einzelnes
+  verlorenes Stopp-Paket heilt sich damit im nächsten Takt, ohne dass ein Fehler erkannt werden
+  müsste. 500 ms gewählt, weil das die Kadenz des Pollings ist (eine Taktung statt zweier) und
+  in Sunrays 1000-ms-Totmannfenster **zwei** Stopps fallen; die Leerlauflast steigt von 2 auf 4
+  Schreibvorgängen je Sekunde. Lebenszyklus an der Verbindung wie beim Polling und beim
+  RX-Watchdog; ohne Verbindung wird nichts gesendet und auch kein Sendefehler gemeldet.
+  Fehlschläge melden sich nur beim **Übergang** von „geht“ zu „geht nicht“, sonst würde die
+  Statuszeile bei zwei Stopps je Sekunde zugeschüttet. **Zur Rückfrage aus der Aufgabe:** der
+  Fahrbefehl geht während aktiver Fahrt bereits laufend raus (`startDriveHeartbeat()`, 650 ms),
+  nicht nur einmal beim Antippen — geprüft und jetzt per Test festgehalten. Sieben neue
+  ble-Fälle (41), dreizehn bestehende um das Stillstellen des neuen Takts ergänzt. Gegen acht
+  simulierte Rückfälle geprüft; einer (entfernte Verbindungsprüfung) lief zunächst durch, weil
+  der Test nur auf ausbleibende Kommandos schaute — er prüft jetzt zusätzlich, dass dabei kein
+  Sendefehler gemeldet wird. Hilfe und README in beiden Sprachen ergänzt. `APP_VERSION` auf
+  `v49`.
 
 - 2026-09-07: **Zwei Umzüge für kleine Displays (Xperia XZ1).** (a) Punktzahl und Konturzustand
   liegen nicht mehr als Overlay auf der Karte, sondern als **zweite Zeile unter dem Kartennamen**
