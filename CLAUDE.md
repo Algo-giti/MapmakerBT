@@ -123,6 +123,16 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    im Feld jetzt ein Name steht, ist `.info-chip` schrumpfbar (`flex: 0 1 auto; min-width: 0`)
    und kürzt per Ellipse; leer verschwindet es weiterhin per `.info-chip:empty`.
 
+   **Das Konturfeld ist die einzige sichtbare Zustandsanzeige.** Die Statuszeile `#pointStatus`
+   daneben darf denselben Sachverhalt nicht wiederholen — genau das war ein gemeldeter Fehler:
+   bei geschlossenem Perimeter stand dort zusätzlich der ausgeschriebene Satz
+   `perimeterAlreadyClosed`, direkt neben „Perimeter · geschlossen“. Der vierte Parameter von
+   `show()` ist in diesem Zweig deshalb `''`. **Der Satz selbst bleibt erhalten**, aber
+   ausschließlich als dritter Parameter, also als Vorlesehilfe `#captureButtonHint` — die ist
+   `.sr-only`, steht also nicht sichtbar in der Zeile und erklärt dem Screenreader den Zustand
+   des Aufnahme-Knopfes. Merksatz für neue Zweige: **Zustand ins Konturfeld, Handlung auf den
+   Knopf, Ereignisse in die Statuszeile.**
+
    **Ansicht zurücksetzen `#fitViewBtn`** ist ein **reines Symbol** ohne Knopffläche und Rahmen
    (`border: 0; background: none`), wie in Kartenprogrammen üblich; ein Schlagschatten hält es
    über hellem wie dunklem Kartengrund lesbar, die Trefferfläche bleibt 44 × 44 px. Die
@@ -856,7 +866,7 @@ Kein Runner, kein `package.json`, keine Abhängigkeiten — reine Node-Skripte.
 | `tests/ble-test.js` | Die BLE-Szenarien (28 Fälle), inklusive der Absicherung aller vier umgesetzten App-Fixes. Stacktraces mit `BLE_TEST_STACK=1`. |
 | `tests/sw-test.js` | Prüft die **Auslieferung** (7 Fälle): Cache-Version an genau einer Stelle in `sw.js`, App-Dateien network-first mit `cache: 'no-cache'` und Cache als Rückfallebene, `cache: 'reload'` beim Cache-Aufbau, alle von `index.html` geladenen Dateien im Cache, alte Caches werden entfernt, Neuladen bei `controllerchange` — und dass **keine** Versionsangabe im UI auftaucht. |
 | `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (35 Fälle). `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
-| `tests/ui-test.js` | Die Kartier-Oberfläche (122 Fälle): Bestätigungs- und Meldungsdialog (Titel/Text/Beschriftung, beide Antworten, verdrängte Rückfrage, Einknopf-Meldung, `reportError` protokolliert und zeigt, keine `window.confirm()`/`window.alert()`-Aufrufe mehr), Moduswahl per Dialog, Rückfrage zum Schließen von Konturen, Kartenprüfung mit Konturschluss, Aufnahme/Löschen in allen drei Button-Zuständen, Flächenauswahl, Automatik (Ersetzen des manuellen Knopfs und Intervall), Positions-Glättung, Hell/Dunkel, Akkordeon, Auswahl per Tap, Touch-Zielgröße, Zoom-Grenzen, Tap-vs-Ziehen, Pinch, Halte-Aufnahme, Joystick-Kennlinie, RTK-Badge, Menüseite, gesperrte Karte, `init()`-Startpfad. Stacktraces mit `UI_TEST_STACK=1`. Antworten auf `confirm()` steuert der Test über `sandbox.__confirmAnswer`. |
+| `tests/ui-test.js` | Die Kartier-Oberfläche (123 Fälle): Bestätigungs- und Meldungsdialog (Titel/Text/Beschriftung, beide Antworten, verdrängte Rückfrage, Einknopf-Meldung, `reportError` protokolliert und zeigt, keine `window.confirm()`/`window.alert()`-Aufrufe mehr), Moduswahl per Dialog, Rückfrage zum Schließen von Konturen, Kartenprüfung mit Konturschluss, Aufnahme/Löschen in allen drei Button-Zuständen, Flächenauswahl, Automatik (Ersetzen des manuellen Knopfs und Intervall), Positions-Glättung, Hell/Dunkel, Akkordeon, Auswahl per Tap, Touch-Zielgröße, Zoom-Grenzen, Tap-vs-Ziehen, Pinch, Halte-Aufnahme, Joystick-Kennlinie, RTK-Badge, Menüseite, gesperrte Karte, `init()`-Startpfad. Stacktraces mit `UI_TEST_STACK=1`. Antworten auf `confirm()` steuert der Test über `sandbox.__confirmAnswer`. |
 
 ### Was `tests/fake-ble.js` simulieren kann
 
@@ -1143,6 +1153,21 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-07: **Konturstatus stand doppelt in der Karteninfo.** Gemeldet und im Code bestätigt:
+  bei geschlossenem Perimeter reichte `refreshCaptureState()` den Text
+  `perimeterAlreadyClosed` („Perimeter ist bereits geschlossen.“) an `show()` **zweimal**
+  weiter — als Vorlesehilfe und als sichtbare Statuszeile. Neben dem Konturfeld
+  („Perimeter · geschlossen“) stand damit derselbe Sachverhalt ausgeschrieben ein zweites Mal,
+  und beide nahmen sich in der einzeiligen Karteninfo den Platz weg. Die beiden Bausteine
+  stammen aus verschiedenen Aufgaben, der neuere hatte den älteren nie abgelöst. Fix: die
+  sichtbare Statuszeile bleibt in diesem Zweig leer, den Zustand sagt allein das Konturfeld und
+  die Handlung der Knopf („Perimeter wieder öffnen“). **Der Satz ist nicht ersatzlos gestrichen**
+  — er bleibt die `.sr-only`-Vorlesehilfe `#captureButtonHint` am Aufnahme-Knopf, wo er nicht
+  sichtbar ist und dem Screenreader den Knopfzustand erklärt. Ein neuer ui-Fall (123) zählt die
+  Treffer des Zustandsworts über alle sichtbaren Teile der Zeile und prüft die Aufteilung in
+  beiden Sprachen; gegen vier simulierte Rückfälle geprüft, darunter das versehentliche
+  Streichen der Vorlesehilfe. `APP_VERSION` auf `v45`.
 
 - 2026-09-07: **Konturstatus war nicht zuordenbar.** Gemeldet: „geschlossen“/„offen“ stand als
   freistehendes Wort an fester Stelle der Karteninfo, mal zwischen Punktzahl und

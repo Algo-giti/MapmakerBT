@@ -1649,7 +1649,14 @@ function refreshCaptureState() {
 
   if (state.mode === 'perimeter' && state.activeMap?.perimeterClosed) {
     button.disabled = false;
-    show('capture-warning', tr('reopenPerimeter'), tr('perimeterAlreadyClosed'), tr('perimeterAlreadyClosed'));
+    // Die **sichtbare** Statuszeile bleibt hier leer: den Zustand sagt bereits das Konturfeld
+    // („Perimeter · geschlossen“), und was ein Tipp bewirkt, steht auf dem Knopf selbst
+    // („Perimeter wieder öffnen“). Vorher stand `perimeterAlreadyClosed` zusaetzlich als
+    // ausgeschriebener Satz daneben — derselbe Sachverhalt zweimal in einer Zeile, die sich
+    // beide Anzeigen gegenseitig den Platz wegnahmen. Als **Vorlesehilfe** (`captureButtonHint`,
+    // `.sr-only`) bleibt der Satz erhalten: dort ist er nicht sichtbar und erklaert dem
+    // Screenreader den Zustand des Knopfes.
+    show('capture-warning', tr('reopenPerimeter'), tr('perimeterAlreadyClosed'), '');
     return;
   }
 

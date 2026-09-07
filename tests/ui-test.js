@@ -1390,6 +1390,37 @@ test('Ein ausgewaehlter Punkt traegt den Zustand in seiner eigenen Bezeichnung',
   assert.strictEqual(t.selectedPointLabel(), 'Wegpunkte · Punkt 2');
 });
 
+test('Der Konturstatus steht genau einmal in der Karteninfo', () => {
+  // Der Fehler: bei geschlossenem Perimeter schrieb refreshCaptureState() zusaetzlich
+  // „Perimeter ist bereits geschlossen.“ in die sichtbare Statuszeile — derselbe Sachverhalt
+  // ein zweites Mal, direkt neben „Perimeter · geschlossen“. Beide nahmen sich den Platz weg.
+  const { t, elements } = setup();
+  t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }];
+  t.state.activeMap.perimeterClosed = true;
+  t.setMode('perimeter');
+  t.refreshCaptureState();
+  // Sichtbar sind nur diese drei; die uebrigen Kinder der Karteninfo sind .sr-only.
+  const visible = ['mapSummary', 'contourStatus', 'pointStatus']
+    .map((id) => elements.get(id).textContent || '').join(' | ');
+  const hits = (visible.match(/geschlossen/g) || []).length;
+  assert.strictEqual(hits, 1, `der Zustand darf nur einmal dastehen, ist: „${visible}“`);
+  assert.strictEqual(elements.get('contourStatus').textContent, 'Perimeter · geschlossen',
+    'und zwar in der kompakten Fassung hinter der Konturbezeichnung');
+  assert.ok(!/geschlossen/.test(elements.get('pointStatus').textContent || ''),
+    'die Statuszeile wiederholt den Zustand nicht mehr');
+  // Als Vorlesehilfe am Aufnahme-Knopf bleibt der ausgeschriebene Satz erhalten — er ist
+  // .sr-only, steht also nicht sichtbar in der Zeile.
+  assert.strictEqual(elements.get('captureButtonHint').textContent, 'Perimeter ist bereits geschlossen.');
+  assert.strictEqual(elements.get('captureButtonTitle').textContent, 'Perimeter wieder öffnen',
+    'was ein Tipp bewirkt, sagt der Knopf selbst');
+  // Gegenprobe Englisch: dieselbe Aufteilung, nicht nur im deutschen Text.
+  t.toggleLanguage();
+  t.refreshCaptureState();
+  const visibleEn = ['mapSummary', 'contourStatus', 'pointStatus']
+    .map((id) => elements.get(id).textContent || '').join(' | ');
+  assert.strictEqual((visibleEn.match(/closed/g) || []).length, 1, `EN: „${visibleEn}“`);
+});
+
 test('Der Konturstatus folgt jedem Neuzeichnen und jeder Zustandsauffrischung', () => {
   // Er darf nicht nur bei einem Moduswechsel stimmen: schliesst sich eine Kontur, muss die
   // Anzeige beim naechsten Render mitgehen, ohne dass jemand refreshContourStatus() ruft.
