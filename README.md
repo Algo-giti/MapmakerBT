@@ -73,11 +73,11 @@ Die App besteht aus drei Zonen:
 
 - **Kopfzeile** – Menü, Verbindungsstatus, Moduswahl, RTK-Status und Akku.
 - **Karte** – nimmt den größten Teil des Bildschirms ein. Ganz oben liegt eine schmale
-  **Werkzeugleiste** mit dem Lösch-Werkzeug und, wenn sie gerade zutreffen, „Punkt davor/danach“,
-  „Schließen & neu“ und „Erweitern“; ist keines davon sichtbar, verschwindet die Leiste ganz.
+  **Werkzeugleiste**: links der Kartenname, rechts das Lösch-Werkzeug und, wenn sie gerade
+  zutreffen, „Punkt davor/danach“, „Schließen & neu“ und „Erweitern“.
   Darunter die Kartenfläche mit Mäherposition, aufgenommenen Punkten und deren Verbindungslinien.
   Auf der Karte selbst liegen vier Dinge: oben in der einen Ecke ein schmaler Streifen mit
-  Kartenname, Punktzahl, der betroffenen Kontur samt Zustand („Perimeter · geschlossen“) und der
+  Punktzahl, der betroffenen Kontur samt Zustand („Perimeter · geschlossen“) und der
   Positionsmeldung, oben in der anderen Ecke das Symbol zum Zurücksetzen der Ansicht, unten der
   Aufnahme-Knopf und ihm gegenüber der Rückgängig-Knopf. Der Zustand steht immer direkt hinter
   der Bezeichnung der Kontur, die er meint — bei ausgewähltem Punkt also hinter dessen
@@ -424,11 +424,11 @@ The password is kept only for the running session and is never stored with the m
 The app has three zones:
 
 - **Header** – menu, connection status, mode selection, RTK status and battery.
-- **Map** – takes up most of the screen. A slim **tool bar** sits at the very top with the delete
-  tool and, whenever they apply, “Insert before/after”, “Close & new” and “Extend”; when none of
-  them is visible the bar disappears entirely. Below it the map itself with the mower position,
+- **Map** – takes up most of the screen. A slim **tool bar** sits at the very top: the map name on the
+  left, on the right the delete tool and, whenever they apply, “Insert before/after”,
+  “Close & new” and “Extend”. Below it the map itself with the mower position,
   the recorded points and their connecting lines. Four things sit on the map: a slim strip in one
-  top corner with the map name, point count, the contour concerned together with its state
+  top corner with the point count, the contour concerned together with its state
   (“Perimeter · closed”) and the position message, the reset-view icon in the other top corner,
   the capture button at the bottom and the undo button opposite it. The state always sits directly
   behind the name of the contour it refers to, so with a point selected it follows that point

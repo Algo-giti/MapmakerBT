@@ -279,12 +279,23 @@ test('„Ansicht zuruecksetzen“ ist ein reines Symbol in der oberen Kartenecke
 test('Die Werkzeugleiste bleibt kompakt und verschwindet, wenn kein Werkzeug sichtbar ist', () => {
   // Nach dem Umzug von Karteninfo, Rueckgaengig und Ansicht-Symbol steht hier nur noch die
   // Werkzeuggruppe. `space-between` haette eine leere Haelfte hinterlassen.
-  assert.strictEqual(resolve('.map-toolbar', 'justify-content').value, 'flex-end',
-    'die Werkzeuge sammeln sich an der Daumenseite');
+  assert.strictEqual(resolve('.map-toolbar', 'justify-content').value, 'space-between',
+    'Kartenname links, Werkzeuge rechts');
   assert.strictEqual(resolve(':root[data-handed="left"] .map-toolbar', 'flex-direction').value, 'row-reverse',
-    'Linkshaender: dieselbe Gruppe auf der anderen Seite');
+    'Linkshaender: beides auf der anderen Seite');
   const bar = html.slice(html.indexOf('id="mapToolbar"'), html.indexOf('id="mapCanvasArea"'));
-  assert.strictEqual((bar.match(/id="map/g) || []).length, 2, 'nur noch Leiste und Werkzeuggruppe');
+  assert.strictEqual((bar.match(/id="map/g) || []).length, 3, 'Leiste, Kartenname und Werkzeuggruppe');
+  // Der Name steht vor den Werkzeugen und gibt bei Platzmangel zuerst nach.
+  assert.ok(bar.indexOf('id="mapNameLabel"') > 0 && bar.indexOf('id="mapNameLabel"') < bar.indexOf('id="mapTools"'),
+    'der Kartenname ist das erste Kind der Leiste');
+  const shrink = (sel) => Number((resolve(sel, 'flex').value || '').split(/\s+/)[1]);
+  assert.ok(shrink('.toolbar-map-name') > shrink('.map-tools'),
+    'der Name muss zuerst nachgeben, sonst verdraengt er die Werkzeuge');
+  assert.strictEqual(resolve('.toolbar-map-name', 'text-overflow').value, 'ellipsis');
+  assert.strictEqual(resolve('.toolbar-map-name', 'min-width').value, '0');
+  // Auf der Karte darf der Name nicht ein zweites Mal stehen.
+  const area = html.slice(html.indexOf('id="mapCanvasArea"'));
+  assert.ok(!area.includes('id="mapNameLabel"'), 'der Kartenname liegt nicht mehr auf der Karte');
   // Und die App klappt sie ein, sobald alle Werkzeuge ausgeblendet sind (etwa waehrend der
   // Automatik) — sonst bliebe ein leerer Streifen samt Trennlinie stehen.
   const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
@@ -435,6 +446,76 @@ test('Der Joystick-Umschalter sitzt oben in der Steuerzone, senkrecht unter dem 
   assert.strictEqual(resolve('.drive-mode-side', 'margin-top').value, null);
   assert.strictEqual(resolve('.drive-mode-side', 'position').value, null,
     'kein Rueckfall auf absolutes Positionieren');
+});
+
+test('Umschalter und Rueckgaengig-Knopf stehen auf derselben Mittelachse', () => {
+  // Gleicher Randabstand allein reicht nicht: der Rueckgaengig-Knopf ist 48 px breit, der
+  // Umschalter nur 34 px. Buendig links standen sie deshalb sichtbar versetzt uebereinander.
+  // Der Umschalter rueckt um die halbe Differenz ein, beide Mitten liegen dann exakt gleich.
+  const px = (sel, prop) => parseFloat(resolve(sel, prop).value);
+  const gap = px(':root', '--edge-gap');
+  const fab = px(':root', '--fab-size');
+  const toggle = px('.drive-mode-side', '--drive-toggle-size');
+  assert.ok(gap > 0 && fab > 0 && toggle > 0, 'alle drei Kennzahlen stehen als Token im Stylesheet');
+  // Beide runden Randknoepfe leiten ihre Groesse aus demselben Token ab.
+  for (const selector of ['.undo-fab', '.auto-fab']) {
+    assert.strictEqual(resolve(selector, 'width').value, 'var(--fab-size)', `${selector} nutzt das Token`);
+  }
+  const inset = (resolve('.drive-mode-side', '--drive-toggle-inset').value || '').replace(/\s+/g, ' ');
+  assert.ok(inset.includes('var(--fab-size)') && inset.includes('var(--drive-toggle-size)'),
+    `die Einrueckung muss aus beiden Breiten folgen, ist "${inset}"`);
+  assert.strictEqual(resolve('.drive-mode-side', 'margin-left').value, 'var(--drive-toggle-inset)');
+  // Nachgerechnet: gleiche Mitte, nicht nur gleicher Rand.
+  const undoCentre = gap + fab / 2;
+  const toggleCentre = gap + (fab - toggle) / 2 + toggle / 2;
+  assert.strictEqual(toggleCentre, undoCentre, `Mitten: Umschalter ${toggleCentre}, Rueckgaengig ${undoCentre}`);
+  // Linkshaender: gespiegelt eingerueckt, und die linke Einrueckung muss zurueckgesetzt werden.
+  assert.strictEqual(resolve(':root[data-handed="left"] .drive-mode-side', 'margin-right').value,
+    'var(--drive-toggle-inset)');
+  assert.strictEqual(resolve(':root[data-handed="left"] .drive-mode-side', 'margin-left').value, '0',
+    'sonst wirken beide Einrueckungen gleichzeitig');
+});
+
+test('Das Tastenkreuz passt in jeder Groessenstufe vollstaendig ins Fahrfeld', () => {
+  // Der Fehler: global gilt `button { min-height: 46px }`, und eine 1fr-Gitterzeile kann ihr
+  // Kind nicht darunter druecken. Das Kreuz brauchte damit immer mindestens 3 x 46 + 2 x 4 px,
+  // lief in kleinen Stufen unten aus der Fahrzone heraus und wurde vom Bildschirmrand gekappt.
+  // Der runde Joystick ist kein Button und hatte dieses Minimum nie — deshalb nur im Tastenmodus.
+  const px = (sel, prop) => parseFloat(resolve(sel, prop).value);
+  assert.strictEqual(resolve('button', 'min-height').value, '46px',
+    'die globale Mindesthoehe besteht weiter — genau deshalb braucht es die Ausnahme');
+  assert.strictEqual(resolve('.drive-key', 'min-height').value, '0',
+    'ohne Zuruecksetzen waechst das Kreuz ueber das Feld hinaus');
+  // Die Untergrenze des Feldes ist aus Tastengroesse und Luecke gerechnet, nicht geraten.
+  const keyMin = px('.drive-zone .drive-control', '--drive-pad-key-min');
+  const padGap = px('.drive-zone .drive-control', '--drive-pad-gap');
+  assert.ok(keyMin >= 44, `jede Taste bleibt ein Daumenziel (${keyMin}px)`);
+  const fieldMin = (resolve('.drive-zone .drive-control', '--drive-field-min') || {}).value || '';
+  assert.ok(/3\s*\*\s*var\(--drive-pad-key-min\)/.test(fieldMin.replace(/\s+/g, ' '))
+    && /2\s*\*\s*var\(--drive-pad-gap\)/.test(fieldMin.replace(/\s+/g, ' ')),
+    `die Untergrenze muss aus beiden Werten folgen, ist "${fieldMin}"`);
+  const size = (resolve('.drive-zone .drive-control', '--joystick-size').value || '').replace(/\s+/g, ' ');
+  assert.ok(size.startsWith('clamp(var(--drive-field-min)'),
+    `die Untergrenze der Feldgroesse ist genau diese Rechnung: ${size}`);
+  assert.strictEqual(resolve('.drive-zone .drive-pad', 'gap').value, 'var(--drive-pad-gap)',
+    'die Luecke im Kreuz muss dieselbe sein, mit der gerechnet wurde');
+  // Nachgerechnet fuer schmale und niedrige Telefone in allen vier Stufen: das Feld ist nie
+  // kleiner als das Kreuz braucht, und beide Steuerungsarten teilen sich dieselbe Rechnung.
+  const padMin = 3 * keyMin + 2 * padGap;
+  const reserve = px('.drive-zone .drive-control', '--drive-side-reserve');
+  const field = (scale, w, h) => Math.max(padMin,
+    Math.min(25 * h / 100 * scale, 240 * scale, 38 * h / 100, w - reserve));
+  for (const [w, h] of [[360, 640], [360, 800], [320, 568], [412, 915]]) {
+    for (const scale of [0.75, 1, 1.25, 1.5]) {
+      const value = field(scale, w, h);
+      assert.ok(value >= padMin, `${w}x${h} Stufe ${scale}: Feld ${value}px < Kreuz ${padMin}px`);
+      assert.ok(value / 3 >= 44 - padGap, `${w}x${h} Stufe ${scale}: Taste zu klein`);
+    }
+  }
+  // Und das Kreuz fuellt dasselbe Feld wie der Kreis — eine Platzpruefung fuer beide Modi.
+  for (const selector of ['.drive-zone .joystick-base', '.drive-zone .drive-pad']) {
+    assert.strictEqual(resolve(selector, 'height').value, '100%', `${selector} fuellt das Feld`);
+  }
 });
 
 test('Rueckgaengig-Knopf und Joystick-Umschalter haben denselben Randabstand', () => {

@@ -34,6 +34,7 @@
 
 <main class="map-stage" id="mapStage">
 <div class="map-toolbar" id="mapToolbar">
+<span class="toolbar-map-name" data-i18n="noMap" id="mapNameLabel">Keine Karte</span>
 <div class="map-tools" id="mapTools">
 <div class="map-tool-slot" id="deleteFabWrap">
 <button class="map-tool delete-fab" id="deletePointBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg><span class="map-tool-label" id="deleteBtnLabel">Letzten Punkt</span></button>
@@ -69,7 +70,7 @@
 </svg>
 
 <div class="map-info" id="mapInfo">
-<span class="info-line" id="mapSummary">Keine Karte geladen.</span>
+<span class="info-line" id="mapSummary"></span>
 <span class="info-chip" id="contourStatus"></span>
 <span aria-live="polite" class="info-line info-dim" id="pointStatus">Zum Aufnehmen zuerst verbinden.</span>
 <span class="sr-only" id="captureButtonHint">Warte auf Position</span>
@@ -508,7 +509,7 @@
 <div class="help-feature-grid">
 <div><strong data-i18n="helpRtkTitle">RTK-Anzeige</strong><span data-i18n="helpRtkText">Das Abzeichen in der Kopfzeile zeigt Fix, Float oder No Fix und die Satelliten als Mäher/Station. Nur bei einem echten Fix ist die Position zentimetergenau.</span></div>
 <div><strong data-i18n="helpFixOnlyTitle">Nur bei RTK FIX</strong><span data-i18n="helpFixOnlyText">Im Menü unter Aufnahme. Ist die Option aktiv, bleibt jede Aufnahme bei Float oder No Fix gesperrt — auch die Automatik.</span></div>
-<div><strong data-i18n="helpMapInfoTitle">Karteninfo auf der Karte</strong><span data-i18n="helpMapInfoText">Der schmale Streifen in der oberen Kartenecke zeigt Kartenname, Punktzahl, die betroffene Kontur samt Zustand und die letzte Positionsmeldung. Der Zustand steht immer unmittelbar hinter der Bezeichnung der Kontur, auf die er sich bezieht: „Perimeter · geschlossen“ oder „Ausschluss 2 · offen“, und bei ausgewähltem Punkt an dessen Bezeichnung, also „Ausschluss 1 · Punkt 3 · offen“. So ist auch bei mehreren Ausschlussflächen eindeutig, welche gemeint ist. „Offen“ heißt, dass zwischen letztem und erstem Punkt noch keine Verbindung besteht, „geschlossen“ heißt, dass die Fläche fertig umrundet ist. Wegpunkte und Dockpfad sind immer offene Pfade und zeigen deshalb keinen Zustand.</span></div>
+<div><strong data-i18n="helpMapInfoTitle">Karteninfo auf der Karte</strong><span data-i18n="helpMapInfoText">Der Kartenname steht oben in der Werkzeugleiste. Der schmale Streifen in der oberen Kartenecke zeigt Punktzahl, die betroffene Kontur samt Zustand und die letzte Positionsmeldung. Der Zustand steht immer unmittelbar hinter der Bezeichnung der Kontur, auf die er sich bezieht: „Perimeter · geschlossen“ oder „Ausschluss 2 · offen“, und bei ausgewähltem Punkt an dessen Bezeichnung, also „Ausschluss 1 · Punkt 3 · offen“. So ist auch bei mehreren Ausschlussflächen eindeutig, welche gemeint ist. „Offen“ heißt, dass zwischen letztem und erstem Punkt noch keine Verbindung besteht, „geschlossen“ heißt, dass die Fläche fertig umrundet ist. Wegpunkte und Dockpfad sind immer offene Pfade und zeigen deshalb keinen Zustand.</span></div>
 <div><strong data-i18n="helpZoomTitle">Zoomen &amp; Verschieben</strong><span data-i18n="helpZoomText">Zwei Finger zoomen, ein Finger verschiebt. Sobald du die Ansicht selbst verändert hast, erscheint in der oberen Kartenecke ein Symbol, das sie wieder auf die ganze Karte zurücksetzt.</span></div>
 <div><strong data-i18n="helpThemeTitle">Hell &amp; Dunkel</strong><span data-i18n="helpThemeText">Drei Stufen im Menü unter Ansicht &amp; Maßstab: Hell, Dunkel oder der Vorgabe des Systems folgen.</span></div>
 <div><strong data-i18n="helpHandedTitle">Bedienseite</strong><span data-i18n="helpHandedText">Die Umstellung auf Linkshänder spiegelt die gesamte Bedienung: Werkzeuge und Karteninfo in der Kartenleiste, Aufnahme-Knopf und Fahrtanzeige.</span></div>

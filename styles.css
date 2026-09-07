@@ -2351,7 +2351,12 @@ body.menu-open .app-frame { visibility: hidden; }
   /* Anteilig zur Bildschirmhoehe (Standard rund 30 % der Zone), zusaetzlich skalierbar
      ueber --joystick-scale aus den Einstellungen. Die Obergrenze in dvh sorgt dafuer, dass
      auch die groesste Stufe der Karte genug Platz laesst. */
-  --joystick-size: clamp(110px, calc(25dvh * var(--joystick-scale, 1)),
+  /* Daumenziel je Richtungstaste und die Luecke dazwischen — daraus ergibt sich, wie klein
+     das Feld hoechstens werden darf, ohne dass das Tastenkreuz unten herauslaeuft. */
+  --drive-pad-key-min: 44px;
+  --drive-pad-gap: 4px;
+  --drive-field-min: calc(3 * var(--drive-pad-key-min) + 2 * var(--drive-pad-gap));
+  --joystick-size: clamp(var(--drive-field-min), calc(25dvh * var(--joystick-scale, 1)),
     min(calc(240px * var(--joystick-scale, 1)), 38dvh, calc(100vw - var(--drive-side-reserve))));
   /* Platz, den die beiden Seitenspalten zusammen mindestens behalten: je Seite der Umschalter
      (34 px) plus Spaltenabstand (10 px), dazu der Innenabstand der Zone (2 x 8 px). Ohne diese
@@ -2407,8 +2412,13 @@ body.menu-open .app-frame { visibility: hidden; }
    liegt der Umschalter auf derselben senkrechten Linie wie der Rueckgaengig-Knopf der Karte. */
 .drive-mode-side {
   --drive-toggle-size: 34px;
+  /* Einrueckung auf die gemeinsame Mittelachse: der Rueckgaengig-Knopf darueber ist
+     var(--fab-size) breit, dieser hier nur var(--drive-toggle-size). Ohne die halbe Differenz
+     stimmten zwar die Randabstaende, die Knoepfe standen aber sichtbar versetzt. */
+  --drive-toggle-inset: calc((var(--fab-size) - var(--drive-toggle-size)) / 2);
   flex: 0 0 auto;
   align-self: flex-start;
+  margin-left: var(--drive-toggle-inset);
   display: grid;
   place-items: center;
   width: var(--drive-toggle-size);
@@ -2419,7 +2429,7 @@ body.menu-open .app-frame { visibility: hidden; }
   background: var(--shell-panel);
   color: var(--shell-muted);
 }
-:root[data-handed="left"] .drive-mode-side { align-self: flex-end; }
+:root[data-handed="left"] .drive-mode-side { align-self: flex-end; margin-left: 0; margin-right: var(--drive-toggle-inset); }
 .drive-mode-side:active { background: var(--shell-hover); }
 /* Kugel anteilig zur Basis: skaliert automatisch mit jeder Groessenstufe mit. */
 .drive-zone .joystick-knob { width: 41%; height: 41%; }
@@ -2435,10 +2445,18 @@ body.menu-open .app-frame { visibility: hidden; }
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
-  gap: 4px;
+  gap: var(--drive-pad-gap);
   touch-action: none;
 }
 .drive-key {
+  /* **Der Grund fuer die abgeschnittene Taste unten.** Global gilt `button { min-height: 46px }`.
+     Eine `1fr`-Gitterzeile kann ihr Kind nicht unter dessen Mindesthoehe druecken, das Kreuz
+     brauchte damit immer mindestens 3 x 46 + 2 x 4 = 146 px — mehr, als das Feld in kleinen
+     Groessenstufen hoch ist. Der Ueberhang lief unten aus der Fahrzone heraus und wurde vom
+     Bildschirmrand gekappt; der runde Joystick ist kein Button und hatte dieses Minimum nie,
+     deshalb trat es nur im Tastenmodus auf. Die Tasten skalieren jetzt mit dem Feld, und
+     `--drive-field-min` haelt sie dabei ueber dem Daumenziel. */
+  min-height: 0;
   display: grid;
   place-items: center;
   padding: 0;
@@ -2626,6 +2644,13 @@ body.menu-open .app-frame { visibility: hidden; }
      Aufnahme-Cluster, Rueckgaengig-Knopf, Ansicht-Symbol, Karteninfo und der
      Joystick-Umschalter in der Fahrzone. Ein Wert, damit sie auf einer Linie stehen. */
   --edge-gap: 12px;
+  /* Groesse der kleinen runden Randknoepfe (Rueckgaengig auf der Karte, Automatik im
+     Aufnahme-Cluster). Sie bestimmt zugleich die **Mittelachse** der Randspalte:
+     var(--edge-gap) + var(--fab-size) / 2 vom Bildschirmrand. Der schmalere
+     Joystick-Umschalter rueckt genau auf diese Achse ein, statt nur buendig links zu stehen —
+     bei gleichem Randabstand, aber verschiedener Breite lagen die beiden sonst sichtbar
+     versetzt uebereinander. */
+  --fab-size: 48px;
   --point-fill: #071012;
   --selection: #7fe4ff;
 }
@@ -2765,7 +2790,8 @@ body.menu-open .app-frame { visibility: hidden; }
      nur noch die Werkzeuggruppe. Sie sammelt sich an der Daumenseite, statt eine leere Haelfte
      stehen zu lassen (`space-between` haette genau das getan). Bei Linkshaendern kehrt
      `row-reverse` weiter unten die Seite um. */
-  justify-content: flex-end;
+  /* Kartenname links, Werkzeuge rechts (bei Linkshaendern dreht `row-reverse` beides um). */
+  justify-content: space-between;
   gap: 10px;
   padding: 3px 6px;
   border-bottom: 1px solid var(--shell-border);
@@ -2816,6 +2842,7 @@ body.menu-open .app-frame { visibility: hidden; }
   font-weight: 800;
 }
 .info-chip:empty { display: none; }
+.info-line:empty { display: none; }
 .info-dim { color: var(--shell-muted); }
 .info-dim:empty { display: none; }
 /* `flex: 0 1 auto` + `min-width: 0`: die Werkzeuggruppe **muss** schrumpfen duerfen. Mit
@@ -2834,6 +2861,19 @@ body.menu-open .app-frame { visibility: hidden; }
   scrollbar-width: none;
 }
 .map-tools::-webkit-scrollbar { display: none; }
+/* Nur der **Kartenname** steht in der Leiste; Punktzahl, Konturzustand und Positionsmeldung
+   bleiben auf der Karte. Schrumpfgewicht 10 gegen 1 bei den Werkzeugen: wird es eng, gibt
+   zuerst der Name nach (er kuerzt per Ellipse), erst danach scrollt die Werkzeuggruppe. */
+.toolbar-map-name {
+  flex: 0 10 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .68rem;
+  font-weight: 800;
+  color: var(--shell-text);
+}
 .map-tool-slot { display: flex; flex: 0 0 auto; }
 .map-tool {
   flex: 0 0 auto;
@@ -2909,8 +2949,8 @@ body.menu-open .app-frame { visibility: hidden; }
 .undo-fab {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: var(--fab-size);
+  height: var(--fab-size);
   padding: 0;
   border: 2px solid var(--shell-info-border);
   border-radius: 50%;
@@ -2937,7 +2977,7 @@ body.menu-open .app-frame { visibility: hidden; }
 .auto-fab {
   display: grid;
   place-items: center;
-  width: 48px; height: 48px;
+  width: var(--fab-size); height: var(--fab-size);
   padding: 0;
   border: 2px solid var(--shell-border);
   border-radius: 50%;

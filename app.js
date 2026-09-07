@@ -169,7 +169,7 @@ const I18N = {
     dockPath: 'Dockpfad',
     deleteExclusionConfirm: '{name} wirklich löschen?', pointSaved: 'Punkt gespeichert: X {x} · Y {y}', dockPoints: 'Dockpunkte',
     contourClosed: 'geschlossen', contourOpen: 'offen',
-    mapSummary: '{name} · {points} Punkte', noMap: 'Keine Karte', noMapLoaded: 'Keine Karte geladen.', invalidMapFile: 'Datei ist keine MapCreator-für-Ardumower-Karte.', unknown: 'unbekannt',
+    mapPoints: '{points} Punkte', noMap: 'Keine Karte', noMapLoaded: 'Keine Karte geladen.', invalidMapFile: 'Datei ist keine MapCreator-für-Ardumower-Karte.', unknown: 'unbekannt',
     missingOrigin: 'Die Datei enthält Grad-Koordinaten, aber keine Ursprungsposition. Ohne sie lassen sich die Werte nicht in lokale Meter zurückrechnen.',
     unsupportedGeometry: 'GeoJSON-Geometrie {type} wird nicht unterstützt.', invalidCoordinates: 'GeoJSON enthält ungültige X/Y-Koordinaten.',
     invalidGeoJson: 'Datei ist kein unterstütztes GeoJSON FeatureCollection.', noGeoFeatures: 'GeoJSON enthält keine erkennbaren Features (perimeter, exclusion, search wire oder dockpoints).',
@@ -255,7 +255,7 @@ const I18N = {
     helpThemeTitle: 'Hell & Dunkel', helpThemeText: 'Drei Stufen im Menü unter Ansicht & Maßstab: Hell, Dunkel oder der Vorgabe des Systems folgen.',
     helpHandedTitle: 'Bedienseite', helpHandedText: 'Die Umstellung auf Linkshänder spiegelt die gesamte Bedienung: Werkzeuge und Karteninfo in der Kartenleiste, Aufnahme-Knopf und Fahrtanzeige.',
     helpJoystickSizeTitle: 'Joystick-Größe', helpJoystickSizeText: 'Vier Stufen von Klein bis Sehr groß. Größer heißt mehr Trefferfläche für den Daumen, kleiner mehr Platz für die Karte.',
-    helpMapInfoTitle: 'Karteninfo auf der Karte', helpMapInfoText: 'Der schmale Streifen in der oberen Kartenecke zeigt Kartenname, Punktzahl, die betroffene Kontur samt Zustand und die letzte Positionsmeldung. Der Zustand steht immer unmittelbar hinter der Bezeichnung der Kontur, auf die er sich bezieht: „Perimeter · geschlossen“ oder „Ausschluss 2 · offen“, und bei ausgewähltem Punkt an dessen Bezeichnung, also „Ausschluss 1 · Punkt 3 · offen“. So ist auch bei mehreren Ausschlussflächen eindeutig, welche gemeint ist. „Offen“ heißt, dass zwischen letztem und erstem Punkt noch keine Verbindung besteht, „geschlossen“ heißt, dass die Fläche fertig umrundet ist. Wegpunkte und Dockpfad sind immer offene Pfade und zeigen deshalb keinen Zustand.',
+    helpMapInfoTitle: 'Karteninfo auf der Karte', helpMapInfoText: 'Der Kartenname steht oben in der Werkzeugleiste. Der schmale Streifen in der oberen Kartenecke zeigt Punktzahl, die betroffene Kontur samt Zustand und die letzte Positionsmeldung. Der Zustand steht immer unmittelbar hinter der Bezeichnung der Kontur, auf die er sich bezieht: „Perimeter · geschlossen“ oder „Ausschluss 2 · offen“, und bei ausgewähltem Punkt an dessen Bezeichnung, also „Ausschluss 1 · Punkt 3 · offen“. So ist auch bei mehreren Ausschlussflächen eindeutig, welche gemeint ist. „Offen“ heißt, dass zwischen letztem und erstem Punkt noch keine Verbindung besteht, „geschlossen“ heißt, dass die Fläche fertig umrundet ist. Wegpunkte und Dockpfad sind immer offene Pfade und zeigen deshalb keinen Zustand.',
     helpZoomTitle: 'Zoomen & Verschieben', helpZoomText: 'Zwei Finger zoomen, ein Finger verschiebt. Sobald du die Ansicht selbst verändert hast, erscheint in der oberen Kartenecke ein Symbol, das sie wieder auf die ganze Karte zurücksetzt.',
     helpDiagnosticsTitle: 'Diagnose', helpDiagnosticsText: 'Das Protokoll im Menü unter Diagnose zeigt gesendete Kommandos, Antworten und Fehler der Funkverbindung — hilfreich, wenn die Verbindung abreißt.',
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
@@ -378,7 +378,7 @@ const I18N = {
     dockPath: 'Dock path',
     deleteExclusionConfirm: 'Really delete {name}?', pointSaved: 'Point saved: X {x} · Y {y}', dockPoints: 'Dock points',
     contourClosed: 'closed', contourOpen: 'open',
-    mapSummary: '{name} · {points} points', noMap: 'No map', noMapLoaded: 'No map loaded.', invalidMapFile: 'File is not a MapCreator für Ardumower map.', unknown: 'unknown',
+    mapPoints: '{points} points', noMap: 'No map', noMapLoaded: 'No map loaded.', invalidMapFile: 'File is not a MapCreator für Ardumower map.', unknown: 'unknown',
     missingOrigin: 'The file contains degree coordinates but no origin position. Without it the values cannot be converted back to local metres.',
     unsupportedGeometry: 'GeoJSON geometry {type} is not supported.', invalidCoordinates: 'GeoJSON contains invalid X/Y coordinates.',
     invalidGeoJson: 'File is not a supported GeoJSON FeatureCollection.', noGeoFeatures: 'GeoJSON contains no recognisable features (perimeter, exclusion, search wire or dockpoints).',
@@ -464,7 +464,7 @@ const I18N = {
     helpThemeTitle: 'Light & dark', helpThemeText: 'Three settings in the menu under View & scale: light, dark, or follow the system setting.',
     helpHandedTitle: 'Operating side', helpHandedText: 'Switching to left-handed mirrors the whole layout: tools and map info in the map bar, capture button and drive status.',
     helpJoystickSizeTitle: 'Joystick size', helpJoystickSizeText: 'Four steps from small to very large. Larger means a bigger target for your thumb, smaller means more room for the map.',
-    helpMapInfoTitle: 'Map info on the map', helpMapInfoText: 'The slim strip in the top corner of the map shows the map name, the point count, the contour concerned together with its state, and the latest position message. The state always sits directly behind the name of the contour it refers to: “Perimeter · closed” or “Exclusion 2 · open”, and with a point selected behind that point, as in “Exclusion 1 · point 3 · open”. That keeps it unambiguous even with several exclusion areas. “Open” means there is still no link between the last and the first point, “closed” means the area is fully enclosed. Waypoints and the dock path are always open paths and therefore show no state.',
+    helpMapInfoTitle: 'Map info on the map', helpMapInfoText: 'The map name sits in the tool bar at the top. The slim strip in the top corner of the map shows the point count, the contour concerned together with its state, and the latest position message. The state always sits directly behind the name of the contour it refers to: “Perimeter · closed” or “Exclusion 2 · open”, and with a point selected behind that point, as in “Exclusion 1 · point 3 · open”. That keeps it unambiguous even with several exclusion areas. “Open” means there is still no link between the last and the first point, “closed” means the area is fully enclosed. Waypoints and the dock path are always open paths and therefore show no state.',
     helpZoomTitle: 'Zoom & pan', helpZoomText: 'Two fingers zoom, one finger pans. As soon as you change the view yourself, an icon appears in the top corner of the map that resets it to the whole map.',
     helpDiagnosticsTitle: 'Diagnostics', helpDiagnosticsText: 'The log in the menu under Diagnostics shows sent commands, replies and radio errors — useful when the connection drops.',
     solutionInvalid: 'INVALID', solutionUnknown: 'UNKNOWN', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
@@ -552,7 +552,7 @@ const ui = {
   captureCluster: $('captureCluster'), autoFabWrap: $('autoFabWrap'), autoCaptureBtn: $('autoCaptureBtn'), autoCaptureLabel: $('autoCaptureLabel'),
   captureFabWrap: $('captureFabWrap'), addPointBtn: $('addPointBtn'), captureProgress: $('captureProgress'), captureButtonTitle: $('captureButtonTitle'), captureButtonHint: $('captureButtonHint'),
   mapToolbar: $('mapToolbar'), contourStatus: $('contourStatus'),
-  mapSummary: $('mapSummary'), mapDistanceInfo: $('mapDistanceInfo'), pointStatus: $('pointStatus'), activeMapName: $('activeMapName'), saveState: $('saveState'),
+  mapNameLabel: $('mapNameLabel'), mapSummary: $('mapSummary'), mapDistanceInfo: $('mapDistanceInfo'), pointStatus: $('pointStatus'), activeMapName: $('activeMapName'), saveState: $('saveState'),
   // Fahren
   driveZone: $('driveZone'), driveJoystick: $('driveJoystick'), joystickKnob: $('joystickKnob'), driveState: $('driveState'),
   joystickSizeSelect: $('joystickSizeSelect'), handedSelect: $('handedSelect'),
@@ -3053,7 +3053,10 @@ function contourStatusChipText() {
 function refreshToolbarVisibility() {
   if (!ui.mapToolbar) return;
   const slots = [ui.deleteFabWrap, ui.insertBeforeWrap, ui.insertAfterWrap, ui.closeAndNewWrap, ui.extendWrap];
-  ui.mapToolbar.hidden = !slots.some((slot) => slot && !slot.hidden);
+  // Seit der Kartenname hier steht, ist die Leiste praktisch immer belegt. Sie klappt nur noch
+  // ein, wenn wirklich nichts darin steht — sonst wuerde ausgerechnet der Name verschwinden.
+  const hasName = Boolean((ui.mapNameLabel?.textContent || '').trim());
+  ui.mapToolbar.hidden = !hasName && !slots.some((slot) => slot && !slot.hidden);
 }
 
 function refreshUndoButton() {
@@ -3461,10 +3464,14 @@ function renderMap() {
     drawPolyline(state.activeMap.dockPoints, transform, 'dock-shape', false);
     drawPoints(state.activeMap.dockPoints, transform, 'point-dock', { role: 'dock' });
 
-    ui.mapSummary.textContent = tr('mapSummary', { name: localizedMapName(state.activeMap), points: mapPointCount(state.activeMap) });
+    // Der Kartenname steht oben in der Werkzeugleiste, auf der Karte selbst nur noch die
+    // Punktzahl — sonst stuende derselbe Name zweimal auf dem Bildschirm.
+    ui.mapNameLabel.textContent = localizedMapName(state.activeMap);
+    ui.mapSummary.textContent = tr('mapPoints', { points: mapPointCount(state.activeMap) });
   } else {
     ui.activeMapName.textContent = tr('noMap');
-    ui.mapSummary.textContent = tr('noMapLoaded');
+    ui.mapNameLabel.textContent = tr('noMapLoaded');
+    ui.mapSummary.textContent = '';
   }
 
   refreshContourStatus();

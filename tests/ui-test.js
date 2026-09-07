@@ -1451,7 +1451,11 @@ test('Die Werkzeugleiste verschwindet, wenn kein einziges Werkzeug sichtbar ist'
     elements.get(id).hidden = true;
   }
   t.refreshToolbarVisibility();
-  assert.strictEqual(bar.hidden, true, 'ohne sichtbares Werkzeug klappt die Leiste ein');
+  assert.strictEqual(bar.hidden, false, 'der Kartenname haelt die Leiste offen');
+  // Erst ohne Werkzeug **und** ohne Namen ist wirklich nichts mehr darin.
+  elements.get('mapNameLabel').textContent = '';
+  t.refreshToolbarVisibility();
+  assert.strictEqual(bar.hidden, true, 'voellig leer klappt sie ein');
   elements.get('deleteFabWrap').hidden = false;
   t.refreshToolbarVisibility();
   assert.strictEqual(bar.hidden, false, 'ein einziges Werkzeug genuegt');
@@ -2248,13 +2252,16 @@ test('Die alte Einstellung driveLabelSide wird auf die Haendigkeit uebernommen',
   assert.strictEqual(t.state.view.handed, 'right');
 });
 
-test('Die Karteninfo steht in der Werkzeugleiste und wird weiterhin gefuellt', () => {
+test('Nur der Kartenname steht in der Leiste, die Punktzahl bleibt auf der Karte', () => {
+  // Aufgeteilt: der Name gewinnt oben Platz, auf der Karte wird der Streifen dadurch kuerzer.
+  // Doppelt darf der Name nirgends stehen.
   const { t } = setup();
   t.state.activeMap.name = 'Testwiese';
   t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 1, y: 1 }];
   t.renderMap();
-  assert.ok(t.ui.mapSummary.textContent.includes('Testwiese'), 'Kartenname steht in der Leiste');
-  assert.ok(t.ui.mapSummary.textContent.includes('2'), 'samt Punktzahl');
+  assert.strictEqual(t.ui.mapNameLabel.textContent, 'Testwiese', 'der Name steht in der Leiste');
+  assert.strictEqual(t.ui.mapSummary.textContent, '2 Punkte', 'auf der Karte nur noch die Punktzahl');
+  assert.ok(!t.ui.mapSummary.textContent.includes('Testwiese'), 'und der Name dort kein zweites Mal');
   // Die Statuszeile ist dieselbe wie zuvor, nur an anderer Stelle.
   t.ui.pointStatus.textContent = '';
   t.refreshCaptureState();

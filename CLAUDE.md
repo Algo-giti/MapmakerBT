@@ -69,6 +69,7 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
 
    | Element | Ort | Rechtshänder | Linkshänder |
    |---|---|---|---|
+   | Kartenname (`#mapNameLabel`) | Werkzeugleiste | links | rechts |
    | Lösch-Werkzeug (`#deleteFabWrap`) | Werkzeugleiste | rechts | links |
    | „Punkt davor/danach“ (`#insertBeforeWrap`/`#insertAfterWrap`) | Werkzeugleiste | rechts | links |
    | „Schließen & neu“ (`#closeAndNewWrap`) | Werkzeugleiste | rechts | links |
@@ -78,17 +79,19 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    | Rückgängig (`#undoFabWrap`) | **auf der Karte**, unten | links | rechts |
    | Aufnahme-Cluster (`.capture-cluster`) | **auf der Karte**, unten | rechts | links |
 
-   **Werkzeugleiste** (`.map-toolbar`) trägt seit v42 **nur noch** `.map-tools`. Sie steht auf
-   `justify-content: flex-end`, sammelt sich also an der Daumenseite; `row-reverse` bei
-   Linkshändern dreht die Seite. **`space-between` wäre hier falsch** — mit einem einzigen Kind
-   bliebe die halbe Zeile leer. Sind **alle** Werkzeugslots ausgeblendet (etwa während der
-   Automatik), blendet `refreshToolbarVisibility()` die ganze Leiste aus; sonst bliebe ein
-   leerer Streifen samt Trennlinie stehen und nähme der Karte Höhe. Die Gruppe bleibt schrumpfbar
-   (`flex: 0 1 auto; min-width: 0`) und scrollt notfalls waagerecht.
+   **Werkzeugleiste** (`.map-toolbar`) trägt seit v46 zwei Kinder: den **Kartennamen**
+   (`.toolbar-map-name`, `#mapNameLabel`) und `.map-tools`, deshalb wieder
+   `justify-content: space-between`; `row-reverse` bei Linkshändern dreht beide Seiten. Der Name
+   gibt bei Platzmangel **zuerst** nach (`flex: 0 10 auto` gegen `0 1 auto` bei den Werkzeugen)
+   und kürzt per Ellipse — er darf die Werkzeuge nie verdrängen. Sind alle Werkzeugslots
+   ausgeblendet, bleibt die Leiste jetzt **stehen**, solange der Name gefüllt ist;
+   `refreshToolbarVisibility()` klappt sie nur bei wirklich leerem Inhalt ein, sonst
+   verschwände ausgerechnet der Kartenname.
 
-   **Karteninfo `#mapInfo`** liegt wieder als halbtransparentes Overlay (`--shell-hud`) oben auf
-   der Karte, **einzeilig**: `display: flex`, darin `#mapSummary` (Name · Punktzahl),
-   `#contourStatus` und `#pointStatus`. Jede Angabe ist `flex: 0 1 auto` mit Ellipse, die Box
+   **Karteninfo `#mapInfo`** liegt als halbtransparentes Overlay (`--shell-hud`) oben auf der
+   Karte, **einzeilig**: `display: flex`, darin `#mapSummary` (**nur die Punktzahl**, Schlüssel
+   `mapPoints`), `#contourStatus` und `#pointStatus`. **Der Kartenname steht nicht hier**, er
+   gehört seit v46 in die Werkzeugleiste — sonst stünde er zweimal auf dem Bildschirm. Jede Angabe ist `flex: 0 1 auto` mit Ellipse, die Box
    selbst `pointer-events: none`, damit Kartengesten darunter weiterlaufen, und
    `max-width: calc(100% - var(--edge-gap) - 56px)`, damit sie nicht ins Ansicht-Symbol läuft.
    **Warum zurück auf die Karte:** in der Leiste konkurrierte sie mit den Werkzeugen um die
@@ -144,12 +147,19 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    unverändert; nur die Position hat gewechselt. Es trägt **keine sichtbare Beschriftung** mehr,
    nur sein `aria-label` — die Kurzschlüssel `undoShort` und `fitViewShort` sind entfallen.
 
-   **`--edge-gap` (12 px) ist der gemeinsame Randabstand** aller randständigen Bedienelemente:
-   Karteninfo, Ansicht-Symbol, Rückgängig-Knopf, Aufnahme-Cluster **und** der seitliche
-   Innenabstand der Fahrzone. Nur dadurch stehen der Rückgängig-Knopf auf der Karte und der
-   Joystick-Umschalter in der Fahrzone darunter auf **einer** senkrechten Linie, obwohl sie in
-   verschiedenen Bereichen liegen. Wer einen davon ändert, muss das Token ändern, nicht die
-   einzelne Regel; `tests/layout-test.js` nagelt genau das fest.
+   **Zwei Token halten die Randspalte zusammen.** `--edge-gap` (12 px) ist der Randabstand aller
+   randständigen Bedienelemente: Karteninfo, Ansicht-Symbol, Rückgängig-Knopf, Aufnahme-Cluster
+   **und** der seitliche Innenabstand der Fahrzone. `--fab-size` (48 px) ist die Größe der
+   kleinen runden Randknöpfe (`.undo-fab`, `.auto-fab`) und legt damit die **Mittelachse** der
+   Spalte fest: `--edge-gap + --fab-size / 2` vom Bildschirmrand.
+
+   **Gleicher Randabstand genügt nicht.** Der Joystick-Umschalter ist nur 34 px breit; bündig
+   links stand er sichtbar versetzt unter dem 48 px breiten Rückgängig-Knopf. Er rückt deshalb um
+   `--drive-toggle-inset` = `(--fab-size - --drive-toggle-size) / 2` ein und liegt damit auf
+   derselben Mittelachse. Bei Linkshändern wird `margin-left` ausdrücklich auf `0` zurückgesetzt
+   und stattdessen `margin-right` gesetzt — sonst wirken beide Einrückungen gleichzeitig. Wer
+   eine dieser Größen ändert, ändert das Token, nicht die einzelne Regel;
+   `tests/layout-test.js` rechnet beide Mitten nach.
 
 3. **Fahrzone** (`.drive-zone`): der Joystick, fest sichtbar, für den Daumen. Sie ist bewusst
    **nur so hoch wie ihr Inhalt**: `flex: 0 0 auto`, `align-content: center`. Drei Spalten
@@ -219,6 +229,21 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    „gestoppt“). **Nicht ohne Gerät verifizierbar:** ob der Stapel auf jeder Bildschirmbreite
    wirklich beides vollständig zeigt — beim nächsten Gerätetest gezielt prüfen, auch in der
    Stufe „Sehr groß“ und als Linkshänder.
+
+   **Das Tastenkreuz braucht eine eigene Untergrenze für die Feldgröße.** Global gilt
+   `button { min-height: 46px }`, und eine `1fr`-Gitterzeile kann ihr Kind nicht unter dessen
+   Mindesthöhe drücken: das Kreuz brauchte dadurch immer mindestens 3 × 46 + 2 × 4 = 146 px. War
+   das Feld kleiner (kleine Größenstufe, niedriges Display), lief der Überhang unten aus der
+   Fahrzone heraus und die Taste „zurück“ wurde vom Bildschirmrand gekappt. **Der runde Joystick
+   ist kein `<button>` und hatte dieses Minimum nie** — deshalb trat der Fehler nur im
+   Tastenmodus auf, obwohl sich beide dasselbe Feld teilen. Zwei Teile gehören zusammen:
+   `.drive-key { min-height: 0 }` lässt die Tasten mit dem Feld schrumpfen, und
+   `--drive-field-min` = `3 × --drive-pad-key-min + 2 × --drive-pad-gap` (= 140 px) ist die
+   **Untergrenze der `--joystick-size`-Rechnung**, damit jede Taste ein 44-px-Daumenziel bleibt.
+   `.drive-pad` benutzt dieselbe `--drive-pad-gap`, mit der gerechnet wurde. **Nicht ohne Gerät
+   verifizierbar:** ob das Kreuz auf allen realen Bildschirmgrößen und -verhältnissen vollständig
+   sichtbar bleibt — der Test rechnet vier gängige Auflösungen in allen vier Stufen nach, nicht
+   den echten Umbruch.
 
    **Der Tastenmodus hat eine eigene Geschwindigkeit** `state.view.cursorSpeedCms` (Startwert
    **15 cm/s**, Untergrenze 2 cm/s, Obergrenze die eingestellte `driveSpeedMax` in cm/s —
@@ -865,7 +890,7 @@ Kein Runner, kein `package.json`, keine Abhängigkeiten — reine Node-Skripte.
 | `tests/app-core-test.js` | Geometrie, Kartenmodell, Validierung (unverändert, nur auf `app-harness.js` umgestellt). |
 | `tests/ble-test.js` | Die BLE-Szenarien (28 Fälle), inklusive der Absicherung aller vier umgesetzten App-Fixes. Stacktraces mit `BLE_TEST_STACK=1`. |
 | `tests/sw-test.js` | Prüft die **Auslieferung** (7 Fälle): Cache-Version an genau einer Stelle in `sw.js`, App-Dateien network-first mit `cache: 'no-cache'` und Cache als Rückfallebene, `cache: 'reload'` beim Cache-Aufbau, alle von `index.html` geladenen Dateien im Cache, alte Caches werden entfernt, Neuladen bei `controllerchange` — und dass **keine** Versionsangabe im UI auftaucht. |
-| `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (35 Fälle). `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
+| `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (37 Fälle). `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
 | `tests/ui-test.js` | Die Kartier-Oberfläche (123 Fälle): Bestätigungs- und Meldungsdialog (Titel/Text/Beschriftung, beide Antworten, verdrängte Rückfrage, Einknopf-Meldung, `reportError` protokolliert und zeigt, keine `window.confirm()`/`window.alert()`-Aufrufe mehr), Moduswahl per Dialog, Rückfrage zum Schließen von Konturen, Kartenprüfung mit Konturschluss, Aufnahme/Löschen in allen drei Button-Zuständen, Flächenauswahl, Automatik (Ersetzen des manuellen Knopfs und Intervall), Positions-Glättung, Hell/Dunkel, Akkordeon, Auswahl per Tap, Touch-Zielgröße, Zoom-Grenzen, Tap-vs-Ziehen, Pinch, Halte-Aufnahme, Joystick-Kennlinie, RTK-Badge, Menüseite, gesperrte Karte, `init()`-Startpfad. Stacktraces mit `UI_TEST_STACK=1`. Antworten auf `confirm()` steuert der Test über `sandbox.__confirmAnswer`. |
 
 ### Was `tests/fake-ble.js` simulieren kann
@@ -1153,6 +1178,27 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-07: **Drei Layout-Korrekturen: Mittelachse, Kartenname, abgeschnittenes Tastenkreuz.**
+  (a) Rückgängig-Knopf und Joystick-Umschalter hatten zwar denselben Randabstand, sind aber
+  48 gegen 34 px breit — bündig links standen sie sichtbar versetzt. Neues Token `--fab-size`
+  legt Größe und damit Mittelachse der Randknöpfe fest, der Umschalter rückt um die halbe
+  Differenz ein (`--drive-toggle-inset`), bei Linkshändern gespiegelt mit ausdrücklichem
+  Zurücksetzen der Gegenseite. (b) **Nur der Kartenname** ist zurück in die Werkzeugleiste
+  gewandert (links, Ellipse, gibt vor den Werkzeugen nach); auf der Karte bleiben Punktzahl,
+  Konturzustand und Positionsmeldung, der Streifen wird dadurch kürzer. Neuer i18n-Schlüssel
+  `mapPoints`, `mapSummary` entfallen. Die Leiste klappt nur noch ein, wenn auch der Name leer
+  ist. (c) **Das Tastenkreuz wurde unten abgeschnitten.** Ursache im CSS bestätigt: global gilt
+  `button { min-height: 46px }`, eine `1fr`-Zeile kann ihr Kind nicht darunter drücken, das Kreuz
+  brauchte also immer mindestens 146 px und lief in kleinen Feldgrößen unten aus der Fahrzone.
+  Der runde Joystick ist kein `<button>` und hatte dieses Minimum nie — deshalb nur im
+  Tastenmodus, obwohl beide dasselbe Feld teilen. Fix: `.drive-key { min-height: 0 }` plus eine
+  aus Tastengröße und Lücke gerechnete Untergrenze `--drive-field-min` (140 px) in der
+  `--joystick-size`-Rechnung, sodass jede Taste ein 44-px-Daumenziel bleibt. Zwei neue
+  layout-Fälle (37), drei angepasst, zwei ui-Fälle umgeschrieben; gegen acht simulierte
+  Rückfälle geprüft. Hilfe und README in beiden Sprachen nachgezogen. **Nicht ohne Gerät
+  verifizierbar:** ob das Kreuz auf allen realen Bildschirmgrößen vollständig sichtbar bleibt.
+  `APP_VERSION` auf `v46`.
 
 - 2026-09-07: **Konturstatus stand doppelt in der Karteninfo.** Gemeldet und im Code bestätigt:
   bei geschlossenem Perimeter reichte `refreshCaptureState()` den Text
