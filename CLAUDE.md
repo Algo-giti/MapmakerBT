@@ -230,7 +230,35 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    wirklich beides vollständig zeigt — beim nächsten Gerätetest gezielt prüfen, auch in der
    Stufe „Sehr groß“ und als Linkshänder.
 
-   **Das Tastenkreuz braucht eine eigene Untergrenze für die Feldgröße.** Global gilt
+   **Das Tastenkreuz erbte einen Außenabstand aus einer Altlast — das war die eigentliche
+   Ursache der abgeschnittenen Taste unten.** Nachgewiesen durch Auflösen der **ganzen** Kaskade
+   für das Element (nicht nur für den Selektortext): `styles.css:1715` `.drive-pad` aus dem
+   v14-Layer setzt `margin: 16px auto 10px` und trifft dieses Element weiterhin;
+   `styles.css:2442` `.drive-zone .drive-pad` setzte Größe, Lücke und Zeilen, aber **nie**
+   `margin`. `styles.css:2376` `.drive-zone .joystick-base` setzt dagegen ausdrücklich
+   `margin: 0` — genau diese Asymmetrie fehlte, und nur deshalb war der Kreis nie betroffen,
+   obwohl sich beide dasselbe Feld teilen.
+
+   **Warum das unabhängig von der Größenstufe abschneidet**, als geschlossene Rechnung: die Zone
+   ist `padTop + F + padBottom` hoch und sitzt am unteren Bildschirmrand, ihre Inhaltsoberkante
+   liegt also bei `H − F − padBottom`. Das Kreuz ist `height: 100%` = `F`, beginnt aber bei
+   `+ marginTop` — seine Unterkante liegt damit bei `H − padBottom + marginTop`. Erlaubt ist
+   höchstens `H − padBottom`. **Jedes `marginTop > 0` schneidet ab, das `F` kürzt sich heraus.**
+   Bei 16 px oberem Abstand und 8 px unterem Innenabstand (`env(safe-area-inset-bottom)` ist auf
+   Android häufig 0) ragte die Taste 8 px über den Bildschirmrand und wurde von
+   `body { overflow: hidden }` gekappt. Fix: `.drive-zone .drive-pad { margin: 0 }` plus
+   `grid-template-areas: none`, weil die Altlast Bereiche benennt, die es im heutigen Markup
+   nicht mehr gibt.
+
+   **Warum der erste Fixversuch danebenlag:** er behob eine echte, aber andere Einschränkung
+   (siehe nächster Absatz) — und sein Test fragte mit `resolve('.drive-zone .drive-pad', …)` nur
+   Regeln mit **wörtlich diesem** Selektor ab. Die Altlast `.drive-pad` trifft dasselbe Element,
+   war für diese Abfrage aber unsichtbar. `tests/layout-test.js` hat deshalb jetzt zusätzlich
+   `effectiveStyle({ classes, ancestors, tag }, property)`: es wertet **jede** passende Regel aus
+   und entscheidet nach Spezifität und Reihenfolge. **Für Altlasten-Fallen ist das das richtige
+   Werkzeug — `resolve()` reicht dafür nicht.**
+
+   **Zusätzlich braucht das Tastenkreuz eine eigene Untergrenze für die Feldgröße.** Global gilt
    `button { min-height: 46px }`, und eine `1fr`-Gitterzeile kann ihr Kind nicht unter dessen
    Mindesthöhe drücken: das Kreuz brauchte dadurch immer mindestens 3 × 46 + 2 × 4 = 146 px. War
    das Feld kleiner (kleine Größenstufe, niedriges Display), lief der Überhang unten aus der
@@ -890,7 +918,7 @@ Kein Runner, kein `package.json`, keine Abhängigkeiten — reine Node-Skripte.
 | `tests/app-core-test.js` | Geometrie, Kartenmodell, Validierung (unverändert, nur auf `app-harness.js` umgestellt). |
 | `tests/ble-test.js` | Die BLE-Szenarien (28 Fälle), inklusive der Absicherung aller vier umgesetzten App-Fixes. Stacktraces mit `BLE_TEST_STACK=1`. |
 | `tests/sw-test.js` | Prüft die **Auslieferung** (7 Fälle): Cache-Version an genau einer Stelle in `sw.js`, App-Dateien network-first mit `cache: 'no-cache'` und Cache als Rückfallebene, `cache: 'reload'` beim Cache-Aufbau, alle von `index.html` geladenen Dateien im Cache, alte Caches werden entfernt, Neuladen bei `controllerchange` — und dass **keine** Versionsangabe im UI auftaucht. |
-| `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (37 Fälle). `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
+| `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (39 Fälle). `effectiveStyle(element, property)` löst die Kaskade **elementbezogen** auf (jede passende Regel, nach Spezifität) — nötig für Altlastregeln, die `resolve(selector, …)` nicht sieht. `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
 | `tests/ui-test.js` | Die Kartier-Oberfläche (123 Fälle): Bestätigungs- und Meldungsdialog (Titel/Text/Beschriftung, beide Antworten, verdrängte Rückfrage, Einknopf-Meldung, `reportError` protokolliert und zeigt, keine `window.confirm()`/`window.alert()`-Aufrufe mehr), Moduswahl per Dialog, Rückfrage zum Schließen von Konturen, Kartenprüfung mit Konturschluss, Aufnahme/Löschen in allen drei Button-Zuständen, Flächenauswahl, Automatik (Ersetzen des manuellen Knopfs und Intervall), Positions-Glättung, Hell/Dunkel, Akkordeon, Auswahl per Tap, Touch-Zielgröße, Zoom-Grenzen, Tap-vs-Ziehen, Pinch, Halte-Aufnahme, Joystick-Kennlinie, RTK-Badge, Menüseite, gesperrte Karte, `init()`-Startpfad. Stacktraces mit `UI_TEST_STACK=1`. Antworten auf `confirm()` steuert der Test über `sandbox.__confirmAnswer`. |
 
 ### Was `tests/fake-ble.js` simulieren kann
@@ -1178,6 +1206,27 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-07: **Tastenkreuz unten abgeschnitten — zweiter Anlauf, Ursache belegt.** Der erste
+  Fixversuch (v46) griff nicht. Nachgewiesen durch Auflösen der **ganzen** Kaskade für das
+  Element statt nur für den Selektortext: `styles.css:1715` `.drive-pad { margin: 16px auto
+  10px }` aus dem alten v14-Layer trifft das Kreuz weiterhin, während `styles.css:2442`
+  `.drive-zone .drive-pad` Größe, Lücke und Zeilen setzte, aber **nie** `margin`. Der Kreis
+  setzt in `styles.css:2376` seit jeher `margin: 0` und war deshalb nie betroffen — genau die
+  Asymmetrie, die der Nutzer vermutet hatte. Rechnung: die Unterkante des Kreuzes liegt bei
+  `H − padBottom + marginTop`, erlaubt ist `H − padBottom`; die Feldgröße kürzt sich heraus,
+  **jedes positive `marginTop` schneidet ab, in jeder Größenstufe**. Bei 16 px gegen 8 px
+  Innenabstand ragten 8 px über den Rand. Fix: `margin: 0` und `grid-template-areas: none` in
+  `.drive-zone .drive-pad`. **Warum der erste Versuch das nicht fand:** sein Test fragte
+  `resolve('.drive-zone .drive-pad', …)` ab, das nur wörtlich passende Selektoren kennt — die
+  Altlast war unsichtbar. `tests/layout-test.js` hat deshalb jetzt `effectiveStyle()`, das jede
+  auf ein Element passende Regel nach Spezifität und Reihenfolge auswertet. Zwei neue
+  layout-Fälle (39): einer vergleicht die Randbox von Kreuz und Kreis über die volle Kaskade,
+  einer rechnet die Unterkante des Kreuzes gegen die Bildschirmhöhe für fünf Auflösungen in
+  allen vier Stufen — ausdrücklich im Cursor-Modus. Gegen sechs simulierte Rückfälle geprüft,
+  darunter genau der durchgerutschte; der Fehlertext nennt dabei die schuldige Altlastregel.
+  Die Untergrenze `--drive-field-min` aus v46 bleibt: sie deckt eine zweite, echte
+  Einschränkung ab (`button { min-height: 46px }`). `APP_VERSION` auf `v47`.
 
 - 2026-09-07: **Drei Layout-Korrekturen: Mittelachse, Kartenname, abgeschnittenes Tastenkreuz.**
   (a) Rückgängig-Knopf und Joystick-Umschalter hatten zwar denselben Randabstand, sind aber

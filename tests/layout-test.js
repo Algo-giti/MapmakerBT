@@ -64,6 +64,61 @@ function resolve(selector, property, { media = '' } = {}) {
   return { value, where };
 }
 
+/**
+ * Spezifitaet eines Selektors, grob nach CSS-Regel (Kennungen, Klassen/Attribute/Pseudos, Typen).
+ */
+function specificity(selector) {
+  const ids = (selector.match(/#[\w-]+/g) || []).length;
+  const classes = (selector.match(/\.[\w-]+|\[[^\]]+\]|:[\w-]+/g) || []).length;
+  const types = (selector.match(/(^|[\s>+~])[a-z][\w-]*/g) || []).length;
+  return ids * 10000 + classes * 100 + types;
+}
+
+/** Passt der Selektor auf ein Element mit dieser Klassenliste unter diesen Vorfahren? */
+function selectorMatches(selector, { classes, ancestors, tag }) {
+  if (selector.includes('#')) return false;
+  const compounds = selector.split(/\s*[>+~]\s*|\s+/).filter(Boolean);
+  const last = compounds[compounds.length - 1];
+  if (/[:\[]/.test(last)) return false;               // Zustandsregeln bleiben aussen vor
+  const lastTag = (last.match(/^[a-z][\w-]*/) || [])[0];
+  if (lastTag && lastTag !== tag) return false;
+  if (!(last.match(/\.[\w-]+/g) || []).every((c) => classes.includes(c.slice(1)))) return false;
+  return compounds.slice(0, -1).every((compound) => {
+    if (/[:\[]/.test(compound)) return false;
+    const compoundTag = (compound.match(/^[a-z][\w-]*/) || [])[0];
+    if (compoundTag && !ancestors.includes(compoundTag)) return false;
+    return (compound.match(/\.[\w-]+/g) || []).every((c) => ancestors.includes(c.slice(1)));
+  });
+}
+
+/**
+ * Gewinnender Wert einer Eigenschaft fuer ein **Element**, nicht fuer einen Selektortext.
+ *
+ * `resolve()` daneben fragt nur Regeln ab, deren Selektor woertlich uebereinstimmt. Genau daran
+ * ist ein Fixversuch gescheitert: das Tastenkreuz erbte `margin: 16px auto 10px` aus der alten
+ * Regel `.drive-pad` eines frueheren Layers, waehrend der Test `.drive-zone .drive-pad` abfragte
+ * — die Altlast war fuer ihn unsichtbar, obwohl sie dasselbe Element trifft. Diese Funktion
+ * beruecksichtigt **jede** Regel, die auf das Element passt, und entscheidet nach Spezifitaet
+ * und Reihenfolge. Fuer Altlasten-Fallen ist sie das richtige Werkzeug.
+ */
+function effectiveStyle(element, property, { media = '' } = {}) {
+  const target = { ancestors: [], tag: 'div', ...element };
+  let best = null;
+  rules.forEach((rule, index) => {
+    if (media ? !rule.media.includes(media) : rule.media) return;
+    rule.selectors.forEach((selector) => {
+      if (!selectorMatches(selector, target)) return;
+      const hit = [...rule.body.matchAll(new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+)`, 'g'))].pop();
+      if (!hit) return;
+      const score = specificity(selector);
+      if (!best || score > best.score || (score === best.score && index >= best.index)) {
+        best = { score, index, selector, value: hit[1].trim() };
+      }
+    });
+  });
+  return best || { value: null, selector: null };
+}
+
 const cases = [];
 const test = (name, fn) => cases.push({ name, fn });
 
@@ -474,6 +529,78 @@ test('Umschalter und Rueckgaengig-Knopf stehen auf derselben Mittelachse', () =>
     'var(--drive-toggle-inset)');
   assert.strictEqual(resolve(':root[data-handed="left"] .drive-mode-side', 'margin-left').value, '0',
     'sonst wirken beide Einrueckungen gleichzeitig');
+});
+
+test('Das Tastenkreuz hat dieselbe Randbox wie der Joystick — kein Ueberhang nach unten', () => {
+  // **Die tatsaechliche Ursache der abgeschnittenen Taste.** Eine Altlast aus einem frueheren
+  // Layer, `.drive-pad { margin: 16px auto 10px }`, traf das Kreuz weiterhin; die neuere Regel
+  // `.drive-zone .drive-pad` setzte zwar Groesse und Luecke, aber nie `margin`. Der runde
+  // Joystick setzt in `.drive-zone .joystick-base` ausdruecklich `margin: 0` und war deshalb nie
+  // betroffen. Geprueft wird deshalb elementbezogen ueber die **ganze** Kaskade, nicht nur ueber
+  // den Selektortext — genau daran ist der erste Fixversuch vorbeigelaufen.
+  const field = { ancestors: ['drive-zone', 'drive-control'], tag: 'div' };
+  const pad = (prop) => effectiveStyle({ ...field, classes: ['drive-pad'] }, prop);
+  const circle = (prop) => effectiveStyle({ ...field, classes: ['joystick-base'] }, prop);
+  const padMargin = pad('margin');
+  assert.strictEqual(padMargin.value, '0',
+    `das Kreuz erbt einen Aussenabstand aus "${padMargin.selector}": ${padMargin.value}`);
+  for (const prop of ['margin', 'width', 'height']) {
+    assert.strictEqual(pad(prop).value, circle(prop).value,
+      `${prop}: Kreuz und Kreis muessen dieselbe Box haben, sonst laeuft eines der beiden heraus`);
+  }
+  // Geschlossene Rechnung, warum ein positiver oberer Aussenabstand **immer** abschneidet:
+  // Zonenhoehe = padTop + Feld F + padBottom. Die Zone sitzt am unteren Bildschirmrand, ihre
+  // Inhaltsoberkante liegt also bei H - padTop - F - padBottom + padTop = H - F - padBottom.
+  // Das Kreuz ist F hoch, beginnt aber bei + marginTop → seine Unterkante liegt bei
+  // H - padBottom + marginTop. Erlaubt ist hoechstens H - padBottom. Jedes marginTop > 0
+  // schneidet ab, **unabhaengig von F** und damit von der Groessenstufe. Genau das Symptom.
+  const [marginTop, , marginBottom] = (padMargin.value || '0').split(/\s+/);
+  const overhang = parseFloat(marginTop) + parseFloat(marginBottom === undefined ? marginTop : marginBottom);
+  assert.strictEqual(overhang, 0, `Ueberhang ${overhang}px ragt unten aus dem Fahrfeld heraus`);
+  // Waagerecht ebenso: eine Mindestbreite je Spalte aus der Altlast wuerde das Kreuz in
+  // schmalen Feldern seitlich heraustreiben.
+  const columns = pad('grid-template-columns').value || '';
+  assert.ok(!/minmax/.test(columns), `feste Mindestbreiten sprengen schmale Felder: ${columns}`);
+  // Und die Bereichsnamen der Altlast sind zurueckgesetzt, damit Platzierung nur ueber
+  // Zeilennummern laeuft.
+  assert.strictEqual(pad('grid-template-areas').value, 'none');
+});
+
+test('Das Tastenkreuz bleibt im Cursor-Modus auf dem Schirm — nachgerechnet je Groessenstufe', () => {
+  // Ausdruecklich der **Cursor-Modus**: gerechnet wird mit der Randbox des Kreuzes, nicht mit
+  // der des Kreises. Beide teilen sich zwar `--joystick-size`, aber nur die Randbox entscheidet,
+  // was unten aus der Zone laeuft.
+  const px = (sel, prop) => parseFloat(resolve(sel, prop).value);
+  const field = { ancestors: ['drive-zone', 'drive-control'], tag: 'div' };
+  const margin = (effectiveStyle({ ...field, classes: ['drive-pad'] }, 'margin').value || '0').split(/\s+/);
+  const marginTop = parseFloat(margin[0]);
+  const marginBottom = parseFloat(margin[2] === undefined ? margin[0] : margin[2]);
+  // Innenabstaende der Zone aus dem Stylesheet; env(safe-area-inset-bottom) ist auf Android
+  // haeufig 0 — der unguenstigste und zugleich haeufigste Fall.
+  const padTop = 8;
+  const padBottom = 8;
+  const keyMin = px('.drive-zone .drive-control', '--drive-pad-key-min');
+  const padGap = px('.drive-zone .drive-control', '--drive-pad-gap');
+  const reserve = px('.drive-zone .drive-control', '--drive-side-reserve');
+  const padMinHeight = 3 * keyMin + 2 * padGap;
+  const appbar = 56; // Kopfzeile, grosszuegig angesetzt
+  for (const [w, h] of [[360, 640], [360, 800], [320, 568], [412, 915], [393, 786]]) {
+    for (const scale of [0.75, 1, 1.25, 1.5]) {
+      const fieldSize = Math.max(padMinHeight,
+        Math.min(25 * h / 100 * scale, 240 * scale, 38 * h / 100, w - reserve));
+      const zoneHeight = padTop + Math.max(fieldSize, marginTop + fieldSize + marginBottom) + padBottom;
+      // Unterkante des Kreuzes auf dem Schirm, gemessen von oben.
+      const padBottomEdge = h - zoneHeight + padTop + marginTop + fieldSize;
+      assert.ok(padBottomEdge <= h - padBottom + 0.001,
+        `${w}x${h} Stufe ${scale}: Kreuz endet bei ${padBottomEdge}px, erlaubt sind ${h - padBottom}px`);
+      // Und es bleibt Platz fuer Kopfzeile und Karte, die Zone darf den Schirm nicht sprengen.
+      assert.ok(zoneHeight + appbar <= h,
+        `${w}x${h} Stufe ${scale}: Fahrzone ${zoneHeight}px plus Kopfzeile passt nicht in ${h}px`);
+      // Jede einzelne Taste bleibt ein Daumenziel.
+      const keySize = (fieldSize - 2 * padGap) / 3;
+      assert.ok(keySize >= 44, `${w}x${h} Stufe ${scale}: Taste nur ${keySize.toFixed(1)}px`);
+    }
+  }
 });
 
 test('Das Tastenkreuz passt in jeder Groessenstufe vollstaendig ins Fahrfeld', () => {

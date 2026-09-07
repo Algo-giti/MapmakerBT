@@ -2442,6 +2442,20 @@ body.menu-open .app-frame { visibility: hidden; }
 .drive-zone .drive-pad {
   width: 100%;
   height: 100%;
+  /* **Der Grund fuer die abgeschnittene Taste unten.** Eine Altlast aus dem v14-Layer,
+     `.drive-pad { margin: 16px auto 10px }` (weiter oben in dieser Datei), traf dieses Element
+     weiterhin: das Kreuz ist `height: 100%` des Feldes, wurde durch den oberen Aussenabstand
+     aber um 16 px nach unten geschoben. Sein unterer Rand lag damit 16 px unter der
+     Feldunterkante, wo die Fahrzone nur 8 px Innenabstand hat — die Taste ragte also ueber den
+     Bildschirmrand hinaus und wurde von `body { overflow: hidden }` gekappt. Weil 16 px ein
+     fester Wert ist, trat das in **jeder** Groessenstufe auf. Der runde Joystick setzt in
+     `.drive-zone .joystick-base` seit jeher `margin: 0` und war deshalb nie betroffen — genau
+     diese Asymmetrie hat gefehlt. Beide Steuerungen muessen dieselbe Randbox haben. */
+  margin: 0;
+  /* Ebenfalls Altlast: die alte Regel benennt Bereiche („forward“, „stop“ …), die es im
+     heutigen Markup nicht mehr gibt. Platziert wird ueber Zeilennummern, die Namen sind tote
+     Last und koennten ein kuenftiges `grid-area: forward` still ins Leere laufen lassen. */
+  grid-template-areas: none;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
