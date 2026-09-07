@@ -152,6 +152,17 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    richtet sich mit `align-self: flex-start` (Linkshänder `flex-end`) an ihrer **Außenkante**
    aus. Zusammen mit dem seitlichen Innenabstand `var(--edge-gap)` der Fahrzone steht er damit
    genauso weit vom Bildschirmrand entfernt wie der Rückgängig-Knopf auf der Karte darüber.
+
+   **Die Spalte füllt seit v43 auch die Höhe (`align-self: stretch`).** Ohne das erbt sie
+   `align-items: center` von `.drive-zone`: der Stapel aus Umschalter und Fahrtanzeige stand
+   dann **mittig**, der Umschalter also tief unten neben der Anzeige statt oben. Als erstes Kind
+   der höhenfüllenden Spalte sitzt er jetzt am oberen Rand der Steuerzone und damit senkrecht
+   unter dem Rückgängig-Knopf der Karte — dazwischen liegen nur die Zonenkante und der obere
+   Innenabstand, ein zusätzlicher `margin-top` am Knopf wäre ein Rückfall. Damit die Fahrtanzeige
+   deswegen nicht gleich unter dem Umschalter klebt, behält sie über `margin-block: auto` ihre
+   senkrechte Mitte neben dem Joystick. **Senkrechte Reihenfolge kommt allein aus der
+   DOM-Reihenfolge** (Umschalter vor `.drive-meta`), waagerechte Seite aus `align-self` — in
+   einer Spalten-Flexbox ist `align-self` die **Quer**achse, also links/rechts.
    **Warum:** vorher saß der Knopf `position: absolute; right: 100%` neben dem Feld, und das Feld
    reservierte ihm per `--drive-toggle-gap` 50 px Außenabstand — genau die Breite, die der
    Fahrtanzeige in derselben Seitenspalte dann fehlte („Fahrt gestoppt“ wurde am Rand
@@ -821,7 +832,7 @@ Kein Runner, kein `package.json`, keine Abhängigkeiten — reine Node-Skripte.
 | `tests/app-core-test.js` | Geometrie, Kartenmodell, Validierung (unverändert, nur auf `app-harness.js` umgestellt). |
 | `tests/ble-test.js` | Die BLE-Szenarien (28 Fälle), inklusive der Absicherung aller vier umgesetzten App-Fixes. Stacktraces mit `BLE_TEST_STACK=1`. |
 | `tests/sw-test.js` | Prüft die **Auslieferung** (7 Fälle): Cache-Version an genau einer Stelle in `sw.js`, App-Dateien network-first mit `cache: 'no-cache'` und Cache als Rückfallebene, `cache: 'reload'` beim Cache-Aufbau, alle von `index.html` geladenen Dateien im Cache, alte Caches werden entfernt, Neuladen bei `controllerchange` — und dass **keine** Versionsangabe im UI auftaucht. |
-| `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (34 Fälle). `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
+| `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (35 Fälle). `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
 | `tests/ui-test.js` | Die Kartier-Oberfläche (120 Fälle): Bestätigungs- und Meldungsdialog (Titel/Text/Beschriftung, beide Antworten, verdrängte Rückfrage, Einknopf-Meldung, `reportError` protokolliert und zeigt, keine `window.confirm()`/`window.alert()`-Aufrufe mehr), Moduswahl per Dialog, Rückfrage zum Schließen von Konturen, Kartenprüfung mit Konturschluss, Aufnahme/Löschen in allen drei Button-Zuständen, Flächenauswahl, Automatik (Ersetzen des manuellen Knopfs und Intervall), Positions-Glättung, Hell/Dunkel, Akkordeon, Auswahl per Tap, Touch-Zielgröße, Zoom-Grenzen, Tap-vs-Ziehen, Pinch, Halte-Aufnahme, Joystick-Kennlinie, RTK-Badge, Menüseite, gesperrte Karte, `init()`-Startpfad. Stacktraces mit `UI_TEST_STACK=1`. Antworten auf `confirm()` steuert der Test über `sandbox.__confirmAnswer`. |
 
 ### Was `tests/fake-ble.js` simulieren kann
@@ -1109,6 +1120,19 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-07: **Joystick-Umschalter saß zu tief.** Am Gerät gemeldet: der Knopf klebte unten
+  neben der Fahrtanzeige statt oben unter dem Rückgängig-Knopf der Karte. Ursache im CSS
+  bestätigt: `.drive-side` hatte zwar `justify-self: stretch` (Breite), erbte aber weiter
+  `align-items: center` aus `.drive-zone` — der ganze Stapel stand damit senkrecht mittig, und
+  weil die Fahrtanzeige darunter hängt, rutschte der Umschalter genau in deren Höhe. Fix: die
+  Spalte füllt jetzt auch die Höhe (`align-self: stretch`), wodurch ihr erstes Kind am oberen
+  Rand der Steuerzone einhängt; die Fahrtanzeige behält über `margin-block: auto` ihre
+  senkrechte Mitte. Waagerechte Seite, Außenkante und `--edge-gap` sind unverändert, der Knopf
+  bleibt außerhalb des Kreises und ohne absolutes Positionieren. Ein neuer layout-Fall (35), der
+  die senkrechte Lage über `align-self` und die DOM-Reihenfolge prüft und die Seite gegen den
+  Rückgängig-Knopf gegenrechnet; gegen sieben simulierte Rückfälle geprüft. `APP_VERSION` auf
+  `v43`.
 
 - 2026-09-07: **Layout-Konsolidierung: Undo, Karteninfo und Ansicht-Symbol zurück auf die
   Karte.** Die obere Werkzeugleiste trägt jetzt nur noch Werkzeuge (Löschen, Punkt davor/danach,

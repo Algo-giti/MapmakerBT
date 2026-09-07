@@ -397,6 +397,40 @@ test('Umschalter und Fahrtanzeige stehen uebereinander in einer Seitenspalte', (
   assert.strictEqual(resolve('.drive-meta', 'grid-column').value, null, 'kein eigener Gitterplatz mehr');
 });
 
+test('Der Joystick-Umschalter sitzt oben in der Steuerzone, senkrecht unter dem Rueckgaengig-Knopf', () => {
+  // Der Rueckfall: `.drive-side` erbte `align-items: center` von der Fahrzone, der Stapel aus
+  // Umschalter und Fahrtanzeige stand also mittig — der Umschalter landete tief unten neben der
+  // Anzeige statt oben unter dem Rueckgaengig-Knopf der Karte.
+  assert.strictEqual(resolve('.drive-zone', 'align-items').value, 'center',
+    'die Grundregel der Zone zentriert weiterhin, deshalb braucht die Spalte ihr eigenes align-self');
+  assert.strictEqual(resolve('.drive-side', 'align-self').value, 'stretch',
+    'nur eine hoehenfuellende Spalte haengt ihr erstes Kind am oberen Rand ein');
+  // Senkrechte Reihenfolge kommt aus der DOM-Reihenfolge: Umschalter oben, Anzeige darunter.
+  const zone = html.slice(html.indexOf('id="driveZone"'), html.indexOf('</section>', html.indexOf('id="driveZone"')));
+  const side = zone.slice(zone.indexOf('class="drive-side"'));
+  assert.ok(side.indexOf('id="driveModeBtn"') < side.indexOf('class="drive-meta"'),
+    'der Umschalter ist das erste Kind und sitzt damit oben');
+  assert.strictEqual(resolve('.drive-side', 'flex-direction').value, 'column');
+  // Die Anzeige behaelt ihre senkrechte Mitte, statt gleich unter dem Umschalter zu kleben.
+  assert.strictEqual(resolve('.drive-meta', 'margin-block').value, 'auto');
+  // Waagerecht auf derselben Seite und Linie wie der Rueckgaengig-Knopf: beide an der
+  // Aussenkante, beide mit --edge-gap Abstand zum Bildschirmrand.
+  const pairs = [
+    ['.map-corner-undo', 'left', '.drive-mode-side', 'flex-start'],
+    [':root[data-handed="left"] .map-corner-undo', 'right', ':root[data-handed="left"] .drive-mode-side', 'flex-end'],
+  ];
+  for (const [undoSel, undoProp, toggleSel, expected] of pairs) {
+    assert.strictEqual(resolve(undoSel, undoProp).value, 'var(--edge-gap)', `${undoSel} { ${undoProp} }`);
+    assert.strictEqual(resolve(toggleSel, 'align-self').value, expected,
+      `${toggleSel} muss an dieselbe Aussenkante wie der Rueckgaengig-Knopf`);
+  }
+  // Knapper Abstand: zwischen beiden liegt nur der untere Rand der Karte und der obere
+  // Innenabstand der Fahrzone — kein zusaetzlicher Aussenabstand am Umschalter.
+  assert.strictEqual(resolve('.drive-mode-side', 'margin-top').value, null);
+  assert.strictEqual(resolve('.drive-mode-side', 'position').value, null,
+    'kein Rueckfall auf absolutes Positionieren');
+});
+
 test('Rueckgaengig-Knopf und Joystick-Umschalter haben denselben Randabstand', () => {
   // Sie liegen in verschiedenen Bereichen (Karte gegen Fahrzone), sollen aber optisch auf einer
   // senkrechten Linie stehen. Das traegt genau ein Token: --edge-gap. Auf der Karte ist es der

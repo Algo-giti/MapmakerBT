@@ -2389,6 +2389,12 @@ body.menu-open .app-frame { visibility: hidden; }
   /* Die Spalte wird ausgefuellt, damit der Umschalter an der **Aussenkante** sitzen kann und
      die Fahrtanzeige darunter trotzdem die ganze Spaltenbreite nutzt. */
   justify-self: stretch;
+  /* Und sie fuellt auch die **Hoehe** der Zeile. Ohne das erbt sie `align-items: center` von
+     der Fahrzone: der Stapel aus Umschalter und Fahrtanzeige stand dann mittig, der Umschalter
+     also tief unten neben der Anzeige statt oben unter dem Rueckgaengig-Knopf der Karte. Als
+     erstes Kind der gefuellten Spalte sitzt der Umschalter jetzt am oberen Rand der Steuerzone
+     — senkrecht unter dem Rueckgaengig-Knopf, mit nur der Zonenkante dazwischen. */
+  align-self: stretch;
   min-width: 0;
   max-width: 100%;
   display: flex;
@@ -2468,6 +2474,9 @@ body.menu-open .app-frame { visibility: hidden; }
   /* Kind der Seitenspalte: kein eigener Gitterplatz mehr. Umbruch an Leerzeichen ist erlaubt
      („Fahrt“ / „gestoppt“), ein Wort, das auch dann nicht passt, endet sichtbar mit „…“ statt
      still am Rand abgeschnitten zu werden. */
+  /* Der Umschalter haengt oben; die Anzeige behaelt trotzdem ihre senkrechte Mitte neben dem
+     Joystick, statt gleich darunter zu kleben. */
+  margin-block: auto;
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
