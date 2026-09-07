@@ -32,6 +32,7 @@ Die Oberfläche lässt sich zwischen **Deutsch und Englisch** umschalten; Deutsc
 - nachträglich Punkte auf halber Strecke vor oder hinter einen ausgewählten Punkt einfügen
 - eine bereits geschlossene Kontur an einer beliebigen Kante wieder öffnen und verlängern
 - die letzten 20 Bearbeitungsschritte einzeln rückgängig machen
+- auf der Karte ablesen, ob die bearbeitete Kontur offen oder geschlossen ist
 - Karten auf Geometrie- und RTK-Probleme prüfen
 - bis zu 10 Karten auf dem Gerät verwalten
 - Karten als JSON-Backup oder als GeoJSON exportieren und wieder importieren
@@ -72,10 +73,12 @@ Die App besteht aus drei Zonen:
 
 - **Kopfzeile** – Menü, Verbindungsstatus, Moduswahl, RTK-Status und Akku.
 - **Karte** – nimmt den größten Teil des Bildschirms ein. Ganz oben liegt eine schmale
-  **Werkzeugleiste**: links Kartenname und Punktzahl samt Statuszeile, rechts die Werkzeuge
-  (Lösch-Werkzeug, Rückgängig, bei Bedarf „Schließen & neu“ und „Ansicht zurück“). Darunter die
-  Kartenfläche mit Mäherposition, aufgenommenen Punkten und deren Verbindungslinien, unten rechts
-  der Aufnahme-Knopf.
+  **Werkzeugleiste** mit dem Lösch-Werkzeug und, wenn sie gerade zutreffen, „Punkt davor/danach“,
+  „Schließen & neu“ und „Erweitern“; ist keines davon sichtbar, verschwindet die Leiste ganz.
+  Darunter die Kartenfläche mit Mäherposition, aufgenommenen Punkten und deren Verbindungslinien.
+  Auf der Karte selbst liegen vier Dinge: oben in der einen Ecke ein schmaler Streifen mit
+  Kartenname, Punktzahl, Konturstatus und Positionsmeldung, oben in der anderen Ecke das Symbol
+  zum Zurücksetzen der Ansicht, unten der Aufnahme-Knopf und ihm gegenüber der Rückgängig-Knopf.
 - **Fahrzone** unten – der Joystick für den Daumen, daneben die Fahrtanzeige.
 
 Alle Einstellungen liegen auf einer eigenen **Menüseite** (☰) mit sechs Bereichen: Verbindung,
@@ -187,7 +190,8 @@ Während die Automatik läuft, ist das Werkzeug ausgeblendet.
 
 ### Rückgängig
 
-Daneben steht **Rückgängig**. Es nimmt die letzten **20 Bearbeitungsschritte** einzeln zurück –
+In der unteren Kartenecke gegenüber dem Aufnahme-Knopf steht **Rückgängig** – bei Rechtshändern
+links, bei Linkshändern rechts. Es nimmt die letzten **20 Bearbeitungsschritte** einzeln zurück –
 nicht nur das Aufnehmen, sondern auch Verschieben, Löschen einzelner Punkte, das Löschen ganzer
 Flächen und das Schließen einer Kontur. Jeder Tipp geht einen Schritt zurück; ist der Verlauf
 leer, ist der Knopf ausgegraut. Der Verlauf gilt für die laufende Sitzung und die geöffnete Karte.
@@ -216,13 +220,14 @@ verändert werden. Eine gesperrte Karte lässt sich auch nicht umbenennen.
 - **Hell- und Dunkelmodus**: standardmäßig übernimmt die App die Einstellung des Geräts;
   unter *Einstellungen › Ansicht & Maßstab* lässt sich Hell oder Dunkel fest wählen.
 - **Bedienseite**: unter *Einstellungen › Fahrgeschwindigkeit* stellst du Rechts- oder
-  Linkshänder ein. Linkshänder spiegelt die **gesamte** Bedienung – Werkzeuge und Karteninfo in
-  der Werkzeugleiste, den Aufnahme-Knopf und die Fahrtanzeige.
+  Linkshänder ein. Linkshänder spiegelt die **gesamte** Bedienung – die Werkzeugleiste, den
+  Streifen mit der Karteninfo, das Ansicht-Symbol, den Rückgängig-Knopf, den Aufnahme-Knopf sowie
+  Fahrtanzeige und Steuerungs-Umschalter.
 - **Joystick-Größe** in vier Stufen von Klein bis Sehr groß: größer heißt mehr Trefferfläche,
   kleiner mehr Platz für die Karte.
 - **Pinch-to-Zoom** und Verschieben mit dem Finger; die Karte lässt sich nicht aus dem Bild
-  schieben. Sobald du die Ansicht selbst verändert hast, erscheint in der Werkzeugleiste
-  **„Ansicht zurück“**.
+  schieben. Sobald du die Ansicht selbst verändert hast, erscheint in der oberen Kartenecke ein
+  Symbol, das die Ansicht wieder auf die ganze Karte zurücksetzt.
 - Raster in 0,10 / 0,25 / 0,50 / 1 / 2 / 5 m oder automatisch
 - maßstäbliche Darstellung des Mähers samt Ausrichtung, Standard 0,60 × 0,35 m, anpassbar
 - Fahrspur während der Aufnahme
@@ -376,6 +381,7 @@ The interface can be switched between **German and English**; German is the defa
 - insert additional points halfway before or after a selected point afterwards
 - reopen an already closed contour at any edge and extend it
 - undo the last 20 editing steps one at a time
+- see on the map whether the contour you are editing is open or closed
 - check maps for geometry and RTK problems
 - keep up to 10 maps on the device
 - export maps as a JSON backup or as GeoJSON, and import them again
@@ -415,11 +421,12 @@ The password is kept only for the running session and is never stored with the m
 The app has three zones:
 
 - **Header** – menu, connection status, mode selection, RTK status and battery.
-- **Map** – takes up most of the screen. A slim **tool bar** sits at the very top: on the left the
-  map name and point count together with the status line, on the right the tools (delete tool,
-  undo, plus “Close & new” and “Reset view” when they apply). Below it the map itself with the
-  mower position, the recorded points and their connecting lines, and the capture button at the
-  bottom right.
+- **Map** – takes up most of the screen. A slim **tool bar** sits at the very top with the delete
+  tool and, whenever they apply, “Insert before/after”, “Close & new” and “Extend”; when none of
+  them is visible the bar disappears entirely. Below it the map itself with the mower position,
+  the recorded points and their connecting lines. Four things sit on the map: a slim strip in one
+  top corner with the map name, point count, contour state and position message, the reset-view
+  icon in the other top corner, the capture button at the bottom and the undo button opposite it.
 - **Drive zone** at the bottom – the joystick for your thumb, with the drive status beside it.
 
 All settings live on a separate **menu page** (☰) with six sections: Connection, Maps, Settings,
@@ -524,7 +531,9 @@ While automatic capture is running the tool is hidden.
 
 ### Undo
 
-Next to it sits **Undo**. It takes back the last **20 editing steps** one at a time – not just
+In the bottom corner of the map opposite the capture button sits **Undo** – on the left for
+right-handed use, on the right for left-handed. It takes back the last **20 editing steps** one
+at a time – not just
 captures, but also moving points, deleting single points, deleting whole areas and closing a
 contour. Each tap goes one step back; when the history is empty the button is greyed out. The
 history belongs to the running session and the map you have open.
@@ -552,12 +561,13 @@ A locked map cannot be renamed either.
 - **Light and dark mode**: by default the app follows the device setting; under
   *Settings › View & scale* you can pin it to light or dark.
 - **Operating side**: choose right- or left-handed under *Settings › Drive speed*. Left-handed
-  mirrors the **entire** layout – tools and map info in the tool bar, the capture button and the
-  drive status.
+  mirrors the **entire** layout – the tool bar, the map info strip, the reset-view icon, the undo
+  button, the capture button as well as the drive status and the control toggle.
 - **Joystick size** in four steps from small to very large: larger means a bigger target, smaller
   means more room for the map.
 - **Pinch to zoom** and pan with one finger; the map cannot be pushed out of view. As soon as you
-  change the view yourself, **“Reset view”** appears in the tool bar.
+  change the view yourself, an icon appears in the top corner of the map that resets the view to
+  the whole map.
 - grid at 0.10 / 0.25 / 0.50 / 1 / 2 / 5 m, or automatic
 - the mower drawn to scale including its heading, 0.60 × 0.35 m by default, adjustable
 - movement trail while recording

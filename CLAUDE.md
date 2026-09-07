@@ -58,59 +58,66 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    Verbindungssektion), Moduswahl-Chip (öffnet `#modeDialog`), RTK-Badge (`updateRtkBadge()`,
    Text Fix/Float/No Fix, Satelliten als `Mäher/Station`), Akku-Chip.
 2. **Karte** (`.map-stage`): füllt den Rest und ist selbst eine **Flexbox-Spalte** aus
-   `.map-toolbar` (`flex: 0 0 auto`) und `.map-canvas-area` (`flex: 1 1 auto; min-height: 0;
-   position: relative`). Zeiger-Steuerung auf dem SVG (`onMapPointerDown/Move/Up`): Tap wählt
-   aus, Ziehen ab 8 px verschiebt, zwei Finger zoomen. In der Zeichenfläche liegt nur noch der
-   `.capture-cluster` (unten rechts, bei Linkshändern unten links) — **es gibt kein Overlay auf
-   der Karte mehr**.
+   `.map-toolbar` (`flex: 0 0 auto`), dem Hinweisstreifen `#extendPanel` und
+   `.map-canvas-area` (`flex: 1 1 auto; min-height: 0; position: relative`). Zeiger-Steuerung auf
+   dem SVG (`onMapPointerDown/Move/Up`): Tap wählt aus, Ziehen ab 8 px verschiebt, zwei Finger
+   zoomen.
 
-   **Werkzeugleiste** (`.map-toolbar`, waagerecht am oberen Rand der Karte) hat **zwei
-   Bereiche**: `.map-info` mit Kartenname/Punktzahl (`#mapSummary`) und Statuszeile
-   (`#pointStatus`, `aria-live`), daneben `.map-tools` mit sechs Werkzeugen (Symbol **oben**,
-   Beschriftung **darunter**) — Lösch-Werkzeug (`#deletePointBtn` in
-   `#deleteFabWrap`), „Punkt davor“/„Punkt danach“ (`#insertBeforeBtn`/`#insertAfterBtn` in
-   `#insertBeforeWrap`/`#insertAfterWrap`, nur bei ausgewähltem Punkt), Rückgängig (`#undoBtn`
-   in `#undoFabWrap`), „Schließen & neu“ (`#closeAndNewBtn` in `#closeAndNewWrap`) und
-   „Ansicht zurück“ (`#fitViewBtn`). Gleichzeitig sichtbar sind höchstens fünf: ohne Auswahl
-   fehlen die beiden Einfügen-Werkzeuge, mit Auswahl fehlt „Schließen & neu“. **Nicht ohne
-   Gerät verifizierbar:** ob die Leiste damit auf kleinen Bildschirmen noch bequem zu treffen
-   ist — sie scrollt notfalls waagerecht, jedes Werkzeug hält `min-height: 44px`. Die
-   `…Wrap`-Hüllen (`.map-tool-slot`) tragen weiterhin das `hidden`-Attribut, die Knöpfe selbst
-   `disabled` — Zustände, Klick-Handler und Sichtbarkeitsregeln sind unverändert.
+   **Finale Aufteilung (Stand v42) — was in der Leiste steht und was auf der Karte liegt.**
+   Die Zuordnung ist zweimal hin und her gewandert; sie steht hier vollständig, damit sie sich
+   nicht wieder aus dem Verlauf rekonstruieren lässt.
 
-   **Die Leiste kann nie breiter werden als der Bildschirm.** Beide Bereiche sind schrumpfbar
-   und haben `min-width: 0` — ohne das unterschreitet ein Flex-Kind seine Inhaltsbreite nie.
-   Die Reihenfolge steuert das **Schrumpfgewicht**: `.map-info` ist `flex: 1 10 auto`,
-   `.map-tools` ist `flex: 0 1 auto`, die Karteninfo gibt also zuerst nach (sie kürzt ohnehin
-   per Ellipse), erst danach scrollt die Werkzeuggruppe waagerecht. **Das war der Fehler hinter
-   „Perimeter erweitern wird rechts abgeschnitten“:** `.map-tools` stand auf `flex: 0 0 auto`,
-   nahm also immer die volle Inhaltsbreite ein, wuchs über die Leiste hinaus und wurde von
-   `.map-stage { overflow: hidden }` abgeschnitten — das `overflow-x: auto` darunter war
-   wirkungslos, weil der Kasten nie schmaler als sein Inhalt wurde. Zusätzlich deckelt
-   `.map-tool { max-width }` ein einzelnes Werkzeug und `.map-tool-label` kürzt per Ellipse
-   (weiterhin `nowrap` — keine Buchstabenkolonnen), und unter 430 px verkleinert eine
-   Media-Query Abstände, Mindestbreite und Schrift.
+   | Element | Ort | Rechtshänder | Linkshänder |
+   |---|---|---|---|
+   | Lösch-Werkzeug (`#deleteFabWrap`) | Werkzeugleiste | rechts | links |
+   | „Punkt davor/danach“ (`#insertBeforeWrap`/`#insertAfterWrap`) | Werkzeugleiste | rechts | links |
+   | „Schließen & neu“ (`#closeAndNewWrap`) | Werkzeugleiste | rechts | links |
+   | „Erweitern“ (`#extendWrap`) | Werkzeugleiste | rechts | links |
+   | Karteninfo (`#mapInfo`) | **auf der Karte**, oben | links | rechts |
+   | Ansicht zurücksetzen (`#fitViewBtn`) | **auf der Karte**, oben | rechts | links |
+   | Rückgängig (`#undoFabWrap`) | **auf der Karte**, unten | links | rechts |
+   | Aufnahme-Cluster (`.capture-cluster`) | **auf der Karte**, unten | rechts | links |
 
-   **Kurzbeschriftungen müssen wirklich kurz sein.** `extendPerimeterShort` trug denselben Text
-   wie `extendPerimeter` („Perimeter erweitern“) — die längste Beschriftung von allen, und genau
-   sie wurde abgeschnitten. `tests/layout-test.js` prüft deshalb nicht nur eine Längengrenze
-   (die 19 Zeichen hätten sie passiert), sondern dass jede `…Short`-Fassung **kürzer ist als die
-   ausführliche daneben**. Der lange Text lebt weiter im `aria-label`.
-   Vorher stand dieselbe Information als halbtransparenter Kasten (`.map-hud`) auf der Karte und
-   kostete Kartenfläche. **Nicht ohne Gerät verifizierbar:** ob lange Kartennamen auf kleinen
-   Bildschirmen tatsächlich sauber abgeschnitten werden statt zu drängeln — der Test prüft die
-   CSS-Zahlen, nicht echten Textfluss.
+   **Werkzeugleiste** (`.map-toolbar`) trägt seit v42 **nur noch** `.map-tools`. Sie steht auf
+   `justify-content: flex-end`, sammelt sich also an der Daumenseite; `row-reverse` bei
+   Linkshändern dreht die Seite. **`space-between` wäre hier falsch** — mit einem einzigen Kind
+   bliebe die halbe Zeile leer. Sind **alle** Werkzeugslots ausgeblendet (etwa während der
+   Automatik), blendet `refreshToolbarVisibility()` die ganze Leiste aus; sonst bliebe ein
+   leerer Streifen samt Trennlinie stehen und nähme der Karte Höhe. Die Gruppe bleibt schrumpfbar
+   (`flex: 0 1 auto; min-width: 0`) und scrollt notfalls waagerecht.
 
-   **Warum die Leiste:** vorher standen diese Knöpfe in Ecksäulen mit seitlicher Beschriftung.
-   Dort stand nur die Knopfbreite zur Verfügung, und `overflow-wrap: anywhere` brach den Text
-   notfalls **Buchstabe für Buchstabe untereinander**. In der Leiste hat jede Beschriftung die
-   volle Zeilenbreite und läuft ausdrücklich `nowrap`; passt die Leiste einmal nicht, **scrollt
-   sie waagerecht** (`overflow-x: auto`) statt umzubrechen. `.map-tool` ist bewusst kompakt
-   (18-px-Symbol, 0,55 rem Schrift), hält aber `min-height: 44px` als Daumenziel. Die
-   verbliebenen Beschriftungen am Aufnahme-Cluster stehen jetzt auf `overflow-wrap: normal`
-   statt `anywhere`. **Nicht ohne Gerät verifizierbar:** ob die Leiste auf sehr schmalen
-   Bildschirmen alle vier Beschriftungen ohne Scrollen unterbringt — beim nächsten Gerätetest
-   gezielt prüfen.
+   **Karteninfo `#mapInfo`** liegt wieder als halbtransparentes Overlay (`--shell-hud`) oben auf
+   der Karte, **einzeilig**: `display: flex`, darin `#mapSummary` (Name · Punktzahl),
+   `#contourStatus` und `#pointStatus`. Jede Angabe ist `flex: 0 1 auto` mit Ellipse, die Box
+   selbst `pointer-events: none`, damit Kartengesten darunter weiterlaufen, und
+   `max-width: calc(100% - var(--edge-gap) - 56px)`, damit sie nicht ins Ansicht-Symbol läuft.
+   **Warum zurück auf die Karte:** in der Leiste konkurrierte sie mit den Werkzeugen um die
+   Breite (das war die Ursache des abgeschnittenen „Perimeter erweitern“).
+
+   **Konturstatus `#contourStatus`** (`refreshContourStatus()`, gerufen aus `renderMap()` **und**
+   `refreshCaptureState()`): zeigt `contourClosed`/`contourOpen`, gespeist aus `activeContour()`.
+   Das liefert nur für Perimeter und Ausschlussfläche etwas — **Wegpunkte und Dockpfad sind
+   offene Pfade, dort gibt es kein sinnvolles Offen/Geschlossen**, das Feld bleibt leer und
+   verschwindet per `.info-chip:empty { display: none }` ganz.
+
+   **Ansicht zurücksetzen `#fitViewBtn`** ist ein **reines Symbol** ohne Knopffläche und Rahmen
+   (`border: 0; background: none`), wie in Kartenprogrammen üblich; ein Schlagschatten hält es
+   über hellem wie dunklem Kartengrund lesbar, die Trefferfläche bleibt 44 × 44 px. Die
+   Sichtbarkeitsregel ist unverändert: eingeblendet erst nach eigener Zoom-/Verschiebe-Geste.
+
+   **Rückgängig `#undoFabWrap`** sitzt unten an der Kartenecke **gegenüber** dem Aufnahme-Cluster,
+   in der Größe des **inaktiven** Automatik-Knopfes (48 px Umriss-Kreis, `.undo-fab`), nicht in
+   der des großen Aufnahme-Knopfes. Funktion, 20er-Stapel und Sichtbarkeitsregeln sind
+   unverändert; nur die Position hat gewechselt. Es trägt **keine sichtbare Beschriftung** mehr,
+   nur sein `aria-label` — die Kurzschlüssel `undoShort` und `fitViewShort` sind entfallen.
+
+   **`--edge-gap` (12 px) ist der gemeinsame Randabstand** aller randständigen Bedienelemente:
+   Karteninfo, Ansicht-Symbol, Rückgängig-Knopf, Aufnahme-Cluster **und** der seitliche
+   Innenabstand der Fahrzone. Nur dadurch stehen der Rückgängig-Knopf auf der Karte und der
+   Joystick-Umschalter in der Fahrzone darunter auf **einer** senkrechten Linie, obwohl sie in
+   verschiedenen Bereichen liegen. Wer einen davon ändert, muss das Token ändern, nicht die
+   einzelne Regel; `tests/layout-test.js` nagelt genau das fest.
+
 3. **Fahrzone** (`.drive-zone`): der Joystick, fest sichtbar, für den Daumen. Sie ist bewusst
    **nur so hoch wie ihr Inhalt**: `flex: 0 0 auto`, `align-content: center`. Drei Spalten
    (`minmax(0,1fr) auto minmax(0,1fr)`) — der Joystick sitzt fest in Spalte 2 und bleibt damit
@@ -139,9 +146,12 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
 
    **Seitenspalte `.drive-side` (seit v41): Umschalter oben, Fahrtanzeige darunter.** Der
    Umschalter `#driveModeBtn` (`.drive-mode-side`) und `.drive-meta` liegen als **Stapel**
-   (`flex-direction: column`) in der Außenspalte des Fahrzonen-Grids — Rechtshänder Spalte 1
-   (`justify-self: end; align-items: flex-end`), Linkshänder Spalte 3 gespiegelt über
-   `:root[data-handed="left"] .drive-side`. `.drive-meta` hat keinen eigenen Gitterplatz mehr.
+   (`flex-direction: column`) in der Außenspalte des Fahrzonen-Grids — Rechtshänder Spalte 1,
+   Linkshänder Spalte 3 über `:root[data-handed="left"] .drive-side`. `.drive-meta` hat keinen
+   eigenen Gitterplatz mehr. Die Spalte ist seit v42 `justify-self: stretch`, und der Umschalter
+   richtet sich mit `align-self: flex-start` (Linkshänder `flex-end`) an ihrer **Außenkante**
+   aus. Zusammen mit dem seitlichen Innenabstand `var(--edge-gap)` der Fahrzone steht er damit
+   genauso weit vom Bildschirmrand entfernt wie der Rückgängig-Knopf auf der Karte darüber.
    **Warum:** vorher saß der Knopf `position: absolute; right: 100%` neben dem Feld, und das Feld
    reservierte ihm per `--drive-toggle-gap` 50 px Außenabstand — genau die Breite, die der
    Fahrtanzeige in derselben Seitenspalte dann fehlte („Fahrt gestoppt“ wurde am Rand
@@ -155,8 +165,8 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    text-overflow: ellipsis; overflow-wrap: normal`) — nie stilles Abschneiden.
 
    **Die Joystick-Größe ist an die Breite gebunden**, damit die Seitenspalten nie unter die
-   Knopfbreite fallen: `--drive-side-reserve: 120px` (2 × (34 px Knopf + 10 px Spaltenabstand) +
-   2 × 8 px Innenabstand) geht als `calc(100vw - var(--drive-side-reserve))` in das `min()` der
+   Knopfbreite fallen: `--drive-side-reserve: 130px` (2 × (34 px Knopf + 10 px Spaltenabstand) +
+   2 × 12 px Innenabstand) geht als `calc(100vw - var(--drive-side-reserve))` in das `min()` der
    `--joystick-size` ein; im Breitbild-Layout entsprechend `var(--drive-column) -
    var(--drive-side-reserve)`, wobei `--drive-column` am `.app-frame` die Fahrspaltenbreite
    trägt. Ohne diese Grenze schob die Stufe „Sehr groß“ (1,5) auf einem 360-px-Telefon den
@@ -257,11 +267,15 @@ Schreibweise wie `applyTheme()` — und das Stylesheet hängt alle gespiegelten 
 
 | Stelle | Rechtshänder (Grundregel) | Linkshänder (`:root[data-handed="left"]`) |
 |---|---|---|
-| `.map-toolbar` | Info links, Werkzeuge rechts | `flex-direction: row-reverse` |
-| `.map-info` | `text-align: left` | `text-align: right` |
-| `.capture-cluster` | `right: 12px` | `left: 12px; right: auto` |
+| `.map-toolbar` | Werkzeuge rechts | `flex-direction: row-reverse` (links) |
+| `.map-info` | `left: var(--edge-gap)` | `right: var(--edge-gap); left: auto` |
+| `.map-view-reset` | `right: var(--edge-gap)` | `left: var(--edge-gap); right: auto` |
+| `.map-corner-undo` | `left: var(--edge-gap)` | `right: var(--edge-gap); left: auto` |
+| `.capture-cluster` | `right: var(--edge-gap)` | `left: var(--edge-gap); right: auto` |
 | `.capture-cluster .fab-label` | links vom Knopf (`right: 100%`) | rechts (`left: 100%`) |
-| `.drive-meta` | Spalte 1, rechtsbündig | Spalte 3, linksbündig |
+| `.drive-side` | Spalte 1 | Spalte 3 |
+| `.drive-mode-side` | `align-self: flex-start` | `align-self: flex-end` |
+| `.drive-meta` | rechtsbündig | linksbündig |
 
 **Warum zentral:** vorher saß die Umschaltung als `data-label-side` an der Fahrzone und betraf
 nur deren Anzeige; jede weitere Stelle hätte ihre eigene Bedingung gebraucht. Rechtshänder steht
@@ -549,8 +563,8 @@ Bügelform (offen/geschlossen, `lockIcon()` mit Schlüsselloch nur im gesperrten
 (Warnfarbe) und Wort — die Schaltfläche trägt „Gesperrt“ bzw. „Offen“, die Kartenkarte zusätzlich
 die Zeile „🔒 Karte gesperrt – keine Änderungen möglich“.
 
-**Rückgängig-Knopf** (`#undoBtn` in `#undoFabWrap`, als Werkzeug in der Leiste oben, eigenes
-Symbol — gebogener Pfeil, nicht die Mülltonne): nimmt genau einen Bearbeitungsschritt
+**Rückgängig-Knopf** (`#undoBtn` in `#undoFabWrap`, unten an der Kartenecke gegenüber dem
+Aufnahme-Cluster, eigenes Symbol — gebogener Pfeil, nicht die Mülltonne): nimmt genau einen Bearbeitungsschritt
 zurück. Er steht **parallel** zum Zustand „Letzten Punkt“ des Papierkorbs oben rechts — der
 bleibt unverändert, beide sind bewusst nicht zusammengelegt, und die Symbole sind verschieden
 (gebogener Pfeil gegen Mülltonne).
@@ -807,8 +821,8 @@ Kein Runner, kein `package.json`, keine Abhängigkeiten — reine Node-Skripte.
 | `tests/app-core-test.js` | Geometrie, Kartenmodell, Validierung (unverändert, nur auf `app-harness.js` umgestellt). |
 | `tests/ble-test.js` | Die BLE-Szenarien (28 Fälle), inklusive der Absicherung aller vier umgesetzten App-Fixes. Stacktraces mit `BLE_TEST_STACK=1`. |
 | `tests/sw-test.js` | Prüft die **Auslieferung** (7 Fälle): Cache-Version an genau einer Stelle in `sw.js`, App-Dateien network-first mit `cache: 'no-cache'` und Cache als Rückfallebene, `cache: 'reload'` beim Cache-Aufbau, alle von `index.html` geladenen Dateien im Cache, alte Caches werden entfernt, Neuladen bei `controllerchange` — und dass **keine** Versionsangabe im UI auftaucht. |
-| `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (31 Fälle). `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
-| `tests/ui-test.js` | Die Kartier-Oberfläche (33 Fälle): Bestätigungs- und Meldungsdialog (Titel/Text/Beschriftung, beide Antworten, verdrängte Rückfrage, Einknopf-Meldung, `reportError` protokolliert und zeigt, keine `window.confirm()`/`window.alert()`-Aufrufe mehr), Moduswahl per Dialog, Rückfrage zum Schließen von Konturen, Kartenprüfung mit Konturschluss, Aufnahme/Löschen in allen drei Button-Zuständen, Flächenauswahl, Automatik (Ersetzen des manuellen Knopfs und Intervall), Positions-Glättung, Hell/Dunkel, Akkordeon, Auswahl per Tap, Touch-Zielgröße, Zoom-Grenzen, Tap-vs-Ziehen, Pinch, Halte-Aufnahme, Joystick-Kennlinie, RTK-Badge, Menüseite, gesperrte Karte, `init()`-Startpfad. Stacktraces mit `UI_TEST_STACK=1`. Antworten auf `confirm()` steuert der Test über `sandbox.__confirmAnswer`. |
+| `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (34 Fälle). `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
+| `tests/ui-test.js` | Die Kartier-Oberfläche (120 Fälle): Bestätigungs- und Meldungsdialog (Titel/Text/Beschriftung, beide Antworten, verdrängte Rückfrage, Einknopf-Meldung, `reportError` protokolliert und zeigt, keine `window.confirm()`/`window.alert()`-Aufrufe mehr), Moduswahl per Dialog, Rückfrage zum Schließen von Konturen, Kartenprüfung mit Konturschluss, Aufnahme/Löschen in allen drei Button-Zuständen, Flächenauswahl, Automatik (Ersetzen des manuellen Knopfs und Intervall), Positions-Glättung, Hell/Dunkel, Akkordeon, Auswahl per Tap, Touch-Zielgröße, Zoom-Grenzen, Tap-vs-Ziehen, Pinch, Halte-Aufnahme, Joystick-Kennlinie, RTK-Badge, Menüseite, gesperrte Karte, `init()`-Startpfad. Stacktraces mit `UI_TEST_STACK=1`. Antworten auf `confirm()` steuert der Test über `sandbox.__confirmAnswer`. |
 
 ### Was `tests/fake-ble.js` simulieren kann
 
@@ -1095,6 +1109,26 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-07: **Layout-Konsolidierung: Undo, Karteninfo und Ansicht-Symbol zurück auf die
+  Karte.** Die obere Werkzeugleiste trägt jetzt nur noch Werkzeuge (Löschen, Punkt davor/danach,
+  „Schließen & neu“, „Erweitern“) und verschwindet ganz, sobald keines davon sichtbar ist. Auf
+  die Kartenfläche gewandert sind: der 20-Schritte-Rückgängig-Knopf (unten, gegenüber dem
+  Aufnahme-Cluster, in der Größe des **inaktiven** Automatik-Knopfes), die Karteninfo als
+  einzeiliger halbtransparenter Streifen oben und das Ansicht-Symbol als **reines Zeichen** ohne
+  Knopffläche in der gegenüberliegenden oberen Ecke. Die Karteninfo zeigt zusätzlich den
+  Konturstatus „offen“/„geschlossen“, gespeist aus `activeContour()` und damit ausdrücklich nur
+  im Perimeter- und Ausschluss-Modus; bei Wegpunkten und Dockpfad bleibt das Feld leer. Alle vier
+  Positionen hängen am bestehenden `data-handed`, keine zweite Umschaltlogik. Neu ist das Token
+  `--edge-gap` (12 px): es gilt für Karteninfo, Ansicht-Symbol, Rückgängig, Aufnahme-Cluster
+  **und** den seitlichen Innenabstand der Fahrzone, wodurch Rückgängig-Knopf und
+  Joystick-Umschalter auf einer senkrechten Linie stehen — dafür ist `.drive-side` jetzt
+  `justify-self: stretch` und der Umschalter an der Außenkante ausgerichtet. Entfallen sind die
+  Kurzbeschriftungen `undoShort` und `fitViewShort` (beide Knöpfe tragen auf der Karte nur noch
+  ihr `aria-label`). Sechs neue Testfälle (layout 34, ui 120), gegen neun simulierte Rückfälle
+  geprüft; Hilfe (neuer Eintrag „Karteninfo auf der Karte“) und README in beiden Sprachen
+  nachgezogen. **Nicht ohne Gerät verifizierbar:** ob die Karte mit den drei zurückgewanderten
+  Overlays auf kleinen Bildschirmen noch übersichtlich bleibt. `APP_VERSION` auf `v42`.
 
 - 2026-09-07: **Fahrstatus abgeschnitten, Umschalter in die Seitenspalte.** Gemeldet: „Fahrt
   gestoppt“ wurde am Rand abgeschnitten, der Umschalter wirkte weiter am Kreis. Ausgeliefert war

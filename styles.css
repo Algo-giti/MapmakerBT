@@ -2334,7 +2334,10 @@ body.menu-open .app-frame { visibility: hidden; }
   align-content: center;
   column-gap: 10px;
   row-gap: 4px;
-  padding: 8px 8px calc(env(safe-area-inset-bottom, 0px) + 8px);
+  /* Seitlicher Innenabstand = --edge-gap: dadurch steht der Umschalter an der Aussenkante
+     seiner Spalte genau so weit vom Bildschirmrand entfernt wie der Rueckgaengig-Knopf auf
+     der Karte darueber — beide auf einer gemeinsamen senkrechten Linie. */
+  padding: 8px var(--edge-gap) calc(env(safe-area-inset-bottom, 0px) + 8px);
   background: var(--shell-bar);
   border-top: 1px solid var(--shell-border-soft);
 }
@@ -2354,7 +2357,7 @@ body.menu-open .app-frame { visibility: hidden; }
      (34 px) plus Spaltenabstand (10 px), dazu der Innenabstand der Zone (2 x 8 px). Ohne diese
      Grenze schob die groesste Joystick-Stufe auf schmalen Telefonen Knopf und Anzeige aus dem
      Bild. */
-  --drive-side-reserve: 120px;
+  --drive-side-reserve: 130px;
   grid-column: 2;
   width: var(--joystick-size);
   height: var(--joystick-size);
@@ -2383,22 +2386,23 @@ body.menu-open .app-frame { visibility: hidden; }
 .drive-side {
   grid-row: 1;
   grid-column: 1;
-  justify-self: end;
+  /* Die Spalte wird ausgefuellt, damit der Umschalter an der **Aussenkante** sitzen kann und
+     die Fahrtanzeige darunter trotzdem die ganze Spaltenbreite nutzt. */
+  justify-self: stretch;
   min-width: 0;
   max-width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: stretch;
   gap: 6px;
 }
-:root[data-handed="left"] .drive-side {
-  grid-column: 3;
-  justify-self: start;
-  align-items: flex-start;
-}
+:root[data-handed="left"] .drive-side { grid-column: 3; }
+/* Aussenkante der Spalte = Bildschirmseite: Rechtshaender links, Linkshaender rechts. Damit
+   liegt der Umschalter auf derselben senkrechten Linie wie der Rueckgaengig-Knopf der Karte. */
 .drive-mode-side {
   --drive-toggle-size: 34px;
   flex: 0 0 auto;
+  align-self: flex-start;
   display: grid;
   place-items: center;
   width: var(--drive-toggle-size);
@@ -2409,6 +2413,7 @@ body.menu-open .app-frame { visibility: hidden; }
   background: var(--shell-panel);
   color: var(--shell-muted);
 }
+:root[data-handed="left"] .drive-mode-side { align-self: flex-end; }
 .drive-mode-side:active { background: var(--shell-hover); }
 /* Kugel anteilig zur Basis: skaliert automatisch mit jeder Groessenstufe mit. */
 .drive-zone .joystick-knob { width: 41%; height: 41%; }
@@ -2608,6 +2613,10 @@ body.menu-open .app-frame { visibility: hidden; }
   --shell-danger-solid: #c03a32;
   --shell-info: #a9d0f5; --shell-info-bg: #0d1f2f; --shell-info-border: #3a6fa8;
   --shell-hud: rgba(8, 21, 26, .62);
+  /* Gemeinsamer Abstand aller randstaendigen Bedienelemente zum Bildschirmrand:
+     Aufnahme-Cluster, Rueckgaengig-Knopf, Ansicht-Symbol, Karteninfo und der
+     Joystick-Umschalter in der Fahrzone. Ein Wert, damit sie auf einer Linie stehen. */
+  --edge-gap: 12px;
   --point-fill: #071012;
   --selection: #7fe4ff;
 }
@@ -2693,8 +2702,10 @@ body.menu-open .app-frame { visibility: hidden; }
    eigene Bedingung gebraucht. Rechtshaender ist der unveraenderte Standard, deshalb steht er
    in den Grundregeln und nur die Linkshaender-Seite wird ueberschrieben. */
 :root[data-handed="left"] .map-toolbar { flex-direction: row-reverse; }
-:root[data-handed="left"] .map-info { text-align: right; }
-:root[data-handed="left"] .capture-cluster { left: 12px; right: auto; }
+:root[data-handed="left"] .map-info { left: auto; right: var(--edge-gap); }
+:root[data-handed="left"] .map-view-reset { right: auto; left: var(--edge-gap); }
+:root[data-handed="left"] .map-corner-undo { left: auto; right: var(--edge-gap); }
+:root[data-handed="left"] .capture-cluster { left: var(--edge-gap); right: auto; }
 /* Wandert der Aufnahme-Knopf an den linken Rand, ist links kein Platz mehr fuer seine
    Beschriftung — sie klappt auf die andere Seite. */
 :root[data-handed="left"] .capture-cluster .fab-label {
@@ -2741,29 +2752,55 @@ body.menu-open .app-frame { visibility: hidden; }
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* Seit Karteninfo, Rueckgaengig und Ansicht-Symbol wieder auf der Karte liegen, steht hier
+     nur noch die Werkzeuggruppe. Sie sammelt sich an der Daumenseite, statt eine leere Haelfte
+     stehen zu lassen (`space-between` haette genau das getan). Bei Linkshaendern kehrt
+     `row-reverse` weiter unten die Seite um. */
+  justify-content: flex-end;
   gap: 10px;
-  padding: 4px 8px;
+  padding: 3px 6px;
   border-bottom: 1px solid var(--shell-border);
   background: var(--shell-panel);
 }
-/* Die Karteninfo stand frueher als halbtransparenter Kasten auf der Karte. In der Leiste
-   kostet sie keine Kartenflaeche mehr — dafuer muss sie sich zusammenstauchen lassen
-   (min-width: 0) und je Zeile abschneiden statt die Werkzeuge zu verdraengen. */
-/* Schrumpfgewicht 10 gegen 1 bei den Werkzeugen: wird es eng, gibt **zuerst** die Karteninfo
-   nach (sie kuerzt ohnehin per Ellipse). Erst wenn dort nichts mehr zu holen ist, scrollt die
-   Werkzeuggruppe. */
+/* --- Karteninfo als Overlay oben auf der Karte ---------------------------
+   Sie stand zwischenzeitlich in der Werkzeugleiste und hat dort mit den Werkzeugen um die
+   Breite konkurriert. Jetzt liegt sie wieder als schmaler, halbtransparenter Streifen auf der
+   Karte: **eine** Zeile aus Kartenname/Punktzahl, Konturstatus und Positionsmeldung, jede
+   Angabe kuerzt bei Bedarf per Ellipse. `pointer-events: none`, damit Kartengesten unter dem
+   Streifen weiterlaufen. Die Seite haengt am selben `data-handed` wie alles Uebrige. */
 .map-info {
-  flex: 1 10 auto;
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  left: var(--edge-gap);
+  /* Platz fuer das Ansicht-Symbol in der gegenueberliegenden Ecke. */
+  max-width: calc(100% - var(--edge-gap) - 56px);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   min-width: 0;
-  display: grid;
-  gap: 0;
-  text-align: left;
-  font-size: .6rem;
-  line-height: 1.45;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: var(--shell-hud);
   color: var(--shell-text);
+  font-size: .6rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
 }
-.info-line { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.info-line { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Konturstatus „offen“/„geschlossen“ — nur im Perimeter- und Ausschluss-Modus gefuellt,
+   bei Wegpunkten und Dockpfad leer und damit unsichtbar. */
+.info-chip {
+  flex: 0 0 auto;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--shell-panel-2);
+  color: var(--shell-muted);
+  font-size: .55rem;
+  font-weight: 800;
+}
+.info-chip:empty { display: none; }
 .info-dim { color: var(--shell-muted); }
 .info-dim:empty { display: none; }
 /* `flex: 0 1 auto` + `min-width: 0`: die Werkzeuggruppe **muss** schrumpfen duerfen. Mit
@@ -2821,15 +2858,61 @@ body.menu-open .app-frame { visibility: hidden; }
 }
 .map-tool:active { background: var(--shell-hover); }
 .map-tool[disabled] { color: var(--shell-muted); border-color: var(--shell-border); background: var(--shell-panel); opacity: .55; }
-.map-tool.undo-map-fab { color: var(--shell-info); border-color: var(--shell-info-border); background: var(--shell-info-bg); }
-.map-tool.undo-map-fab[disabled] { color: var(--shell-muted); border-color: var(--shell-border); background: var(--shell-panel); }
+
+/* --- „Ansicht zuruecksetzen“: reines Symbol auf der Karte -----------------
+   Bewusst ohne Knopfflaeche und Rahmen, wie in Kartenprogrammen ueblich. Der Schlagschatten
+   haelt es ueber hellem wie dunklem Kartengrund lesbar; die Trefferflaeche bleibt trotzdem
+   44 x 44 px. Sichtbar nur nach eigener Zoom-/Verschiebe-Geste (app.js). */
+.map-view-reset {
+  position: absolute;
+  z-index: 2;
+  top: 6px;
+  right: var(--edge-gap);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--shell-text);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .5));
+}
+.map-view-reset svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.map-view-reset:active { color: var(--shell-info); }
+
+/* --- Rueckgaengig unten an der Kartenecke ---------------------------------
+   Spiegelbildlich zum Aufnahme-Cluster: Rechtshaender unten links, Linkshaender unten rechts,
+   derselbe Randabstand (--edge-gap) wie Aufnahme-Cluster und Joystick-Umschalter. Groesse wie
+   der Automatik-Knopf im **inaktiven** Zustand, nicht wie der grosse Aufnahme-Knopf. */
+.map-corner-undo {
+  position: absolute;
+  z-index: 2;
+  left: var(--edge-gap);
+  bottom: var(--edge-gap);
+}
+.undo-fab {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 2px solid var(--shell-info-border);
+  border-radius: 50%;
+  background: var(--shell-info-bg);
+  color: var(--shell-info);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .32);
+}
+.undo-fab svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
+.undo-fab:active { background: var(--shell-hover); }
+.undo-fab[disabled] { color: var(--shell-muted); border-color: var(--shell-border); background: var(--shell-panel); opacity: .55; }
 .map-tool.delete-point { color: var(--shell-info); border-color: var(--shell-info-border); background: var(--shell-info-bg); }
 .map-tool.delete-area { color: var(--shell-danger); border-color: var(--shell-danger-border); background: var(--shell-danger-bg); }
 
 /* --- Aufnahme-Cluster: Automatik ersetzt den manuellen Knopf -------------- */
 .capture-cluster {
   position: absolute;
-  right: 12px; bottom: 12px;
+  right: var(--edge-gap); bottom: var(--edge-gap);
   width: 96px;
   display: grid;
   justify-items: center;

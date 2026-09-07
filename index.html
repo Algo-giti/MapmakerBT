@@ -34,14 +34,6 @@
 
 <main class="map-stage" id="mapStage">
 <div class="map-toolbar" id="mapToolbar">
-<div class="map-info" id="mapInfo">
-<span class="info-line" id="mapSummary">Keine Karte geladen.</span>
-<span aria-live="polite" class="info-line info-dim" id="pointStatus">Zum Aufnehmen zuerst verbinden.</span>
-<span class="sr-only" id="captureButtonHint">Warte auf Position</span>
-<span class="sr-only" id="mapDistanceInfo">–</span>
-<span class="sr-only" id="activeMapName">–</span>
-<span class="sr-only" id="saveState">–</span>
-</div>
 <div class="map-tools" id="mapTools">
 <div class="map-tool-slot" id="deleteFabWrap">
 <button class="map-tool delete-fab" id="deletePointBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg><span class="map-tool-label" id="deleteBtnLabel">Letzten Punkt</span></button>
@@ -52,16 +44,12 @@
 <div class="map-tool-slot" hidden="" id="insertAfterWrap">
 <button aria-label="Punkt danach einfügen" class="map-tool insert-fab" data-i18n-aria-label="insertAfter" id="insertAfterBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 4v16"></path><path d="M17 8v8M13 12h8"></path></svg><span class="map-tool-label" data-i18n="insertAfterShort">Punkt danach</span></button>
 </div>
-<div class="map-tool-slot" id="undoFabWrap">
-<button aria-label="Letzten Bearbeitungsschritt rückgängig machen" class="map-tool undo-map-fab" data-i18n-aria-label="undoAction" disabled="" id="undoBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 0 12H9"></path></svg><span class="map-tool-label" data-i18n="undoShort">Rückgängig</span></button>
-</div>
 <div class="map-tool-slot" hidden="" id="closeAndNewWrap">
 <button aria-label="Fläche schließen und neue beginnen" class="map-tool close-new-fab" data-i18n-aria-label="closeAndNew" id="closeAndNewBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 12.5 7.5 17 15 6"></path><path d="M18 14v7M14.5 17.5h7"></path></svg><span class="map-tool-label" data-i18n="closeAndNewShort">Schließen &amp; neu</span></button>
 </div>
 <div class="map-tool-slot" hidden="" id="extendWrap">
 <button aria-label="Kontur erweitern" class="map-tool extend-tool" id="extendBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 17a8 8 0 1 1 8 2"></path><path d="M9 14H4v5"></path></svg><span class="map-tool-label" id="extendBtnLabel">Erweitern</span></button>
 </div>
-<button aria-label="Ansicht zurücksetzen" class="map-tool" data-i18n-aria-label="fitView" hidden="" id="fitViewBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span class="map-tool-label" data-i18n="fitViewShort">Ansicht zurück</span></button>
 </div>
 </div>
 
@@ -79,6 +67,20 @@
 <g id="shapeLayer"></g>
 <g id="robotLayer"></g>
 </svg>
+
+<div class="map-info" id="mapInfo">
+<span class="info-line" id="mapSummary">Keine Karte geladen.</span>
+<span class="info-chip" id="contourStatus"></span>
+<span aria-live="polite" class="info-line info-dim" id="pointStatus">Zum Aufnehmen zuerst verbinden.</span>
+<span class="sr-only" id="captureButtonHint">Warte auf Position</span>
+<span class="sr-only" id="mapDistanceInfo">–</span>
+<span class="sr-only" id="activeMapName">–</span>
+<span class="sr-only" id="saveState">–</span>
+</div>
+<button aria-label="Ansicht zurücksetzen" class="map-view-reset" data-i18n-aria-label="fitView" hidden="" id="fitViewBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+<div class="map-corner-undo" id="undoFabWrap">
+<button aria-label="Letzten Bearbeitungsschritt rückgängig machen" class="undo-fab" data-i18n-aria-label="undoAction" disabled="" id="undoBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 0 12H9"></path></svg></button>
+</div>
 
 <div class="capture-cluster" id="captureCluster">
 <div class="fab-with-label" id="autoFabWrap">
@@ -487,7 +489,7 @@
 <div><strong data-i18n="helpInsertTitle">Punkt einfügen</strong><span data-i18n="helpInsertText">Bei ausgewähltem Punkt setzen „Punkt davor“ und „Punkt danach“ einen neuen Punkt genau auf die Mitte der Strecke zum Nachbarpunkt — rein geometrisch, der Mäher muss dafür nirgends hinfahren. Am offenen Ende einer Kontur ist die jeweilige Seite ausgegraut.</span></div>
 <div><strong data-i18n="helpAreaSelectTitle">Fläche auswählen</strong><span data-i18n="helpAreaSelectText">Ein Tipp in eine fertige Ausschlussfläche wählt sie ganz aus, um sie zu löschen. Beim Perimeter gibt es das bewusst nicht — dort würde jeder Tipp das Verschieben der Karte abfangen.</span></div>
 <div><strong data-i18n="helpDeleteToolTitle">Lösch-Werkzeug</strong><span data-i18n="helpDeleteToolText">Ein Werkzeug mit drei Aufgaben: ohne Auswahl entfernt es den zuletzt gesetzten Punkt, bei ausgewähltem Punkt genau diesen, bei ausgewählter Fläche die ganze Fläche (mit Rückfrage).</span></div>
-<div><strong data-i18n="helpUndoTitle">Rückgängig</strong><span data-i18n="helpUndoText">Nimmt die letzten 20 Bearbeitungsschritte einzeln zurück — Aufnehmen, Verschieben, Löschen, Konturschluss. Bei leerem Verlauf ist der Knopf ausgegraut.</span></div>
+<div><strong data-i18n="helpUndoTitle">Rückgängig</strong><span data-i18n="helpUndoText">Der runde Knopf in der unteren Kartenecke gegenüber dem Aufnahme-Knopf (bei Rechtshändern links, bei Linkshändern rechts) nimmt die letzten 20 Bearbeitungsschritte einzeln zurück — Aufnehmen, Verschieben, Löschen, Konturschluss. Bei leerem Verlauf ist er ausgegraut.</span></div>
 <div><strong data-i18n="helpCloseNewTitle">Schließen &amp; neu</strong><span data-i18n="helpCloseNewText">Erscheint im Ausschluss-Modus ab drei Punkten: schließt die laufende Fläche und beginnt sofort die nächste. Gedacht für Reihen kleiner Flächen wie Bäume.</span></div>
 <div><strong data-i18n="helpAutoTitle">Automatik-Aufnahme</strong><span data-i18n="helpAutoText">Setzt Punkte selbstständig — wahlweise im Zeittakt oder nach gefahrener Strecke. Die Beschriftung über dem Knopf zeigt den eingestellten Wert, umgestellt wird er im Menü unter Aufnahme.</span></div>
 <div><strong data-i18n="helpQualityTitle">Punktqualität</strong><span data-i18n="helpQualityText">Der Rand eines Punktes zeigt, zu welchem Element er gehört, die Füllung die RTK-Qualität bei der Aufnahme.</span></div>
@@ -506,7 +508,8 @@
 <div class="help-feature-grid">
 <div><strong data-i18n="helpRtkTitle">RTK-Anzeige</strong><span data-i18n="helpRtkText">Das Abzeichen in der Kopfzeile zeigt Fix, Float oder No Fix und die Satelliten als Mäher/Station. Nur bei einem echten Fix ist die Position zentimetergenau.</span></div>
 <div><strong data-i18n="helpFixOnlyTitle">Nur bei RTK FIX</strong><span data-i18n="helpFixOnlyText">Im Menü unter Aufnahme. Ist die Option aktiv, bleibt jede Aufnahme bei Float oder No Fix gesperrt — auch die Automatik.</span></div>
-<div><strong data-i18n="helpZoomTitle">Zoomen &amp; Verschieben</strong><span data-i18n="helpZoomText">Zwei Finger zoomen, ein Finger verschiebt. Sobald du die Ansicht selbst verändert hast, erscheint „Ansicht zurück“ in der Kartenleiste.</span></div>
+<div><strong data-i18n="helpMapInfoTitle">Karteninfo auf der Karte</strong><span data-i18n="helpMapInfoText">Der schmale Streifen in der oberen Kartenecke zeigt Kartenname, Punktzahl, den Status der bearbeiteten Kontur und die letzte Positionsmeldung. Der Konturstatus steht nur im Perimeter- und im Ausschluss-Modus: „offen“ heißt, dass zwischen letztem und erstem Punkt noch keine Verbindung besteht, „geschlossen“ heißt, dass die Fläche fertig umrundet ist. Wegpunkte und Dockpfad sind immer offene Pfade und zeigen deshalb keinen Status.</span></div>
+<div><strong data-i18n="helpZoomTitle">Zoomen &amp; Verschieben</strong><span data-i18n="helpZoomText">Zwei Finger zoomen, ein Finger verschiebt. Sobald du die Ansicht selbst verändert hast, erscheint in der oberen Kartenecke ein Symbol, das sie wieder auf die ganze Karte zurücksetzt.</span></div>
 <div><strong data-i18n="helpThemeTitle">Hell &amp; Dunkel</strong><span data-i18n="helpThemeText">Drei Stufen im Menü unter Ansicht &amp; Maßstab: Hell, Dunkel oder der Vorgabe des Systems folgen.</span></div>
 <div><strong data-i18n="helpHandedTitle">Bedienseite</strong><span data-i18n="helpHandedText">Die Umstellung auf Linkshänder spiegelt die gesamte Bedienung: Werkzeuge und Karteninfo in der Kartenleiste, Aufnahme-Knopf und Fahrtanzeige.</span></div>
 <div><strong data-i18n="helpJoystickSizeTitle">Joystick-Größe</strong><span data-i18n="helpJoystickSizeText">Vier Stufen von Klein bis Sehr groß. Größer heißt mehr Trefferfläche für den Daumen, kleiner mehr Platz für die Karte.</span></div>

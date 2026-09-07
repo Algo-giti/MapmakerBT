@@ -23,7 +23,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'stopDrive', 'saveViewPreferences',
   'startExtension', 'cancelExtension', 'finishExtension', 'refreshExtendButton', 'refreshExtendPanel',
   'canStartExtension', 'areNeighbourIndices', 'reorderForExtension', 'appendCurrentPoint', 'undoLastAction',
-  'setMode',
+  'setMode', 'refreshContourStatus', 'activeContour', 'refreshToolbarVisibility',
   'canCloseAndStartNew', 'closeAndStartNewExclusion', 'currentExclusion',
   'setTheme', 'applyTheme', 'applyDriveZonePreferences', 'applyViewPreferencesToUi', 'updateViewPreferencesFromUi', 'JOYSTICK_SCALES', 'smoothedPosition', 'pointFromTelemetry', 'toMapCoords', 'handleLine', 'lockIcon', 'toggleLanguage',
   'askConfirm', 'confirmDialogRespond', 'showNotice', 'reportError', 'reportBleError',
@@ -1311,6 +1311,73 @@ test('Der Joystick bleibt vom Tastenmodus unberuehrt', () => {
   assert.ok(Math.abs(full.linear - 0.30) < 1e-9, 'voller Ausschlag bleibt das Joystick-Maximum');
   const half = t.joystickVectorFromPointer({ clientX: 150, clientY: 150 - 58 });
   assert.ok(half.linear > 0.10 && half.linear < 0.30, 'die Kennlinie ist unveraendert');
+});
+
+test('Der Konturstatus steht nur bei Perimeter und Ausschlussflaeche in der Karteninfo', async () => {
+  // Wegpunkte und Dockpfad sind offene Pfade — „offen/geschlossen“ waere dort sinnlos und
+  // bleibt deshalb leer, wodurch das Feld per `.info-chip:empty` ganz verschwindet.
+  const { t, elements } = setup();
+  const chip = elements.get('contourStatus');
+  t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }];
+  t.state.activeMap.perimeterClosed = false;
+  t.setMode('perimeter');
+  t.refreshContourStatus();
+  assert.strictEqual(chip.textContent, 'offen', 'offener Perimeter');
+  t.state.activeMap.perimeterClosed = true;
+  t.refreshContourStatus();
+  assert.strictEqual(chip.textContent, 'geschlossen', 'geschlossener Perimeter');
+
+  t.setMode('exclusion');
+  await t.createExclusion();
+  t.currentExclusion().points = [{ x: 1, y: 1 }, { x: 2, y: 1 }, { x: 2, y: 2 }];
+  t.currentExclusion().closed = false;
+  t.refreshContourStatus();
+  assert.strictEqual(chip.textContent, 'offen', 'offene Ausschlussflaeche');
+  t.currentExclusion().closed = true;
+  t.refreshContourStatus();
+  assert.strictEqual(chip.textContent, 'geschlossen', 'geschlossene Ausschlussflaeche');
+
+  for (const mode of ['waypoint', 'dock']) {
+    t.setMode(mode);
+    t.refreshContourStatus();
+    assert.strictEqual(chip.textContent, '', `${mode} kennt kein offen/geschlossen`);
+  }
+});
+
+test('Der Konturstatus folgt jedem Neuzeichnen und jeder Zustandsauffrischung', () => {
+  // Er darf nicht nur bei einem Moduswechsel stimmen: schliesst sich eine Kontur, muss die
+  // Anzeige beim naechsten Render mitgehen, ohne dass jemand refreshContourStatus() ruft.
+  const { t, elements } = setup();
+  const chip = elements.get('contourStatus');
+  t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }];
+  t.state.activeMap.perimeterClosed = false;
+  t.setMode('perimeter');
+  t.renderMap();
+  assert.strictEqual(chip.textContent, 'offen');
+  t.state.activeMap.perimeterClosed = true;
+  t.renderMap();
+  assert.strictEqual(chip.textContent, 'geschlossen', 'renderMap zieht den Status mit');
+  t.state.activeMap.perimeterClosed = false;
+  t.refreshCaptureState();
+  assert.strictEqual(chip.textContent, 'offen', 'refreshCaptureState ebenfalls');
+});
+
+test('Die Werkzeugleiste verschwindet, wenn kein einziges Werkzeug sichtbar ist', () => {
+  // Nach dem Umzug von Karteninfo, Rueckgaengig und Ansicht-Symbol traegt die Leiste nur noch
+  // Werkzeuge. Waehrend der Automatik sind alle ausgeblendet — ein leerer Streifen samt
+  // Trennlinie wuerde der Karte grundlos Hoehe nehmen.
+  const { t, elements } = setup();
+  const bar = elements.get('mapToolbar');
+  t.refreshCaptureState();
+  assert.strictEqual(bar.hidden, false, 'ohne Auswahl steht wenigstens der Papierkorb dort');
+  for (const id of ['deleteFabWrap', 'insertBeforeWrap', 'insertAfterWrap', 'closeAndNewWrap', 'extendWrap']) {
+    elements.get(id).hidden = true;
+  }
+  t.refreshToolbarVisibility();
+  assert.strictEqual(bar.hidden, true, 'ohne sichtbares Werkzeug klappt die Leiste ein');
+  elements.get('deleteFabWrap').hidden = false;
+  t.refreshToolbarVisibility();
+  assert.strictEqual(bar.hidden, false, 'ein einziges Werkzeug genuegt');
 });
 
 test('Die Linkshaender-Spiegelung gilt auch fuer das Tastenkreuz', () => {

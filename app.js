@@ -70,7 +70,6 @@ const I18N = {
     closeContoursYes: 'Konturen automatisch schließen',
     lockedBadge: 'Gesperrt',
     bleWriteFailedTitle: 'Senden fehlgeschlagen', bleWriteFailedShort: 'Senden fehlgeschlagen: {message}',
-    fitViewShort: 'Ansicht zurück',
     insertNoNeighbour: 'Dort gibt es keine Strecke: die Kontur ist an dieser Seite offen.',
     insertBefore: 'Punkt davor einfügen', insertBeforeShort: 'Punkt davor',
     insertAfter: 'Punkt danach einfügen', insertAfterShort: 'Punkt danach',
@@ -86,7 +85,7 @@ const I18N = {
     extendOpened: 'Kontur geöffnet. Jetzt weitere Punkte aufnehmen und danach „Fertig“ antippen.',
     extendFinished: 'Erweiterung abgeschlossen, die Kontur ist wieder geschlossen.',
     extendCancelled: 'Erweitern abgebrochen — an der Kontur wurde nichts geändert.',
-    undoShort: 'Rückgängig', undoAction: 'Letzten Bearbeitungsschritt rückgängig machen',
+    undoAction: 'Letzten Bearbeitungsschritt rückgängig machen',
     undoDone: 'Schritt zurückgenommen.', undoDoneLast: 'Schritt zurückgenommen – Verlauf ist jetzt leer.',
     bleResyncDone: 'Abgebrochenes Kommando abgeschlossen (Zeilenende nachgesendet).',
     bleResyncFailed: 'Abgebrochenes Kommando konnte nicht abgeschlossen werden: {message}',
@@ -169,6 +168,7 @@ const I18N = {
     exclusionN: 'Ausschluss {n}', mapN: 'Karte {n}', deleteMapConfirm: 'Karte „{name}“ wirklich lokal löschen?',
     dockPath: 'Dockpfad',
     deleteExclusionConfirm: '{name} wirklich löschen?', pointSaved: 'Punkt gespeichert: X {x} · Y {y}', dockPoints: 'Dockpunkte',
+    contourClosed: 'geschlossen', contourOpen: 'offen',
     mapSummary: '{name} · {points} Punkte', noMap: 'Keine Karte', noMapLoaded: 'Keine Karte geladen.', invalidMapFile: 'Datei ist keine MapCreator-für-Ardumower-Karte.', unknown: 'unbekannt',
     missingOrigin: 'Die Datei enthält Grad-Koordinaten, aber keine Ursprungsposition. Ohne sie lassen sich die Werte nicht in lokale Meter zurückrechnen.',
     unsupportedGeometry: 'GeoJSON-Geometrie {type} wird nicht unterstützt.', invalidCoordinates: 'GeoJSON enthält ungültige X/Y-Koordinaten.',
@@ -230,7 +230,7 @@ const I18N = {
     helpInsertTitle: 'Punkt einfügen', helpInsertText: 'Bei ausgewähltem Punkt setzen „Punkt davor“ und „Punkt danach“ einen neuen Punkt genau auf die Mitte der Strecke zum Nachbarpunkt — rein geometrisch, der Mäher muss dafür nirgends hinfahren. Am offenen Ende einer Kontur ist die jeweilige Seite ausgegraut.',
     helpAreaSelectTitle: 'Fläche auswählen', helpAreaSelectText: 'Ein Tipp in eine fertige Ausschlussfläche wählt sie ganz aus, um sie zu löschen. Beim Perimeter gibt es das bewusst nicht — dort würde jeder Tipp das Verschieben der Karte abfangen.',
     helpDeleteToolTitle: 'Lösch-Werkzeug', helpDeleteToolText: 'Ein Werkzeug mit drei Aufgaben: ohne Auswahl entfernt es den zuletzt gesetzten Punkt, bei ausgewähltem Punkt genau diesen, bei ausgewählter Fläche die ganze Fläche (mit Rückfrage).',
-    helpUndoTitle: 'Rückgängig', helpUndoText: 'Nimmt die letzten 20 Bearbeitungsschritte einzeln zurück — Aufnehmen, Verschieben, Löschen, Konturschluss. Bei leerem Verlauf ist der Knopf ausgegraut.',
+    helpUndoTitle: 'Rückgängig', helpUndoText: 'Der runde Knopf in der unteren Kartenecke gegenüber dem Aufnahme-Knopf (bei Rechtshändern links, bei Linkshändern rechts) nimmt die letzten 20 Bearbeitungsschritte einzeln zurück — Aufnehmen, Verschieben, Löschen, Konturschluss. Bei leerem Verlauf ist er ausgegraut.',
     helpCloseNewTitle: 'Schließen & neu', helpCloseNewText: 'Erscheint im Ausschluss-Modus ab drei Punkten: schließt die laufende Fläche und beginnt sofort die nächste. Gedacht für Reihen kleiner Flächen wie Bäume.',
     helpAutoTitle: 'Automatik-Aufnahme', helpAutoText: 'Setzt Punkte selbstständig — wahlweise im Zeittakt oder nach gefahrener Strecke. Die Beschriftung über dem Knopf zeigt den eingestellten Wert, umgestellt wird er im Menü unter Aufnahme.',
     helpValidationTitle: 'Kartenprüfung', helpValidationText: 'Sucht Selbstüberschneidungen, problematische Abstände, Ausschlüsse außerhalb des Perimeters, offene Konturen und fehlende RTK-FIX-Punkte.',
@@ -255,7 +255,8 @@ const I18N = {
     helpThemeTitle: 'Hell & Dunkel', helpThemeText: 'Drei Stufen im Menü unter Ansicht & Maßstab: Hell, Dunkel oder der Vorgabe des Systems folgen.',
     helpHandedTitle: 'Bedienseite', helpHandedText: 'Die Umstellung auf Linkshänder spiegelt die gesamte Bedienung: Werkzeuge und Karteninfo in der Kartenleiste, Aufnahme-Knopf und Fahrtanzeige.',
     helpJoystickSizeTitle: 'Joystick-Größe', helpJoystickSizeText: 'Vier Stufen von Klein bis Sehr groß. Größer heißt mehr Trefferfläche für den Daumen, kleiner mehr Platz für die Karte.',
-    helpZoomTitle: 'Zoomen & Verschieben', helpZoomText: 'Zwei Finger zoomen, ein Finger verschiebt. Sobald du die Ansicht selbst verändert hast, erscheint „Ansicht zurück“ in der Kartenleiste.',
+    helpMapInfoTitle: 'Karteninfo auf der Karte', helpMapInfoText: 'Der schmale Streifen in der oberen Kartenecke zeigt Kartenname, Punktzahl, den Status der bearbeiteten Kontur und die letzte Positionsmeldung. Der Konturstatus steht nur im Perimeter- und im Ausschluss-Modus: „offen“ heißt, dass zwischen letztem und erstem Punkt noch keine Verbindung besteht, „geschlossen“ heißt, dass die Fläche fertig umrundet ist. Wegpunkte und Dockpfad sind immer offene Pfade und zeigen deshalb keinen Status.',
+    helpZoomTitle: 'Zoomen & Verschieben', helpZoomText: 'Zwei Finger zoomen, ein Finger verschiebt. Sobald du die Ansicht selbst verändert hast, erscheint in der oberen Kartenecke ein Symbol, das sie wieder auf die ganze Karte zurücksetzt.',
     helpDiagnosticsTitle: 'Diagnose', helpDiagnosticsText: 'Das Protokoll im Menü unter Diagnose zeigt gesendete Kommandos, Antworten und Fehler der Funkverbindung — hilfreich, wenn die Verbindung abreißt.',
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   },
@@ -278,7 +279,6 @@ const I18N = {
     closeContoursYes: 'Close contours automatically',
     lockedBadge: 'Locked',
     bleWriteFailedTitle: 'Sending failed', bleWriteFailedShort: 'Sending failed: {message}',
-    fitViewShort: 'Reset view',
     insertNoNeighbour: 'No segment there: the contour is open on this side.',
     insertBefore: 'Insert a point before this one', insertBeforeShort: 'Point before',
     insertAfter: 'Insert a point after this one', insertAfterShort: 'Point after',
@@ -294,7 +294,7 @@ const I18N = {
     extendOpened: 'Contour opened. Capture further points, then tap “Done”.',
     extendFinished: 'Extension finished, the contour is closed again.',
     extendCancelled: 'Extending cancelled — nothing on the contour was changed.',
-    undoShort: 'Undo', undoAction: 'Undo the last editing step',
+    undoAction: 'Undo the last editing step',
     undoDone: 'Step undone.', undoDoneLast: 'Step undone – history is now empty.',
     bleResyncDone: 'Terminated the aborted command (sent a line break).',
     bleResyncFailed: 'Could not terminate the aborted command: {message}',
@@ -377,6 +377,7 @@ const I18N = {
     exclusionN: 'Exclusion {n}', mapN: 'Map {n}', deleteMapConfirm: 'Really delete map “{name}” locally?',
     dockPath: 'Dock path',
     deleteExclusionConfirm: 'Really delete {name}?', pointSaved: 'Point saved: X {x} · Y {y}', dockPoints: 'Dock points',
+    contourClosed: 'closed', contourOpen: 'open',
     mapSummary: '{name} · {points} points', noMap: 'No map', noMapLoaded: 'No map loaded.', invalidMapFile: 'File is not a MapCreator für Ardumower map.', unknown: 'unknown',
     missingOrigin: 'The file contains degree coordinates but no origin position. Without it the values cannot be converted back to local metres.',
     unsupportedGeometry: 'GeoJSON geometry {type} is not supported.', invalidCoordinates: 'GeoJSON contains invalid X/Y coordinates.',
@@ -438,7 +439,7 @@ const I18N = {
     helpInsertTitle: 'Inserting a point', helpInsertText: 'With a point selected, “Point before” and “Point after” place a new point exactly halfway to the neighbouring point — purely geometric, the mower does not have to drive anywhere. At the open end of a contour that side is greyed out.',
     helpAreaSelectTitle: 'Selecting an area', helpAreaSelectText: 'Tapping inside a finished exclusion area selects the whole area so you can delete it. This deliberately does not apply to the perimeter — there every tap would swallow panning the map.',
     helpDeleteToolTitle: 'Delete tool', helpDeleteToolText: 'One tool with three jobs: with nothing selected it removes the last point placed, with a point selected exactly that point, with an area selected the whole area (after a confirmation).',
-    helpUndoTitle: 'Undo', helpUndoText: 'Takes back the last 20 editing steps one at a time — capturing, moving, deleting, closing a contour. The button is greyed out when the history is empty.',
+    helpUndoTitle: 'Undo', helpUndoText: 'The round button in the bottom corner of the map opposite the capture button (left for right-handed use, right for left-handed) takes back the last 20 editing steps one at a time — capturing, moving, deleting, closing a contour. It is greyed out when the history is empty.',
     helpCloseNewTitle: 'Close & new', helpCloseNewText: 'Appears in exclusion mode from three points on: closes the current area and immediately starts the next one. Made for rows of small areas such as trees.',
     helpAutoTitle: 'Automatic capture', helpAutoText: 'Places points on its own — either on a time interval or by distance travelled. The label above the button shows the configured value; you switch modes in the menu under Capture.',
     helpValidationTitle: 'Map check', helpValidationText: 'Finds self-intersections, problematic spacing, exclusions outside the perimeter, open contours and points captured without RTK FIX.',
@@ -463,7 +464,8 @@ const I18N = {
     helpThemeTitle: 'Light & dark', helpThemeText: 'Three settings in the menu under View & scale: light, dark, or follow the system setting.',
     helpHandedTitle: 'Operating side', helpHandedText: 'Switching to left-handed mirrors the whole layout: tools and map info in the map bar, capture button and drive status.',
     helpJoystickSizeTitle: 'Joystick size', helpJoystickSizeText: 'Four steps from small to very large. Larger means a bigger target for your thumb, smaller means more room for the map.',
-    helpZoomTitle: 'Zoom & pan', helpZoomText: 'Two fingers zoom, one finger pans. As soon as you change the view yourself, “Reset view” appears in the map bar.',
+    helpMapInfoTitle: 'Map info on the map', helpMapInfoText: 'The slim strip in the top corner of the map shows the map name, the point count, the state of the contour you are editing and the latest position message. The contour state only appears in perimeter and exclusion mode: “open” means there is still no link between the last and the first point, “closed” means the area is fully enclosed. Waypoints and the dock path are always open paths and therefore show no state.',
+    helpZoomTitle: 'Zoom & pan', helpZoomText: 'Two fingers zoom, one finger pans. As soon as you change the view yourself, an icon appears in the top corner of the map that resets it to the whole map.',
     helpDiagnosticsTitle: 'Diagnostics', helpDiagnosticsText: 'The log in the menu under Diagnostics shows sent commands, replies and radio errors — useful when the connection drops.',
     solutionInvalid: 'INVALID', solutionUnknown: 'UNKNOWN', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   }
@@ -549,6 +551,7 @@ const ui = {
   insertAfterWrap: $('insertAfterWrap'), insertAfterBtn: $('insertAfterBtn'),
   captureCluster: $('captureCluster'), autoFabWrap: $('autoFabWrap'), autoCaptureBtn: $('autoCaptureBtn'), autoCaptureLabel: $('autoCaptureLabel'),
   captureFabWrap: $('captureFabWrap'), addPointBtn: $('addPointBtn'), captureProgress: $('captureProgress'), captureButtonTitle: $('captureButtonTitle'), captureButtonHint: $('captureButtonHint'),
+  mapToolbar: $('mapToolbar'), contourStatus: $('contourStatus'),
   mapSummary: $('mapSummary'), mapDistanceInfo: $('mapDistanceInfo'), pointStatus: $('pointStatus'), activeMapName: $('activeMapName'), saveState: $('saveState'),
   // Fahren
   driveZone: $('driveZone'), driveJoystick: $('driveJoystick'), joystickKnob: $('joystickKnob'), driveState: $('driveState'),
@@ -1609,6 +1612,11 @@ function refreshCaptureState() {
   ui.insertAfterBtn.disabled = neighbourFor(1) < 0;
   refreshUndoButton();
   ui.closeAndNewWrap.hidden = !canCloseAndStartNew();
+  refreshContourStatus();
+  // In der Leiste steht nur noch die Werkzeuggruppe. Sind alle Werkzeuge ausgeblendet (etwa
+  // waehrend der Automatik), bliebe sonst ein leerer Streifen samt Trennlinie stehen und
+  // naehme der Karte Hoehe weg.
+  refreshToolbarVisibility();
   // Im Verschieben-Zustand gibt es kein Halten: eine laufende Halteaktion wird verworfen.
   // (Nicht umgekehrt: ein laufendes Halten darf nicht von der 2-s-Telemetrie abgebrochen werden.)
   if (selected || auto) cancelCaptureHold();
@@ -2973,6 +2981,25 @@ function clearUndoStack() {
 }
 
 /** Aktiviert/deaktiviert den Rueckgaengig-Knopf anhand des Stapels. */
+/**
+ * Zeigt in der Karteninfo, ob die gerade bearbeitete Kontur offen oder geschlossen ist.
+ * `activeContour()` liefert nur fuer Perimeter und Ausschlussflaechen etwas — Wegpunkte und
+ * Dockpfad sind offene Pfade, dort waere die Angabe sinnlos. Ohne Kontur bleibt das Feld leer
+ * und verschwindet per `.info-chip:empty` ganz.
+ */
+function refreshContourStatus() {
+  if (!ui.contourStatus) return;
+  const contour = activeContour();
+  ui.contourStatus.textContent = contour ? tr(contour.closed ? 'contourClosed' : 'contourOpen') : '';
+}
+
+/** Blendet die Werkzeugleiste ein bzw. aus, je nachdem ob ueberhaupt ein Werkzeug sichtbar ist. */
+function refreshToolbarVisibility() {
+  if (!ui.mapToolbar) return;
+  const slots = [ui.deleteFabWrap, ui.insertBeforeWrap, ui.insertAfterWrap, ui.closeAndNewWrap, ui.extendWrap];
+  ui.mapToolbar.hidden = !slots.some((slot) => slot && !slot.hidden);
+}
+
 function refreshUndoButton() {
   if (!ui.undoBtn) return;
   const usable = Boolean(state.activeMap) && !state.activeMap.locked && state.undoStack.length > 0;
@@ -3384,6 +3411,7 @@ function renderMap() {
     ui.mapSummary.textContent = tr('noMapLoaded');
   }
 
+  refreshContourStatus();
   drawSelectionGuide(transform);
   drawDistanceGuide(transform);
   drawRobot(transform);
