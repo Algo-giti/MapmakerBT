@@ -4,7 +4,11 @@ const SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
 const CHARACTERISTIC_UUID = '0000ffe1-0000-1000-8000-00805f9b34fb';
 const BLE_CHUNK_SIZE = 15; // Sunray ESP32 BLE_MTU=20; payload <= 15 bytes
 const BLE_INTER_CHUNK_DELAY_MS = 12;
-const DRIVE_HEARTBEAT_MS = 650; // Sunray manual drive command times out after 1000 ms
+// ACHTUNG: NICHT als Totmann-Schutz verstehen. Der 1000-ms-Timeout in Sunrays
+// Motor::setLinearAngularSpeed() wird von jedem anderen Motor-Aufrufer zurueckgesetzt und ist
+// fuer die geflashte MRTREE-Firmware ueberhaupt nicht belegt. Siehe CLAUDE.md,
+// "SICHERHEIT: Das 1000-ms-Totmannfenster traegt nicht".
+const DRIVE_HEARTBEAT_MS = 650;
 // RX-Watchdog: Sunray antwortet auf jedes AT+S. Bleiben drei Abfragen in Folge unbeantwortet,
 // gilt der Link als tot, auch wenn Chrome ihn weiter als "connected" fuehrt.
 const BLE_RX_TIMEOUT_MS = 8000;
@@ -46,9 +50,11 @@ const DRIVE_POINTER_MIN_INTERVAL_MS = 160;
  * Im Ruhezustand (keine Fahreingabe) geht laufend ein `AT+M,0,0` raus, damit ein **einzelnes
  * verlorenes Stopp-Paket** sich im naechsten Takt von selbst heilt, ohne dass dafuer ein Fehler
  * erkannt werden muesste. 500 ms sind bewusst gewaehlt: gleiche Taktung wie das Polling (eine
- * Kadenz statt zweier), und in Sunrays 1000-ms-Totmannfenster fallen damit **zwei** Stopps —
- * geht einer verloren, landet der andere. Schneller waere reine Zusatzlast auf einem Link, der
- * ohnehin mit 15-Byte-Paketen arbeitet.
+ * Kadenz statt zweier); geht ein Stopp verloren, landet der naechste 500 ms spaeter. Schneller
+ * waere reine Zusatzlast auf einem Link, der ohnehin mit 15-Byte-Paketen arbeitet.
+ *
+ * ACHTUNG: Dieser Takt ist NICHT die zweite Ebene ueber einer sicheren Firmware-Abschaltung,
+ * sondern die einzige — und er wirkt nur bei stehendem Funklink. Siehe CLAUDE.md.
  */
 const DRIVE_IDLE_STOP_INTERVAL_MS = BLE_POLL_INTERVAL_MS;
 const DB_NAME = 'ardumower-bt-mapper';
@@ -879,8 +885,9 @@ function sendIdleStop() {
 }
 
 /**
- * Totmann-Takt: Sunray stoppt nach 1000 ms ohne neues AT+M, deshalb schickt die App alle
- * DRIVE_HEARTBEAT_MS den aktuellen Vektor nach. Beide Steuerungsarten nutzen denselben Takt.
+ * Fahr-Takt: alle DRIVE_HEARTBEAT_MS geht der aktuelle Vektor erneut raus. Beide Steuerungsarten
+ * nutzen denselben Takt. Der Name "Totmann" waere irrefuehrend: dass die Firmware ohne neues
+ * AT+M von selbst anhaelt, ist nicht belegt (siehe CLAUDE.md).
  */
 function startDriveHeartbeat() {
   state.driveTimer = setInterval(() => {

@@ -301,8 +301,10 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    bereits), gedeckelt auf `driveTurnMax`. **Nicht ohne Gerät verifizierbar:** ob sich 15 cm/s
    für Präzisionsmanöver richtig anfühlt.
 
-   Beide Modi teilen sich `startDriveHeartbeat()` — Sunray stoppt nach 1000 ms ohne neues `AT+M`,
-   der Takt ist also in beiden Fällen sicherheitsrelevant und existiert nur einmal. Er läuft
+   Beide Modi teilen sich `startDriveHeartbeat()`; der Takt ist in beiden Fällen
+   sicherheitsrelevant und existiert nur einmal. (Er war ursprünglich auf ein 1000-ms-Fenster der
+   Firmware ausgelegt — dass dieses Fenster trägt, ist **nicht belegt**, siehe „SICHERHEIT: Das
+   1000-ms-Totmannfenster trägt nicht“.) Er läuft
    **laufend**, nicht nur einmal beim Antippen (per Test festgehalten).
 
    **Ruhezustand: der Stopp wird laufend wiederholt** (`startIdleStopTicker()`, `sendIdleStop()`,
@@ -313,8 +315,9 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    nächsten Takt von selbst, ganz **ohne** Fehlererkennung. Das ergänzt die Meldung bei
    fehlgeschlagenen Schreibvorgängen, ersetzt sie nicht.
 
-   **Warum 500 ms:** dieselbe Kadenz wie das Polling (eine Taktung statt zweier), und in Sunrays
-   1000-ms-Totmannfenster fallen damit **zwei** Stopps — geht einer verloren, landet der andere.
+   **Warum 500 ms:** dieselbe Kadenz wie das Polling (eine Taktung statt zweier); geht ein Stopp
+   verloren, landet der nächste 500 ms später. (Die ursprüngliche Begründung „damit fallen zwei
+   Stopps in Sunrays 1000-ms-Fenster“ ist hinfällig — das Fenster ist nicht belegt.)
    Schneller wäre reine Zusatzlast auf einem Link mit 15-Byte-Paketen. Die Leerlauflast steigt
    dadurch von 2 auf 4 Schreibvorgängen je Sekunde.
 
@@ -330,9 +333,12 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    der Aufruf in „nicht verbunden“ und meldete dem Nutzer einen Sendefehler, obwohl nichts zu
    senden war.
 
-   **Sunrays eigene 1000-ms-Abschaltung bleibt die unterste Ebene** und ist von alldem
-   unberührt: selbst wenn App und Funk komplett ausfallen, hält der Mäher nach spätestens einer
-   Sekunde ohne neues `AT+M` an. Der Ruhe-Takt ist die Ebene darüber.
+   **Es gibt darunter keine nachgewiesene Ebene.** Die frühere Aussage, Sunray halte auch bei
+   komplettem Ausfall von App und Funk nach spätestens einer Sekunde an, ist **zurückgezogen** —
+   sie war eine unbelegte Schlussfolgerung, und der Nutzer hat am Gerät das Gegenteil beobachtet.
+   Der Ruhe-Takt ist damit nicht die zweite, sondern die **einzige** Ebene, und er wirkt nur bei
+   stehendem Funklink. Begründung und Belegstellen: „SICHERHEIT: Das 1000-ms-Totmannfenster trägt
+   nicht“.
 
    **Joystick-Größe** (`--joystick-size`): `clamp(110px, 25dvh × --joystick-scale,
    min(240px × --joystick-scale, 38dvh))`. Die bestehende bildschirmabhängige Rechnung bleibt, die
@@ -820,9 +826,66 @@ die Vorzeichen für sich genommen sahen vorher plausibel aus.
 
 - `AT+V` — Version/Handshake
 - `AT+S` — Statuszeile (X, Y, delta, solution, Akku, Satelliten, Genauigkeit …)
-- `AT+M,linear,angular` — manuelles Fahren; Sunray stoppt nach **1000 ms** ohne neues `AT+M`,
-  daher App-Heartbeat alle **650 ms** (Totmann-Prinzip)
+- `AT+M,linear,angular` — manuelles Fahren; App-Heartbeat alle **650 ms**. **Achtung:** das
+  früher hier behauptete 1000-ms-Totmannfenster gilt nur eingeschränkt — siehe den folgenden
+  Abschnitt, bevor irgendeine Sicherheitsüberlegung darauf aufgebaut wird.
 - `AT+C,1,-1` / `AT+C,0,-1` — Mähmotor an/aus; `AT+C,0,0` — STOP ALLES
+
+### SICHERHEIT: Das 1000-ms-„Totmannfenster“ trägt nicht (überprüft 2026-09-07)
+
+**Die App darf sich NICHT darauf verlassen, dass der Mäher von selbst stehen bleibt, wenn keine
+`AT+M` mehr ankommen.** Anlass: der Nutzer hat am Gerät beobachtet, dass der Mäher weiterfährt,
+obwohl keine Fahrbefehle mehr eintreffen. Nachfolgend, was im Code belegbar ist und was nicht.
+
+**Woher die Zahl 1000 stammt — belegt, aber missverstanden.** Sie ist keine Erfindung: 
+
+| Ort | Code |
+|---|---|
+| `/home/penis/projects/MeinSunray/sunray/motor.cpp:176` | `setLinearAngularSpeedTimeout = millis() + 1000;` in `Motor::setLinearAngularSpeed()` |
+| `/home/penis/projects/MeinSunray/sunray/motor.cpp:276-281` | in `Motor::run()`: nach Ablauf `motorLeftRpmSet = 0; motorRightRpmSet = 0;` |
+
+Falsch war nicht die Zahl, sondern die daraus gezogene **Verallgemeinerung** („selbst wenn App und
+Funk komplett ausfallen, hält der Mäher nach spätestens einer Sekunde an“). Diese Aussage stand
+nie im Code; sie war eine Schlussfolgerung und ist in dieser Form **unbelegt**.
+
+**Warum sie nicht trägt — vier belegte Einschränkungen:**
+
+1. **Der Timer hängt an `setLinearAngularSpeed()`, nicht an `AT+M`.** *Jeder* Aufrufer setzt ihn
+   zurück. Neben `comm.cpp:284` (das ist `AT+M`) gibt es vor allem `LineTracker.cpp:355`, das in
+   **jedem autonom fahrenden Betriebszustand** laufend Geschwindigkeiten setzt, dazu
+   `rcmodel.cpp:137` (R/C-Modus). Solange irgendein anderes Teilsystem die Motoren kommandiert,
+   **läuft das Fenster nie ab**. Es wirkt praktisch nur in `OP_IDLE` — geprüft: `IdleOp::run()`
+   (`sunray/src/op/IdleOp.cpp`) kommandiert die Motoren nicht, dort greift der Timeout also.
+   In `OP_MOW`, `OP_DOCK`, den Escape-Zuständen usw. greift er **nicht**.
+2. **Er ist nicht konfigurierbar, aber umgehbar.** 1000 ist hart im Quelltext, es gibt kein
+   `#define` in `sunray/config.h` (durchsucht). Abschaltbar ist er damit nicht — wohl aber durch
+   die Betriebsart aushebelbar (Punkt 1). `RCMODEL_ENABLE` ist in `config.h:490` auskommentiert,
+   dieser Pfad ist in dieser Konfiguration also inaktiv.
+3. **Er bremst nicht, er nullt nur den Drehzahl-Sollwert.** `motor.cpp:279-281` setzt
+   ausschließlich `motorLeftRpmSet`/`motorRightRpmSet` auf 0; `linearSpeedSet`/`angularSpeedSet`
+   bleiben stehen (deshalb meldet `robot.cpp:715 robotShouldMove()` danach weiterhin „fährt“).
+   Es ist ausdrücklich **kein** `stopImmediately()`, der Auslauf hängt am PID.
+4. **Er setzt eine laufende Hauptschleife voraus.** `Motor::run()` wird aus `robot.cpp:1050`
+   gerufen und arbeitet nur alle 50 ms. Hängt oder rebootet die Hauptplatine, läuft auch kein
+   Timeout.
+
+**Der entscheidende Punkt: für die Firmware des Nutzers ist gar nichts belegt.** Auf dem Mäher
+läuft eine **MRTREE-Variante**, die auf diesem Rechner **nicht vorliegt** — gesucht und nur
+`/home/penis/projects/MeinSunray` und `/home/penis/projects/MeinSunray-sim` gefunden, deren
+`motor.cpp` byte-identisch sind. Alle obigen Zeilenangaben gelten für die **Master-Kopie im
+Arbeitsverzeichnis**, nicht für die geflashte Firmware. Ob MRTREE diesen Timeout überhaupt noch
+enthält, ist **unbekannt und ungeprüft**.
+
+**Mögliche Erklärungen der Beobachtung — ausdrücklich Hypothesen, keine Befunde:** (a) MRTREE hat
+den Timeout entfernt oder verändert; (b) der Mäher war nicht in `OP_IDLE`, sondern in einem
+autonom fahrenden Zustand, der den Timer laufend zurücksetzt; (c) die Hauptschleife war blockiert.
+Keine davon ist belegt.
+
+**Konsequenz für diese App:** Die Annahme „ein verlorenes Stopp-Paket kostet höchstens ~1 s
+Nachlauf“ ist gestrichen. Der Ruhe-Stopp-Takt und der Fahr-Heartbeat sind damit **nicht** die
+zweite Ebene über einer sicheren Firmware-Abschaltung, sondern **die einzige** Ebene — und beide
+setzen einen funktionierenden Funklink voraus. Fällt der Funk während der Fahrt aus, kann die App
+nichts mehr senden, und es gibt keinen nachgewiesenen Schutz dahinter.
 
 ### Datenformat der Mähkarten
 
@@ -1144,9 +1207,11 @@ abzustimmen, weil es um Fahrbefehle geht.
   Not-Halt und Diagnose-Tasten sofort. Ein unbehandelter `unhandledrejection` entsteht nirgends.
 - **Es gibt keinen Retry.** Ein gescheitertes Kommando wird nicht wiederholt. Beim Fahren ist das
   faktisch entschärft: der 650-ms-Heartbeat schickt ohnehin gleich wieder ein `AT+M`. Der
-  Stopp beim Loslassen (`AT+M,0,0`) wird dagegen **genau einmal** versucht — hier rettet die
-  Sunray-Seite: sie hält nach **1000 ms ohne neues `AT+M`** von selbst an, ein verlorener Stopp
-  bedeutet also höchstens ~1 s Nachlauf, keinen weiterfahrenden Mäher.
+  Stopp beim Loslassen (`AT+M,0,0`) wird dagegen **genau einmal** versucht. **Korrektur
+  2026-09-07:** hier stand, die Sunray-Seite halte nach 1000 ms von selbst an, ein verlorener
+  Stopp koste also höchstens ~1 s Nachlauf. Das ist **nicht belegt** und wird durch die
+  Beobachtung am Gerät widerlegt (siehe Sicherheitsabschnitt). Aufgefangen wird ein verlorener
+  Stopp allein durch den Ruhe-Stopp-Takt (500 ms) — und nur, solange der Funk steht.
 - **Nichts erkennt den Zustand.** Die ESP32-4-Erkennung zählt `pendingStateReplies` nur bei
   **erfolgreich gesendetem** `AT+S` hoch — ein nicht abgeschickter Poll zählt nicht. Bleibt allein
   der RX-Watchdog, der nach **8 s Stille** greift. Bei dauerhaft scheiternden Schreibvorgängen
@@ -1255,6 +1320,22 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-07: **Sicherheitsannahme widerrufen: das 1000-ms-Totmannfenster ist nicht belegt.**
+  Der Nutzer hat am Gerät beobachtet, dass der Mäher weiterfährt, obwohl keine `AT+M` mehr
+  ankommen. Nachgeprüft: die Zahl 1000 ist **keine Erfindung**, sie steht in
+  `MeinSunray/sunray/motor.cpp:176` (`setLinearAngularSpeedTimeout = millis() + 1000`) und wird in
+  `motor.cpp:276-281` ausgewertet. Falsch war die **Verallgemeinerung** daraus. Vier belegte
+  Einschränkungen: der Timer hängt an `Motor::setLinearAngularSpeed()` und wird von *jedem*
+  Aufrufer zurückgesetzt — vor allem von `LineTracker.cpp:355` in jedem autonom fahrenden
+  Zustand, sodass er praktisch nur in `OP_IDLE` überhaupt ablaufen kann; er ist hart codiert (kein
+  `#define` in `config.h`), nullt aber nur die Drehzahl-Sollwerte statt zu bremsen; und er setzt
+  eine laufende Hauptschleife voraus. **Entscheidend:** auf dem Mäher läuft die
+  **MRTREE-Variante**, die auf diesem Rechner nicht vorliegt (nur `MeinSunray` und
+  `MeinSunray-sim`, `motor.cpp` byte-identisch) — für die geflashte Firmware ist damit **gar
+  nichts** belegt. Neuer Abschnitt „SICHERHEIT: Das 1000-ms-Totmannfenster trägt nicht“, dazu vier
+  überzogene Stellen im Dokument und drei Kommentare in `app.js` korrigiert. **Kein Code-Verhalten
+  geändert**, Gegenmaßnahmen nur vorgeschlagen. `APP_VERSION` unverändert.
 
 - 2026-09-07: **Kontinuierlicher Stopp im Ruhezustand (Sicherheit).** Solange keine Fahreingabe
   anliegt, schickt `startIdleStopTicker()` alle **500 ms** ein `AT+M,0,0` — ein einzelnes
