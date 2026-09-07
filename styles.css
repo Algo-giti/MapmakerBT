@@ -2290,7 +2290,7 @@ body.menu-open .app-frame { visibility: hidden; }
   right: 12px; bottom: 12px;
   display: grid;
   place-items: center;
-  width: 104px; height: 104px;
+  width: var(--capture-size); height: var(--capture-size);
   padding: 0;
   border: 2px solid var(--shell-ok-border);
   border-radius: 50%;
@@ -2665,6 +2665,8 @@ body.menu-open .app-frame { visibility: hidden; }
      bei gleichem Randabstand, aber verschiedener Breite lagen die beiden sonst sichtbar
      versetzt uebereinander. */
   --fab-size: 48px;
+  /* Breite des grossen Aufnahme-Knopfes — die Positionszeile rechnet damit ihren Freiraum. */
+  --capture-size: 104px;
   --point-fill: #071012;
   --selection: #7fe4ff;
 }
@@ -2750,7 +2752,6 @@ body.menu-open .app-frame { visibility: hidden; }
    eigene Bedingung gebraucht. Rechtshaender ist der unveraenderte Standard, deshalb steht er
    in den Grundregeln und nur die Linkshaender-Seite wird ueberschrieben. */
 :root[data-handed="left"] .map-toolbar { flex-direction: row-reverse; }
-:root[data-handed="left"] .map-info { left: auto; right: var(--edge-gap); }
 :root[data-handed="left"] .map-view-reset { right: auto; left: var(--edge-gap); }
 :root[data-handed="left"] .map-corner-undo { left: auto; right: var(--edge-gap); }
 :root[data-handed="left"] .capture-cluster { left: var(--edge-gap); right: auto; }
@@ -2811,31 +2812,66 @@ body.menu-open .app-frame { visibility: hidden; }
   border-bottom: 1px solid var(--shell-border);
   background: var(--shell-panel);
 }
-/* --- Karteninfo als Overlay oben auf der Karte ---------------------------
-   Sie stand zwischenzeitlich in der Werkzeugleiste und hat dort mit den Werkzeugen um die
-   Breite konkurriert. Jetzt liegt sie wieder als schmaler, halbtransparenter Streifen auf der
-   Karte: **eine** Zeile aus Kartenname/Punktzahl, Konturstatus und Positionsmeldung, jede
-   Angabe kuerzt bei Bedarf per Ellipse. `pointer-events: none`, damit Kartengesten unter dem
-   Streifen weiterlaufen. Die Seite haengt am selben `data-handed` wie alles Uebrige. */
-.map-info {
-  position: absolute;
-  z-index: 2;
-  top: 8px;
-  left: var(--edge-gap);
-  /* Platz fuer das Ansicht-Symbol in der gegenueberliegenden Ecke. */
-  max-width: calc(100% - var(--edge-gap) - 56px);
+/* --- Karteninfo als zweite Zeile der Werkzeugleiste ----------------------
+   Auf kleinen Displays (Xperia XZ1) kostete der Overlay-Streifen oben auf der Karte zu viel
+   Flaeche. Punktzahl und Konturzustand stehen jetzt als **zweite Zeile unter dem Kartennamen**
+   in der Leiste, die Karte bleibt dort frei. Der Block ist eine Spalte; die Leiste selbst
+   bleibt eine Zeile, `row-reverse` bei Linkshaendern dreht ihn samt Werkzeugen auf die andere
+   Seite, `align-items` spiegelt zusaetzlich die Ausrichtung im Block. */
+.toolbar-info {
+  /* Gibt vor den Werkzeugen nach — der Name darf sie nie verdraengen. */
+  flex: 0 10 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  overflow: hidden;
+}
+:root[data-handed="left"] .toolbar-info { align-items: flex-end; }
+.toolbar-map-meta {
+  max-width: 100%;
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 5px;
   min-width: 0;
+  font-size: .55rem;
+  line-height: 1.35;
+  color: var(--shell-muted);
+  white-space: nowrap;
+}
+.toolbar-map-meta:empty { display: none; }
+
+/* --- Positionsanzeige unten zwischen den beiden Eckknoepfen ---------------
+   Sie spannt sich als **Band** genau ueber die Luecke zwischen Rueckgaengig- und
+   Aufnahme-Knopf: links wie rechts Randabstand + Knopfbreite + ein kleiner Abstand. Weil beide
+   Kanten gesetzt sind, kann sie die Knoepfe auch auf sehr schmalen Displays nicht ueberlappen —
+   sie kuerzt vorher per Ellipse. Die beiden Knoepfe sind verschieden breit (48 gegen 104 px),
+   deshalb sind die Abzuege seitenverschieden und drehen sich mit der Haendigkeit mit.
+   Das Band selbst ist unsichtbar; die halbtransparente Pille traegt der Text darin, damit sie
+   sich auf die tatsaechliche Textbreite zusammenzieht und mittig in der Luecke steht. */
+.map-position {
+  position: absolute;
+  z-index: 2;
+  bottom: var(--edge-gap);
+  left: calc(var(--edge-gap) + var(--fab-size) + 8px);
+  right: calc(var(--edge-gap) + var(--capture-size) + 8px);
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+  pointer-events: none;
+}
+:root[data-handed="left"] .map-position {
+  left: calc(var(--edge-gap) + var(--capture-size) + 8px);
+  right: calc(var(--edge-gap) + var(--fab-size) + 8px);
+}
+.map-position .info-line {
   padding: 3px 8px;
   border-radius: 8px;
   background: var(--shell-hud);
-  color: var(--shell-text);
+  color: var(--shell-muted);
   font-size: .6rem;
   line-height: 1.4;
-  white-space: nowrap;
-  pointer-events: none;
 }
 .info-line { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Konturfeld: **Name der betroffenen Kontur samt Zustand** („Perimeter · geschlossen“), nie

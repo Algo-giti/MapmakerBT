@@ -255,7 +255,7 @@ const I18N = {
     helpThemeTitle: 'Hell & Dunkel', helpThemeText: 'Drei Stufen im Menü unter Ansicht & Maßstab: Hell, Dunkel oder der Vorgabe des Systems folgen.',
     helpHandedTitle: 'Bedienseite', helpHandedText: 'Die Umstellung auf Linkshänder spiegelt die gesamte Bedienung: Werkzeuge und Karteninfo in der Kartenleiste, Aufnahme-Knopf und Fahrtanzeige.',
     helpJoystickSizeTitle: 'Joystick-Größe', helpJoystickSizeText: 'Vier Stufen von Klein bis Sehr groß. Größer heißt mehr Trefferfläche für den Daumen, kleiner mehr Platz für die Karte.',
-    helpMapInfoTitle: 'Karteninfo auf der Karte', helpMapInfoText: 'Der Kartenname steht oben in der Werkzeugleiste. Der schmale Streifen in der oberen Kartenecke zeigt Punktzahl, die betroffene Kontur samt Zustand und die letzte Positionsmeldung. Der Zustand steht immer unmittelbar hinter der Bezeichnung der Kontur, auf die er sich bezieht: „Perimeter · geschlossen“ oder „Ausschluss 2 · offen“, und bei ausgewähltem Punkt an dessen Bezeichnung, also „Ausschluss 1 · Punkt 3 · offen“. So ist auch bei mehreren Ausschlussflächen eindeutig, welche gemeint ist. „Offen“ heißt, dass zwischen letztem und erstem Punkt noch keine Verbindung besteht, „geschlossen“ heißt, dass die Fläche fertig umrundet ist. Wegpunkte und Dockpfad sind immer offene Pfade und zeigen deshalb keinen Zustand.',
+    helpMapInfoTitle: 'Karteninfo in der Werkzeugleiste', helpMapInfoText: 'Die Werkzeugleiste oben trägt zwei Zeilen: den Kartennamen und darunter, kleiner, die Punktzahl und die betroffene Kontur samt Zustand. Die aktuelle Position steht unten auf der Karte, zwischen Rückgängig- und Aufnahme-Knopf. Die Kartenfläche selbst bleibt damit frei von Text. Der Zustand steht immer unmittelbar hinter der Bezeichnung der Kontur, auf die er sich bezieht: „Perimeter · geschlossen“ oder „Ausschluss 2 · offen“, und bei ausgewähltem Punkt an dessen Bezeichnung, also „Ausschluss 1 · Punkt 3 · offen“. So ist auch bei mehreren Ausschlussflächen eindeutig, welche gemeint ist. „Offen“ heißt, dass zwischen letztem und erstem Punkt noch keine Verbindung besteht, „geschlossen“ heißt, dass die Fläche fertig umrundet ist. Wegpunkte und Dockpfad sind immer offene Pfade und zeigen deshalb keinen Zustand.',
     helpZoomTitle: 'Zoomen & Verschieben', helpZoomText: 'Zwei Finger zoomen, ein Finger verschiebt. Sobald du die Ansicht selbst verändert hast, erscheint in der oberen Kartenecke ein Symbol, das sie wieder auf die ganze Karte zurücksetzt.',
     helpDiagnosticsTitle: 'Diagnose', helpDiagnosticsText: 'Das Protokoll im Menü unter Diagnose zeigt gesendete Kommandos, Antworten und Fehler der Funkverbindung — hilfreich, wenn die Verbindung abreißt.',
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
@@ -464,7 +464,7 @@ const I18N = {
     helpThemeTitle: 'Light & dark', helpThemeText: 'Three settings in the menu under View & scale: light, dark, or follow the system setting.',
     helpHandedTitle: 'Operating side', helpHandedText: 'Switching to left-handed mirrors the whole layout: tools and map info in the map bar, capture button and drive status.',
     helpJoystickSizeTitle: 'Joystick size', helpJoystickSizeText: 'Four steps from small to very large. Larger means a bigger target for your thumb, smaller means more room for the map.',
-    helpMapInfoTitle: 'Map info on the map', helpMapInfoText: 'The map name sits in the tool bar at the top. The slim strip in the top corner of the map shows the point count, the contour concerned together with its state, and the latest position message. The state always sits directly behind the name of the contour it refers to: “Perimeter · closed” or “Exclusion 2 · open”, and with a point selected behind that point, as in “Exclusion 1 · point 3 · open”. That keeps it unambiguous even with several exclusion areas. “Open” means there is still no link between the last and the first point, “closed” means the area is fully enclosed. Waypoints and the dock path are always open paths and therefore show no state.',
+    helpMapInfoTitle: 'Map info in the tool bar', helpMapInfoText: 'The tool bar at the top carries two lines: the map name and, smaller beneath it, the point count and the contour concerned together with its state. The current position sits at the bottom of the map, between the undo and capture buttons. The map area itself stays free of text. The state always sits directly behind the name of the contour it refers to: “Perimeter · closed” or “Exclusion 2 · open”, and with a point selected behind that point, as in “Exclusion 1 · point 3 · open”. That keeps it unambiguous even with several exclusion areas. “Open” means there is still no link between the last and the first point, “closed” means the area is fully enclosed. Waypoints and the dock path are always open paths and therefore show no state.',
     helpZoomTitle: 'Zoom & pan', helpZoomText: 'Two fingers zoom, one finger pans. As soon as you change the view yourself, an icon appears in the top corner of the map that resets it to the whole map.',
     helpDiagnosticsTitle: 'Diagnostics', helpDiagnosticsText: 'The log in the menu under Diagnostics shows sent commands, replies and radio errors — useful when the connection drops.',
     solutionInvalid: 'INVALID', solutionUnknown: 'UNKNOWN', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
@@ -3055,8 +3055,12 @@ function refreshToolbarVisibility() {
   const slots = [ui.deleteFabWrap, ui.insertBeforeWrap, ui.insertAfterWrap, ui.closeAndNewWrap, ui.extendWrap];
   // Seit der Kartenname hier steht, ist die Leiste praktisch immer belegt. Sie klappt nur noch
   // ein, wenn wirklich nichts darin steht — sonst wuerde ausgerechnet der Name verschwinden.
-  const hasName = Boolean((ui.mapNameLabel?.textContent || '').trim());
-  ui.mapToolbar.hidden = !hasName && !slots.some((slot) => slot && !slot.hidden);
+  // Der Infoblock traegt jetzt zwei Zeilen: Name und darunter Punktzahl/Konturzustand. Solange
+  // eine davon gefuellt ist, bleibt die Leiste stehen — sonst verschwaende ausgerechnet sie.
+  const hasInfo = Boolean((ui.mapNameLabel?.textContent || '').trim())
+    || Boolean((ui.mapSummary?.textContent || '').trim())
+    || Boolean((ui.contourStatus?.textContent || '').trim());
+  ui.mapToolbar.hidden = !hasInfo && !slots.some((slot) => slot && !slot.hidden);
 }
 
 function refreshUndoButton() {

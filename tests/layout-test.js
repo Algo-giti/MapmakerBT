@@ -199,7 +199,7 @@ test('Die Karte traegt oben eine Werkzeugleiste und darunter die Zeichenflaeche'
   assert.strictEqual(resolve('.capture-cluster', 'right').value, 'var(--edge-gap)');
   assert.strictEqual(resolve('.capture-cluster', 'bottom').value, 'var(--edge-gap)');
   const area = html.slice(html.indexOf('id="mapCanvasArea"'));
-  for (const id of ['captureCluster', 'mapInfo', 'fitViewBtn', 'undoFabWrap']) {
+  for (const id of ['captureCluster', 'mapPosition', 'fitViewBtn', 'undoFabWrap']) {
     assert.ok(area.includes(`id="${id}"`), `${id} gehoert in die Zeichenflaeche`);
   }
   assert.ok(!html.includes('class="map-hud"'), 'der alte Overlay-Kasten kehrt nicht zurueck');
@@ -221,8 +221,8 @@ test('Die Werkzeugleiste bricht Beschriftungen nicht um', () => {
   const tools = ['deletePointBtn', 'insertBeforeBtn', 'insertAfterBtn', 'closeAndNewBtn', 'extendBtn'];
   assert.ok(!bar.includes('id="driveModeBtn"'),
     'der Steuerungs-Umschalter sitzt jetzt in der Ecke des Fahrfelds, nicht mehr in der Leiste');
-  // Rueckgaengig, Ansicht-Symbol und Karteninfo sind zurueck auf die Karte gewandert.
-  for (const id of ['undoBtn', 'fitViewBtn', 'mapInfo']) {
+  // Rueckgaengig, Ansicht-Symbol und Positionszeile liegen auf der Karte, nicht in der Leiste.
+  for (const id of ['undoBtn', 'fitViewBtn', 'mapPosition']) {
     assert.ok(!bar.includes(`id="${id}"`), `${id} gehoert nicht mehr in die Leiste`);
   }
   for (const id of tools) {
@@ -278,41 +278,47 @@ test('Der Rueckgaengig-Knopf steht unten an der Kartenecke, spiegelbildlich zum 
   assert.ok(!undo.includes('M4 7h16'), 'der Rueckgaengig-Knopf traegt nicht das Loesch-Symbol');
 });
 
-test('Die Karteninfo liegt als einzeiliges Overlay oben auf der Karte', () => {
-  // Sie stand zwischenzeitlich in der Werkzeugleiste und hat dort mit den Werkzeugen um die
-  // Breite konkurriert. Jetzt wieder als halbtransparenter Streifen auf der Karte, alles in
-  // einer Zeile, jede Angabe kuerzt per Ellipse.
-  assert.strictEqual(resolve('.map-info', 'position').value, 'absolute');
-  assert.strictEqual(resolve('.map-info', 'left').value, 'var(--edge-gap)');
-  assert.strictEqual(resolve('.map-info', 'display').value, 'flex', 'alles in einer Zeile');
-  assert.strictEqual(resolve('.map-info', 'white-space').value, 'nowrap');
-  assert.ok((resolve('.map-info', 'max-width').value || '').includes('calc('),
-    'die Info braucht eine Breitengrenze, sonst laeuft sie ins Ansicht-Symbol');
-  assert.strictEqual(resolve('.map-info', 'pointer-events').value, 'none',
-    'Kartengesten muessen unter dem Streifen weiterlaufen');
-  assert.ok((resolve('.map-info', 'background').value || '').includes('--shell-hud'),
-    'halbtransparent ueber der Karte, in beiden Themes');
+test('Karteninfo steht als zweite Zeile in der Werkzeugleiste, nicht auf der Karte', () => {
+  // Auf kleinen Displays kostete der Overlay-Streifen zu viel Kartenflaeche. Punktzahl und
+  // Konturzustand stehen jetzt unter dem Kartennamen in der Leiste; die Karte bleibt dort frei.
+  assert.ok(!css.includes('.map-info {'), 'der Overlay-Streifen ist restlos entfernt');
+  const bar = html.slice(html.indexOf('id="mapToolbar"'), html.indexOf('id="mapCanvasArea"'));
+  for (const id of ['mapNameLabel', 'mapSummary', 'contourStatus']) {
+    assert.ok(bar.includes(`id="${id}"`), `${id} gehoert in die Werkzeugleiste`);
+  }
+  assert.ok(bar.indexOf('id="mapMeta"') > bar.indexOf('id="mapNameLabel"'),
+    'Zeile 1 ist der Kartenname, Zeile 2 die Angaben darunter');
+  assert.ok(bar.indexOf('id="contourStatus"') > bar.indexOf('id="mapSummary"'),
+    'der Konturstatus steht hinter der Punktzahl');
+  // Zwei Zeilen entstehen nur, wenn der Block eine Spalte ist — die Leiste selbst bleibt Zeile.
+  assert.strictEqual(resolve('.toolbar-info', 'flex-direction').value, 'column');
+  assert.strictEqual(resolve('.map-toolbar', 'display').value, 'flex');
+  assert.strictEqual(resolve('.toolbar-info', 'min-width').value, '0',
+    'ohne min-width:0 schiebt ein langer Name die Werkzeuge aus der Leiste');
+  const shrink = (sel) => Number((resolve(sel, 'flex').value || '').split(/\s+/)[1]);
+  assert.ok(shrink('.toolbar-info') > shrink('.map-tools'),
+    'der Infoblock muss vor den Werkzeugen nachgeben');
+  // Die zweite Zeile ist kompakt und kuerzt statt umzubrechen.
+  assert.strictEqual(resolve('.toolbar-map-meta', 'white-space').value, 'nowrap');
+  assert.ok(parseFloat(resolve('.toolbar-map-meta', 'font-size').value)
+    < parseFloat(resolve('.toolbar-map-name', 'font-size').value),
+    'die zweite Zeile ist kleiner gesetzt als der Name');
   for (const prop of ['overflow', 'text-overflow', 'white-space']) {
     assert.ok(resolve('.info-line', prop).value, `.info-line braucht ${prop}`);
   }
   assert.strictEqual(resolve('.info-line', 'text-overflow').value, 'ellipsis');
-  const shrink = Number((resolve('.info-line', 'flex').value || '').split(/\s+/)[1]);
-  assert.ok(shrink > 0, 'jede Angabe muss nachgeben koennen, sonst sprengt sie den Streifen');
-  // Konturfeld: traegt Name **und** Zustand, muss deshalb schrumpfen und kuerzen koennen —
-  // als reines Zustandswort war es kurz, jetzt steht ein Konturname davor.
+  assert.ok(Number((resolve('.info-line', 'flex').value || '').split(/\s+/)[1]) > 0,
+    'jede Angabe muss nachgeben koennen');
+  // Konturfeld: traegt Name **und** Zustand, muss deshalb schrumpfen und kuerzen koennen.
   assert.strictEqual(resolve('.info-chip:empty', 'display').value, 'none',
     'leer darf es nicht einmal Platz kosten');
-  const chipShrink = Number((resolve('.info-chip', 'flex').value || '').split(/\s+/)[1]);
-  assert.ok(chipShrink > 0, 'mit shrink 0 schiebt ein langer Konturname den Rest aus dem Streifen');
+  assert.ok(Number((resolve('.info-chip', 'flex').value || '').split(/\s+/)[1]) > 0,
+    'mit shrink 0 schiebt ein langer Konturname den Rest aus der Zeile');
   assert.strictEqual(resolve('.info-chip', 'min-width').value, '0');
   assert.strictEqual(resolve('.info-chip', 'text-overflow').value, 'ellipsis');
-  const area = html.slice(html.indexOf('id="mapCanvasArea"'));
-  const info = area.slice(area.indexOf('id="mapInfo"'), area.indexOf('id="fitViewBtn"'));
-  for (const id of ['mapSummary', 'contourStatus', 'pointStatus']) {
-    assert.ok(info.includes(`id="${id}"`), `${id} gehoert in die Karteninfo`);
-  }
-  assert.ok(info.indexOf('id="contourStatus"') > info.indexOf('id="mapSummary"'),
-    'der Konturstatus steht hinter Name und Punktzahl');
+  // Und die Ausrichtung im Block spiegelt mit der Haendigkeit.
+  assert.strictEqual(resolve('.toolbar-info', 'align-items').value, 'flex-start');
+  assert.strictEqual(resolve(':root[data-handed="left"] .toolbar-info', 'align-items').value, 'flex-end');
 });
 
 test('„Ansicht zuruecksetzen“ ist ein reines Symbol in der oberen Kartenecke', () => {
@@ -326,8 +332,6 @@ test('„Ansicht zuruecksetzen“ ist ein reines Symbol in der oberen Kartenecke
   assert.strictEqual(resolve('.map-view-reset', 'background').value, 'none', 'keine Knopfflaeche');
   assert.strictEqual(resolve('.map-view-reset', 'width').value, '44px', 'Daumenziel trotz reinem Symbol');
   assert.strictEqual(resolve('.map-view-reset', 'height').value, '44px');
-  // Karteninfo und Symbol stehen auf gegenueberliegenden Seiten, koennen sich also nicht decken.
-  assert.strictEqual(resolve('.map-info', 'left').value, resolve(':root[data-handed="left"] .map-view-reset', 'left').value);
   assert.ok(/hidden=""[^>]*id="fitViewBtn"/.test(html), 'startet ausgeblendet, sichtbar erst nach eigener Geste');
 });
 
@@ -339,13 +343,12 @@ test('Die Werkzeugleiste bleibt kompakt und verschwindet, wenn kein Werkzeug sic
   assert.strictEqual(resolve(':root[data-handed="left"] .map-toolbar', 'flex-direction').value, 'row-reverse',
     'Linkshaender: beides auf der anderen Seite');
   const bar = html.slice(html.indexOf('id="mapToolbar"'), html.indexOf('id="mapCanvasArea"'));
-  assert.strictEqual((bar.match(/id="map/g) || []).length, 3, 'Leiste, Kartenname und Werkzeuggruppe');
   // Der Name steht vor den Werkzeugen und gibt bei Platzmangel zuerst nach.
   assert.ok(bar.indexOf('id="mapNameLabel"') > 0 && bar.indexOf('id="mapNameLabel"') < bar.indexOf('id="mapTools"'),
     'der Kartenname ist das erste Kind der Leiste');
   const shrink = (sel) => Number((resolve(sel, 'flex').value || '').split(/\s+/)[1]);
-  assert.ok(shrink('.toolbar-map-name') > shrink('.map-tools'),
-    'der Name muss zuerst nachgeben, sonst verdraengt er die Werkzeuge');
+  assert.ok(shrink('.toolbar-info') > shrink('.map-tools'),
+    'der Infoblock muss zuerst nachgeben, sonst verdraengt er die Werkzeuge');
   assert.strictEqual(resolve('.toolbar-map-name', 'text-overflow').value, 'ellipsis');
   assert.strictEqual(resolve('.toolbar-map-name', 'min-width').value, '0');
   // Auf der Karte darf der Name nicht ein zweites Mal stehen.
@@ -363,8 +366,7 @@ test('Linkshaender spiegelt jedes mit dem Daumen bediente Element', () => {
   const mirrored = [
     // [Selektor rechts (Grundregel), Selektor links, Eigenschaft, erwartet rechts, erwartet links]
     ['.map-toolbar', ':root[data-handed="left"] .map-toolbar', 'flex-direction', null, 'row-reverse'],
-    ['.map-info', ':root[data-handed="left"] .map-info', 'left', 'var(--edge-gap)', 'auto'],
-    ['.map-info', ':root[data-handed="left"] .map-info', 'right', null, 'var(--edge-gap)'],
+    ['.toolbar-info', ':root[data-handed="left"] .toolbar-info', 'align-items', 'flex-start', 'flex-end'],
     ['.map-view-reset', ':root[data-handed="left"] .map-view-reset', 'right', 'var(--edge-gap)', 'auto'],
     ['.map-view-reset', ':root[data-handed="left"] .map-view-reset', 'left', null, 'var(--edge-gap)'],
     ['.map-corner-undo', ':root[data-handed="left"] .map-corner-undo', 'left', 'var(--edge-gap)', 'auto'],
@@ -661,7 +663,7 @@ test('Rueckgaengig-Knopf und Joystick-Umschalter haben denselben Randabstand', (
     'nur eine ausgefuellte Spalte hat eine Aussenkante, an der der Knopf sitzen kann');
   // Und alle uebrigen randstaendigen Elemente teilen denselben Wert — ein Token, keine Kopien.
   for (const [selector, prop] of [['.capture-cluster', 'right'], ['.capture-cluster', 'bottom'],
-    ['.map-info', 'left'], ['.map-view-reset', 'right'], ['.map-corner-undo', 'bottom']]) {
+    ['.map-position', 'bottom'], ['.map-view-reset', 'right'], ['.map-corner-undo', 'bottom']]) {
     assert.strictEqual(resolve(selector, prop).value, 'var(--edge-gap)',
       `${selector} { ${prop} } muss den gemeinsamen Randabstand nutzen`);
   }
@@ -790,6 +792,52 @@ test('Die Werkzeugleiste passt sich schmalen Bildschirmen an', () => {
     'ein zu langes Label kuerzt, statt den Knopf zu verbreitern');
   assert.strictEqual(resolve('.map-tool-label', 'white-space').value, 'nowrap',
     'aber es bleibt einzeilig — keine Buchstabenkolonnen');
+});
+
+test('Die Positionszeile sitzt zwischen den beiden Eckknoepfen, ohne sie zu ueberlappen', () => {
+  // Sie lag vorher als Teil des Overlay-Streifens oben auf der Karte. Jetzt spannt sie sich
+  // unten ueber die Luecke zwischen Rueckgaengig- (links) und Aufnahme-Knopf (rechts).
+  assert.strictEqual(resolve('.map-position', 'position').value, 'absolute');
+  assert.strictEqual(resolve('.map-position', 'bottom').value, 'var(--edge-gap)');
+  assert.strictEqual(resolve('.map-position', 'justify-content').value, 'center',
+    'der Text steht mittig in der Luecke');
+  assert.strictEqual(resolve('.map-position', 'pointer-events').value, 'none',
+    'Kartengesten muessen darunter weiterlaufen');
+  assert.ok((resolve('.map-position .info-line', 'background').value || '').includes('--shell-hud'),
+    'halbtransparent, damit die Karte darunter sichtbar bleibt');
+  // Im Markup liegt sie in der Zeichenflaeche zwischen den beiden Knoepfen.
+  const area = html.slice(html.indexOf('id="mapCanvasArea"'));
+  assert.ok(area.includes('id="mapPosition"') && area.includes('id="pointStatus"'),
+    'Positionszeile und ihr Text gehoeren auf die Karte');
+  assert.ok(!html.slice(html.indexOf('id="mapToolbar"'), html.indexOf('id="mapCanvasArea"'))
+    .includes('id="pointStatus"'), 'sie steht nicht in der Werkzeugleiste');
+
+  // Beide Kanten sind gesetzt — nur so kann sie die Knoepfe nicht ueberlappen. Die Abzuege sind
+  // seitenverschieden, weil die Knoepfe verschieden breit sind, und drehen mit der Haendigkeit.
+  const px = (v) => Number(String(v).replace('px', ''));
+  const edge = px(resolve(':root', '--edge-gap').value);
+  const fab = px(resolve(':root', '--fab-size').value);
+  const capture = px(resolve(':root', '--capture-size').value);
+  assert.ok(edge > 0 && fab > 0 && capture > 0, 'alle drei Groessen muessen benannte Token sein');
+  const undoSide = `calc(var(--edge-gap) + var(--fab-size) + 8px)`;
+  const captureSide = `calc(var(--edge-gap) + var(--capture-size) + 8px)`;
+  assert.strictEqual(resolve('.map-position', 'left').value, undoSide, 'links der Rueckgaengig-Knopf');
+  assert.strictEqual(resolve('.map-position', 'right').value, captureSide, 'rechts der Aufnahme-Knopf');
+  assert.strictEqual(resolve(':root[data-handed="left"] .map-position', 'left').value, captureSide,
+    'Linkshaender: der Aufnahme-Knopf steht links');
+  assert.strictEqual(resolve(':root[data-handed="left"] .map-position', 'right').value, undoSide);
+
+  // Nachgerechnet fuer schmale Displays: die Luecke muss in beiden Haendigkeiten positiv sein
+  // und noch etwas Text tragen. Xperia XZ1 = 1080 physische Pixel, also 360 CSS-px bei DPR 3.
+  const gapAt = (width) => width - (edge + fab + 8) - (edge + capture + 8);
+  for (const width of [320, 360, 412, 720]) {
+    const gap = gapAt(width);
+    assert.ok(gap >= 60,
+      `bei ${width} px bleiben nur ${gap} px zwischen den Knoepfen — zu wenig fuer die Positionszeile`);
+  }
+  // Die Rechnung ist seitenunabhaengig: beide Abzuege zusammen sind in jeder Haendigkeit gleich.
+  assert.strictEqual(gapAt(360), 360 - (edge + capture + 8) - (edge + fab + 8),
+    'gespiegelt bleibt die Luecke gleich breit');
 });
 
 test('Das hidden-Attribut blendet auch Knoepfe aus', () => {

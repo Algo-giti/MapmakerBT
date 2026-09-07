@@ -1452,8 +1452,14 @@ test('Die Werkzeugleiste verschwindet, wenn kein einziges Werkzeug sichtbar ist'
   }
   t.refreshToolbarVisibility();
   assert.strictEqual(bar.hidden, false, 'der Kartenname haelt die Leiste offen');
-  // Erst ohne Werkzeug **und** ohne Namen ist wirklich nichts mehr darin.
+  // Auch die zweite Zeile allein haelt sie offen — sonst verschwaende die Karteninfo.
   elements.get('mapNameLabel').textContent = '';
+  elements.get('mapSummary').textContent = '20 Punkte';
+  t.refreshToolbarVisibility();
+  assert.strictEqual(bar.hidden, false, 'die Angaben der zweiten Zeile halten sie offen');
+  // Erst ohne Werkzeug **und** ohne jede Angabe ist wirklich nichts mehr darin.
+  elements.get('mapSummary').textContent = '';
+  elements.get('contourStatus').textContent = '';
   t.refreshToolbarVisibility();
   assert.strictEqual(bar.hidden, true, 'voellig leer klappt sie ein');
   elements.get('deleteFabWrap').hidden = false;

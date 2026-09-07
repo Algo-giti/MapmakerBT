@@ -63,39 +63,57 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    dem SVG (`onMapPointerDown/Move/Up`): Tap wählt aus, Ziehen ab 8 px verschiebt, zwei Finger
    zoomen.
 
-   **Finale Aufteilung (Stand v42) — was in der Leiste steht und was auf der Karte liegt.**
+   **Finale Aufteilung (Stand v48) — was in der Leiste steht und was auf der Karte liegt.**
    Die Zuordnung ist zweimal hin und her gewandert; sie steht hier vollständig, damit sie sich
    nicht wieder aus dem Verlauf rekonstruieren lässt.
 
    | Element | Ort | Rechtshänder | Linkshänder |
    |---|---|---|---|
-   | Kartenname (`#mapNameLabel`) | Werkzeugleiste | links | rechts |
+   | Kartenname (`#mapNameLabel`), Zeile 1 | Werkzeugleiste | links | rechts |
+   | Punktzahl + Konturzustand (`#mapMeta`), Zeile 2 | Werkzeugleiste | links | rechts |
    | Lösch-Werkzeug (`#deleteFabWrap`) | Werkzeugleiste | rechts | links |
    | „Punkt davor/danach“ (`#insertBeforeWrap`/`#insertAfterWrap`) | Werkzeugleiste | rechts | links |
    | „Schließen & neu“ (`#closeAndNewWrap`) | Werkzeugleiste | rechts | links |
    | „Erweitern“ (`#extendWrap`) | Werkzeugleiste | rechts | links |
-   | Karteninfo (`#mapInfo`) | **auf der Karte**, oben | links | rechts |
+   | Positionsanzeige (`#mapPosition`) | **auf der Karte**, unten mittig | zwischen Rückgängig und Aufnahme | gespiegelt |
    | Ansicht zurücksetzen (`#fitViewBtn`) | **auf der Karte**, oben | rechts | links |
    | Rückgängig (`#undoFabWrap`) | **auf der Karte**, unten | links | rechts |
    | Aufnahme-Cluster (`.capture-cluster`) | **auf der Karte**, unten | rechts | links |
 
-   **Werkzeugleiste** (`.map-toolbar`) trägt seit v46 zwei Kinder: den **Kartennamen**
-   (`.toolbar-map-name`, `#mapNameLabel`) und `.map-tools`, deshalb wieder
-   `justify-content: space-between`; `row-reverse` bei Linkshändern dreht beide Seiten. Der Name
-   gibt bei Platzmangel **zuerst** nach (`flex: 0 10 auto` gegen `0 1 auto` bei den Werkzeugen)
-   und kürzt per Ellipse — er darf die Werkzeuge nie verdrängen. Sind alle Werkzeugslots
-   ausgeblendet, bleibt die Leiste jetzt **stehen**, solange der Name gefüllt ist;
-   `refreshToolbarVisibility()` klappt sie nur bei wirklich leerem Inhalt ein, sonst
-   verschwände ausgerechnet der Kartenname.
+   **Werkzeugleiste** (`.map-toolbar`) trägt zwei Kinder: den **zweizeiligen Infoblock**
+   `.toolbar-info` (`#toolbarInfo`) und `.map-tools`, deshalb `justify-content: space-between`;
+   `row-reverse` bei Linkshändern dreht beide Seiten. Der Infoblock gibt bei Platzmangel
+   **zuerst** nach (`flex: 0 10 auto` gegen `0 1 auto` bei den Werkzeugen) und kürzt per
+   Ellipse — er darf die Werkzeuge nie verdrängen.
 
-   **Karteninfo `#mapInfo`** liegt als halbtransparentes Overlay (`--shell-hud`) oben auf der
-   Karte, **einzeilig**: `display: flex`, darin `#mapSummary` (**nur die Punktzahl**, Schlüssel
-   `mapPoints`), `#contourStatus` und `#pointStatus`. **Der Kartenname steht nicht hier**, er
-   gehört seit v46 in die Werkzeugleiste — sonst stünde er zweimal auf dem Bildschirm. Jede Angabe ist `flex: 0 1 auto` mit Ellipse, die Box
-   selbst `pointer-events: none`, damit Kartengesten darunter weiterlaufen, und
-   `max-width: calc(100% - var(--edge-gap) - 56px)`, damit sie nicht ins Ansicht-Symbol läuft.
-   **Warum zurück auf die Karte:** in der Leiste konkurrierte sie mit den Werkzeugen um die
-   Breite (das war die Ursache des abgeschnittenen „Perimeter erweitern“).
+   **Der Infoblock ist eine Spalte, die Leiste bleibt eine Zeile** (`flex-direction: column` nur
+   am Block). Zeile 1 ist der Kartenname (`.toolbar-map-name`, `#mapNameLabel`), Zeile 2 die
+   kleiner gesetzte `.toolbar-map-meta` (`#mapMeta`) mit `#mapSummary` (Punktzahl) und
+   `#contourStatus` (Kontur samt Zustand). Waagerechte Seite kommt aus `row-reverse` der Leiste,
+   die **Ausrichtung im Block** zusätzlich aus `align-items` (`flex-start` / links gespiegelt
+   `flex-end`) — ohne das stünde der Text bei Linkshändern linksbündig in einem rechtsbündigen
+   Block. `refreshToolbarVisibility()` klappt die Leiste nur ein, wenn **weder** Name **noch**
+   eine der beiden Angaben gefüllt ist und kein Werkzeug sichtbar ist — sonst verschwände
+   ausgerechnet die Karteninfo.
+
+   **Warum zurück in die Leiste (v48):** auf kleinen Displays (Xperia XZ1) kostete der
+   Overlay-Streifen `.map-info` zu viel Kartenfläche. Er ist **restlos entfernt**; ein
+   layout-Test verbietet seine Rückkehr. Der frühere Einwand — die Info konkurriere in der
+   Leiste mit den Werkzeugen um die Breite — bleibt beantwortet durch das höhere
+   Schrumpfgewicht des Blocks und `min-width: 0`.
+
+   **Positionsanzeige `#mapPosition`** liegt unten auf der Karte und spannt sich als **Band**
+   genau über die Lücke zwischen Rückgängig- und Aufnahme-Knopf. Sie trägt allein `#pointStatus`
+   (die Positions-/Ereignismeldung). Beide Kanten sind gesetzt —
+   `left: calc(--edge-gap + --fab-size + 8px)`, `right: calc(--edge-gap + --capture-size + 8px)`,
+   bei Linkshändern vertauscht —, **deshalb kann sie die Knöpfe nicht überlappen**, sie kürzt
+   vorher per Ellipse. Die Abzüge sind seitenverschieden, weil die Knöpfe verschieden breit sind
+   (48 gegen 104 px); dafür gibt es das Token `--capture-size`. Das Band selbst ist unsichtbar
+   und `pointer-events: none`; die halbtransparente Pille (`--shell-hud`) trägt der Text darin,
+   damit sie sich auf die Textbreite zusammenzieht und mittig in der Lücke steht. Nachgerechnet
+   bleiben auf 320/360/412/720 px CSS-Breite mindestens 60 px Lücke; der Test rechnet das für
+   beide Händigkeiten nach. **Nicht ohne Gerät verifizierbar:** ob die zweizeilige Leiste auf dem
+   Xperia XZ1 nicht doch zu viel Höhe von der Karte nimmt.
 
    **Konturzustand: immer als Anhängsel an eine Bezeichnung, nie als freistehendes Wort.**
    Das war ein gemeldeter Fehler — „geschlossen“ stand an fester Stelle der Karteninfo, und bei
@@ -365,7 +383,8 @@ Schreibweise wie `applyTheme()` — und das Stylesheet hängt alle gespiegelten 
 | Stelle | Rechtshänder (Grundregel) | Linkshänder (`:root[data-handed="left"]`) |
 |---|---|---|
 | `.map-toolbar` | Werkzeuge rechts | `flex-direction: row-reverse` (links) |
-| `.map-info` | `left: var(--edge-gap)` | `right: var(--edge-gap); left: auto` |
+| `.toolbar-info` | `align-items: flex-start` | `align-items: flex-end` |
+| `.map-position` | Rückgängig links, Aufnahme rechts abgezogen | Abzüge vertauscht |
 | `.map-view-reset` | `right: var(--edge-gap)` | `left: var(--edge-gap); right: auto` |
 | `.map-corner-undo` | `left: var(--edge-gap)` | `right: var(--edge-gap); left: auto` |
 | `.capture-cluster` | `right: var(--edge-gap)` | `left: var(--edge-gap); right: auto` |
@@ -1206,6 +1225,24 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-07: **Zwei Umzüge für kleine Displays (Xperia XZ1).** (a) Punktzahl und Konturzustand
+  liegen nicht mehr als Overlay auf der Karte, sondern als **zweite Zeile unter dem Kartennamen**
+  in der Werkzeugleiste: `.toolbar-info` ist eine Spalte, die Leiste bleibt eine Zeile. Die
+  Händigkeit dreht die Seite weiter über `row-reverse`, zusätzlich spiegelt `align-items` die
+  Ausrichtung im Block — ohne das stünde der Text bei Linkshändern linksbündig in einem
+  rechtsbündigen Block. `.map-info` ist restlos entfernt, ein Test verbietet die Rückkehr;
+  `refreshToolbarVisibility()` hält die Leiste jetzt auch offen, wenn nur die zweite Zeile
+  gefüllt ist. (b) Die Positionsanzeige sitzt unten auf der Karte, mittig zwischen Rückgängig-
+  und Aufnahme-Knopf. Sie spannt als Band über die Lücke — **beide** Kanten gesetzt, Abzüge
+  seitenverschieden (48 gegen 104 px, neues Token `--capture-size`) und mit der Händigkeit
+  vertauscht —, kann die Knöpfe deshalb nicht überlappen und kürzt vorher. Die Pille sitzt auf
+  dem Text, nicht auf dem Band, damit sie sich auf die Textbreite zusammenzieht. Zwei neue
+  layout-Fälle (40), einer rechnet die Lücke für 320/360/412/720 px in beiden Händigkeiten nach;
+  fünf bestehende Fälle umgestellt, ein ui-Fall erweitert. Gegen acht simulierte Rückfälle
+  geprüft. Hilfe und README in beiden Sprachen nachgezogen. **Nicht ohne Gerät verifizierbar:**
+  ob die zweizeilige Leiste auf dem XZ1 nicht zu viel Höhe von der Karte nimmt.
+  `APP_VERSION` auf `v48`.
 
 - 2026-09-07: **Tastenkreuz unten abgeschnitten — zweiter Anlauf, Ursache belegt.** Der erste
   Fixversuch (v46) griff nicht. Nachgewiesen durch Auflösen der **ganzen** Kaskade für das

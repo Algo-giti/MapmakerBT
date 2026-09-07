@@ -72,15 +72,16 @@ Das Passwort bleibt nur für die laufende Sitzung im Speicher und wird nicht mit
 Die App besteht aus drei Zonen:
 
 - **Kopfzeile** – Menü, Verbindungsstatus, Moduswahl, RTK-Status und Akku.
-- **Karte** – nimmt den größten Teil des Bildschirms ein. Ganz oben liegt eine schmale
-  **Werkzeugleiste**: links der Kartenname, rechts das Lösch-Werkzeug und, wenn sie gerade
-  zutreffen, „Punkt davor/danach“, „Schließen & neu“ und „Erweitern“.
+- **Karte** – nimmt den größten Teil des Bildschirms ein. Ganz oben liegt eine schmale,
+  **zweizeilige Werkzeugleiste**: auf der einen Seite in Zeile 1 der Kartenname und darunter,
+  kleiner, die Punktzahl und die betroffene Kontur samt Zustand („Perimeter · geschlossen“); auf
+  der anderen Seite das Lösch-Werkzeug und, wenn sie gerade zutreffen, „Punkt davor/danach“,
+  „Schließen & neu“ und „Erweitern“.
   Darunter die Kartenfläche mit Mäherposition, aufgenommenen Punkten und deren Verbindungslinien.
-  Auf der Karte selbst liegen vier Dinge: oben in der einen Ecke ein schmaler Streifen mit
-  Punktzahl, der betroffenen Kontur samt Zustand („Perimeter · geschlossen“) und der
-  Positionsmeldung, oben in der anderen Ecke das Symbol zum Zurücksetzen der Ansicht, unten der
-  Aufnahme-Knopf und ihm gegenüber der Rückgängig-Knopf. Der Zustand steht immer direkt hinter
-  der Bezeichnung der Kontur, die er meint — bei ausgewähltem Punkt also hinter dessen
+  Auf der Karte selbst liegen nur noch vier Bedienelemente: oben in einer Ecke das Symbol zum
+  Zurücksetzen der Ansicht, unten der Aufnahme-Knopf und ihm gegenüber der Rückgängig-Knopf,
+  und mittig zwischen diesen beiden die aktuelle Position. Der Konturzustand steht immer direkt
+  hinter der Bezeichnung der Kontur, die er meint — bei ausgewähltem Punkt also hinter dessen
   Bezeichnung („Ausschluss 1 · Punkt 3 · offen“).
 - **Fahrzone** unten – der Joystick für den Daumen, daneben die Fahrtanzeige.
 
@@ -223,9 +224,9 @@ verändert werden. Eine gesperrte Karte lässt sich auch nicht umbenennen.
 - **Hell- und Dunkelmodus**: standardmäßig übernimmt die App die Einstellung des Geräts;
   unter *Einstellungen › Ansicht & Maßstab* lässt sich Hell oder Dunkel fest wählen.
 - **Bedienseite**: unter *Einstellungen › Fahrgeschwindigkeit* stellst du Rechts- oder
-  Linkshänder ein. Linkshänder spiegelt die **gesamte** Bedienung – die Werkzeugleiste, den
-  Streifen mit der Karteninfo, das Ansicht-Symbol, den Rückgängig-Knopf, den Aufnahme-Knopf sowie
-  Fahrtanzeige und Steuerungs-Umschalter.
+  Linkshänder ein. Linkshänder spiegelt die **gesamte** Bedienung – beide Seiten der
+  Werkzeugleiste, das Ansicht-Symbol, den Rückgängig-Knopf, den Aufnahme-Knopf samt der
+  Positionsanzeige dazwischen sowie Fahrtanzeige und Steuerungs-Umschalter.
 - **Joystick-Größe** in vier Stufen von Klein bis Sehr groß: größer heißt mehr Trefferfläche,
   kleiner mehr Platz für die Karte.
 - **Pinch-to-Zoom** und Verschieben mit dem Finger; die Karte lässt sich nicht aus dem Bild
@@ -424,15 +425,15 @@ The password is kept only for the running session and is never stored with the m
 The app has three zones:
 
 - **Header** – menu, connection status, mode selection, RTK status and battery.
-- **Map** – takes up most of the screen. A slim **tool bar** sits at the very top: the map name on the
-  left, on the right the delete tool and, whenever they apply, “Insert before/after”,
-  “Close & new” and “Extend”. Below it the map itself with the mower position,
-  the recorded points and their connecting lines. Four things sit on the map: a slim strip in one
-  top corner with the point count, the contour concerned together with its state
-  (“Perimeter · closed”) and the position message, the reset-view icon in the other top corner,
-  the capture button at the bottom and the undo button opposite it. The state always sits directly
-  behind the name of the contour it refers to, so with a point selected it follows that point
-  (“Exclusion 1 · point 3 · open”).
+- **Map** – takes up most of the screen. A slim, **two-line tool bar** sits at the very top: on one
+  side line 1 holds the map name and, smaller beneath it, the point count and the contour
+  concerned together with its state (“Perimeter · closed”); on the other side the delete tool and,
+  whenever they apply, “Insert before/after”, “Close & new” and “Extend”. Below it the map itself
+  with the mower position, the recorded points and their connecting lines. Only four controls sit
+  on the map: the reset-view icon in one top corner, the capture button at the bottom with the
+  undo button opposite it, and the current position centred between those two. The contour state
+  always sits directly behind the name of the contour it refers to, so with a point selected it
+  follows that point (“Exclusion 1 · point 3 · open”).
 - **Drive zone** at the bottom – the joystick for your thumb, with the drive status beside it.
 
 All settings live on a separate **menu page** (☰) with six sections: Connection, Maps, Settings,
@@ -567,8 +568,9 @@ A locked map cannot be renamed either.
 - **Light and dark mode**: by default the app follows the device setting; under
   *Settings › View & scale* you can pin it to light or dark.
 - **Operating side**: choose right- or left-handed under *Settings › Drive speed*. Left-handed
-  mirrors the **entire** layout – the tool bar, the map info strip, the reset-view icon, the undo
-  button, the capture button as well as the drive status and the control toggle.
+  mirrors the **entire** layout – both sides of the tool bar, the reset-view icon, the undo
+  button, the capture button together with the position readout between them, as well as the
+  drive status and the control toggle.
 - **Joystick size** in four steps from small to very large: larger means a bigger target, smaller
   means more room for the map.
 - **Pinch to zoom** and pan with one finger; the map cannot be pushed out of view. As soon as you
