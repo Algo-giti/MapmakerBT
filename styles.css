@@ -2349,8 +2349,12 @@ body.menu-open .app-frame { visibility: hidden; }
      ueber --joystick-scale aus den Einstellungen. Die Obergrenze in dvh sorgt dafuer, dass
      auch die groesste Stufe der Karte genug Platz laesst. */
   --joystick-size: clamp(110px, calc(25dvh * var(--joystick-scale, 1)),
-    min(calc(240px * var(--joystick-scale, 1)), 38dvh));
-  position: relative;
+    min(calc(240px * var(--joystick-scale, 1)), 38dvh, calc(100vw - var(--drive-side-reserve))));
+  /* Platz, den die beiden Seitenspalten zusammen mindestens behalten: je Seite der Umschalter
+     (34 px) plus Spaltenabstand (10 px), dazu der Innenabstand der Zone (2 x 8 px). Ohne diese
+     Grenze schob die groesste Joystick-Stufe auf schmalen Telefonen Knopf und Anzeige aus dem
+     Bild. */
+  --drive-side-reserve: 120px;
   grid-column: 2;
   width: var(--joystick-size);
   height: var(--joystick-size);
@@ -2360,12 +2364,7 @@ body.menu-open .app-frame { visibility: hidden; }
   grid-row: 1;
   align-self: center;
   justify-self: center;
-  /* Aussenabstand auf der Seite des Umschalters: er steht ausserhalb des Kreises und braucht
-     eigenen Platz, sonst ueberlappt er die Fahrtanzeige in der Nachbarspalte. */
-  --drive-toggle-gap: 50px;
-  margin: 0 0 0 var(--drive-toggle-gap);
 }
-:root[data-handed="left"] .drive-zone .drive-control { margin: 0 var(--drive-toggle-gap) 0 0; }
 .drive-zone .joystick-base {
   width: 100%;
   height: 100%;
@@ -2374,18 +2373,32 @@ body.menu-open .app-frame { visibility: hidden; }
   touch-action: none;
 }
 
-/* Der Umschalter steht **neben** dem Feld, nicht darauf: `right: 100%` setzt ihn vollstaendig
-   ausserhalb, sonst ueberlappte er den Kreis und lag unter dem bedienenden Daumen. Die Seite
-   haengt am selben `data-handed` wie alles Uebrige — Rechtshaender links, Linkshaender rechts.
-   Den Platz dafuer reserviert der Aussenabstand am Feld (siehe `--drive-toggle-gap`), damit der
-   Knopf nicht in die Fahrtanzeige der Nachbarspalte laeuft. */
-.drive-mode-corner {
+/* Seitenspalte neben dem Fahrfeld: Umschalter **oben**, Fahrtanzeige **darunter**. Beide
+   teilen sich die Aussenspalte und stehen deshalb uebereinander statt um dieselbe Breite zu
+   konkurrieren — vorher sass der Knopf absolut neben dem Feld und reservierte sich ueber einen
+   Aussenabstand genau den Platz, der der Anzeige dann fehlte („Fahrt gestoppt“ wurde am Rand
+   abgeschnitten). Die Seite haengt am selben `data-handed` wie alles Uebrige: Rechtshaender
+   links, Linkshaender rechts. Kein position:absolute mehr, der Knopf kann den Kreis nicht
+   ueberlappen, weil er in einer eigenen Gitterspalte liegt. */
+.drive-side {
+  grid-row: 1;
+  grid-column: 1;
+  justify-self: end;
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+:root[data-handed="left"] .drive-side {
+  grid-column: 3;
+  justify-self: start;
+  align-items: flex-start;
+}
+.drive-mode-side {
   --drive-toggle-size: 34px;
-  position: absolute;
-  z-index: 2;
-  top: 0;
-  right: 100%;
-  margin-right: 8px;
+  flex: 0 0 auto;
   display: grid;
   place-items: center;
   width: var(--drive-toggle-size);
@@ -2396,13 +2409,7 @@ body.menu-open .app-frame { visibility: hidden; }
   background: var(--shell-panel);
   color: var(--shell-muted);
 }
-:root[data-handed="left"] .drive-mode-corner {
-  right: auto;
-  left: 100%;
-  margin-right: 0;
-  margin-left: 8px;
-}
-.drive-mode-corner:active { background: var(--shell-hover); }
+.drive-mode-side:active { background: var(--shell-hover); }
 /* Kugel anteilig zur Basis: skaliert automatisch mit jeder Groessenstufe mit. */
 .drive-zone .joystick-knob { width: 41%; height: 41%; }
 
@@ -2453,10 +2460,14 @@ body.menu-open .app-frame { visibility: hidden; }
 .drive-mode-tool.mode-buttons .icon-joystick { display: grid; }
 .drive-mode-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .drive-meta {
-  grid-row: 1;
-  grid-column: 1;
-  justify-self: end;
+  /* Kind der Seitenspalte: kein eigener Gitterplatz mehr. Umbruch an Leerzeichen ist erlaubt
+     („Fahrt“ / „gestoppt“), ein Wort, das auch dann nicht passt, endet sichtbar mit „…“ statt
+     still am Rand abgeschnitten zu werden. */
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
   text-align: right;
   font-size: .68rem;
   font-weight: 700;
@@ -2464,10 +2475,7 @@ body.menu-open .app-frame { visibility: hidden; }
   color: var(--shell-muted);
 }
 :root[data-handed="left"] .drive-meta {
-  /* Exakt gespiegelt zur Rechtshaender-Variante — nur Spalte und Ausrichtung drehen sich. */
-  grid-row: 1;
-  grid-column: 3;
-  justify-self: start;
+  /* Exakt gespiegelt zur Rechtshaender-Variante — nur die Ausrichtung dreht sich. */
   text-align: left;
 }
 
@@ -3251,7 +3259,8 @@ body.menu-open .app-frame { visibility: hidden; }
 @media (min-width: 760px) {
   .app-frame {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) clamp(300px, 30vw, 520px);
+    --drive-column: clamp(300px, 30vw, 520px);
+    grid-template-columns: minmax(0, 1fr) var(--drive-column);
     grid-template-rows: auto auto minmax(0, 1fr);
     grid-template-areas:
       "update update"
@@ -3269,7 +3278,8 @@ body.menu-open .app-frame { visibility: hidden; }
   /* Die Statusanzeige steht auch hier seitlich — gleiche Anordnung wie am Handy.
      Die Spalte ist dafuer breiter, der Joystick etwas zurueckhaltender. */
   .drive-zone .drive-control {
-    --joystick-size: clamp(150px, calc(14vw * var(--joystick-scale, 1)), calc(260px * var(--joystick-scale, 1)));
+    --joystick-size: clamp(150px, calc(14vw * var(--joystick-scale, 1)),
+      min(calc(260px * var(--joystick-scale, 1)), calc(var(--drive-column) - var(--drive-side-reserve))));
   }
   /* Der Modus-Chip soll auf breiten Schirmen nicht über die halbe Leiste wandern. */
   .mode-chip { flex: 0 1 auto; max-width: 260px; }

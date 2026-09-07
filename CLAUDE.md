@@ -134,17 +134,37 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    sie rein in CSS steckt und ein Test auf die Beschriftung sie nicht mitfängt.
 
    **Gemeinsames Feld `.drive-control` (`#driveControlArea`):** Größe (`--joystick-size`) und
-   Gitterplatzierung stehen **nur dort**, Joystick und Tastenkreuz füllen es mit `100%` aus. Nur
-   deshalb liegt der Ecken-Umschalter in beiden Modi an derselben Stelle, ohne zweite
-   Positionslogik — und Größeneinstellung, Fahrtanzeige und Händigkeit gelten unverändert für
-   beide. Der Umschalter ist `position: absolute` im `position: relative`-Feld: **Rechtshänder
-   oben links, Linkshänder oben rechts** (`:root[data-handed="left"] .drive-mode-corner`), damit
-   er nie unter dem bedienenden Daumen liegt. Er steht **vollständig außerhalb** des Kreises
-   (`right: 100%` bzw. gespiegelt `left: 100%`) — mit `left: 0` überlappte er ihn. Den Platz
-   dafür reserviert der Außenabstand `--drive-toggle-gap` am Feld, sonst liefe der Knopf in die
-   Fahrtanzeige der Nachbarspalte. Sein Textlabel `#driveModeLabel` ist `.sr-only` und benennt
-   das **Ziel** („Zu Richtungstasten wechseln“); ein festes `aria-label` am Knopf gibt es nicht
-   mehr, sonst hätte es diesen Text überschrieben.
+   Gitterplatzierung stehen **nur dort**, Joystick und Tastenkreuz füllen es mit `100%` aus —
+   Größeneinstellung, Fahrtanzeige und Händigkeit gelten damit unverändert für beide.
+
+   **Seitenspalte `.drive-side` (seit v41): Umschalter oben, Fahrtanzeige darunter.** Der
+   Umschalter `#driveModeBtn` (`.drive-mode-side`) und `.drive-meta` liegen als **Stapel**
+   (`flex-direction: column`) in der Außenspalte des Fahrzonen-Grids — Rechtshänder Spalte 1
+   (`justify-self: end; align-items: flex-end`), Linkshänder Spalte 3 gespiegelt über
+   `:root[data-handed="left"] .drive-side`. `.drive-meta` hat keinen eigenen Gitterplatz mehr.
+   **Warum:** vorher saß der Knopf `position: absolute; right: 100%` neben dem Feld, und das Feld
+   reservierte ihm per `--drive-toggle-gap` 50 px Außenabstand — genau die Breite, die der
+   Fahrtanzeige in derselben Seitenspalte dann fehlte („Fahrt gestoppt“ wurde am Rand
+   abgeschnitten, auf einem 360-px-Telefon blieben je Seite ~37 px). Beide standen also
+   nebeneinander um denselben Platz an. Im Stapel braucht keiner Platz vom anderen, und ohne
+   Absolut-Positionierung kann der Knopf den Kreis nicht überlappen. Das `.sr-only`-Label
+   `#driveModeLabel` benennt weiter das **Ziel** („Zu Richtungstasten wechseln“).
+
+   **Der Text der Fahrtanzeige bricht an Leerzeichen um** („Fahrt“ / „gestoppt“) und endet bei
+   einem Wort, das auch dann nicht passt, sichtbar mit „…“ (`overflow: hidden;
+   text-overflow: ellipsis; overflow-wrap: normal`) — nie stilles Abschneiden.
+
+   **Die Joystick-Größe ist an die Breite gebunden**, damit die Seitenspalten nie unter die
+   Knopfbreite fallen: `--drive-side-reserve: 120px` (2 × (34 px Knopf + 10 px Spaltenabstand) +
+   2 × 8 px Innenabstand) geht als `calc(100vw - var(--drive-side-reserve))` in das `min()` der
+   `--joystick-size` ein; im Breitbild-Layout entsprechend `var(--drive-column) -
+   var(--drive-side-reserve)`, wobei `--drive-column` am `.app-frame` die Fahrspaltenbreite
+   trägt. Ohne diese Grenze schob die Stufe „Sehr groß“ (1,5) auf einem 360-px-Telefon den
+   Joystick auf 300 px und ließ je Seite 12 px übrig. `tests/layout-test.js` rechnet die
+   Seitenspalte für 360 × 800 in allen vier Stufen nach (≥ 34 px, bei Stufe ≤ 1 ≥ 52 px für
+   „gestoppt“). **Nicht ohne Gerät verifizierbar:** ob der Stapel auf jeder Bildschirmbreite
+   wirklich beides vollständig zeigt — beim nächsten Gerätetest gezielt prüfen, auch in der
+   Stufe „Sehr groß“ und als Linkshänder.
 
    **Der Tastenmodus hat eine eigene Geschwindigkeit** `state.view.cursorSpeedCms` (Startwert
    **15 cm/s**, Untergrenze 2 cm/s, Obergrenze die eingestellte `driveSpeedMax` in cm/s —
@@ -787,7 +807,7 @@ Kein Runner, kein `package.json`, keine Abhängigkeiten — reine Node-Skripte.
 | `tests/app-core-test.js` | Geometrie, Kartenmodell, Validierung (unverändert, nur auf `app-harness.js` umgestellt). |
 | `tests/ble-test.js` | Die BLE-Szenarien (28 Fälle), inklusive der Absicherung aller vier umgesetzten App-Fixes. Stacktraces mit `BLE_TEST_STACK=1`. |
 | `tests/sw-test.js` | Prüft die **Auslieferung** (7 Fälle): Cache-Version an genau einer Stelle in `sw.js`, App-Dateien network-first mit `cache: 'no-cache'` und Cache als Rückfallebene, `cache: 'reload'` beim Cache-Aufbau, alle von `index.html` geladenen Dateien im Cache, alte Caches werden entfernt, Neuladen bei `controllerchange` — und dass **keine** Versionsangabe im UI auftaucht. |
-| `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (14 Fälle). `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
+| `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (31 Fälle). `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
 | `tests/ui-test.js` | Die Kartier-Oberfläche (33 Fälle): Bestätigungs- und Meldungsdialog (Titel/Text/Beschriftung, beide Antworten, verdrängte Rückfrage, Einknopf-Meldung, `reportError` protokolliert und zeigt, keine `window.confirm()`/`window.alert()`-Aufrufe mehr), Moduswahl per Dialog, Rückfrage zum Schließen von Konturen, Kartenprüfung mit Konturschluss, Aufnahme/Löschen in allen drei Button-Zuständen, Flächenauswahl, Automatik (Ersetzen des manuellen Knopfs und Intervall), Positions-Glättung, Hell/Dunkel, Akkordeon, Auswahl per Tap, Touch-Zielgröße, Zoom-Grenzen, Tap-vs-Ziehen, Pinch, Halte-Aufnahme, Joystick-Kennlinie, RTK-Badge, Menüseite, gesperrte Karte, `init()`-Startpfad. Stacktraces mit `UI_TEST_STACK=1`. Antworten auf `confirm()` steuert der Test über `sandbox.__confirmAnswer`. |
 
 ### Was `tests/fake-ble.js` simulieren kann
@@ -1075,6 +1095,22 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-07: **Fahrstatus abgeschnitten, Umschalter in die Seitenspalte.** Gemeldet: „Fahrt
+  gestoppt“ wurde am Rand abgeschnitten, der Umschalter wirkte weiter am Kreis. Ausgeliefert war
+  nachweislich der lokale Stand (MD5 von `styles.css` identisch, `v40`). Ursache im CSS: der
+  Umschalter stand `position: absolute; right: 100%` neben dem Feld, und das Feld reservierte
+  ihm 50 px Außenabstand (`--drive-toggle-gap`) — in derselben Seitenspalte, in der die
+  Fahrtanzeige lag; auf einem 360-px-Telefon blieben ihr ~37 px, in der Stufe „Sehr groß“ 12 px.
+  Fix: neue Seitenspalte `.drive-side` mit Umschalter **oben** und Fahrtanzeige **darunter**
+  (Rechtshänder Spalte 1, Linkshänder Spalte 3, gemeinsam über `data-handed`), der Knopf ist aus
+  `#driveControlArea` herausgezogen, Absolut-Positionierung und Außenabstand sind weg. Der
+  Anzeigetext bricht an Leerzeichen um und kürzt sonst sichtbar per „…“. Zusätzlich ist die
+  Joystick-Größe an die Breite gebunden (`--drive-side-reserve` 120 px, im Breitbild an
+  `--drive-column`), damit die Seitenspalten nie unter die Knopfbreite fallen. Zwei neue
+  layout-Fälle (31), einer rechnet die Seitenspalte für 360 × 800 in allen vier Stufen nach;
+  gegen sieben simulierte Rückfälle geprüft. Hilfe und README (beide Sprachen) ergänzt.
+  `APP_VERSION` auf `v41`.
 
 - 2026-09-06: **„Perimeter erweitern“ wurde am Telefon rechts abgeschnitten.** Zwei Ursachen,
   beide im CSS bzw. in den Texten bestätigt. (a) `.map-tools` war `flex: 0 0 auto` und konnte

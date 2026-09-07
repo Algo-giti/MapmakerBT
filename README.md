@@ -247,7 +247,7 @@ Der Joystick liegt fest unter der Karte und ist für die Bedienung mit dem Daume
 Für genaues Rangieren gibt es alternativ **vier Richtungstasten**. Der kleine Knopf **neben** dem
 Fahrfeld schaltet zwischen beidem um; er zeigt das Symbol des Modus, in den er wechselt – im
 Joystick-Modus also das Steuerkreuz. Bei Rechtshändern steht er links vom Feld, bei Linkshändern
-gespiegelt rechts. Dieselbe Wahl steht auch unter *Einstellungen › Fahrgeschwindigkeit*. Die Tasten kennen bewusst nur
+gespiegelt rechts, jeweils direkt über der Fahrtanzeige. Dieselbe Wahl steht auch unter *Einstellungen › Fahrgeschwindigkeit*. Die Tasten kennen bewusst nur
 vorwärts, rückwärts und Drehen auf der Stelle – keine Diagonalen, damit beim Geradeausfahren
 nichts versehentlich lenkt. Sie fahren mit einer **eigenen, langsamen Geschwindigkeit**
 (Startwert 15 cm/s, nie schneller als die eingestellte Höchstgeschwindigkeit); der Joystick bleibt
@@ -581,7 +581,7 @@ The joystick sits permanently below the map and is designed for thumb operation.
 For precise manoeuvring there are alternatively **four direction keys**. The small button **beside**
 the drive field switches between the two; it shows the icon of the mode it switches to – so in
 joystick mode it shows the direction pad. For right-handed use it sits to the left of the field,
-for left-handed use mirrored to the right. The same choice is available under
+for left-handed use mirrored to the right, directly above the drive status. The same choice is available under
 *Settings › Drive speed*. The keys deliberately only know forward, backward and
 turning on the spot – no diagonals, so nothing steers by accident while driving straight. They use
 their **own slow speed** (15 cm/s to start with, never faster than the configured maximum); the

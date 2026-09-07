@@ -237,8 +237,9 @@ test('Linkshaender spiegelt jedes mit dem Daumen bediente Element', () => {
     ['.map-info', ':root[data-handed="left"] .map-info', 'text-align', 'left', 'right'],
     ['.capture-cluster', ':root[data-handed="left"] .capture-cluster', 'right', '12px', 'auto'],
     ['.capture-cluster', ':root[data-handed="left"] .capture-cluster', 'left', null, '12px'],
-    ['.drive-meta', ':root[data-handed="left"] .drive-meta', 'grid-column', '1', '3'],
-    ['.drive-meta', ':root[data-handed="left"] .drive-meta', 'justify-self', 'end', 'start'],
+    ['.drive-side', ':root[data-handed="left"] .drive-side', 'grid-column', '1', '3'],
+    ['.drive-side', ':root[data-handed="left"] .drive-side', 'justify-self', 'end', 'start'],
+    ['.drive-side', ':root[data-handed="left"] .drive-side', 'align-items', 'flex-end', 'flex-start'],
     ['.drive-meta', ':root[data-handed="left"] .drive-meta', 'text-align', 'right', 'left'],
     ['.fab-label', ':root[data-handed="left"] .capture-cluster .fab-label', 'left', null, '100%'],
     ['.fab-label', ':root[data-handed="left"] .capture-cluster .fab-label', 'right', '100%', 'auto'],
@@ -261,7 +262,7 @@ test('Rechtshaender bleibt der unveraenderte Standard', () => {
     'Rechtshaender ist in der Auswahl vorbelegt');
   assert.ok(!html2.includes('data-label-side'), 'kein Restattribut im Markup');
   assert.strictEqual(resolve('.capture-cluster', 'right').value, '12px', 'Aufnahme-Knopf unten rechts');
-  assert.strictEqual(resolve('.drive-meta', 'grid-column').value, '1', 'Fahrtanzeige links');
+  assert.strictEqual(resolve('.drive-side', 'grid-column').value, '1', 'Fahrtanzeige links');
 });
 
 test('Flaechen und Texte der Kartenpruefung folgen den Theme-Tokens', () => {
@@ -301,36 +302,78 @@ test('Auch die Kaesten der Hilfe nutzen Theme-Tokens statt fester Dunkelwerte', 
     'auch die Trennlinie war fest dunkel');
 });
 
-test('Der Steuerungs-Umschalter steht neben dem Fahrfeld und spiegelt mit', () => {
-  // Joystick und Tastenkreuz teilen sich ein gemeinsames Feld; nur dieses traegt Groesse und
-  // Gitterplatz. Dadurch liegt der Umschalter in beiden Modi an derselben Stelle.
-  const field = html.slice(html.indexOf('id="driveControlArea"'), html.indexOf('class="drive-meta"'));
-  for (const id of ['driveJoystick', 'driveButtons', 'driveModeBtn']) {
+test('Umschalter und Fahrtanzeige stehen uebereinander in einer Seitenspalte', () => {
+  // Der Rueckfall: der Umschalter sass absolut neben dem Fahrfeld und reservierte sich ueber
+  // einen Aussenabstand genau die Breite, die der Fahrtanzeige in derselben Seitenspalte dann
+  // fehlte — „Fahrt gestoppt“ wurde am Rand abgeschnitten. Jetzt teilen sich beide die
+  // Aussenspalte als Stapel: Knopf oben, Anzeige darunter.
+  const zone = html.slice(html.indexOf('id="driveZone"'), html.indexOf('</section>', html.indexOf('id="driveZone"')));
+  const field = zone.slice(zone.indexOf('id="driveControlArea"'), zone.indexOf('class="drive-side"'));
+  const side = zone.slice(zone.indexOf('class="drive-side"'));
+  for (const id of ['driveJoystick', 'driveButtons']) {
     assert.ok(field.includes(`id="${id}"`), `${id} gehoert in das gemeinsame Fahrfeld`);
   }
-  assert.strictEqual(resolve('.drive-zone .drive-control', 'position').value, 'relative',
-    'ohne Bezugsrahmen haengt der Umschalter an der Fahrzone statt am Feld');
-  assert.strictEqual(resolve('.drive-mode-corner', 'position').value, 'absolute');
-  assert.strictEqual(resolve('.drive-mode-corner', 'top').value, '0');
-  // Vollstaendig **ausserhalb** des Kreises: `right: 100%` setzt die rechte Kante des Knopfes an
-  // die linke Kante des Feldes, es kann also nichts ueberlappen. `left: 0` tat das noch.
-  assert.strictEqual(resolve('.drive-mode-corner', 'right').value, '100%',
-    'der Knopf darf den Kreis nicht mehr ueberlappen');
-  assert.strictEqual(resolve(':root[data-handed="left"] .drive-mode-corner', 'left').value, '100%',
-    'Linkshaender: gespiegelt auf die andere Seite');
-  assert.strictEqual(resolve(':root[data-handed="left"] .drive-mode-corner', 'right').value, 'auto',
-    'ohne Zuruecksetzen von right waere der Knopf ueber die ganze Breite gespannt');
-  // Der Platz daneben ist reserviert, sonst laeuft der Knopf in die Fahrtanzeige.
-  const gap = resolve('.drive-zone .drive-control', 'margin').value || '';
-  assert.ok(gap.includes('var(--drive-toggle-gap)'), `das Feld braucht Platz fuer den Knopf: ${gap}`);
-  assert.ok((resolve(':root[data-handed="left"] .drive-zone .drive-control', 'margin').value || '')
-    .includes('var(--drive-toggle-gap)'), 'auch auf der gespiegelten Seite');
+  assert.ok(!field.includes('id="driveModeBtn"'), 'der Umschalter liegt nicht mehr im Fahrfeld');
+  assert.ok(side.indexOf('id="driveModeBtn"') !== -1 && side.indexOf('id="driveModeBtn"') < side.indexOf('class="drive-meta"'),
+    'Seitenspalte: Umschalter oben, Fahrtanzeige darunter');
+  assert.strictEqual(resolve('.drive-side', 'flex-direction').value, 'column', 'uebereinander, nicht nebeneinander');
+  assert.strictEqual(resolve('.drive-side', 'grid-row').value, '1');
+  assert.strictEqual(resolve('.drive-side', 'min-width').value, '0', 'die Spalte darf den Joystick nicht wegdruecken');
+  // Kein absolutes Positionieren mehr: in einer eigenen Gitterspalte kann der Knopf den Kreis
+  // nicht ueberlappen — und braucht keinen reservierten Aussenabstand am Feld.
+  assert.strictEqual(resolve('.drive-mode-side', 'position').value, null);
+  assert.ok(!css.includes('--drive-toggle-gap') && !css.includes('drive-mode-corner'),
+    'weder Aussenabstand noch Ecken-Regel duerfen zurueckkehren');
+  assert.ok(!/margin:[^;]*var\(--drive-toggle-gap\)/.test(css));
+  // Seite je Haendigkeit: Rechtshaender links vom Kreis (Spalte 1), Linkshaender rechts (Spalte 3).
+  assert.strictEqual(resolve('.drive-side', 'grid-column').value, '1');
+  assert.strictEqual(resolve(':root[data-handed="left"] .drive-side', 'grid-column').value, '3');
+  assert.strictEqual(resolve('.drive-zone .drive-control', 'grid-column').value, '2', 'der Kreis bleibt mittig');
+  // Der Fahrtanzeige-Text darf umbrechen, aber nie still abgeschnitten werden.
+  assert.strictEqual(resolve('.drive-meta', 'overflow').value, 'hidden');
+  assert.strictEqual(resolve('.drive-meta', 'text-overflow').value, 'ellipsis', 'Kuerzung sichtbar als „…“');
+  assert.strictEqual(resolve('.drive-meta', 'max-width').value, '100%');
+  assert.strictEqual(resolve('.drive-meta', 'grid-column').value, null, 'kein eigener Gitterplatz mehr');
+});
+
+test('Schmaler Bildschirm: Seitenspalte behaelt Platz fuer Umschalter und Anzeige', () => {
+  // Rechnung mit den CSS-Zahlen: Zonenbreite minus Innenabstand, Spaltenabstaende und Joystick,
+  // geteilt auf zwei Seitenspalten. Jede Seite muss den Umschalter (34 px) fassen, bei der
+  // Standardgroesse zusaetzlich „Fahrt gestoppt“ in zwei Zeilen (~52 px fuer „gestoppt“).
+  const px = (sel, prop) => parseFloat(resolve(sel, prop).value);
+  const toggle = px('.drive-mode-side', '--drive-toggle-size');
+  const gap = px('.drive-zone', 'column-gap');
+  const padding = parseFloat((resolve('.drive-zone', 'padding').value || '').split(/\s+/)[1]);
+  const reserve = px('.drive-zone .drive-control', '--drive-side-reserve');
+  assert.ok(toggle >= 34 && gap > 0 && padding > 0 && reserve > 0, 'alle Kennzahlen im Stylesheet');
+  assert.ok(reserve >= 2 * (toggle + gap) + 2 * padding,
+    `die Reserve (${reserve}) muss beide Umschalter samt Abstaenden decken`);
+  const size = (resolve('.drive-zone .drive-control', '--joystick-size').value || '').replace(/\s+/g, ' ');
+  assert.ok(size.includes('calc(100vw - var(--drive-side-reserve))'),
+    `die Joystick-Groesse ist an die Bildschirmbreite gebunden: ${size}`);
+  // Nachgerechnet fuer ein schmales Telefon (360 x 800) in jeder Groessenstufe.
+  const joystick = (scale, w, h) => Math.max(110, Math.min(25 * h / 100 * scale, 240 * scale, 38 * h / 100, w - reserve));
+  for (const scale of [0.75, 1, 1.25, 1.5]) {
+    const sideWidth = (360 - 2 * padding - 2 * gap - joystick(scale, 360, 800)) / 2;
+    assert.ok(sideWidth >= toggle, `Stufe ${scale}: Seitenspalte ${sideWidth}px < Umschalter ${toggle}px`);
+    if (scale <= 1) assert.ok(sideWidth >= 52, `Stufe ${scale}: „gestoppt“ passt nicht (${sideWidth}px)`);
+  }
+  // Im breiten Fenster gilt dieselbe Bindung, nur an die Fahrspalte statt an 100vw.
+  const wide = { media: 'min-width: 760px' };
+  assert.ok((resolve('.drive-zone .drive-control', '--joystick-size', wide).value || '')
+    .includes('var(--drive-column) - var(--drive-side-reserve)'), 'Breitbild: an die Fahrspalte gebunden');
+  assert.ok((resolve('.app-frame', 'grid-template-columns', wide).value || '').includes('var(--drive-column)'));
+});
+
+test('Joystick und Tastenkreuz fuellen das gemeinsame Fahrfeld', () => {
+  const field = html.slice(html.indexOf('id="driveControlArea"'), html.indexOf('class="drive-side"'));
   // Beide Steuerungen fuellen das Feld, damit die Ecke fuer beide dieselbe ist.
   for (const selector of ['.drive-zone .joystick-base', '.drive-zone .drive-pad']) {
     assert.strictEqual(resolve(selector, 'width').value, '100%', `${selector} fuellt das Feld`);
     assert.strictEqual(resolve(selector, 'height').value, '100%');
   }
-  assert.strictEqual((field.match(/drive-mode-icon/g) || []).length, 2, 'Joystick- und Steuerkreuz-Symbol');
+  const toggle = html.slice(html.indexOf('id="driveModeBtn"') - 200, html.indexOf('id="driveModeLabel"'));
+  assert.strictEqual((toggle.match(/drive-mode-icon/g) || []).length, 2, 'Joystick- und Steuerkreuz-Symbol');
   // Gezeigt wird das Symbol des **Ziels**, nicht des Ist-Zustands — wie ein Hell/Dunkel-Schalter,
   // der im Hellen den Mond zeigt. Die Klasse benennt weiterhin den aktiven Modus.
   assert.strictEqual(resolve('.drive-mode-tool.mode-joystick .icon-pad', 'display').value, 'grid',
@@ -485,22 +528,24 @@ test('Statusanzeige und Joystick ueberlappen in keiner Groessenstufe', () => {
   const columns = (resolve('.drive-zone', 'grid-template-columns').value || '').replace(/\s+/g, ' ');
   assert.strictEqual(columns, 'minmax(0, 1fr) auto minmax(0, 1fr)');
   assert.strictEqual(resolve('.drive-zone .drive-control', 'grid-column').value, '2');
-  assert.strictEqual(resolve('.drive-meta', 'grid-column').value, '1', 'Standard: Anzeige links');
-  assert.strictEqual(resolve(':root[data-handed="left"] .drive-meta', 'grid-column').value, '3');
+  assert.strictEqual(resolve('.drive-side', 'grid-column').value, '1', 'Standard: Anzeige links');
+  assert.strictEqual(resolve(':root[data-handed="left"] .drive-side', 'grid-column').value, '3');
   // Die Aussenspalten duerfen den Joystick nicht wegdruecken.
+  assert.strictEqual(resolve('.drive-side', 'min-width').value, '0');
   assert.strictEqual(resolve('.drive-meta', 'min-width').value, '0');
 });
 
 test('Beide Haendigkeiten sind exakt gespiegelt und erzeugen keinen Zeilenumbruch', () => {
   // Ursache des frueheren Sprungs: ohne grid-row rutschte die linke Anzeige in eine zweite
   // Zeile, weil der Platzierungszeiger nach dem Joystick schon hinter Spalte 1 stand.
-  for (const selector of ['.drive-zone .drive-control', '.drive-meta',
-    ':root[data-handed="left"] .drive-meta']) {
+  for (const selector of ['.drive-zone .drive-control', '.drive-side']) {
     assert.strictEqual(resolve(selector, 'grid-row').value, '1', `${selector} braucht eine feste Zeile`);
   }
-  const right = ['grid-column', 'justify-self', 'text-align'].map((p) => resolve('.drive-meta', p).value);
-  const left = ['grid-column', 'justify-self', 'text-align']
-    .map((p) => resolve(':root[data-handed="left"] .drive-meta', p).value);
+  const right = [resolve('.drive-side', 'grid-column').value, resolve('.drive-side', 'justify-self').value,
+    resolve('.drive-meta', 'text-align').value];
+  const left = [resolve(':root[data-handed="left"] .drive-side', 'grid-column').value,
+    resolve(':root[data-handed="left"] .drive-side', 'justify-self').value,
+    resolve(':root[data-handed="left"] .drive-meta', 'text-align').value];
   assert.strictEqual(right.join(','), '1,end,right', 'Rechtshaender: Anzeige links vom Joystick');
   assert.strictEqual(left.join(','), '3,start,left', 'Linkshaender: exakt gespiegelt');
 });
@@ -510,11 +555,11 @@ test('Die seitliche Anzeige gilt auch im breiten Fenster', () => {
   // Kein Zurueckfallen auf „Anzeige unter dem Joystick“: Handy und Desktop verhalten sich gleich.
   assert.strictEqual(resolve('.drive-zone', 'grid-template-columns', wide).value, null,
     'die Spaltenaufteilung darf im breiten Fenster nicht ueberschrieben werden');
-  assert.strictEqual(resolve('.drive-meta', 'grid-column', wide).value, null);
+  assert.strictEqual(resolve('.drive-side', 'grid-column', wide).value, null);
   assert.strictEqual(resolve('.drive-zone .drive-control', 'grid-column', wide).value, null);
   // Dafuer ist die Seitenspalte breit genug fuer Joystick und Anzeige nebeneinander.
-  const columns = (resolve('.app-frame', 'grid-template-columns', wide).value || '').replace(/\s+/g, ' ');
-  assert.ok(/clamp\(300px/.test(columns), `Fahrspalte muss breiter sein: "${columns}"`);
+  const column = (resolve('.app-frame', '--drive-column', wide).value || '').replace(/\s+/g, ' ');
+  assert.ok(/clamp\(300px/.test(column), `Fahrspalte muss breiter sein: "${column}"`);
 });
 
 test('Der Menueinhalt hat auf jedem Bildschirm dieselbe Spaltenbreite', () => {
