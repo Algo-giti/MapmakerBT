@@ -288,6 +288,17 @@ gelöschte Website-Daten bedeuten: Karten sind weg.
 
 **Erstelle regelmäßig JSON-Backups deiner wichtigen Karten.**
 
+### Karte auf ein anderes Gerät bringen
+
+Neben jedem Export-Knopf steht ein **Teilen**-Knopf. Er erzeugt genau dieselbe Datei wie der
+Export – gleicher Inhalt, gleicher Dateiname – und übergibt sie an das Freigabe-Menü des Geräts,
+sodass sie ohne Umweg über den Download-Ordner weitergereicht werden kann. Welche Ziele dort
+angeboten werden, entscheidet das Gerät, nicht diese App.
+
+Auf dem Zielgerät wird die Datei ganz normal über **JSON / GeoJSON importieren** im Menü unter
+*Karten* eingelesen. Kann ein Browser keine Dateien teilen – etwa am Rechner –, erscheint der
+Teilen-Knopf gar nicht erst; dort bleibt Speichern und die Datei von Hand übertragen der Weg.
+
 ### Positionsmodus: relativ oder absolut
 
 Jede Karte rechnet standardmäßig in **lokalen Metern** relativ zum Startpunkt des Mähers – das ist
@@ -644,6 +655,18 @@ or cleared site data means the maps are gone.
 - Both formats can be imported again.
 
 **Make regular JSON backups of the maps that matter to you.**
+
+### Moving a map to another device
+
+Next to every export button there is a **share** button. It produces exactly the same file as the
+export – same content, same file name – and hands it to the device's share menu, so it can be
+passed on without the detour via the download folder. Which targets are offered there is decided
+by the device, not by this app.
+
+On the target device the file is read back in the usual way via **Import JSON / GeoJSON** in the
+menu under *Maps*. If a browser cannot share files – on a desktop computer, for instance – the
+share button does not appear at all; there, saving and transferring the file by hand remains the
+way to go.
 
 ### Position mode: relative or absolute
 

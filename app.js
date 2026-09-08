@@ -165,11 +165,14 @@ const I18N = {
     activeMapField: 'Aktive Karte', newMapField: 'Neue Karte', newMapPlaceholder: 'z. B. Hintergarten', createMap: 'Neue Karte anlegen', mapLimitReached: 'Maximal 10 Karten können lokal gespeichert werden. Lösche zuerst eine Karte.',
     backupManagement: 'Backup & Verwaltung', backupDescription: 'Die Kartendaten liegen in IndexedDB des Browsers. Ein Export ist die einfachste Sicherung.',
     saveJson: 'Als JSON speichern', saveGeoJson: 'Als GeoJSON speichern',
+    shareJson: 'Als JSON teilen', shareGeoJson: 'Als GeoJSON teilen', shareMapTitle: 'Karte teilen',
+    shareHelpNote: 'Karten von einem Gerät auf ein anderes bringen: Auf dem Quellgerät die Karte speichern oder teilen. „Teilen“ übergibt genau dieselbe Datei an das Freigabe-Menü des Geräts, sodass sie ohne Umweg über den Download-Ordner weitergereicht werden kann; welche Ziele dort angeboten werden, entscheidet das Gerät, nicht diese App. Auf dem Zielgerät die Datei über „JSON / GeoJSON importieren“ im Menü unter Karten einlesen. Kann ein Browser keine Dateien teilen, erscheint der Teilen-Knopf gar nicht erst — dann bleibt Speichern der Weg.',
+    shareUnsupported: 'Dieser Browser kann keine Dateien teilen. Nutze stattdessen „Als JSON speichern“ bzw. „Als GeoJSON speichern“ und übertrage die Datei von Hand.',
     exportHint: 'JSON enthält das vollständige Mapper-Backup. GeoJSON speichert Perimeter/Ausschlüsse/Dock als Geometrien mit lokalen Sunray-X/Y-Koordinaten in Metern.',
     importJsonGeoJson: 'JSON / GeoJSON importieren', deleteCurrentMap: 'Aktuelle Karte löschen',
     bluetoothConnection: 'Bluetooth-Verbindung', sunrayPassword: 'Sunray-Passwort', passwordHint: 'Nur für diese Sitzung. Wird nicht mit der Karte gespeichert.',
     searchConnect: 'Gerät suchen & verbinden', disconnect: 'Verbindung trennen',
-    clearLog: 'Log leeren', exportLog: 'Log exportieren', logEmpty: 'Das Protokoll ist noch leer – es gibt nichts zu exportieren.', logPaused: 'Neue Einträge – zum Ende springen', mapPreviewAria: 'Vorschau der aufgenommenen Mähkarte', exportMapAria: 'Karte exportieren',
+    clearLog: 'Log leeren', exportLog: 'Log exportieren', logEmpty: 'Das Protokoll ist noch leer – es gibt nichts zu exportieren.', logPaused: 'Neue Einträge – zum Ende springen', mapPreviewAria: 'Vorschau der aufgenommenen Mähkarte', exportMapAria: 'Karte exportieren oder teilen',
     notConnected: 'Nicht verbunden', bleConnected: 'BLE verbunden', demoActive: 'Demo aktiv',
     ready: 'Bereit.', readyConnect: 'Bereit. Tippe auf „Gerät suchen & verbinden“.', bluetoothDisconnected: 'Bluetooth-Verbindung getrennt.', age: 'Alter {value} s',
     noMapActive: 'Keine Karte aktiv', createMapFirst: 'Im Reiter „Karten“ zuerst eine Karte anlegen', pleaseCreateMap: 'Bitte zuerst eine Karte anlegen.',
@@ -374,11 +377,14 @@ const I18N = {
     activeMapField: 'Active map', newMapField: 'New map', newMapPlaceholder: 'e.g. Back garden', createMap: 'Create new map', mapLimitReached: 'A maximum of 10 maps can be stored locally. Delete a map first.',
     backupManagement: 'Backup & management', backupDescription: 'Map data is stored in the browser’s IndexedDB. Exporting is the easiest way to create a backup.',
     saveJson: 'Save as JSON', saveGeoJson: 'Save as GeoJSON',
+    shareJson: 'Share as JSON', shareGeoJson: 'Share as GeoJSON', shareMapTitle: 'Share map',
+    shareHelpNote: 'Moving a map from one device to another: on the source device, save or share the map. “Share” hands exactly the same file to the device’s share menu, so it can be passed on without the detour via the download folder; which targets appear there is decided by the device, not by this app. On the target device, read the file back in via “Import JSON / GeoJSON” in the menu under Maps. If a browser cannot share files, the share button does not appear at all — saving remains the way there.',
+    shareUnsupported: 'This browser cannot share files. Use “Save as JSON” or “Save as GeoJSON” instead and transfer the file manually.',
     exportHint: 'JSON contains the complete MapCreator backup. GeoJSON stores perimeter/exclusions/dock as geometries using local Sunray X/Y coordinates in metres.',
     importJsonGeoJson: 'Import JSON / GeoJSON', deleteCurrentMap: 'Delete current map',
     bluetoothConnection: 'Bluetooth connection', sunrayPassword: 'Sunray password', passwordHint: 'For this session only. It is not stored with the map.',
     searchConnect: 'Find device & connect', disconnect: 'Disconnect',
-    clearLog: 'Clear log', exportLog: 'Export log', logEmpty: 'The log is still empty – there is nothing to export.', logPaused: 'New entries – jump to end', mapPreviewAria: 'Preview of the recorded mowing map', exportMapAria: 'Export map',
+    clearLog: 'Clear log', exportLog: 'Export log', logEmpty: 'The log is still empty – there is nothing to export.', logPaused: 'New entries – jump to end', mapPreviewAria: 'Preview of the recorded mowing map', exportMapAria: 'Export or share map',
     notConnected: 'Not connected', bleConnected: 'BLE connected', demoActive: 'Demo active',
     ready: 'Ready.', readyConnect: 'Ready. Tap “Find device & connect”.', bluetoothDisconnected: 'Bluetooth connection disconnected.', age: 'Age {value} s',
     noMapActive: 'No active map', createMapFirst: 'Create a map in the “Maps” tab first', pleaseCreateMap: 'Please create a map first.',
@@ -588,7 +594,8 @@ const ui = {
   connectBtn: $('connectBtn'), disconnectBtn: $('disconnectBtn'), demoBtn: $('demoBtn'),
   firmwareValue: $('firmwareValue'),
   mapSelect: $('mapSelect'), newMapName: $('newMapName'), newMapBtn: $('newMapBtn'), deleteMapBtn: $('deleteMapBtn'), lockMapBtn: $('lockMapBtn'),
-  exportJsonBtn: $('exportJsonBtn'), exportGeoJsonBtn: $('exportGeoJsonBtn'), importInput: $('importInput'),
+  exportJsonBtn: $('exportJsonBtn'), exportGeoJsonBtn: $('exportGeoJsonBtn'),
+  shareJsonBtn: $('shareJsonBtn'), shareGeoJsonBtn: $('shareGeoJsonBtn'), importInput: $('importInput'),
   mapGallery: $('mapGallery'), mapCountBadge: $('mapCountBadge'),
   elementList: $('elementList'),
   positionModeSelect: $('positionModeSelect'), originFields: $('originFields'),
@@ -3652,10 +3659,98 @@ function downloadTextFile(content, filename, mimeType) {
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-function exportCurrentMapJson() {
-  if (!state.activeMap) return;
-  const payload = JSON.stringify(state.activeMap, null, 2);
-  downloadTextFile(payload, `${safeFileName(localizedMapName(state.activeMap))}.mapcreator-ardumower.json`, 'application/json');
+/** Endung, MIME-Typ und Inhalt je Exportformat — die einzige Stelle, an der das festgelegt ist. */
+const MAP_EXPORT_FORMATS = {
+  json: {
+    extension: '.mapcreator-ardumower.json',
+    mimeType: 'application/json',
+    build: (map) => JSON.stringify(map, null, 2),
+  },
+  geojson: {
+    extension: '.geojson',
+    mimeType: 'application/geo+json',
+    build: (map) => JSON.stringify(mapToGeoJson(map), null, 2),
+  },
+};
+
+/**
+ * Einzige Quelle fuer Inhalt, Dateiname und MIME-Typ eines Kartenexports. Speichern und Teilen
+ * holen ihre Datei ausdruecklich hier — sonst driften Format oder Dateiname zwischen den beiden
+ * Wegen auseinander, und die geteilte Datei waere nicht mehr dieselbe wie die exportierte.
+ */
+function mapExportFile(format) {
+  const spec = MAP_EXPORT_FORMATS[format];
+  if (!spec || !state.activeMap) return null;
+  return {
+    text: spec.build(state.activeMap),
+    fileName: `${safeFileName(localizedMapName(state.activeMap))}${spec.extension}`,
+    mimeType: spec.mimeType,
+  };
+}
+
+function exportMapFile(format) {
+  const file = mapExportFile(format);
+  if (!file) return;
+  downloadTextFile(file.text, file.fileName, file.mimeType);
+}
+
+function exportCurrentMapJson() { exportMapFile('json'); }
+
+/**
+ * Web Share API Level 2. Ohne `share`, `canShare` **und** `File` gibt es keinen Weg, eine Datei
+ * weiterzureichen — dann bleibt der normale Export der einzige Pfad.
+ */
+function shareCapableNavigator() {
+  const nav = typeof navigator === 'undefined' ? null : navigator;
+  if (!nav || typeof nav.share !== 'function' || typeof nav.canShare !== 'function') return null;
+  if (typeof File !== 'function') return null;
+  return nav;
+}
+
+/**
+ * Kann dieses Geraet eine Datei **dieses Formats** teilen? Geprueft wird mit einer Probedatei
+ * gleicher Endung und gleichen MIME-Typs, weil Browser die Freigabe am Dateityp entscheiden:
+ * GeoJSON kann abgelehnt werden, waehrend JSON durchgeht. Eine feste Ja/Nein-Antwort fuer
+ * „Teilen“ als Ganzes waere deshalb falsch.
+ */
+function canShareMapFormat(format) {
+  const nav = shareCapableNavigator();
+  const spec = MAP_EXPORT_FORMATS[format];
+  if (!nav || !spec) return false;
+  try {
+    const probe = new File(['{}'], `mapcreator-ardumower-map${spec.extension}`, { type: spec.mimeType });
+    return Boolean(nav.canShare({ files: [probe] }));
+  } catch (error) {
+    return false;
+  }
+}
+
+/** Nicht unterstuetzt heisst: Knopf weg statt Knopf mit Fehlermeldung. Der Export bleibt. */
+function refreshShareButtons() {
+  ui.shareJsonBtn.hidden = !canShareMapFormat('json');
+  ui.shareGeoJsonBtn.hidden = !canShareMapFormat('geojson');
+}
+
+/**
+ * Teilt genau die Datei, die auch der Export erzeugt (`mapExportFile()`), samt Dateinamen.
+ * Ein Abbruch durch den Nutzer wirft `AbortError` — das ist keine Stoerung und bleibt still;
+ * jeder andere Fehler geht ueber `reportError()` sichtbar an den Nutzer.
+ */
+async function shareCurrentMap(format) {
+  const file = mapExportFile(format);
+  if (!file) return;
+  const nav = shareCapableNavigator();
+  if (!nav || !canShareMapFormat(format)) {
+    showNotice({ title: tr('shareMapTitle'), message: tr('shareUnsupported') });
+    return;
+  }
+  const shareFile = new File([file.text], file.fileName, { type: file.mimeType });
+  try {
+    await nav.share({ files: [shareFile] });
+  } catch (error) {
+    if (error && error.name === 'AbortError') return;
+    reportError(error);
+  }
 }
 
 /**
@@ -3848,11 +3943,7 @@ function mapToGeoJson(map) {
   };
 }
 
-function exportCurrentMapGeoJson() {
-  if (!state.activeMap) return;
-  const payload = JSON.stringify(mapToGeoJson(state.activeMap), null, 2);
-  downloadTextFile(payload, `${safeFileName(localizedMapName(state.activeMap))}.geojson`, 'application/geo+json');
-}
+function exportCurrentMapGeoJson() { exportMapFile('geojson'); }
 
 function validateImportedMap(data) {
   if (!data || data.format !== 'ardumower-web-map' || !Array.isArray(data.perimeter) || !Array.isArray(data.exclusions) || !Array.isArray(data.dockPoints)) {
@@ -4724,6 +4815,8 @@ function bindEvents() {
   ui.lockMapBtn.addEventListener('click', () => state.activeMap && toggleMapLockById(state.activeMap.id).catch(reportError));
   ui.exportJsonBtn.addEventListener('click', exportCurrentMapJson);
   ui.exportGeoJsonBtn.addEventListener('click', exportCurrentMapGeoJson);
+  ui.shareJsonBtn.addEventListener('click', () => { shareCurrentMap('json'); });
+  ui.shareGeoJsonBtn.addEventListener('click', () => { shareCurrentMap('geojson'); });
   ui.importInput.addEventListener('change', () => {
     const file = ui.importInput.files?.[0];
     if (file) importMapFile(file).catch((e) => showNotice({ title: tr('errorTitle'), message: tr('importFailed', { message: e.message }), tone: 'danger' }));
@@ -4788,6 +4881,7 @@ async function init() {
   resetViewport({ render: false });
   setMode('perimeter');
   setConnectionStatus(false, 'notConnected', 'readyConnect');
+  refreshShareButtons();
   applyLanguage();
   if ('serviceWorker' in navigator && window.isSecureContext) {
     // Uebernimmt ein neuer Service Worker die Kontrolle, wurde die Seite noch mit den Dateien

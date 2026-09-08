@@ -572,6 +572,43 @@ laufende Automatik stoppt; der `setInterval`-Takt würde eine Änderung ohnehin 
 Neustart übernehmen. `startAutoCapture()` legt sofort einen Punkt und dann `setInterval` →
 `autoCaptureTick()`. Die frühere distanz-/„intelligent“-basierte Auto-Aufnahme ist entfallen.
 
+### Export und Teilen (Menü → Karten)
+
+**Eine Datei, zwei Wege.** `MAP_EXPORT_FORMATS` ist die einzige Stelle, an der Endung, MIME-Typ und
+Inhalt je Format stehen (`json` → `.mapcreator-ardumower.json`, das vollständige Backup;
+`geojson` → `.geojson` über `mapToGeoJson()`). `mapExportFile(format)` baut daraus
+`{ text, fileName, mimeType }`; `exportMapFile()` reicht das an `downloadTextFile()` weiter,
+`shareCurrentMap()` an `navigator.share()`. **Geteilt wird damit wortgleich dieselbe Datei mit
+demselben Dateinamen wie beim Speichern** — ein ui-Test vergleicht beide Wege inhaltlich und
+verbietet per Quelltextsuche eine zweite Erzeugungsstelle.
+
+**Vier Knöpfe in derselben Gruppe** (`.export-grid`, zwei Spalten): Speichern und Teilen stehen je
+Format nebeneinander, auf schmalen Schirmen (eine Spalte) untereinander. Ausdrücklich kein eigener
+Platz woanders im Menü. Die Teilen-Knöpfe tragen im Markup `hidden` und werden **erst durch die
+bestandene Prüfung eingeblendet** — andernfalls blitzte auf Geräten ohne Datei-Freigabe kurz ein
+Knopf auf, der nichts kann, und ein Fehler in der Prüfung ließe ihn stehen statt verschwinden.
+
+**Fähigkeitsprüfung je Format, nicht pauschal** (`canShareMapFormat(format)`): geprüft wird mit
+einer **Probedatei gleicher Endung und gleichen MIME-Typs** über `navigator.canShare({ files })`,
+weil Browser die Freigabe am Dateityp entscheiden — `application/geo+json` kann abgelehnt werden,
+während `application/json` durchgeht. `shareCapableNavigator()` verlangt `share`, `canShare`
+**und** `File`. Fehlt etwas, blendet `refreshShareButtons()` (aus `init()`) den betroffenen Knopf
+**aus** statt ihn stehen zu lassen und später einen Fehler zu zeigen; der normale Export bleibt der
+Weg.
+
+**Abbruch ist kein Fehler.** Schließt der Nutzer das Freigabe-Menü, wirft `navigator.share()` einen
+`AbortError` — der wird still verworfen. Jeder andere Fehler geht über `reportError()` sichtbar an
+den Nutzer. Wird `shareCurrentMap()` trotz fehlender Unterstützung gerufen (etwa nach einem
+Rückfall in der Sichtbarkeitslogik), kommt `showNotice()` mit dem Verweis auf den Export statt einer
+Ausnahme.
+
+**Bewusst keine Anbieternamen** in Hilfe und README: das Freigabe-Menü kommt vom Gerät, welche
+Ziele darin stehen, entscheidet nicht diese App.
+
+**Nicht ohne Gerät verifizierbar:** ob das Android-Freigabe-Menü die Datei tatsächlich korrekt an
+die Ziel-App übergibt (Dateiname, Endung, Inhalt) — insbesondere bei Cloud-/Dateisynchronisations-Apps,
+die eigene Vorstellungen vom MIME-Typ haben.
+
 ### Diagnoseprotokoll (Menü → Diagnose)
 
 **Das Protokoll liegt seit v50 in `state.logEntries`, nicht mehr nur im DOM.** Vorher hängte
@@ -1079,7 +1116,7 @@ Kein Runner, kein `package.json`, keine Abhängigkeiten — reine Node-Skripte.
 | `tests/ble-test.js` | Die BLE-Szenarien (28 Fälle), inklusive der Absicherung aller vier umgesetzten App-Fixes. Stacktraces mit `BLE_TEST_STACK=1`. |
 | `tests/sw-test.js` | Prüft die **Auslieferung** (7 Fälle): Cache-Version an genau einer Stelle in `sw.js`, App-Dateien network-first mit `cache: 'no-cache'` und Cache als Rückfallebene, `cache: 'reload'` beim Cache-Aufbau, alle von `index.html` geladenen Dateien im Cache, alte Caches werden entfernt, Neuladen bei `controllerchange` — und dass **keine** Versionsangabe im UI auftaucht. |
 | `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (39 Fälle). `effectiveStyle(element, property)` löst die Kaskade **elementbezogen** auf (jede passende Regel, nach Spezifität) — nötig für Altlastregeln, die `resolve(selector, …)` nicht sieht. `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
-| `tests/ui-test.js` | Die Kartier-Oberfläche (134 Fälle): Bestätigungs- und Meldungsdialog (Titel/Text/Beschriftung, beide Antworten, verdrängte Rückfrage, Einknopf-Meldung, `reportError` protokolliert und zeigt, keine `window.confirm()`/`window.alert()`-Aufrufe mehr), Moduswahl per Dialog, Rückfrage zum Schließen von Konturen, Kartenprüfung mit Konturschluss, Aufnahme/Löschen in allen drei Button-Zuständen, Flächenauswahl, Automatik (Ersetzen des manuellen Knopfs und Intervall), Positions-Glättung, Hell/Dunkel, Akkordeon, Auswahl per Tap, Touch-Zielgröße, Zoom-Grenzen, Tap-vs-Ziehen, Pinch, Halte-Aufnahme, Joystick-Kennlinie, RTK-Badge, Menüseite, gesperrte Karte, `init()`-Startpfad. Stacktraces mit `UI_TEST_STACK=1`. Antworten auf `confirm()` steuert der Test über `sandbox.__confirmAnswer`. |
+| `tests/ui-test.js` | Die Kartier-Oberfläche (143 Fälle): Bestätigungs- und Meldungsdialog (Titel/Text/Beschriftung, beide Antworten, verdrängte Rückfrage, Einknopf-Meldung, `reportError` protokolliert und zeigt, keine `window.confirm()`/`window.alert()`-Aufrufe mehr), Moduswahl per Dialog, Rückfrage zum Schließen von Konturen, Kartenprüfung mit Konturschluss, Aufnahme/Löschen in allen drei Button-Zuständen, Flächenauswahl, Automatik (Ersetzen des manuellen Knopfs und Intervall), Positions-Glättung, Hell/Dunkel, Akkordeon, Auswahl per Tap, Touch-Zielgröße, Zoom-Grenzen, Tap-vs-Ziehen, Pinch, Halte-Aufnahme, Joystick-Kennlinie, RTK-Badge, Menüseite, gesperrte Karte, `init()`-Startpfad. Stacktraces mit `UI_TEST_STACK=1`. Antworten auf `confirm()` steuert der Test über `sandbox.__confirmAnswer`. `navigator.share`/`canShare` werden je Fall in den Sandkasten gehängt (`stubShare()`), der Sandkasten führt dafür `File`; den normalen Export fängt `captureDownload()` über einen `Blob`-Spion und den erzeugten Anker ab. |
 
 ### Was `tests/fake-ble.js` simulieren kann
 
@@ -1368,6 +1405,22 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-08: **Karten teilen (Web Share API).** Neben jedem Export-Knopf im Menü → Karten steht
+  jetzt ein Teilen-Knopf; beide Wege holen ihre Datei aus **derselben** Quelle
+  (`MAP_EXPORT_FORMATS` → `mapExportFile()`), geteilt wird also wortgleich dieselbe Datei mit
+  demselben Dateinamen wie beim Speichern. Die Fähigkeitsprüfung läuft **je Format** über
+  `navigator.canShare({ files })` mit einer Probedatei gleicher Endung und gleichen MIME-Typs —
+  Browser entscheiden am Dateityp, `application/geo+json` kann also abgelehnt werden, während
+  `application/json` durchgeht; ein nicht unterstütztes Format blendet nur seinen eigenen Knopf
+  aus. Ein Abbruch durch den Nutzer (`AbortError`) bleibt still, jeder andere Fehler geht über
+  `reportError()` sichtbar an den Nutzer. Neun neue ui-Fälle (143), Harness um `File` im
+  Sandkasten ergänzt. Gegen neun simulierte Rückfälle geprüft; einer (stilles Aussteigen ohne
+  Meldung) lief zunächst durch, weil die Zusicherung `String(undefined)` prüfte — sie vergleicht
+  jetzt beobachtbar, dass nichts geteilt wurde und eine Meldung kam. Hilfe und README in beiden
+  Sprachen ergänzt, **ohne Anbieternamen** (das Freigabe-Menü kommt vom Gerät). **Nicht ohne Gerät
+  verifizierbar:** ob das Android-Freigabe-Menü die Datei korrekt an die Ziel-App übergibt.
+  `APP_VERSION` auf `v51`.
 
 - 2026-09-08: **Diagnose-Bereich überarbeitet.** (a) **AT+V-/AT+S-Knöpfe entfernt statt
   repariert.** Geprüft: die Handler waren verdrahtet, keine der 134 per `$()` geholten Kennungen

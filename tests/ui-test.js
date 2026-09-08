@@ -38,6 +38,8 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'undoLastAction', 'pushUndo', 'clearUndoStack', 'refreshUndoButton', 'UNDO_STACK_LIMIT',
   'autoCaptureTick', 'applyAutoCaptureModeToUi', 'updateViewPreferencesFromUi',
   'AUTO_CAPTURE_DISTANCE_MIN_CM', 'AUTO_CAPTURE_DISTANCE_MAX_CM', 'BLE_POLL_INTERVAL_MS',
+  'mapExportFile', 'exportMapFile', 'exportCurrentMapJson', 'exportCurrentMapGeoJson',
+  'shareCurrentMap', 'canShareMapFormat', 'refreshShareButtons',
   'MIN_USER_ZOOM', 'MAX_USER_ZOOM', 'init'];
 
 /** Minimaler IndexedDB-Ersatz, damit saveActiveMap() im Test durchlaeuft. */
@@ -2544,6 +2546,149 @@ test('init() laeuft ohne Fehler durch (Startpfad der App)', async () => {
   assert.strictEqual(t.state.mode, 'perimeter');
   assert.ok(t.ui.modeChipLabel.textContent, 'Modus-Chip ist beschriftet');
   assert.strictEqual(t.state.viewport.custom, false);
+});
+
+
+// --- Teilen ueber die Web Share API -----------------------------------------------------
+
+/**
+ * Faengt ab, was `downloadTextFile()` ausliefern wuerde: den Inhalt aus dem Blob, den Namen
+ * aus dem erzeugten Anker. Anders kommt man im Harness nicht an die Datei des normalen
+ * Exports heran — und genau die muss das Teilen wiederverwenden.
+ */
+function captureDownload(sandbox, run) {
+  const realBlob = sandbox.Blob;
+  const parts = [];
+  sandbox.Blob = function BlobSpy(chunks, options) {
+    parts.push({ text: chunks.join(''), type: options && options.type });
+    return new realBlob(chunks, options);
+  };
+  const before = sandbox.document.body.children.length;
+  try { run(); } finally { sandbox.Blob = realBlob; }
+  const anchor = sandbox.document.body.children[before];
+  assert.ok(parts.length === 1 && parts[0].text, 'der Export hat eine nicht leere Datei erzeugt');
+  assert.ok(anchor && anchor.download, 'der Export haengt einen Download-Anker mit Dateinamen ein');
+  return { text: parts[0].text, type: parts[0].type, fileName: anchor.download };
+}
+
+/** Haengt einen `navigator.share`/`canShare`-Ersatz ein und protokolliert die Aufrufe. */
+function stubShare(sandbox, { canShare = () => true, onShare = null } = {}) {
+  const shared = [];
+  sandbox.navigator.canShare = (data) => Boolean(canShare(data));
+  sandbox.navigator.share = async (data) => {
+    shared.push(data);
+    if (onShare) return onShare(data);
+    return undefined;
+  };
+  sandbox.__lastConfirm = undefined;
+  sandbox.__lastConfirmRequest = undefined;
+  return shared;
+}
+
+for (const format of ['json', 'geojson']) {
+  test(`Geteilt wird dieselbe Datei wie beim Export (${format})`, async () => {
+    const { t, sandbox } = setup();
+    t.state.activeMap.name = 'Hintergarten';
+    t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 3, y: 0 }, { x: 3, y: 2 }];
+    const exported = captureDownload(sandbox, () => t.exportMapFile(format));
+    const shared = stubShare(sandbox);
+    await t.shareCurrentMap(format);
+    assert.strictEqual(shared.length, 1, 'genau ein Teilen-Vorgang');
+    const file = shared[0].files[0];
+    assert.strictEqual(await file.text(), exported.text, 'derselbe Inhalt wie im Export');
+    assert.strictEqual(file.name, exported.fileName, 'derselbe Dateiname wie im Export');
+    assert.strictEqual(file.type, exported.type, 'derselbe MIME-Typ wie im Export');
+    assert.ok(file.name.includes('Hintergarten'), 'der Kartenname steht im Dateinamen');
+  });
+}
+
+test('Export und Teilen holen ihre Datei aus derselben Funktion', () => {
+  // Sonst driften Inhalt oder Dateiname zwischen beiden Wegen auseinander.
+  const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  const share = source.slice(source.indexOf('async function shareCurrentMap'));
+  assert.ok(share.slice(0, share.indexOf('\n}')).includes('mapExportFile('),
+    'shareCurrentMap() baut die Datei nicht selbst, sondern nimmt mapExportFile()');
+  assert.strictEqual((source.match(/JSON\.stringify\(mapToGeoJson\(/g) || []).length, 1,
+    'die GeoJSON-Erzeugung steht genau einmal im Code');
+  assert.strictEqual((source.match(/\.mapcreator-ardumower\.json/g) || []).length, 1,
+    'die JSON-Endung steht genau einmal im Code');
+});
+
+test('Die Teilen-Knoepfe erscheinen nur, wenn das Geraet Dateien teilen kann', () => {
+  const { t, elements, sandbox } = setup();
+  stubShare(sandbox);
+  t.refreshShareButtons();
+  assert.strictEqual(elements.get('shareJsonBtn').hidden, false, 'mit Unterstuetzung sichtbar');
+  assert.strictEqual(elements.get('shareGeoJsonBtn').hidden, false);
+  delete sandbox.navigator.share;
+  delete sandbox.navigator.canShare;
+  t.refreshShareButtons();
+  assert.strictEqual(elements.get('shareJsonBtn').hidden, true, 'ohne Unterstuetzung ausgeblendet');
+  assert.strictEqual(elements.get('shareGeoJsonBtn').hidden, true);
+});
+
+test('canShare entscheidet je Dateityp, nicht pauschal', () => {
+  // Chrome laesst nicht jeden MIME-Typ durch; GeoJSON kann abgelehnt werden, JSON durchgehen.
+  const { t, elements, sandbox } = setup();
+  stubShare(sandbox, { canShare: (data) => data.files.every((f) => f.type === 'application/json') });
+  t.refreshShareButtons();
+  assert.strictEqual(t.canShareMapFormat('json'), true);
+  assert.strictEqual(t.canShareMapFormat('geojson'), false);
+  assert.strictEqual(elements.get('shareJsonBtn').hidden, false);
+  assert.strictEqual(elements.get('shareGeoJsonBtn').hidden, true, 'nur das abgelehnte Format verschwindet');
+});
+
+test('Ein Abbruch durch den Nutzer ist kein Fehler', async () => {
+  const { t, sandbox } = setup();
+  const abort = new Error('Share canceled');
+  abort.name = 'AbortError';
+  stubShare(sandbox, { onShare: () => Promise.reject(abort) });
+  t.clearDebugLog();
+  await t.shareCurrentMap('json');
+  assert.strictEqual(sandbox.__lastConfirm, undefined, 'keine Meldung nach dem Schliessen des Teilen-Dialogs');
+  assert.ok(!t.state.logEntries.join('\n').includes('FEHLER'), 'auch kein Fehler im Protokoll');
+});
+
+test('Ein echter Fehler beim Teilen wird gemeldet', async () => {
+  const { t, sandbox } = setup();
+  stubShare(sandbox, { onShare: () => Promise.reject(new Error('Freigabe fehlgeschlagen')) });
+  t.clearDebugLog();
+  await t.shareCurrentMap('json');
+  assert.ok(String(sandbox.__lastConfirm).includes('Freigabe fehlgeschlagen'), 'der Fehler steht sichtbar in einer Meldung');
+  assert.ok(t.state.logEntries.join('\n').includes('Freigabe fehlgeschlagen'), 'und im Diagnoseprotokoll');
+});
+
+test('Ohne Unterstuetzung wird nicht geteilt, sondern auf den Export verwiesen', async () => {
+  const { t, sandbox } = setup();
+  const shared = stubShare(sandbox);
+  delete sandbox.navigator.share;
+  delete sandbox.navigator.canShare;
+  await t.shareCurrentMap('json');
+  assert.strictEqual(shared.length, 0, 'es wird nichts geteilt');
+  assert.ok(sandbox.__lastConfirmRequest, 'stattdessen kommt eine Meldung');
+  assert.ok(typeof sandbox.__lastConfirm === 'string' && sandbox.__lastConfirm.includes('speichern'),
+    'die Meldung verweist auf den normalen Export');
+  assert.strictEqual(t.canShareMapFormat('json'), false);
+});
+
+test('Die Teilen-Knoepfe stehen bei den Export-Knoepfen und sind verdrahtet', () => {
+  const markup = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const group = markup.slice(markup.indexOf('class="export-grid"'));
+  const groupEnd = group.indexOf('</div>');
+  const block = group.slice(0, groupEnd);
+  for (const id of ['exportJsonBtn', 'shareJsonBtn', 'exportGeoJsonBtn', 'shareGeoJsonBtn']) {
+    assert.ok(block.includes(`id="${id}"`), `${id} steht in derselben Gruppe wie der Export`);
+  }
+  // Verborgen starten: erst die bestandene Faehigkeitspruefung blendet sie ein, sonst blitzt
+  // auf Geraeten ohne Datei-Freigabe kurz ein Knopf auf, der nichts kann.
+  for (const id of ['shareJsonBtn', 'shareGeoJsonBtn']) {
+    const tag = block.slice(block.indexOf(`id="${id}"`) - 120, block.indexOf(`id="${id}"`));
+    assert.ok(tag.includes('hidden'), `${id} ist im Markup zunaechst ausgeblendet`);
+  }
+  const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  assert.ok(/ui\.shareJsonBtn\.addEventListener\('click'/.test(source), 'JSON-Teilen ist verdrahtet');
+  assert.ok(/ui\.shareGeoJsonBtn\.addEventListener\('click'/.test(source), 'GeoJSON-Teilen ist verdrahtet');
+  assert.ok(source.includes('refreshShareButtons();'), 'die Verfuegbarkeit wird beim Start geprueft');
 });
 
 (async () => {

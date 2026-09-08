@@ -83,7 +83,7 @@ function loadApp(options = {}) {
   const localStore = new Map();
 
   const sandbox = {
-    console, structuredClone, TextEncoder, TextDecoder, Blob, DataView, Uint8Array, ArrayBuffer,
+    console, structuredClone, TextEncoder, TextDecoder, Blob, File, DataView, Uint8Array, ArrayBuffer,
     crypto: require('crypto').webcrypto,
     document: documentStub,
     window: { isSecureContext: true, addEventListener() {}, matchMedia: () => ({ matches: false, addEventListener() {} }) },

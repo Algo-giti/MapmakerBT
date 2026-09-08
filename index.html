@@ -229,9 +229,11 @@
 <p data-i18n="backupDescription">Die Kartendaten liegen in IndexedDB des Browsers. Ein Export ist die einfachste Sicherung.</p>
 </div>
 <div class="stacked-actions">
-<div aria-label="Karte exportieren" class="export-grid" data-i18n-aria-label="exportMapAria" role="group">
+<div aria-label="Karte exportieren oder teilen" class="export-grid" data-i18n-aria-label="exportMapAria" role="group">
 <button class="secondary" data-i18n="saveJson" id="exportJsonBtn" type="button">Als JSON speichern</button>
+<button class="secondary" data-i18n="shareJson" hidden="" id="shareJsonBtn" type="button">Als JSON teilen</button>
 <button class="secondary" data-i18n="saveGeoJson" id="exportGeoJsonBtn" type="button">Als GeoJSON speichern</button>
+<button class="secondary" data-i18n="shareGeoJson" hidden="" id="shareGeoJsonBtn" type="button">Als GeoJSON teilen</button>
 </div>
 <small class="export-hint" data-i18n="exportHint">JSON enthält das vollständige Mapper-Backup. GeoJSON speichert Perimeter/Ausschlüsse/Dock als Geometrien mit lokalen Sunray-X/Y-Koordinaten in Metern.</small>
 <label class="secondary file-button" data-i18n="importJsonGeoJson" for="importInput">JSON / GeoJSON importieren</label>
@@ -538,6 +540,7 @@
 <div class="format-card"><strong>GeoJSON</strong><p data-i18n="geoJsonHelp">Für Geometrie-Austausch. Perimeter und Ausschlüsse werden als Polygone, der Dockpfad als LineString exportiert.</p></div>
 </div>
 <div class="notice info help-note"><span data-i18n="geoJsonXYWarning">Die Ardumower-Koordinaten sind lokale Sunray-X/Y-Werte in Metern. Sie sind keine GPS-Längen-/Breitengrade und werden deshalb im Export ausdrücklich als lokales metrisches Koordinatensystem gekennzeichnet.</span></div>
+<div class="notice info help-note"><span data-i18n="shareHelpNote">Karten von einem Gerät auf ein anderes bringen: Auf dem Quellgerät die Karte speichern oder teilen. „Teilen“ übergibt genau dieselbe Datei an das Freigabe-Menü des Geräts, sodass sie ohne Umweg über den Download-Ordner weitergereicht werden kann; welche Ziele dort angeboten werden, entscheidet das Gerät, nicht diese App. Auf dem Zielgerät die Datei über „JSON / GeoJSON importieren“ im Menü unter Karten einlesen. Kann ein Browser keine Dateien teilen, erscheint der Teilen-Knopf gar nicht erst — dann bleibt Speichern der Weg.</span></div>
 </section>
 <section class="card help-card">
 <h3 data-i18n="troubleshootingTitle">Fehlerbehebung</h3>
