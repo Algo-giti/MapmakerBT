@@ -3490,3 +3490,30 @@ body.menu-open .app-frame { visibility: hidden; }
 .point-exclusion { stroke: var(--exclusion); }
 .point-waypoint { stroke: var(--waypoint); }
 .point-dock { stroke: var(--dock); }
+
+/* --- Diagnoseprotokoll: Hinweis bei pausiertem Mitlaufen ------------------
+   Der Knopf schwebt ueber dem unteren Rand des Protokolls und erscheint nur, solange der
+   Nutzer hochgescrollt hat. Er sagt beides: dass neue Zeilen da sind und wie man zurueck ans
+   Ende kommt. Farben ueber die --shell-Tokens, damit er in beiden Themes lesbar ist. */
+.debug-log-wrap { position: relative; }
+.log-jump {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  z-index: 2;
+  min-height: 34px;
+  max-width: calc(100% - 24px);
+  padding: 5px 12px;
+  border: 1px solid var(--shell-info-border);
+  border-radius: 999px;
+  background: var(--shell-info-bg);
+  color: var(--shell-info);
+  font-size: .7rem;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 6px 18px rgba(0,0,0,.32);
+}
+.log-jump:active { background: var(--shell-hover); }

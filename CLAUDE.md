@@ -513,7 +513,7 @@ der Kurzhinweis (`bleWriteFailedShort`) steht **immer sofort** in der Kartenzeil
 gefahren wird, in der Fahrzeile; der Dialog kommt höchstens alle
 `BLE_ERROR_NOTICE_INTERVAL_MS` (20 s), sonst würde der 650-ms-Fahr-Heartbeat den Nutzer
 zuschütten. `immediate: true` erzwingt ihn — bei Not-Halt (`AT+M,0,0`, `AT+C,0,0`) und bei
-ausdrücklichen Tastendrucken (`AT+V`/`AT+S` in der Diagnose). `establishGatt()` setzt die
+Not-Halt (die früheren Diagnose-Tasten gibt es nicht mehr). `establishGatt()` setzt die
 Sperrzeit zurück, damit der erste Fehler einer neuen Verbindung wieder sichtbar wird. Weder `window.confirm()` noch `window.alert()` werden noch benutzt.
 **In Tests** hängt `tests/app-harness.js` über `globalThis.__confirmAdapter` eine automatische
 Antwort ein (dieselbe Konvention wie `bleAdapter()`): `sandbox.__confirmAnswer` steuert sie,
@@ -571,6 +571,54 @@ verlangt frische Telemetrie), das Intervall wäre sonst praktisch unsichtbar.
 laufende Automatik stoppt; der `setInterval`-Takt würde eine Änderung ohnehin erst nach einem
 Neustart übernehmen. `startAutoCapture()` legt sofort einen Punkt und dann `setInterval` →
 `autoCaptureTick()`. Die frühere distanz-/„intelligent“-basierte Auto-Aufnahme ist entfallen.
+
+### Diagnoseprotokoll (Menü → Diagnose)
+
+**Das Protokoll liegt seit v50 in `state.logEntries`, nicht mehr nur im DOM.** Vorher hängte
+`log()` direkt an `ui.debugLog.textContent` an. Das ließ sich weder exportieren noch begrenzen.
+`log()` schreibt jetzt in einen **Ringpuffer** (`LOG_ENTRY_LIMIT` = 200, älteste Zeilen fallen
+vorn weg — dieselbe Überlegung wie beim gedeckelten `rxBuffer`) und ruft `renderDebugLog()`.
+
+**Pausierbares Mitlaufen.** `renderDebugLog()` scrollt nur ans Ende, wenn `state.logAutoScroll`
+gesetzt ist. `onDebugLogScroll()` (am `scroll`-Ereignis des `<pre>`) setzt das Flag bei jeder
+Bewegung neu über `debugLogAtBottom()`: `scrollHeight − scrollTop − clientHeight <=
+LOG_BOTTOM_TOLERANCE_PX` (24 px Toleranz gegen Rundungsdifferenzen). Neue Zeilen werden auch im
+pausierten Zustand angehängt, die Ansicht springt nur nicht. `#logJumpBtn` („Neue Einträge – zum
+Ende springen“) ist genau dann sichtbar, wenn pausiert ist (`refreshLogJumpHint()`), und ruft
+`scrollLogToEnd()`.
+
+**`debugLogAtBottom()` liefert bei unbrauchbaren Messwerten ausdrücklich `true`.** Vor dem ersten
+Zeichnen und im Testharness sind `scrollHeight`/`clientHeight` 0 oder undefiniert; ohne diese
+Regel stünde der Hinweis von Anfang an da, obwohl niemand gescrollt hat. Der Normalfall ist
+Mitlaufen, pausiert wird erst bei nachweislichem Hochscrollen.
+
+**Export** (`#exportLogBtn` → `exportDebugLog()`): `logExportText()` nimmt die letzten
+`LOG_EXPORT_LIMIT` = **100** Zeilen wortgleich zur Anzeige (bei weniger alle vorhandenen),
+`logExportFileName()` baut `mapcreator-log_JJJJ-MM-TT_HH-MM-SS.txt` — die Sekunde ist nötig,
+damit zwei Exporte kurz nacheinander nicht denselben Namen tragen. Ausgeliefert wird über das
+bestehende `downloadTextFile()`. **Bei leerem Protokoll wird keine Datei erzeugt**, sondern
+`showNotice()` gezeigt; eine leere Datei sähe nach einem Fehler aus. Der Puffer hält bewusst mehr
+Zeilen vor als der Export mitnimmt, damit nach einem Export noch Vorgeschichte da ist.
+
+**Die Knöpfe „AT+V senden“ und „AT+S senden“ sind entfernt, nicht repariert.** Geprüft und
+belegt: die Handler waren korrekt verdrahtet (`bindEvents()`), beide Kennungen existierten im
+Markup (ein Abgleich aller 134 per `$()` geholten Kennungen gegen `index.html` fand **keine**
+fehlende), und sowohl `sendSunray()` als auch `handleLine()` protokollieren unbedingt (`TX`/`RX`).
+Es gab also keinen Defekt. Beide Knöpfe waren jedoch nur bei **stehender Verbindung** bedienbar
+(`refreshConnectionUi()`: `disabled = !state.connected || state.demo`) — und genau in diesem
+Zustand gehen beide Kommandos ohnehin automatisch raus: `AT+V` im Handshake, `AT+S` alle 500 ms
+per Polling, jeweils mit protokollierter Antwort. Es existierte damit **kein** Zustand, in dem
+ein Knopf etwas bewirkt hätte, das die App nicht schon selbst tut. Das gemeldete „passiert
+nichts“ passt zum unverbundenen Zustand, in dem beide korrekt gesperrt sind. Entfernt sind
+Markup, `ui`-Einträge, Handler, die zwei Zeilen in `refreshConnectionUi()` und die
+Übersetzungsschlüssel `sendVersion`/`sendState`; ein ui-Test verbietet ihre Rückkehr. Damit
+entfällt auch der frühere Sonderfall „ausdrückliche Tastendrücke“ für sofortige Fehlerdialoge in
+`reportBleError()` — `immediate: true` gilt jetzt nur noch beim Not-Halt.
+
+**Testbarkeit:** `tests/app-harness.js` stubbt `addEventListener` als **No-Op**, Klicks lassen
+sich also nicht simulieren. Tests rufen die Funktionen deshalb direkt auf (`t.log()`,
+`t.onDebugLogScroll()`, `t.exportDebugLog()`), und die Verdrahtung selbst wird per Quelltextsuche
+geprüft. Der Element-Stub führt dafür jetzt `clientHeight` und `click()`.
 
 **Hell/Dunkel:** `state.view.theme` ∈ `system | light | dark`. `applyTheme()` setzt
 `data-theme` am `<html>` — bei `system` **kein** Attribut, dann entscheidet `prefers-color-scheme`.
@@ -1031,7 +1079,7 @@ Kein Runner, kein `package.json`, keine Abhängigkeiten — reine Node-Skripte.
 | `tests/ble-test.js` | Die BLE-Szenarien (28 Fälle), inklusive der Absicherung aller vier umgesetzten App-Fixes. Stacktraces mit `BLE_TEST_STACK=1`. |
 | `tests/sw-test.js` | Prüft die **Auslieferung** (7 Fälle): Cache-Version an genau einer Stelle in `sw.js`, App-Dateien network-first mit `cache: 'no-cache'` und Cache als Rückfallebene, `cache: 'reload'` beim Cache-Aufbau, alle von `index.html` geladenen Dateien im Cache, alte Caches werden entfernt, Neuladen bei `controllerchange` — und dass **keine** Versionsangabe im UI auftaucht. |
 | `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (39 Fälle). `effectiveStyle(element, property)` löst die Kaskade **elementbezogen** auf (jede passende Regel, nach Spezifität) — nötig für Altlastregeln, die `resolve(selector, …)` nicht sieht. `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
-| `tests/ui-test.js` | Die Kartier-Oberfläche (123 Fälle): Bestätigungs- und Meldungsdialog (Titel/Text/Beschriftung, beide Antworten, verdrängte Rückfrage, Einknopf-Meldung, `reportError` protokolliert und zeigt, keine `window.confirm()`/`window.alert()`-Aufrufe mehr), Moduswahl per Dialog, Rückfrage zum Schließen von Konturen, Kartenprüfung mit Konturschluss, Aufnahme/Löschen in allen drei Button-Zuständen, Flächenauswahl, Automatik (Ersetzen des manuellen Knopfs und Intervall), Positions-Glättung, Hell/Dunkel, Akkordeon, Auswahl per Tap, Touch-Zielgröße, Zoom-Grenzen, Tap-vs-Ziehen, Pinch, Halte-Aufnahme, Joystick-Kennlinie, RTK-Badge, Menüseite, gesperrte Karte, `init()`-Startpfad. Stacktraces mit `UI_TEST_STACK=1`. Antworten auf `confirm()` steuert der Test über `sandbox.__confirmAnswer`. |
+| `tests/ui-test.js` | Die Kartier-Oberfläche (134 Fälle): Bestätigungs- und Meldungsdialog (Titel/Text/Beschriftung, beide Antworten, verdrängte Rückfrage, Einknopf-Meldung, `reportError` protokolliert und zeigt, keine `window.confirm()`/`window.alert()`-Aufrufe mehr), Moduswahl per Dialog, Rückfrage zum Schließen von Konturen, Kartenprüfung mit Konturschluss, Aufnahme/Löschen in allen drei Button-Zuständen, Flächenauswahl, Automatik (Ersetzen des manuellen Knopfs und Intervall), Positions-Glättung, Hell/Dunkel, Akkordeon, Auswahl per Tap, Touch-Zielgröße, Zoom-Grenzen, Tap-vs-Ziehen, Pinch, Halte-Aufnahme, Joystick-Kennlinie, RTK-Badge, Menüseite, gesperrte Karte, `init()`-Startpfad. Stacktraces mit `UI_TEST_STACK=1`. Antworten auf `confirm()` steuert der Test über `sandbox.__confirmAnswer`. |
 
 ### Was `tests/fake-ble.js` simulieren kann
 
@@ -1320,6 +1368,21 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-08: **Diagnose-Bereich überarbeitet.** (a) **AT+V-/AT+S-Knöpfe entfernt statt
+  repariert.** Geprüft: die Handler waren verdrahtet, keine der 134 per `$()` geholten Kennungen
+  fehlt im Markup, und `sendSunray()`/`handleLine()` protokollieren unbedingt — es lag **kein**
+  Defekt vor. Beide Knöpfe waren aber nur bei stehender Verbindung bedienbar, und genau dann
+  gehen `AT+V` (Handshake) und `AT+S` (Polling, alle 500 ms) ohnehin automatisch raus. Es gab
+  also keinen Zustand, in dem sie etwas Eigenes bewirkt hätten; das gemeldete „passiert nichts“
+  passt zum unverbundenen Zustand, in dem sie korrekt gesperrt sind. (b) **Protokoll lesbar:**
+  `log()` schreibt in den Ringpuffer `state.logEntries` (200 Zeilen), das Mitscrollen pausiert,
+  sobald der Nutzer hochscrollt, und `#logJumpBtn` sagt das und führt zurück ans Ende; unten
+  angekommen läuft es von selbst wieder mit. (c) **Export:** „Log exportieren“ legt die letzten
+  100 Zeilen als Textdatei ab, Dateiname mit Datum und Uhrzeit auf die Sekunde genau; leeres
+  Protokoll erzeugt keine Datei, sondern eine Meldung. Elf neue ui-Fälle (134), Harness-Stub um
+  `clientHeight` und `click()` ergänzt; gegen acht simulierte Rückfälle geprüft. Hilfe und README
+  in beiden Sprachen nachgezogen. `APP_VERSION` auf `v50`.
 
 - 2026-09-07: **Sicherheitsannahme widerrufen: das 1000-ms-Totmannfenster ist nicht belegt.**
   Der Nutzer hat am Gerät beobachtet, dass der Mäher weiterfährt, obwohl keine `AT+M` mehr

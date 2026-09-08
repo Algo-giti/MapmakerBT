@@ -9,13 +9,13 @@ const path = require('path');
 function elementStub(id) {
   const el = {
     id, textContent: '', value: '', checked: true, disabled: false, hidden: false,
-    scrollTop: 0, scrollHeight: 0, dataset: {}, children: [],
+    scrollTop: 0, scrollHeight: 0, clientHeight: 0, dataset: {}, children: [],
     style: { setProperty() {}, removeProperty() {}, getPropertyValue() { return ''; } },
     classes: new Set(),
     setAttribute() {}, removeAttribute() {}, getAttribute() { return null; },
     addEventListener() {}, removeEventListener() {}, append() {}, remove() {},
     querySelector() { return null; }, querySelectorAll() { return []; }, closest() { return null; },
-    focus() {}, blur() {}, getBoundingClientRect() { return { left: 0, top: 0, width: 300, height: 300 }; },
+    focus() {}, blur() {}, click() {}, getBoundingClientRect() { return { left: 0, top: 0, width: 300, height: 300 }; },
     setPointerCapture() {}, releasePointerCapture() {},
   };
   // Kinder und innerHTML mitfuehren, damit Tests gezeichnete Elemente pruefen koennen.

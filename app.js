@@ -43,6 +43,13 @@ const AUTO_CAPTURE_MODES = ['time', 'distance'];
 
 /** So viele Bearbeitungsschritte haelt der Rueckgaengig-Stapel vor. */
 const UNDO_STACK_LIMIT = 20;
+// Diagnoseprotokoll: gedeckelter Ringpuffer, damit es nicht unbegrenzt waechst (dieselbe
+// Ueberlegung wie beim rxBuffer). Der Export nimmt hoechstens die letzten 100 Zeilen — der
+// Puffer haelt bewusst mehr vor, damit auch nach dem Export noch Vorgeschichte da ist.
+const LOG_ENTRY_LIMIT = 200;
+const LOG_EXPORT_LIMIT = 100;
+// Toleranz in Pixeln, ab der die Ansicht als „am unteren Ende“ gilt.
+const LOG_BOTTOM_TOLERANCE_PX = 24;
 const POSITION_SMOOTHING_WINDOW_MS = 2000;
 const POSITION_SMOOTHING_MAX_SAMPLES = 10;
 const DRIVE_POINTER_MIN_INTERVAL_MS = 160;
@@ -162,7 +169,7 @@ const I18N = {
     importJsonGeoJson: 'JSON / GeoJSON importieren', deleteCurrentMap: 'Aktuelle Karte löschen',
     bluetoothConnection: 'Bluetooth-Verbindung', sunrayPassword: 'Sunray-Passwort', passwordHint: 'Nur für diese Sitzung. Wird nicht mit der Karte gespeichert.',
     searchConnect: 'Gerät suchen & verbinden', disconnect: 'Verbindung trennen',
-    sendVersion: 'AT+V senden', sendState: 'AT+S senden', clearLog: 'Log leeren', mapPreviewAria: 'Vorschau der aufgenommenen Mähkarte', exportMapAria: 'Karte exportieren',
+    clearLog: 'Log leeren', exportLog: 'Log exportieren', logEmpty: 'Das Protokoll ist noch leer – es gibt nichts zu exportieren.', logPaused: 'Neue Einträge – zum Ende springen', mapPreviewAria: 'Vorschau der aufgenommenen Mähkarte', exportMapAria: 'Karte exportieren',
     notConnected: 'Nicht verbunden', bleConnected: 'BLE verbunden', demoActive: 'Demo aktiv',
     ready: 'Bereit.', readyConnect: 'Bereit. Tippe auf „Gerät suchen & verbinden“.', bluetoothDisconnected: 'Bluetooth-Verbindung getrennt.', age: 'Alter {value} s',
     noMapActive: 'Keine Karte aktiv', createMapFirst: 'Im Reiter „Karten“ zuerst eine Karte anlegen', pleaseCreateMap: 'Bitte zuerst eine Karte anlegen.',
@@ -272,7 +279,7 @@ const I18N = {
     helpJoystickSizeTitle: 'Joystick-Größe', helpJoystickSizeText: 'Vier Stufen von Klein bis Sehr groß. Größer heißt mehr Trefferfläche für den Daumen, kleiner mehr Platz für die Karte.',
     helpMapInfoTitle: 'Karteninfo in der Werkzeugleiste', helpMapInfoText: 'Die Werkzeugleiste oben trägt zwei Zeilen: den Kartennamen und darunter, kleiner, die Punktzahl und die betroffene Kontur samt Zustand. Die aktuelle Position steht unten auf der Karte, zwischen Rückgängig- und Aufnahme-Knopf. Die Kartenfläche selbst bleibt damit frei von Text. Der Zustand steht immer unmittelbar hinter der Bezeichnung der Kontur, auf die er sich bezieht: „Perimeter · geschlossen“ oder „Ausschluss 2 · offen“, und bei ausgewähltem Punkt an dessen Bezeichnung, also „Ausschluss 1 · Punkt 3 · offen“. So ist auch bei mehreren Ausschlussflächen eindeutig, welche gemeint ist. „Offen“ heißt, dass zwischen letztem und erstem Punkt noch keine Verbindung besteht, „geschlossen“ heißt, dass die Fläche fertig umrundet ist. Wegpunkte und Dockpfad sind immer offene Pfade und zeigen deshalb keinen Zustand.',
     helpZoomTitle: 'Zoomen & Verschieben', helpZoomText: 'Zwei Finger zoomen, ein Finger verschiebt. Sobald du die Ansicht selbst verändert hast, erscheint in der oberen Kartenecke ein Symbol, das sie wieder auf die ganze Karte zurücksetzt.',
-    helpDiagnosticsTitle: 'Diagnose', helpDiagnosticsText: 'Das Protokoll im Menü unter Diagnose zeigt gesendete Kommandos, Antworten und Fehler der Funkverbindung — hilfreich, wenn die Verbindung abreißt.',
+    helpDiagnosticsTitle: 'Diagnose', helpDiagnosticsText: 'Das Protokoll im Menü unter Diagnose zeigt gesendete Kommandos, Antworten und Fehler der Funkverbindung — hilfreich, wenn die Verbindung abreißt. Es läuft automatisch mit, solange die Ansicht ganz unten steht; scrollen Sie nach oben, hält es an und ein Hinweis führt zurück ans Ende. „Log exportieren“ legt die letzten 100 Zeilen als Textdatei ab, deren Name Datum und Uhrzeit trägt.',
     solutionInvalid: 'UNGÜLTIG', solutionUnknown: 'UNBEKANNT', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   },
   en: {
@@ -371,7 +378,7 @@ const I18N = {
     importJsonGeoJson: 'Import JSON / GeoJSON', deleteCurrentMap: 'Delete current map',
     bluetoothConnection: 'Bluetooth connection', sunrayPassword: 'Sunray password', passwordHint: 'For this session only. It is not stored with the map.',
     searchConnect: 'Find device & connect', disconnect: 'Disconnect',
-    sendVersion: 'Send AT+V', sendState: 'Send AT+S', clearLog: 'Clear log', mapPreviewAria: 'Preview of the recorded mowing map', exportMapAria: 'Export map',
+    clearLog: 'Clear log', exportLog: 'Export log', logEmpty: 'The log is still empty – there is nothing to export.', logPaused: 'New entries – jump to end', mapPreviewAria: 'Preview of the recorded mowing map', exportMapAria: 'Export map',
     notConnected: 'Not connected', bleConnected: 'BLE connected', demoActive: 'Demo active',
     ready: 'Ready.', readyConnect: 'Ready. Tap “Find device & connect”.', bluetoothDisconnected: 'Bluetooth connection disconnected.', age: 'Age {value} s',
     noMapActive: 'No active map', createMapFirst: 'Create a map in the “Maps” tab first', pleaseCreateMap: 'Please create a map first.',
@@ -481,7 +488,7 @@ const I18N = {
     helpJoystickSizeTitle: 'Joystick size', helpJoystickSizeText: 'Four steps from small to very large. Larger means a bigger target for your thumb, smaller means more room for the map.',
     helpMapInfoTitle: 'Map info in the tool bar', helpMapInfoText: 'The tool bar at the top carries two lines: the map name and, smaller beneath it, the point count and the contour concerned together with its state. The current position sits at the bottom of the map, between the undo and capture buttons. The map area itself stays free of text. The state always sits directly behind the name of the contour it refers to: “Perimeter · closed” or “Exclusion 2 · open”, and with a point selected behind that point, as in “Exclusion 1 · point 3 · open”. That keeps it unambiguous even with several exclusion areas. “Open” means there is still no link between the last and the first point, “closed” means the area is fully enclosed. Waypoints and the dock path are always open paths and therefore show no state.',
     helpZoomTitle: 'Zoom & pan', helpZoomText: 'Two fingers zoom, one finger pans. As soon as you change the view yourself, an icon appears in the top corner of the map that resets it to the whole map.',
-    helpDiagnosticsTitle: 'Diagnostics', helpDiagnosticsText: 'The log in the menu under Diagnostics shows sent commands, replies and radio errors — useful when the connection drops.',
+    helpDiagnosticsTitle: 'Diagnostics', helpDiagnosticsText: 'The log in the menu under Diagnostics shows sent commands, replies and radio errors — useful when the connection drops. It follows along automatically while the view sits at the bottom; scroll up and it pauses, with a hint to jump back to the end. “Export log” saves the last 100 lines as a text file whose name carries the date and time.',
     solutionInvalid: 'INVALID', solutionUnknown: 'UNKNOWN', importName: 'Import', geoJsonImport: 'GeoJSON Import', importSuffix: '(Import)'
   }
 };
@@ -592,12 +599,15 @@ const ui = {
   showTrail: $('showTrail'), clearTrailBtn: $('clearTrailBtn'), showPointQuality: $('showPointQuality'), keepAwake: $('keepAwake'), wakeLockStatus: $('wakeLockStatus'),
   validateMapBtn: $('validateMapBtn'), validationSummary: $('validationSummary'), validationList: $('validationList'), validationDrawer: $('validationDrawer'),
   updateBar: $('updateBar'),
-  requestVersionBtn: $('requestVersionBtn'), requestStateBtn: $('requestStateBtn'), clearLogBtn: $('clearLogBtn'), debugLog: $('debugLog'),
+  clearLogBtn: $('clearLogBtn'), exportLogBtn: $('exportLogBtn'), logJumpBtn: $('logJumpBtn'), debugLog: $('debugLog'),
   helpSecureStatus: $('helpSecureStatus'), helpBluetoothStatus: $('helpBluetoothStatus'), helpOfflineStatus: $('helpOfflineStatus'), helpNetworkStatus: $('helpNetworkStatus'),
 };
 
 const state = {
   language: 'de',
+  // Diagnoseprotokoll als Daten, nicht nur als DOM-Text — siehe log().
+  logEntries: [],
+  logAutoScroll: true,
   connectionStatusKey: 'notConnected',
   connectionDetailKey: 'ready',
   connectionVars: {},
@@ -690,11 +700,88 @@ const state = {
   pendingVersion: null,
 };
 
+/**
+ * Das Protokoll liegt seit v50 in `state.logEntries` und nicht mehr nur im DOM. Zwei Gruende:
+ * der Export braucht die Zeilen als Daten, und nur mit einem Puffer laesst sich die Zahl der
+ * vorgehaltenen Zeilen ueberhaupt begrenzen — `textContent +=` wuchs unbegrenzt weiter.
+ */
 function log(message, data = '') {
   const stamp = new Date().toLocaleTimeString(localeCode());
   const suffix = data === '' ? '' : ` ${typeof data === 'string' ? data : JSON.stringify(data)}`;
-  ui.debugLog.textContent += `[${stamp}] ${message}${suffix}\n`;
-  ui.debugLog.scrollTop = ui.debugLog.scrollHeight;
+  state.logEntries.push(`[${stamp}] ${message}${suffix}`);
+  // Ringpuffer: die aeltesten Zeilen fallen vorn weg, wie beim gedeckelten rxBuffer.
+  if (state.logEntries.length > LOG_ENTRY_LIMIT) {
+    state.logEntries.splice(0, state.logEntries.length - LOG_ENTRY_LIMIT);
+  }
+  renderDebugLog();
+}
+
+/** Schreibt den Puffer in die Anzeige und laesst sie nur mitlaufen, wenn sie unten steht. */
+function renderDebugLog() {
+  if (!ui.debugLog) return;
+  ui.debugLog.textContent = state.logEntries.length ? `${state.logEntries.join('\n')}\n` : '';
+  if (state.logAutoScroll) scrollLogToEnd();
+  else refreshLogJumpHint();
+}
+
+/**
+ * Steht die Ansicht am unteren Ende? Ohne gemessenes Layout — im Test und vor dem ersten
+ * Zeichnen sind die Werte 0 bzw. undefiniert — gilt ausdruecklich „ja“: der Normalfall ist
+ * Mitlaufen, pausiert wird erst, wenn der Nutzer nachweislich hochgescrollt hat.
+ */
+function debugLogAtBottom() {
+  const el = ui.debugLog;
+  if (!el) return true;
+  const metrics = [el.scrollHeight, el.scrollTop, el.clientHeight];
+  if (!metrics.every((value) => Number.isFinite(value))) return true;
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= LOG_BOTTOM_TOLERANCE_PX;
+}
+
+/** Ans Ende springen und das Mitlaufen wieder aufnehmen. */
+function scrollLogToEnd() {
+  if (ui.debugLog) ui.debugLog.scrollTop = ui.debugLog.scrollHeight;
+  state.logAutoScroll = true;
+  refreshLogJumpHint();
+}
+
+/** Der Hinweis steht nur da, solange das Mitlaufen pausiert ist. */
+function refreshLogJumpHint() {
+  if (ui.logJumpBtn) ui.logJumpBtn.hidden = state.logAutoScroll;
+}
+
+/**
+ * Jede Scrollbewegung entscheidet neu: unten angekommen laeuft die Ansicht wieder mit,
+ * darueber bleibt sie stehen. Neue Zeilen werden trotzdem weiter angehaengt.
+ */
+function onDebugLogScroll() {
+  state.logAutoScroll = debugLogAtBottom();
+  refreshLogJumpHint();
+}
+
+/** Die letzten LOG_EXPORT_LIMIT Zeilen, wortgleich mit der Anzeige. */
+function logExportText() {
+  const lines = state.logEntries.slice(-LOG_EXPORT_LIMIT);
+  return lines.length ? `${lines.join('\n')}\n` : '';
+}
+
+/** Dateiname mit Datum und Uhrzeit, damit sich mehrere Exporte unterscheiden lassen. */
+function logExportFileName(now = new Date()) {
+  const pad = (value) => String(value).padStart(2, '0');
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+    + `_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+  return `mapcreator-log_${stamp}.txt`;
+}
+
+function exportDebugLog() {
+  const content = logExportText();
+  if (!content) { showNotice({ title: tr('exportLog'), message: tr('logEmpty') }); return; }
+  downloadTextFile(content, logExportFileName(), 'text/plain');
+}
+
+function clearDebugLog() {
+  state.logEntries.length = 0;
+  state.logAutoScroll = true;
+  renderDebugLog();
 }
 
 function refreshConnectionUi() {
@@ -708,8 +795,6 @@ function refreshConnectionUi() {
   ui.connectionPill.classList.toggle('offline', !state.connected);
   ui.connectBtn.disabled = state.connected || state.demo || !window.isSecureContext || !bleAdapter();
   ui.disconnectBtn.disabled = !state.connected && !state.demo;
-  ui.requestVersionBtn.disabled = !state.connected || state.demo;
-  ui.requestStateBtn.disabled = !state.connected || state.demo;
   refreshControlUi();
 }
 
@@ -4613,9 +4698,10 @@ function bindEvents() {
   }));
   ui.disconnectBtn.addEventListener('click', disconnectBluetooth);
   ui.demoBtn.addEventListener('click', () => state.demo ? stopDemo() : startDemo());
-  ui.requestVersionBtn.addEventListener('click', () => sendSunray('AT+V', { forcePlain: true }).catch((e) => reportBleError('AT+V', e, { immediate: true })));
-  ui.requestStateBtn.addEventListener('click', () => sendSunray('AT+S').catch((e) => reportBleError('AT+S', e, { immediate: true })));
-  ui.clearLogBtn.addEventListener('click', () => { ui.debugLog.textContent = ''; });
+  ui.clearLogBtn.addEventListener('click', clearDebugLog);
+  ui.exportLogBtn.addEventListener('click', exportDebugLog);
+  ui.logJumpBtn.addEventListener('click', scrollLogToEnd);
+  ui.debugLog.addEventListener('scroll', onDebugLogScroll);
   ui.updateBar.addEventListener('click', applyUpdate);
 
   // Karten

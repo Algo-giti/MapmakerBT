@@ -21,6 +21,9 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'applyDriveControlMode', 'toggleDriveControl', 'beginCursorDrive', 'cursorDriveVector', 'cursorSpeedLimits',
   'renameMapById', 'duplicateMapById', 'uniqueCopyName', 'askText', 'localizedMapName', 'MAP_NAME_MAX',
   'stopDrive', 'saveViewPreferences',
+  'log', 'renderDebugLog', 'onDebugLogScroll', 'scrollLogToEnd', 'clearDebugLog',
+  'logExportText', 'logExportFileName', 'exportDebugLog', 'debugLogAtBottom',
+  'LOG_ENTRY_LIMIT', 'LOG_EXPORT_LIMIT', 'LOG_BOTTOM_TOLERANCE_PX',
   'startExtension', 'cancelExtension', 'finishExtension', 'refreshExtendButton', 'refreshExtendPanel',
   'canStartExtension', 'areNeighbourIndices', 'reorderForExtension', 'appendCurrentPoint', 'undoLastAction',
   'setMode', 'refreshContourStatus', 'activeContour', 'refreshToolbarVisibility',
@@ -1480,6 +1483,181 @@ test('Die Linkshaender-Spiegelung gilt auch fuer das Tastenkreuz', () => {
   assert.ok(/--joystick-size/.test(body), 'es traegt die Groessenrechnung fuer beide Steuerungen');
   const pad = css.slice(css.indexOf('.drive-zone .drive-pad {'));
   assert.ok(/width:\s*100%/.test(pad.slice(0, pad.indexOf('}'))), 'das Kreuz fuellt dasselbe Feld');
+});
+
+// === Diagnoseprotokoll =====================================================
+/** Stellt die Messwerte eines gescrollten Protokolls nach: Ansicht steht oben statt unten. */
+function scrollLogUp(t, elements) {
+  const el = elements.get('debugLog');
+  el.scrollHeight = 2000;
+  el.clientHeight = 300;
+  el.scrollTop = 0;
+  t.onDebugLogScroll();
+  return el;
+}
+
+test('Das Protokoll haelt mindestens 100 Zeilen vor und waechst nicht unbegrenzt', () => {
+  const { t, elements } = setup();
+  assert.ok(t.LOG_ENTRY_LIMIT >= 100, `der Puffer muss mindestens 100 Zeilen fassen, ist ${t.LOG_ENTRY_LIMIT}`);
+  assert.ok(t.LOG_EXPORT_LIMIT === 100, 'der Export nimmt die letzten 100 Zeilen');
+  assert.ok(t.LOG_ENTRY_LIMIT >= t.LOG_EXPORT_LIMIT, 'sonst koennte der Export nie voll werden');
+  t.clearDebugLog();
+  for (let i = 1; i <= t.LOG_ENTRY_LIMIT + 50; i += 1) t.log('ZEILE', String(i));
+  assert.strictEqual(t.state.logEntries.length, t.LOG_ENTRY_LIMIT, 'die Obergrenze haelt');
+  // Die aeltesten fallen vorn weg, die neueste steht hinten.
+  assert.ok(t.state.logEntries[0].includes(`ZEILE ${51}`), `vorn faellt das Aelteste weg: ${t.state.logEntries[0]}`);
+  assert.ok(t.state.logEntries.at(-1).includes(`ZEILE ${t.LOG_ENTRY_LIMIT + 50}`));
+  // Die Anzeige spiegelt genau den Puffer.
+  const shown = elements.get('debugLog').textContent.split('\n').filter(Boolean);
+  assert.strictEqual(shown.length, t.LOG_ENTRY_LIMIT);
+});
+
+test('Das Mitscrollen pausiert beim Hochscrollen und nimmt am Ende wieder auf', () => {
+  const { t, elements } = setup();
+  const hint = elements.get('logJumpBtn');
+  t.clearDebugLog();
+  t.log('START');
+  assert.strictEqual(t.state.logAutoScroll, true, 'im Normalfall laeuft die Ansicht mit');
+  assert.strictEqual(hint.hidden, true, 'ohne Pause kein Hinweis');
+
+  // Nutzer scrollt nach oben: das Mitlaufen pausiert und der Hinweis erscheint.
+  const el = scrollLogUp(t, elements);
+  assert.strictEqual(t.state.logAutoScroll, false, 'hochgescrollt heisst pausiert');
+  assert.strictEqual(hint.hidden, false, 'der Hinweis sagt, warum nichts nachrueckt');
+
+  // Neue Zeilen kommen trotzdem an, die Ansicht springt aber nicht.
+  const before = el.scrollTop;
+  t.log('NEU', 'waehrend pausiert');
+  assert.ok(el.textContent.includes('waehrend pausiert'), 'angehaengt wird weiterhin');
+  assert.strictEqual(el.scrollTop, before, 'die Ansicht darf nicht springen');
+  assert.strictEqual(hint.hidden, false, 'der Hinweis bleibt stehen');
+
+  // Zurueck ans Ende gescrollt: es laeuft wieder mit.
+  el.scrollTop = el.scrollHeight - el.clientHeight;
+  t.onDebugLogScroll();
+  assert.strictEqual(t.state.logAutoScroll, true, 'unten angekommen laeuft es wieder mit');
+  assert.strictEqual(hint.hidden, true);
+  t.log('WEITER');
+  assert.strictEqual(el.scrollTop, el.scrollHeight, 'und die Ansicht folgt wieder');
+});
+
+test('Der Hinweis springt ans Ende und setzt das Mitscrollen fort', () => {
+  const { t, elements } = setup();
+  const hint = elements.get('logJumpBtn');
+  t.clearDebugLog();
+  t.log('A');
+  const el = scrollLogUp(t, elements);
+  assert.strictEqual(hint.hidden, false);
+  // Genau das tut ein Tipp auf den Hinweis.
+  t.scrollLogToEnd();
+  assert.strictEqual(t.state.logAutoScroll, true);
+  assert.strictEqual(hint.hidden, true);
+  assert.strictEqual(el.scrollTop, el.scrollHeight, 'die Ansicht steht wieder ganz unten');
+});
+
+test('Knapp ueber dem Ende gilt noch als unten', () => {
+  // Ohne Toleranz wuerde jedes Pixel Rundungsdifferenz das Mitlaufen abwuergen.
+  const { t, elements } = setup();
+  const el = elements.get('debugLog');
+  el.scrollHeight = 2000;
+  el.clientHeight = 300;
+  el.scrollTop = 1700 - Math.floor(t.LOG_BOTTOM_TOLERANCE_PX / 2);
+  t.onDebugLogScroll();
+  assert.strictEqual(t.state.logAutoScroll, true, 'innerhalb der Toleranz laeuft es mit');
+  el.scrollTop = 1700 - (t.LOG_BOTTOM_TOLERANCE_PX + 10);
+  t.onDebugLogScroll();
+  assert.strictEqual(t.state.logAutoScroll, false, 'deutlich darueber pausiert es');
+});
+
+test('Ohne gemessenes Layout laeuft die Ansicht mit', () => {
+  // Im Test und vor dem ersten Zeichnen sind die Messwerte 0 bzw. fehlen. Der Normalfall ist
+  // Mitlaufen — sonst stuende der Hinweis von Anfang an da, ohne dass jemand gescrollt hat.
+  const { t, elements } = setup();
+  const el = elements.get('debugLog');
+  el.scrollHeight = 0; el.clientHeight = 0; el.scrollTop = 0;
+  assert.strictEqual(t.debugLogAtBottom(), true);
+  el.clientHeight = undefined;
+  assert.strictEqual(t.debugLogAtBottom(), true, 'unbrauchbare Messwerte duerfen nicht pausieren');
+});
+
+test('Der Export enthaelt die letzten 100 Zeilen im Format der Anzeige', () => {
+  const { t, elements } = setup();
+  t.clearDebugLog();
+  for (let i = 1; i <= 130; i += 1) t.log('EINTRAG', String(i));
+  const lines = t.logExportText().split('\n').filter(Boolean);
+  assert.strictEqual(lines.length, t.LOG_EXPORT_LIMIT, 'genau die letzten 100');
+  assert.ok(lines[0].includes('EINTRAG 31'), `beginnt bei 31: ${lines[0]}`);
+  assert.ok(lines.at(-1).includes('EINTRAG 130'), 'und endet beim juengsten');
+  // Format wie in der Anzeige, inklusive Zeitstempel in eckigen Klammern.
+  assert.ok(/^\[\d{1,2}[:.]\d{2}[:.]\d{2}/.test(lines[0]), `Zeitstempel fehlt: ${lines[0]}`);
+  const shown = elements.get('debugLog').textContent.split('\n').filter(Boolean);
+  assert.deepStrictEqual(lines, shown.slice(-t.LOG_EXPORT_LIMIT), 'Export und Anzeige sind wortgleich');
+});
+
+test('Weniger als 100 Zeilen werden vollstaendig exportiert', () => {
+  const { t } = setup();
+  t.clearDebugLog();
+  for (let i = 1; i <= 7; i += 1) t.log('KURZ', String(i));
+  const lines = t.logExportText().split('\n').filter(Boolean);
+  assert.strictEqual(lines.length, 7, 'alle vorhandenen, nicht auf 100 aufgefuellt');
+});
+
+test('Der Dateiname traegt Datum und Uhrzeit', () => {
+  const { t } = setup();
+  const name = t.logExportFileName(new Date(2026, 8, 8, 7, 5, 3));
+  assert.strictEqual(name, 'mapcreator-log_2026-09-08_07-05-03.txt');
+  // Zwei Exporte in derselben Minute duerfen sich nicht denselben Namen teilen.
+  const later = t.logExportFileName(new Date(2026, 8, 8, 7, 5, 4));
+  assert.notStrictEqual(name, later, 'die Sekunde unterscheidet aufeinanderfolgende Exporte');
+  assert.ok(name.endsWith('.txt'), 'einfache Textdatei');
+});
+
+test('Ein leeres Protokoll wird nicht als Datei angeboten', () => {
+  // Sonst laedt der Nutzer eine leere Datei herunter und haelt sie fuer kaputt.
+  const { t, sandbox } = setup();
+  let downloads = 0;
+  const realBlob = sandbox.Blob;
+  sandbox.Blob = function Spy(...args) { downloads += 1; return new realBlob(...args); };
+  t.clearDebugLog();
+  t.exportDebugLog();
+  assert.strictEqual(downloads, 0, 'kein Download ohne Inhalt');
+  assert.ok((sandbox.__lastConfirm || sandbox.__lastConfirmRequest), 'stattdessen eine Meldung');
+  t.log('ETWAS');
+  t.exportDebugLog();
+  assert.strictEqual(downloads, 1, 'mit Inhalt wird die Datei erzeugt');
+  sandbox.Blob = realBlob;
+});
+
+test('Log leeren raeumt Puffer und Anzeige und nimmt das Mitscrollen wieder auf', () => {
+  const { t, elements } = setup();
+  t.log('A'); t.log('B');
+  scrollLogUp(t, elements);
+  t.clearDebugLog();
+  assert.strictEqual(t.state.logEntries.length, 0);
+  assert.strictEqual(elements.get('debugLog').textContent, '');
+  assert.strictEqual(t.state.logAutoScroll, true, 'nach dem Leeren laeuft es wieder mit');
+  assert.strictEqual(elements.get('logJumpBtn').hidden, true);
+});
+
+test('Die Diagnose hat keine AT+V-/AT+S-Knoepfe mehr', () => {
+  // Entfernt statt repariert: beide Kommandos gehen ohnehin automatisch raus (AT+V im
+  // Handshake, AT+S alle 500 ms beim Polling) und stehen mit ihren Antworten im Protokoll.
+  // Die Knoepfe waren zudem nur im verbundenen Zustand bedienbar — genau dann, wenn beide
+  // Kommandos bereits laufen.
+  const fs2 = require('fs');
+  const html = fs2.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const app = fs2.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  for (const id of ['requestVersionBtn', 'requestStateBtn']) {
+    assert.ok(!html.includes(id), `${id} darf nicht ins Markup zurueckkehren`);
+    assert.ok(!app.includes(id), `${id} darf nicht in app.js zurueckkehren`);
+  }
+  for (const key of ['sendVersion', 'sendState']) {
+    assert.ok(!app.includes(`${key}:`), `toter Uebersetzungsschluessel ${key}`);
+  }
+  // Die Ersatzbedienung steht dafuer im Markup.
+  for (const id of ['exportLogBtn', 'logJumpBtn', 'clearLogBtn']) {
+    assert.ok(html.includes(`id="${id}"`), `${id} fehlt in der Diagnose`);
+  }
 });
 
 // === Karte umbenennen und duplizieren ======================================

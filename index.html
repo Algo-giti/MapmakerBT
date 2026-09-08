@@ -374,11 +374,13 @@
 <div class="menu-body">
 <section class="card debug-card">
 <div class="debug-actions">
-<button class="secondary" data-i18n="sendVersion" disabled="" id="requestVersionBtn" type="button">AT+V senden</button>
-<button class="secondary" data-i18n="sendState" disabled="" id="requestStateBtn" type="button">AT+S senden</button>
+<button class="secondary" data-i18n="exportLog" id="exportLogBtn" type="button">Log exportieren</button>
 <button class="ghost" data-i18n="clearLog" id="clearLogBtn" type="button">Log leeren</button>
 </div>
+<div class="debug-log-wrap">
 <pre aria-live="polite" id="debugLog"></pre>
+<button class="log-jump" data-i18n="logPaused" hidden="" id="logJumpBtn" type="button">Neue Einträge – zum Ende springen</button>
+</div>
 </section>
 </div>
 </details>
@@ -517,7 +519,7 @@
 <div><strong data-i18n="helpThemeTitle">Hell &amp; Dunkel</strong><span data-i18n="helpThemeText">Drei Stufen im Menü unter Ansicht &amp; Maßstab: Hell, Dunkel oder der Vorgabe des Systems folgen.</span></div>
 <div><strong data-i18n="helpHandedTitle">Bedienseite</strong><span data-i18n="helpHandedText">Die Umstellung auf Linkshänder spiegelt die gesamte Bedienung: Werkzeuge und Karteninfo in der Kartenleiste, Aufnahme-Knopf und Fahrtanzeige.</span></div>
 <div><strong data-i18n="helpJoystickSizeTitle">Joystick-Größe</strong><span data-i18n="helpJoystickSizeText">Vier Stufen von Klein bis Sehr groß. Größer heißt mehr Trefferfläche für den Daumen, kleiner mehr Platz für die Karte.</span></div>
-<div><strong data-i18n="helpDiagnosticsTitle">Diagnose</strong><span data-i18n="helpDiagnosticsText">Das Protokoll im Menü unter Diagnose zeigt gesendete Kommandos, Antworten und Fehler der Funkverbindung — hilfreich, wenn die Verbindung abreißt.</span></div>
+<div><strong data-i18n="helpDiagnosticsTitle">Diagnose</strong><span data-i18n="helpDiagnosticsText">Das Protokoll im Menü unter Diagnose zeigt gesendete Kommandos, Antworten und Fehler der Funkverbindung — hilfreich, wenn die Verbindung abreißt. Es läuft automatisch mit, solange die Ansicht ganz unten steht; scrollen Sie nach oben, hält es an und ein Hinweis führt zurück ans Ende. „Log exportieren“ legt die letzten 100 Zeilen als Textdatei ab, deren Name Datum und Uhrzeit trägt.</span></div>
 </div>
 </section>
 <section class="card help-card">

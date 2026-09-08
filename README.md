@@ -364,6 +364,16 @@ Profil verwenden getrennte Speicher. Importiere dein letztes JSON-Backup.
 Im Menü unter **Diagnose** siehst du das vollständige Protokoll der Bluetooth-Kommunikation. Es hilft,
 wenn du ein Problem melden möchtest.
 
+Das Protokoll läuft automatisch mit, solange die Ansicht ganz unten steht. Scrollst du nach oben,
+um etwas nachzulesen, hält es an — neue Zeilen werden weiter angehängt, die Ansicht springt aber
+nicht mehr. Ein Hinweis am unteren Rand sagt dir das und bringt dich mit einem Tipp zurück ans
+Ende; dort läuft es von selbst wieder mit.
+
+Mit **Log exportieren** legst du die letzten 100 Zeilen als einfache Textdatei ab, im selben
+Format wie in der Anzeige. Der Dateiname enthält Datum und Uhrzeit, sodass sich mehrere Exporte
+unterscheiden lassen. Diese Datei kannst du am Rechner ansehen oder bei einer Fehlersuche
+weitergeben.
+
 ## Lizenz
 
 Siehe [LICENSE](LICENSE).
@@ -710,6 +720,14 @@ profile use separate storage. Import your most recent JSON backup.
 
 The menu under **Diagnostics** shows the full log of the Bluetooth communication. It helps when
 you want to report a problem.
+
+The log follows along automatically while the view sits at the bottom. If you scroll up to read
+something, it pauses — new lines are still appended, but the view no longer jumps. A hint at the
+bottom tells you so and takes you back to the end with one tap, where it resumes on its own.
+
+**Export log** saves the last 100 lines as a plain text file, in the same format as on screen. The
+file name carries the date and time so several exports stay distinguishable. You can open that
+file on a computer or pass it on when troubleshooting.
 
 ## License
 
