@@ -385,6 +385,17 @@ Format wie in der Anzeige. Der Dateiname enthält Datum und Uhrzeit, sodass sich
 unterscheiden lassen. Diese Datei kannst du am Rechner ansehen oder bei einer Fehlersuche
 weitergeben.
 
+
+#########################################################
+## ❤️ Support this project
+
+If you like this project and want to support its development:
+
+[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-0070ba?logo=paypal&logoColor=white)](https://paypal.me/algochi)
+
+Thank you for your support!
+
+################################################
 ## Lizenz
 
 Siehe [LICENSE](LICENSE).
@@ -751,6 +762,18 @@ bottom tells you so and takes you back to the end with one tap, where it resumes
 **Export log** saves the last 100 lines as a plain text file, in the same format as on screen. The
 file name carries the date and time so several exports stay distinguishable. You can open that
 file on a computer or pass it on when troubleshooting.
+
+
+#########################################################
+## ❤️ Support this project
+
+If you like this project and want to support its development:
+
+[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-0070ba?logo=paypal&logoColor=white)](https://paypal.me/algochi)
+
+Thank you for your support!
+
+################################################
 
 ## License
 
