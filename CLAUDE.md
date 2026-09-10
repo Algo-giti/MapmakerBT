@@ -656,10 +656,52 @@ die des jeweiligen Punktes.
 nicht zur Karte, und ist ausdrücklich **nicht** `map.origin`: CaSSAndRA führt selbst nur einen
 einzigen Wert (`rovercfg.lat`/`lon`), und eine relativ geführte Karte ist für dieses Format
 genauso brauchbar. Die Sperre hängt deshalb **nicht** an `positionMode`, sondern allein daran, ob
-das Wertepaar gesetzt und gültig ist. Vorbelegung nur aus einer Karte mit Modus `absolute` **und**
-gültigem Ursprung — und dann wird der Wert auch **übernommen**, nicht bloß angezeigt: eine
-Vorbelegung, die nicht gilt, wäre eine Falle (Feld gefüllt, Knopf grau). Kein Standardwert, kein
-0/0 — obwohl genau das CaSSAndRAs Auslieferungswert ist (`cfgdata.py:195-196`).
+das Wertepaar gesetzt und gültig ist.
+
+**Vorrang, von oben nach unten (Stand v53):**
+1. ein **gespeichertes** Wertepaar — gewinnt immer;
+2. ein **ausdrücklich geleertes** Feld (im Speicher steht `null`) — bleibt leer, Export gesperrt;
+3. **nichts gespeichert** → `map.origin` der aktiven Karte, falls sie `absolute` ist und einen
+   gültigen Ursprung hat, sonst die **Vorgabe 0/0**.
+
+`storedCassandraReference()` unterscheidet dafür drei Speicherzustände: Schlüssel fehlt (nie
+festgelegt), Schlüssel enthält `null` (geleert), Schlüssel enthält ein Paar. **Ohne den mittleren
+Fall hätte die Sperre keinen Bestand** — das nächste Zeichnen würde das geleerte Feld wieder mit
+der Vorgabe füllen.
+
+**Fall 3 wird nicht gespeichert.** Täte er es, wäre schon nach dem ersten Zeichnen etwas
+gespeichert und die Vorbelegung aus `map.origin` damit für immer unerreichbar — auch für den Fall,
+dass der Nutzer erst später eine absolut geführte Karte anlegt. So folgt die Vorbelegung der
+aktiven Karte, bis der Nutzer selbst etwas einträgt. Damit ist `map.origin` als Vorbelegung
+**erreichbar geblieben**, nur nicht mehr persistent.
+
+**0/0 ist eine Angabe, kein Platzhalter.** Es ist CaSSAndRAs eigener Auslieferungswert
+(`cfgdata.py:195-196`) — wer dort nie etwas eingetragen hat, stimmt mit unserer Vorgabe überein.
+Rechnerisch ist der Äquator der **ungünstigste** Fall der Näherung (`cos(0) = 1`), gemessen
+**5,5473 mm** über die ganze Beispielkarte, gegen die echte Python-Importfunktion gegengeprüft
+(identische vier Zahlen). Die theoretische Obergrenze dort ist 7,86 mm.
+
+**Ausgleich für die weggefallene Hürde:** `noticeCassandraExport()` nennt bei **jedem** Export den
+tatsächlich verwendeten Bezugspunkt im Klartext, in derselben Meldung wie die ausgelassenen
+Flächen und ohne zusätzliche Nutzergeste. Grund: seit 0/0 vorbelegt ist, kann eine Datei ohne
+jedes Zutun entstehen, und 0/0 ist nur richtig, wenn auch in CaSSAndRA 0/0 steht — weicht es ab,
+liegt die Karte dort versetzt, **ohne** dass eine Seite einen Fehler zeigt.
+
+**Ein leeres Eingabefeld ist keine Null.** `Number('')` ist `0`, und 0 liegt im gültigen Bereich —
+ohne Vorprüfung machte `normalizeOrigin()` aus zwei leeren Feldern das Wertepaar 0/0, der Nutzer
+könnte einen einmal eingetragenen Wert also gar nicht mehr zurücknehmen. `originFromInputs()`
+(direkt über `mapOriginInUse()`) fängt den Leerfall ab und ist die **einzige** Stelle dafür:
+sie bedient sowohl den CaSSAndRA-Bezugspunkt (`updateCassandraReferenceFromUi()`) als auch den
+**Kartenursprung** (`updatePositionModeFromUi()`, seit v54). Schon ein einzelnes leeres Feld
+genügt — ein halber Ursprung ist keiner. Ein ui-Test verbietet, dass ein Eingabefeld wieder
+unmittelbar in `normalizeOrigin()` läuft.
+
+**Ein geleertes Ursprungsfeld setzt den Modus nicht zurück:** `positionMode` bleibt `absolute`,
+`origin` wird `null`. Diesen Zustand trägt der Code seit jeher — `mapOriginInUse()` verlangt
+beides, `mapToGeoJson()` fällt auf `sunray-local-xy-meters` zurück, `normalizeMap()` und das
+JSON-Backup erhalten ihn, und die Ursprungsfelder bleiben sichtbar und leer. Ein stiller Rückfall
+auf `relative` wäre eine Entscheidung über den Kopf des Nutzers hinweg. *(Ein GeoJSON-Rundlauf
+verliert den Modus — die Datei ist in Metern und trägt keine Modusmarke; der JSON-Backup nicht.)*
 
 **Ausgegraut statt ausgeblendet** (`refreshExportButtons()`), anders als bei den Teilen-Knöpfen:
 die Bedingungen sind behebbar, eine fehlende Browserfähigkeit nicht. Der Hinweis darunter nennt den
@@ -1470,6 +1512,30 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
 
 ## Sonstige gesammelte Code-Probleme (noch nicht umgesetzt)
 
+- **Leere Einstellungsfelder rutschen auf die Untergrenze statt auf den Rückfallwert** (gemeldet
+  2026-09-10, nicht angefasst). `clampNumber(value, min, max, fallback)` (`app.js:1085-1089`)
+  fängt nur `!Number.isFinite(n)` ab — `Number('')` ist aber `0`, also endlich, und wird auf `min`
+  geklemmt. Der `fallback`-Parameter ist damit für ein **leeres** Feld unerreichbar; er greift nur
+  bei Text wie `abc`. Gemessen (jeweils Feld geleert, alle anderen unverändert):
+
+  | Feld | vorher | leer → danach |
+  |---|---|---|
+  | `mowerLengthInput` | 0,60 | **0,10** |
+  | `mowerWidthInput` | 0,35 | **0,10** |
+  | `autoCaptureIntervalInput` | 5 | **1** |
+  | `autoCaptureDistanceInput` | 50 | **10** |
+  | `driveSpeedMinInput` | 0,08 | **0,02** |
+  | `driveSpeedMaxInput` | 0,25 | **0,03** |
+  | `driveTurnMaxInput` | 1,15 | **0,20** |
+  | `cursorSpeedInput` | 3 | **2** |
+
+  Betroffen sind `updateViewPreferencesFromUi()` (`app.js:1166-1184`) und `loadViewPreferences()`
+  (dort ohne Feldbezug, deshalb harmlos). Anders als beim Ursprung ist das **sichtbar** — die
+  Felder werden danach neu gezeichnet und zeigen den geklemmten Wert —, und es sind reine
+  Komforteinstellungen, keine Interoperabilität. `driveSpeedMaxInput` fällt dabei auf
+  `driveSpeedMin + 0.01`, die Fahrgeschwindigkeit also praktisch auf Null. Behebbar mit derselben
+  Überlegung wie `originFromInputs()`: den Leerfall vor `Number()` abfangen.
+
 - **`app.js` ist ein 3121-Zeilen-Monolith** mit einem globalen, überall veränderten `state`-Objekt.
   Sinnvolle Aufteilung: `ble.js`, `state.js`, `storage.js`, `map-render.js`, `map-io.js`,
   `validate.js`, `ui.js`, `i18n.js` (ES-Module gehen auf GitHub Pages ohne Build).
@@ -1578,6 +1644,29 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Sabotagen geprüft, darunter eine **verhaltensgleiche** (die Exportsperre zählt wieder selbst,
   Ergebnis identisch) — sie fällt trotzdem auf, weil der Test die Struktur prüft, nicht nur die
   Wirkung.
+
+  **Vierter Nachtrag (v53): Vorgabe 0/0 für den Bezugspunkt.** Auf Wunsch des Nutzers ist der
+  CaSSAndRA-Bezugspunkt mit 0/0 vorbelegt, solange nichts gespeichert ist; ein gespeicherter Wert
+  gewinnt. Vorrang und Erreichbarkeit der bisherigen Vorbelegung aus `map.origin` stehen im
+  Abschnitt „CaSSAndRA-Exportformat" — sie bleibt erreichbar, wird aber nicht mehr persistiert.
+  Die Sperre bei geleertem Feld bleibt; dafür unterscheidet der Speicher jetzt „geleert" von „nie
+  festgelegt". **Dabei aufgefallen und behoben:** zwei leere Eingabefelder wurden von
+  `normalizeOrigin()` zu 0/0 gemacht (`Number('') === 0`), der Bezugspunkt ließ sich also gar
+  nicht zurücknehmen und die Sperre griff nie — neu ist `originFromInputs()`. Dieselbe Falle im
+  Kartenursprung (`updatePositionModeFromUi()`) ist gemeldet, aber nicht mitgeändert. Als
+  Ausgleich für die weggefallene Hürde nennt jede Export-Meldung den verwendeten Bezugspunkt im
+  Klartext. Rundlauf bei `lat0 = 0` gemessen: **5,5473 mm**, gegen die echte Python-Importfunktion
+  gegengeprüft (identisch). Vier neue ui-Fälle (160), ein neuer Block in `tests/app-core-test.js`;
+  gegen sechs simulierte Rückfälle geprüft. Hilfe und README in beiden Sprachen nachgezogen.
+
+  **Fünfter Nachtrag (v54):** dieselbe Leerfall-Falle im **Kartenursprung** behoben —
+  `updatePositionModeFromUi()` liest die beiden Felder jetzt über dasselbe `originFromInputs()`,
+  keine zweite Lösung daneben; der Helfer ist dafür zu `normalizeOrigin()` hochgezogen. Vorher
+  geprüft und gemessen, dass `positionMode: 'absolute'` mit `origin: null` sauber trägt — deshalb
+  bleibt der Modus stehen, statt heimlich auf `relative` zurückzufallen. Zwei neue ui-Fälle (162),
+  gegen drei simulierte Rückfälle geprüft. **Offen gemeldet, nicht angefasst:** `clampNumber()`
+  hat dieselbe Signatur des Problems für die acht Einstellungsfelder — siehe „Leere
+  Einstellungsfelder".
 
 - 2026-09-08: **Karten teilen (Web Share API).** Neben jedem Export-Knopf im Menü → Karten steht
   jetzt ein Teilen-Knopf; beide Wege holen ihre Datei aus **derselben** Quelle

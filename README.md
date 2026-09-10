@@ -286,10 +286,14 @@ gelöschte Website-Daten bedeuten: Karten sind weg.
   lokalen XY-Meter-System von Sunray, es sind keine Geokoordinaten.
 - **CaSSAndRA-Export** erzeugt genau die Datei, die CaSSAndRA selbst schreibt und einliest:
   Weltkoordinaten in Grad, dazu Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Er ist
-  gesperrt, solange kein **CaSSAndRA-Bezugspunkt** eingetragen ist. Trage dort denselben Wert
-  ein, der in CaSSAndRA unter den Robotereinstellungen als Breite und Länge steht – es ist keine
-  Ortsbestimmung, der Wert muss nur auf beiden Seiten derselbe sein. Er gilt für alle Karten
-  dieses Geräts und ist unabhängig vom Positionsmodus der einzelnen Karte.
+  gegen den **CaSSAndRA-Bezugspunkt** gerechnet, der bei den Export-Knöpfen steht. Voreingestellt
+  ist 0 / 0 – derselbe Wert, den CaSSAndRA ab Werk führt; wer dort nie etwas eingetragen hat,
+  braucht auch hier nichts zu ändern. Sonst trage denselben Wert ein, der in CaSSAndRA unter den
+  Robotereinstellungen als Breite und Länge steht – es ist keine Ortsbestimmung, der Wert muss nur
+  auf beiden Seiten derselbe sein. **Nach jedem Export nennt eine Meldung den verwendeten Wert**,
+  damit ein Versehen auffällt, bevor die Datei in CaSSAndRA liegt. Leerst du beide Felder, ist der
+  Export gesperrt. Der Bezugspunkt gilt für alle Karten dieses Geräts und ist unabhängig vom
+  Positionsmodus der einzelnen Karte.
 - Alle drei Formate lassen sich wieder importieren.
 
 **Erstelle regelmäßig JSON-Backups deiner wichtigen Karten.**
@@ -671,10 +675,14 @@ or cleared site data means the maps are gone.
   XY metre system – they are not geographic coordinates.
 - **CaSSAndRA export** produces exactly the file CaSSAndRA writes and reads itself: world
   coordinates in degrees, plus perimeter, dock path, search wire and exclusion areas. It stays
-  locked until a **CaSSAndRA reference point** has been entered. Enter the same value CaSSAndRA
-  shows under its robot settings as latitude and longitude – this is not a location fix, the
-  value only has to be identical on both sides. It applies to every map on this device and is
-  independent of an individual map's position mode.
+  computed against the **CaSSAndRA reference point** shown next to the export buttons. It is
+  preset to 0 / 0 – the value CaSSAndRA ships with; if nothing was ever entered there, nothing
+  needs changing here either. Otherwise enter the same value CaSSAndRA shows under its robot
+  settings as latitude and longitude – this is not a location fix, the value only has to be
+  identical on both sides. **After every export a notice states the value that was used**, so a
+  mistake shows up before the file reaches CaSSAndRA. Clearing both fields locks the export. The
+  reference point applies to every map on this device and is independent of an individual map's
+  position mode.
 - All three formats can be imported again.
 
 **Make regular JSON backups of the maps that matter to you.**

@@ -18,6 +18,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'pruneEmptyExclusions', 'localizedExclusionName', 'loadViewPreferences', 'applyHandedness',
   'insertPointAtSelection', 'capturePreconditionKey', 'insertNeighbourIndex', 'midpointBetween',
   'renderPositionMode', 'updatePositionModeFromUi', 'mapToGeoJson', 'setActiveMapById',
+  'mapOriginInUse', 'originFromInputs', 'normalizeOrigin',
   'applyDriveControlMode', 'toggleDriveControl', 'beginCursorDrive', 'cursorDriveVector', 'cursorSpeedLimits',
   'renameMapById', 'duplicateMapById', 'uniqueCopyName', 'askText', 'localizedMapName', 'MAP_NAME_MAX',
   'stopDrive', 'saveViewPreferences',
@@ -41,7 +42,9 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'mapExportFile', 'exportMapFile', 'exportCurrentMapJson', 'exportCurrentMapGeoJson',
   'shareCurrentMap', 'canShareMapFormat', 'refreshShareButtons',
   'refreshExportButtons', 'cassandraExportBlockKey', 'cassandraSkippedAreas',
-  'noticeCassandraSkippedAreas', 'exportCurrentMapCassandra', 'renderCassandraReference',
+  'noticeCassandraExport', 'exportCurrentMapCassandra', 'renderCassandraReference',
+  'loadCassandraReference', 'saveCassandraReference', 'storedCassandraReference',
+  'defaultCassandraReference', 'CASSANDRA_REFERENCE_KEY',
   'updateCassandraReferenceFromUi', 'cassandraReferenceInUse', 'mapToCassandraGeoJson',
   'MIN_USER_ZOOM', 'MAX_USER_ZOOM', 'init'];
 
@@ -2694,6 +2697,59 @@ test('Die Teilen-Knoepfe stehen bei den Export-Knoepfen und sind verdrahtet', ()
   assert.ok(source.includes('refreshShareButtons();'), 'die Verfuegbarkeit wird beim Start geprueft');
 });
 
+test('Leere Ursprungsfelder ergeben keinen Ursprung, nicht 0/0', async () => {
+  // `Number('')` ist 0, und 0 liegt im gueltigen Bereich — ohne Vorpruefung waere ein geleertes
+  // Feld die Nullinsel im Golf von Guinea, und der Nutzer koennte den Ursprung nie zuruecknehmen.
+  const { t, elements } = setup();
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:5,y:0},{x:5,y:5}];
+  elements.get('positionModeSelect').value = 'absolute';
+  elements.get('originLatInput').value = '52.26742967';
+  elements.get('originLonInput').value = '8.60921633';
+  await t.updatePositionModeFromUi();
+  assert.strictEqual(t.state.activeMap.origin.lat, 52.26742967, 'erst einmal gesetzt');
+  assert.ok(t.mapOriginInUse(t.state.activeMap), 'und in Gebrauch');
+
+  // Jetzt beide Felder leeren.
+  elements.get('originLatInput').value = '';
+  elements.get('originLonInput').value = '';
+  await t.updatePositionModeFromUi();
+  assert.strictEqual(t.state.activeMap.origin, null, 'kein Ursprung — und ausdruecklich nicht 0/0');
+  assert.strictEqual(t.state.activeMap.positionMode, 'absolute',
+    'der Modus bleibt, ein geleertes Feld ist kein Widerruf der Moduswahl');
+  assert.strictEqual(t.mapOriginInUse(t.state.activeMap), null);
+  // Die Wirkung, auf die es ankommt: der Export bleibt bei lokalen Metern.
+  const geo = t.mapToGeoJson(t.state.activeMap);
+  assert.strictEqual(geo.properties.coordinateSystem, 'sunray-local-xy-meters');
+  assert.strictEqual(geo.properties.units, 'm');
+  assert.strictEqual(geo.properties.origin, null);
+  assert.strictEqual(geo.features[0].geometry.coordinates[0][0].join(','), '0,0',
+    'lokale Meter, keine Grad in der Naehe von 0/0');
+  // Und der Zustand bleibt sichtbar: Auswahlfeld auf „absolut“, Felder offen und leer.
+  assert.strictEqual(elements.get('positionModeSelect').value, 'absolute');
+  assert.strictEqual(elements.get('originFields').hidden, false);
+  assert.strictEqual(elements.get('originLatInput').value, '');
+
+  // Ein einzeln geleertes Feld zaehlt genauso — ein halber Ursprung ist keiner.
+  elements.get('originLatInput').value = '52.26742967';
+  elements.get('originLonInput').value = '';
+  await t.updatePositionModeFromUi();
+  assert.strictEqual(t.state.activeMap.origin, null, 'auch ein halb gefuelltes Paar ergibt keinen Ursprung');
+});
+
+test('Beide Felderpaare lesen den Leerfall ueber dieselbe Funktion', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  assert.strictEqual((source.match(/function originFromInputs\(/g) || []).length, 1,
+    'originFromInputs() steht genau einmal im Code');
+  for (const fn of ['updatePositionModeFromUi', 'updateCassandraReferenceFromUi']) {
+    const body = source.slice(source.indexOf(`function ${fn}(`));
+    assert.ok(body.slice(0, body.indexOf('\n}')).includes('originFromInputs('),
+      `${fn}() liest die Felder ueber originFromInputs()`);
+  }
+  // Und keiner der beiden greift daneben direkt auf normalizeOrigin mit Feldwerten zu.
+  assert.strictEqual((source.match(/normalizeOrigin\(\{\s*lat: ui\./g) || []).length, 0,
+    'kein Eingabefeld geht mehr unmittelbar in normalizeOrigin()');
+});
+
 test('Der CaSSAndRA-Export ist gesperrt, solange ein Bezugspunkt fehlt', () => {
   const { t, elements } = setup();
   t.state.activeMap.perimeter = [{x:0,y:0},{x:5,y:0},{x:5,y:5}];
@@ -2871,14 +2927,99 @@ test('Ausgelassene Ausschlussflaechen werden beim Export benannt, der Export lae
   assert.strictEqual(file.fileName.endsWith('.json'), true);
 });
 
-test('Ohne ausgelassene Flaechen kommt keine Meldung', () => {
+test('Auch ohne ausgelassene Flaechen wird der verwendete Bezugspunkt gemeldet', () => {
+  // Seit die Vorgabe 0/0 ist, kann eine Datei ohne jedes Zutun entstehen — dann muss wenigstens
+  // im Klartext dastehen, gegen welchen Wert gerechnet wurde.
   const { t, sandbox } = setup();
   t.state.cassandraReference = { lat: 52.26742967, lon: 8.60921633 };
   t.state.activeMap.perimeter = [{x:0,y:0},{x:10,y:0},{x:10,y:10}];
   t.state.activeMap.exclusions = [{ id:'a', name:'Ausschluss 1', points:[{x:1,y:1},{x:2,y:1},{x:2,y:2}] }];
   sandbox.__lastConfirmRequest = null;
   captureDownload(sandbox, () => t.exportCurrentMapCassandra());
-  assert.strictEqual(sandbox.__lastConfirmRequest, null, 'kein Dialog ohne Anlass');
+  const request = sandbox.__lastConfirmRequest;
+  assert.ok(request, 'es kommt eine Meldung');
+  assert.strictEqual(request.singleButton, true, 'eine Meldung, keine Rueckfrage');
+  assert.ok(request.message.includes('52.26742967'), `die Breite steht im Klartext: ${request.message}`);
+  assert.ok(request.message.includes('8.60921633'), 'die Laenge ebenfalls');
+  assert.ok(/CaSSAndRA/.test(request.message), 'und der Hinweis, wo derselbe Wert stehen muss');
+  assert.ok(!request.message.includes('Ausschluss'), 'ohne Anlass steht nichts ueber Flaechen darin');
+});
+
+test('Die Vorgabe ist 0/0, solange nichts gespeichert ist', () => {
+  const { t, elements, sandbox } = setup();
+  assert.strictEqual(sandbox.localStorage.getItem(t.CASSANDRA_REFERENCE_KEY), null, 'leerer Speicher');
+  t.loadCassandraReference();
+  assert.strictEqual(`${t.state.cassandraReference.lat},${t.state.cassandraReference.lon}`, '0,0');
+  // Und die Vorgabe wirkt: der Export ist nicht gesperrt.
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:10,y:0},{x:10,y:10}];
+  t.renderCassandraReference();
+  assert.strictEqual(elements.get('cassandraLatInput').value, '0');
+  assert.strictEqual(elements.get('cassandraLonInput').value, '0');
+  assert.strictEqual(elements.get('exportCassandraBtn').disabled, false);
+  assert.ok(t.mapExportFile('cassandra'), 'es entsteht eine Datei');
+  // Die Vorgabe wird NICHT gespeichert — sonst waere die Vorbelegung aus dem Kartenursprung
+  // schon nach dem ersten Zeichnen fuer immer unerreichbar.
+  assert.strictEqual(sandbox.localStorage.getItem(t.CASSANDRA_REFERENCE_KEY), null,
+    'die blosse Vorgabe legt nichts im Speicher ab');
+});
+
+test('Ein gespeicherter Wert gewinnt gegen Vorgabe und Kartenursprung', () => {
+  const { t, elements, sandbox } = setup();
+  sandbox.localStorage.setItem(t.CASSANDRA_REFERENCE_KEY, JSON.stringify({ lat: 52.26742967, lon: 8.60921633 }));
+  // Eine absolut gefuehrte Karte mit eigenem Ursprung darf ihn nicht verdraengen.
+  t.state.activeMap.positionMode = 'absolute';
+  t.state.activeMap.origin = { lat: 40, lon: 9 };
+  t.loadCassandraReference();
+  t.renderCassandraReference();
+  assert.strictEqual(elements.get('cassandraLatInput').value, '52.26742967');
+  assert.strictEqual(elements.get('cassandraLonInput').value, '8.60921633');
+  assert.strictEqual(t.cassandraReferenceInUse().lon, 8.60921633);
+});
+
+test('Ohne Gespeichertes gewinnt der Kartenursprung gegen die 0/0-Vorgabe', () => {
+  // Die alte Vorbelegung bleibt erreichbar — aber nur, solange nichts gespeichert ist.
+  const { t, elements } = setup();
+  t.state.activeMap.positionMode = 'absolute';
+  t.state.activeMap.origin = { lat: 40.5, lon: 9.25 };
+  t.loadCassandraReference();
+  t.renderCassandraReference();
+  assert.strictEqual(elements.get('cassandraLatInput').value, '40.5');
+  assert.strictEqual(elements.get('cassandraLonInput').value, '9.25');
+  // Relativ gefuehrte Karte: kein brauchbarer Ursprung, also die Vorgabe.
+  t.state.activeMap.positionMode = 'relative';
+  t.state.activeMap.origin = null;
+  t.renderCassandraReference();
+  assert.strictEqual(elements.get('cassandraLatInput').value, '0');
+  assert.strictEqual(elements.get('cassandraLonInput').value, '0');
+});
+
+test('Ein geleertes Feld sperrt weiterhin, auch ueber das naechste Zeichnen hinweg', () => {
+  const { t, elements, sandbox } = setup();
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:10,y:0},{x:10,y:10}];
+  // Eine absolut gefuehrte Karte, damit die Vorbelegung ueberhaupt etwas anzubieten haette.
+  t.state.activeMap.positionMode = 'absolute';
+  t.state.activeMap.origin = { lat: 40, lon: 9 };
+  elements.get('cassandraLatInput').value = '';
+  elements.get('cassandraLonInput').value = '';
+  t.updateCassandraReferenceFromUi();
+  assert.strictEqual(t.cassandraReferenceInUse(), null);
+  assert.strictEqual(elements.get('exportCassandraBtn').disabled, true);
+  assert.strictEqual(t.mapExportFile('cassandra'), null, 'kein Export aus einem leeren Feld');
+  // Entscheidend: das naechste Zeichnen darf die Vorgabe NICHT wieder einsetzen.
+  t.renderCassandraReference();
+  assert.strictEqual(t.cassandraReferenceInUse(), null, 'geleert bleibt geleert');
+  assert.strictEqual(elements.get('cassandraLatInput').value, '');
+  assert.strictEqual(elements.get('exportCassandraBtn').disabled, true);
+  assert.strictEqual(t.mapExportFile('cassandra'), null);
+  // Auch ein Neustart aendert daran nichts.
+  assert.strictEqual(sandbox.localStorage.getItem(t.CASSANDRA_REFERENCE_KEY), 'null',
+    'der Speicher unterscheidet „geleert“ von „nie festgelegt“');
+  t.loadCassandraReference();
+  assert.strictEqual(t.cassandraReferenceInUse(), null);
+  // Und die Meldung erscheint dann auch nicht, weil gar nichts exportiert wird.
+  sandbox.__lastConfirmRequest = null;
+  t.exportCurrentMapCassandra();
+  assert.strictEqual(sandbox.__lastConfirmRequest, null);
 });
 
 test('Bei gesperrtem Export kommt weder Datei noch Meldung ueber ausgelassene Flaechen', () => {

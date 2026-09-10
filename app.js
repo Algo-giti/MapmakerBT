@@ -171,11 +171,12 @@ const I18N = {
     saveJson: 'Als JSON speichern', saveGeoJson: 'Als GeoJSON speichern',
     shareJson: 'Als JSON teilen', shareGeoJson: 'Als GeoJSON teilen', shareMapTitle: 'Karte teilen',
     saveCassandra: 'Für CaSSAndRA speichern', shareCassandra: 'Für CaSSAndRA teilen',
-    cassandraHelp: 'Genau die Form, die CaSSAndRA selbst schreibt und einliest: Weltkoordinaten in Grad, Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Voraussetzung ist der Bezugspunkt bei den Export-Knöpfen — derselbe Wert, der in CaSSAndRA unter den Robotereinstellungen steht.',
+    cassandraHelp: 'Genau die Form, die CaSSAndRA selbst schreibt und einliest: Weltkoordinaten in Grad, Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Gerechnet wird gegen den Bezugspunkt bei den Export-Knöpfen — voreingestellt 0 / 0, wie in CaSSAndRA ab Werk. Nach jedem Export steht der verwendete Wert in einer Meldung; er muss in CaSSAndRA derselbe sein.',
     cassandraRefLat: 'CaSSAndRA-Bezugspunkt: Breite', cassandraRefLon: 'CaSSAndRA-Bezugspunkt: Länge',
-    cassandraRefHint: 'Trage hier genau denselben Wert ein, der in CaSSAndRA unter den Robotereinstellungen als Breite und Länge steht. Es ist keine Ortsbestimmung: der Wert muss nur auf beiden Seiten derselbe sein, sonst liegt die Karte nach dem Import versetzt. Er gilt für alle Karten dieser Installation.',
+    cassandraRefHint: 'Trage hier genau denselben Wert ein, der in CaSSAndRA unter den Robotereinstellungen als Breite und Länge steht. Es ist keine Ortsbestimmung: der Wert muss nur auf beiden Seiten derselbe sein, sonst liegt die Karte nach dem Import versetzt. Voreingestellt ist 0 / 0 — das ist auch CaSSAndRAs Auslieferungswert, passt also, solange dort nichts eingetragen wurde. Er gilt für alle Karten dieser Installation.',
     cassandraBlocked: 'Der CaSSAndRA-Export ist gesperrt: {reason}',
-    cassandraSkippedTitle: 'Flächen ausgelassen',
+    cassandraExportTitle: 'CaSSAndRA-Export',
+    cassandraReferenceUsed: 'Verwendeter Bezugspunkt: Breite {lat}, Länge {lon} — derselbe Wert muss in CaSSAndRA unter den Robotereinstellungen stehen, sonst liegt die Karte dort versetzt.',
     cassandraSkippedMessage: '{count} Ausschlussfläche(n) gehen nicht mit in die CaSSAndRA-Datei: {names}. CaSSAndRA verlangt für eine Fläche mindestens 3 Punkte — eine kürzere lässt den Import dort vollständig abbrechen. Der Rest der Karte wird exportiert.',
     cassandraSkippedItem: '{label} ({count} Punkte)',
     cassandraSkippedAhead: 'Nicht mit dabei: {names}. CaSSAndRA verlangt je Fläche mindestens 3 Punkte — der Rest der Karte wird exportiert.',
@@ -393,11 +394,12 @@ const I18N = {
     saveJson: 'Save as JSON', saveGeoJson: 'Save as GeoJSON',
     shareJson: 'Share as JSON', shareGeoJson: 'Share as GeoJSON', shareMapTitle: 'Share map',
     saveCassandra: 'Save for CaSSAndRA', shareCassandra: 'Share for CaSSAndRA',
-    cassandraHelp: 'Exactly the shape CaSSAndRA writes and reads itself: world coordinates in degrees, perimeter, dock path, search wire and exclusion areas. It requires the reference point next to the export buttons — the same value CaSSAndRA shows under its robot settings.',
+    cassandraHelp: 'Exactly the shape CaSSAndRA writes and reads itself: world coordinates in degrees, perimeter, dock path, search wire and exclusion areas. It is computed against the reference point next to the export buttons — preset to 0 / 0, as CaSSAndRA ships it. After every export a notice states the value that was used; it has to match the one in CaSSAndRA.',
     cassandraRefLat: 'CaSSAndRA reference point: latitude', cassandraRefLon: 'CaSSAndRA reference point: longitude',
-    cassandraRefHint: 'Enter exactly the same value that CaSSAndRA shows under its robot settings as latitude and longitude. This is not a location fix: the value only has to be identical on both sides, otherwise the map ends up offset after the import. It applies to every map of this installation.',
+    cassandraRefHint: 'Enter exactly the same value that CaSSAndRA shows under its robot settings as latitude and longitude. This is not a location fix: the value only has to be identical on both sides, otherwise the map ends up offset after the import. It is preset to 0 / 0 — which is also CaSSAndRA’s factory value, so it fits as long as nothing was entered there. It applies to every map of this installation.',
     cassandraBlocked: 'The CaSSAndRA export is locked: {reason}',
-    cassandraSkippedTitle: 'Areas left out',
+    cassandraExportTitle: 'CaSSAndRA export',
+    cassandraReferenceUsed: 'Reference point used: latitude {lat}, longitude {lon} — the same value must be set in CaSSAndRA under its robot settings, otherwise the map ends up offset there.',
     cassandraSkippedMessage: '{count} exclusion area(s) are not part of the CaSSAndRA file: {names}. CaSSAndRA requires at least 3 points per area — a shorter one makes its import fail entirely. The rest of the map is exported.',
     cassandraSkippedItem: '{label} ({count} points)',
     cassandraSkippedAhead: 'Not included: {names}. CaSSAndRA requires at least 3 points per area — the rest of the map is exported.',
@@ -2541,8 +2543,12 @@ async function updatePositionModeFromUi() {
   const map = state.activeMap;
   if (!map || map.locked) { renderPositionMode(); return; }
   map.positionMode = ui.positionModeSelect.value === 'absolute' ? 'absolute' : 'relative';
+  // Leere Felder ergeben `null`, nicht 0/0 (siehe `originFromInputs()`). Der Modus bleibt dabei
+  // ausdruecklich `absolute`: ein geleertes Feld ist kein Widerruf der Moduswahl, und
+  // `mapOriginInUse()` traegt diesen Zustand seit jeher — es exportiert dann weiter Meter,
+  // statt falsche Grad zu erzeugen. Sichtbar bleibt er, weil die Ursprungsfelder offen stehen.
   map.origin = map.positionMode === 'absolute'
-    ? normalizeOrigin({ lat: ui.originLatInput.value, lon: ui.originLonInput.value })
+    ? originFromInputs(ui.originLatInput, ui.originLonInput)
     : null;
   renderPositionMode();
   await saveActiveMap();
@@ -3839,24 +3845,67 @@ function normalizeOrigin(origin) {
   return { lat, lon };
 }
 
+/**
+ * Zwei Eingabefelder als Ursprung — oder `null`, wenn eines davon leer ist.
+ *
+ * **Ein leeres Feld ist keine Null.** `Number('')` ist 0, und 0 liegt im gueltigen Bereich; ohne
+ * diese Vorpruefung macht `normalizeOrigin()` aus zwei leeren Feldern das Wertepaar 0/0. Der
+ * Nutzer koennte einen einmal eingetragenen Ursprung dann gar nicht mehr zuruecknehmen, und was
+ * er als „leer“ sieht, waere in Wahrheit die Nullinsel im Golf von Guinea.
+ *
+ * **Eine Stelle fuer beide Felderpaare** — CaSSAndRA-Bezugspunkt und Kartenursprung. Eine zweite
+ * Loesung daneben waere genau die Doppelung, die hier schon einmal auseinandergedriftet ist.
+ */
+function originFromInputs(latInput, lonInput) {
+  const lat = String(latInput.value ?? '').trim();
+  const lon = String(lonInput.value ?? '').trim();
+  if (!lat || !lon) return null;
+  return normalizeOrigin({ lat, lon });
+}
+
 /** Rechnet eine Karte nur dann in Grad, wenn beides stimmt: Modus **und** gültiger Ursprung. */
 function mapOriginInUse(map) {
   return map?.positionMode === 'absolute' ? normalizeOrigin(map.origin) : null;
 }
 
+// --- CaSSAndRA-Bezugspunkt -------------------------------------------------
+// Der Wert, gegen den CaSSAndRA rechnet (dort `rovercfg.lat`/`rovercfg.lon`, von Hand in den
+// Robotereinstellungen eingetragen). Er gehoert zur **Installation**, nicht zur Karte: eine
+// relativ gefuehrte Karte ist fuer dieses Format genauso brauchbar wie eine absolute, und die
+// Gegenseite fuehrt ohnehin nur einen einzigen Wert. Deshalb ausdruecklich **nicht** `map.origin`.
+
 /**
- * Der Bezugspunkt, gegen den CaSSAndRA rechnet (dort `rovercfg.lat`/`rovercfg.lon`, von Hand in
- * den Robotereinstellungen eingetragen). Er gehoert zur **Installation**, nicht zur Karte: eine
- * relativ gefuehrte Karte ist fuer dieses Format genauso brauchbar wie eine absolute, und die
- * Gegenseite fuehrt ohnehin nur einen einzigen Wert. Deshalb ausdruecklich **nicht** `map.origin`.
+ * Vorgabe, solange **nichts** gespeichert ist: 0/0. Das ist derselbe Auslieferungswert, den
+ * CaSSAndRA selbst fuehrt (cfgdata.py:195-196) — wer dort nie etwas eingetragen hat, findet 0/0
+ * vor, und dann stimmen beide Seiten ueberein. Der Rundlauf ist bei `lat0 = 0` exakt wie
+ * ueberall sonst (`cos(0) = 1`), nur die Karte liegt geografisch im Golf von Guinea.
+ * Als Funktion, damit nie ein gemeinsam benutztes Objekt herumgereicht wird.
  */
-function loadCassandraReference() {
+function defaultCassandraReference() {
+  return { lat: 0, lon: 0 };
+}
+
+/**
+ * Der Speicher kennt **drei** Zustaende, und die Unterscheidung traegt die ganze Vorrangregel:
+ * - Schluessel fehlt        → es wurde noch nie etwas festgelegt  (`stored: false`)
+ * - Schluessel enthaelt `null` → der Nutzer hat das Feld ausdruecklich geleert (`stored: true`, Wert null)
+ * - Schluessel enthaelt ein Paar → dieser Wert gilt
+ * Ohne den mittleren Fall wuerde ein geleertes Feld beim naechsten Zeichnen wieder mit der
+ * Vorgabe gefuellt, und die Sperre haette keinen Bestand.
+ */
+function storedCassandraReference() {
   try {
-    const saved = JSON.parse(localStorage.getItem(CASSANDRA_REFERENCE_KEY) || 'null');
-    state.cassandraReference = normalizeOrigin(saved);
+    const raw = localStorage.getItem(CASSANDRA_REFERENCE_KEY);
+    if (raw === null || raw === undefined || raw === '') return { stored: false, value: null };
+    return { stored: true, value: normalizeOrigin(JSON.parse(raw)) };
   } catch (_) {
-    state.cassandraReference = null;
+    return { stored: false, value: null };
   }
+}
+
+function loadCassandraReference() {
+  const saved = storedCassandraReference();
+  state.cassandraReference = saved.stored ? saved.value : defaultCassandraReference();
 }
 
 function saveCassandraReference() {
@@ -3897,26 +3946,32 @@ function cassandraExportBlockKey(map) {
 
 /**
  * Vorbelegung aus der aktiven Karte, aber nur wenn die wirklich einen brauchbaren Ursprung fuehrt.
- * Ein leeres Feld ist die ehrlichere Vorgabe als 0/0 — das ist in CaSSAndRA zwar der Auslieferungs-
- * wert (cfgdata.py:195-196), aber eben keine Angabe, sondern das Fehlen einer.
+ * Sie steht **vor** der 0/0-Vorgabe: ein echter Ursprung ist die bessere Vermutung als die
+ * Nullinsel. Erreichbar ist sie nur, solange nichts gespeichert ist (siehe
+ * `storedCassandraReference()`) — sobald der Nutzer das Feld einmal angefasst hat, gilt sein Wert.
  */
 function suggestedCassandraReference() {
   return mapOriginInUse(state.activeMap);
 }
 
 /**
- * Die beiden Felder folgen dem gemerkten Wert, nicht der Karte. Steht noch gar nichts fest und
- * die aktive Karte fuehrt einen brauchbaren Ursprung, wird der **uebernommen** statt nur
- * angezeigt — eine Vorbelegung, die nicht gilt, waere eine Falle: das Feld saehe gefuellt aus,
- * die Knoepfe blieben aber grau. Wer nie einen Ursprung gepflegt hat, sieht leere Felder.
+ * Die beiden Felder folgen dem gemerkten Wert, nicht der Karte. **Vorrang, von oben nach unten:**
+ * 1. ein gespeichertes Wertepaar — es gewinnt immer;
+ * 2. ein ausdruecklich geleertes Feld (im Speicher steht `null`) — es bleibt leer, und der
+ *    Export bleibt gesperrt; genau dafuer unterscheidet `storedCassandraReference()` „geleert“
+ *    von „nie festgelegt“;
+ * 3. nichts gespeichert → der Ursprung der aktiven Karte, falls sie absolut gefuehrt wird und
+ *    einen gueltigen hat, sonst die Vorgabe 0/0.
+ *
+ * Fall 3 wird **nicht** gespeichert. Wuerde er es, waere schon nach dem ersten Zeichnen etwas
+ * gespeichert und die Vorbelegung aus dem Kartenursprung damit fuer immer unerreichbar —
+ * inklusive des Falls, dass der Nutzer erst spaeter eine absolut gefuehrte Karte anlegt.
+ * So folgt die Vorbelegung der aktiven Karte, bis der Nutzer selbst etwas eintraegt.
  */
 function renderCassandraReference() {
-  if (!cassandraReferenceInUse()) {
-    const suggestion = suggestedCassandraReference();
-    if (suggestion) {
-      state.cassandraReference = suggestion;
-      saveCassandraReference();
-    }
+  const saved = storedCassandraReference();
+  if (!saved.stored) {
+    state.cassandraReference = suggestedCassandraReference() || defaultCassandraReference();
   }
   const value = cassandraReferenceInUse();
   ui.cassandraLatInput.value = value ? String(value.lat) : '';
@@ -3925,10 +3980,7 @@ function renderCassandraReference() {
 }
 
 async function updateCassandraReferenceFromUi() {
-  state.cassandraReference = normalizeOrigin({
-    lat: ui.cassandraLatInput.value,
-    lon: ui.cassandraLonInput.value,
-  });
+  state.cassandraReference = originFromInputs(ui.cassandraLatInput, ui.cassandraLonInput);
   saveCassandraReference();
   refreshExportButtons();
 }
@@ -4204,23 +4256,33 @@ function cassandraSkippedAreas(map) {
 }
 
 /**
- * Einmal je Exportversuch: sagt, was nicht mit hinausgeht. Der Export laeuft danach weiter — die
- * ausgelassene Flaeche ist kein Fehler der Karte, sondern eine Grenze des Zielformats.
- * Aufgerufen von beiden Wegen (Speichern und Teilen), damit keiner still bleibt.
+ * Einmal je Exportversuch, **eine** Meldung: sie nennt zuerst den tatsaechlich verwendeten
+ * Bezugspunkt im Klartext und haengt an, was nicht mit hinausgeht.
+ *
+ * Warum der Bezugspunkt unbedingt genannt wird: seit die Vorgabe 0/0 ist, kann eine Datei ohne
+ * jedes Zutun des Nutzers entstehen — und 0/0 ist nur dann richtig, wenn auch in CaSSAndRA 0/0
+ * steht. Weicht es ab, liegt die Karte dort versetzt, **ohne** dass irgendeine Seite einen
+ * Fehler zeigt. Der Klartext ist der Ausgleich fuer die weggefallene Huerde.
+ *
+ * Die ausgelassene Flaeche ist kein Fehler der Karte, sondern eine Grenze des Zielformats — der
+ * Export laeuft danach weiter. Aufgerufen von beiden Wegen (Speichern und Teilen), damit keiner
+ * still bleibt, und ohne zusaetzliche Nutzergeste.
  */
-function noticeCassandraSkippedAreas(map) {
+function noticeCassandraExport(map) {
+  const reference = cassandraReferenceInUse();
+  if (!reference) return;
+  const parts = [tr('cassandraReferenceUsed', { lat: String(reference.lat), lon: String(reference.lon) })];
   const skipped = cassandraSkippedAreas(map);
-  if (!skipped.length) return;
-  showNotice({
-    title: tr('cassandraSkippedTitle'),
-    message: tr('cassandraSkippedMessage', { count: skipped.length, names: skipped.join(', ') }),
-  });
+  if (skipped.length) {
+    parts.push(tr('cassandraSkippedMessage', { count: skipped.length, names: skipped.join(', ') }));
+  }
+  showNotice({ title: tr('cassandraExportTitle'), message: parts.join(' ') });
 }
 
 function exportCurrentMapCassandra() {
   // Erst handeln, dann melden. Andersherum liefe die Meldung dem Teilen in die Quere: ein Dialog
   // dazwischen verbraucht die Nutzergeste, und `navigator.share()` verlangt eine frische.
-  if (exportMapFile('cassandra')) noticeCassandraSkippedAreas(state.activeMap);
+  if (exportMapFile('cassandra')) noticeCassandraExport(state.activeMap);
 }
 
 function exportCurrentMapGeoJson() { exportMapFile('geojson'); }
@@ -5107,7 +5169,7 @@ function bindEvents() {
   ui.exportCassandraBtn.addEventListener('click', exportCurrentMapCassandra);
   ui.shareCassandraBtn.addEventListener('click', () => {
     shareCurrentMap('cassandra')
-      .then((shared) => { if (shared) noticeCassandraSkippedAreas(state.activeMap); })
+      .then((shared) => { if (shared) noticeCassandraExport(state.activeMap); })
       .catch(reportError);
   });
   // Bei jeder Aenderung des Wertepaars nachfuehren, nicht erst beim naechsten Menueoeffnen.

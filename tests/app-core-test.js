@@ -636,4 +636,47 @@ assert.ok(geoWithWaypoints.features.some((f)=>f.properties.role==='waypoints' &&
   t.state.activeMap = null;
 }
 
+// --- Rundlauf bei lat0 = 0 (die neue Vorgabe) ------------------------------
+// Die Vorgabe fuer den CaSSAndRA-Bezugspunkt ist 0/0. Geografisch ist das die Nullinsel im Golf
+// von Guinea, rechnerisch aber der **unguenstigste** Fall der Naeherung: `cos(0) = 1`, der Grad
+// Laenge ist dort am laengsten, und der Rundungsfehler in Ostrichtung damit am groessten. Genau
+// deshalb wird hier gemessen und nicht geschaetzt.
+{
+  const coordsAbsToRel = (lon, lat, ref) => ({
+    x: (lon - ref.lon) * (111111 * Math.cos((ref.lat * Math.PI) / 180)),
+    y: (lat - ref.lat) * 111111,
+  });
+  const reference = { lat: 0, lon: 0 };
+
+  const m = t.makeMap('Nullinsel');
+  m.perimeter = [{x:0,y:0},{x:12.5,y:0},{x:12.5,y:8.25},{x:6.125,y:11.4},{x:0,y:8.25}];
+  m.exclusions.push({ id:'ex1', name:'Ausschluss 1', closed:true,
+    points:[{x:3,y:3},{x:4.5,y:3},{x:4.5,y:4.5},{x:3,y:4.5}] });
+  m.dockPoints = [{x:0,y:0},{x:-1.5,y:-2}];
+  m.waypoints = [{x:2,y:2},{x:5,y:5},{x:8,y:2}];
+
+  const doc = t.mapToCassandraGeoJson(m, reference);
+  assert.ok(doc, 'bei 0/0 entsteht eine Datei — 0 ist ein gueltiger Bezugspunkt, kein fehlender');
+
+  const worst = (points, coords) => points.reduce((max, point, index) => {
+    const back = coordsAbsToRel(coords[index][0], coords[index][1], reference);
+    return Math.max(max, Math.hypot(back.x - point.x, back.y - point.y));
+  }, 0);
+
+  const perimeterMm = worst(m.perimeter, doc.features[0].geometry.coordinates[0]) * 1000;
+  const exclusionMm = worst(m.exclusions[0].points, doc.features[3].geometry.coordinates[0]) * 1000;
+  const dockMm = worst(m.dockPoints, doc.features[1].geometry.coordinates) * 1000;
+  const wireMm = worst(m.waypoints, doc.features[2].geometry.coordinates) * 1000;
+  const largestMm = Math.max(perimeterMm, exclusionMm, dockMm, wireMm);
+
+  assert.ok(largestMm < 10, `Rundlauf bei lat0=0 ueber 1 cm: ${largestMm.toFixed(4)} mm`);
+  // Theoretische Obergrenze am Aequator: 0,5e-7 Grad je Achse, also 5,56 mm je Achse und
+  // 7,86 mm als Vektor. Naeher darf kein Punkt liegen, sonst stimmt die Umrechnung nicht.
+  assert.ok(largestMm < 7.9, `ueber der theoretischen Grenze am Aequator: ${largestMm.toFixed(4)} mm`);
+
+  console.log(`  CaSSAndRA-Rundlauf bei lat0=0: groesste Abweichung ${largestMm.toFixed(4)} mm ` +
+    `(Perimeter ${perimeterMm.toFixed(4)}, Ausschluss ${exclusionMm.toFixed(4)}, ` +
+    `Dock ${dockMm.toFixed(4)}, Suchdraht ${wireMm.toFixed(4)})`);
+}
+
 console.log('app core tests: OK');
