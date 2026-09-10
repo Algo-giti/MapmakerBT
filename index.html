@@ -238,7 +238,11 @@
 <button class="secondary" data-i18n="shareCassandra" hidden="" id="shareCassandraBtn" type="button">Für CaSSAndRA teilen</button>
 </div>
 <small class="export-hint" data-i18n="exportHint">JSON enthält das vollständige Mapper-Backup. GeoJSON speichert Perimeter/Ausschlüsse/Dock als Geometrien mit lokalen Sunray-X/Y-Koordinaten in Metern. Die CaSSAndRA-Datei ist dagegen genau so aufgebaut, wie CaSSAndRA sie selbst schreibt, und braucht deshalb den Bezugspunkt unten.</small>
-<small class="export-hint" data-i18n="cassandraMissingHint" hidden="" id="cassandraMissingHint">Der CaSSAndRA-Export ist gesperrt, solange unten kein Bezugspunkt eingetragen ist.</small>
+<!-- Text kommt aus refreshExportButtons(): er nennt den jeweiligen Sperrgrund, deshalb kein festes data-i18n. -->
+<small class="export-hint" hidden="" id="cassandraMissingHint"></small>
+<!-- Ebenfalls aus refreshExportButtons(): nennt die Flaechen, die dieses Format auslaesst,
+     schon bevor die Datei erzeugt wird. Die Meldung nach dem Export bleibt zusaetzlich. -->
+<small class="export-hint" hidden="" id="cassandraSkippedHint"></small>
 <div class="view-divider"></div>
 <label class="field compact"><span data-i18n="cassandraRefLat">CaSSAndRA-Bezugspunkt: Breite</span><div class="unit-input"><input id="cassandraLatInput" inputmode="decimal" max="90" min="-90" step="0.0000001" type="number"/><span>°</span></div></label>
 <label class="field compact"><span data-i18n="cassandraRefLon">CaSSAndRA-Bezugspunkt: Länge</span><div class="unit-input"><input id="cassandraLonInput" inputmode="decimal" max="180" min="-180" step="0.0000001" type="number"/><span>°</span></div></label>

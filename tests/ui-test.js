@@ -40,6 +40,9 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'AUTO_CAPTURE_DISTANCE_MIN_CM', 'AUTO_CAPTURE_DISTANCE_MAX_CM', 'BLE_POLL_INTERVAL_MS',
   'mapExportFile', 'exportMapFile', 'exportCurrentMapJson', 'exportCurrentMapGeoJson',
   'shareCurrentMap', 'canShareMapFormat', 'refreshShareButtons',
+  'refreshExportButtons', 'cassandraExportBlockKey', 'cassandraSkippedAreas',
+  'noticeCassandraSkippedAreas', 'exportCurrentMapCassandra', 'renderCassandraReference',
+  'updateCassandraReferenceFromUi', 'cassandraReferenceInUse', 'mapToCassandraGeoJson',
   'MIN_USER_ZOOM', 'MAX_USER_ZOOM', 'init'];
 
 /** Minimaler IndexedDB-Ersatz, damit saveActiveMap() im Test durchlaeuft. */
@@ -2689,6 +2692,308 @@ test('Die Teilen-Knoepfe stehen bei den Export-Knoepfen und sind verdrahtet', ()
   assert.ok(/ui\.shareJsonBtn\.addEventListener\('click'/.test(source), 'JSON-Teilen ist verdrahtet');
   assert.ok(/ui\.shareGeoJsonBtn\.addEventListener\('click'/.test(source), 'GeoJSON-Teilen ist verdrahtet');
   assert.ok(source.includes('refreshShareButtons();'), 'die Verfuegbarkeit wird beim Start geprueft');
+});
+
+test('Der CaSSAndRA-Export ist gesperrt, solange ein Bezugspunkt fehlt', () => {
+  const { t, elements } = setup();
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:5,y:0},{x:5,y:5}];
+  t.state.cassandraReference = null;
+  t.refreshExportButtons();
+  assert.strictEqual(elements.get('exportCassandraBtn').disabled, true, 'ausgegraut');
+  assert.strictEqual(elements.get('exportCassandraBtn').hidden, false,
+    'ausgegraut, NICHT ausgeblendet — der Nutzer soll sehen, dass es das Format gibt');
+  assert.strictEqual(elements.get('shareCassandraBtn').disabled, true);
+  const hint = elements.get('cassandraMissingHint');
+  assert.strictEqual(hint.hidden, false, 'der Hinweis steht dabei');
+  assert.ok(hint.textContent.includes('Bezugspunkt'), `der Hinweis nennt den Grund: ${hint.textContent}`);
+  // Und es entsteht auch keine Datei — kein Weg fuehrt an der Sperre vorbei.
+  assert.strictEqual(t.mapExportFile('cassandra'), null);
+  assert.ok(t.mapExportFile('json'), 'die anderen Formate bleiben unberuehrt');
+  assert.ok(t.mapExportFile('geojson'));
+});
+
+test('Die Sperre haengt nicht am Positionsmodus der Karte', () => {
+  // Eine relativ gefuehrte Karte ist fuer dieses Format vollkommen brauchbar.
+  const { t, elements } = setup();
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:5,y:0},{x:5,y:5}];
+  t.state.activeMap.positionMode = 'relative';
+  t.state.activeMap.origin = null;
+  t.state.cassandraReference = { lat: 52.26742967, lon: 8.60921633 };
+  t.refreshExportButtons();
+  assert.strictEqual(elements.get('exportCassandraBtn').disabled, false);
+  assert.strictEqual(elements.get('cassandraMissingHint').hidden, true);
+  assert.ok(t.mapExportFile('cassandra'), 'die Datei entsteht trotz relativer Karte');
+});
+
+test('Ein Perimeter unter drei Punkten sperrt denselben Weg, mit dem Wortlaut der Kartenpruefung', () => {
+  const { t, elements } = setup();
+  t.state.cassandraReference = { lat: 52.26742967, lon: 8.60921633 };
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:5,y:0}];
+  t.refreshExportButtons();
+  assert.strictEqual(t.cassandraExportBlockKey(t.state.activeMap), 'checkPerimeterTooFew',
+    'derselbe Schluessel, den auch die Kartenpruefung meldet');
+  assert.strictEqual(elements.get('exportCassandraBtn').disabled, true);
+  assert.strictEqual(elements.get('shareCassandraBtn').disabled, true);
+  const hint = elements.get('cassandraMissingHint');
+  assert.strictEqual(hint.hidden, false);
+  assert.ok(hint.textContent.includes('weniger als 3 Punkte'),
+    `der Hinweis uebernimmt den Wortlaut der Kartenpruefung: ${hint.textContent}`);
+  assert.strictEqual(t.mapExportFile('cassandra'), null, 'und es entsteht keine Datei');
+  // Dieselbe Lage meldet die Kartenpruefung, ohne dass dafuer zweimal gezaehlt wird.
+  t.validateActiveMap();
+  assert.ok(t.state.validationResult.issues.some((i) => i.key === 'checkPerimeterTooFew'));
+  // Behoben: die Sperre faellt.
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:5,y:0},{x:5,y:5}];
+  t.refreshExportButtons();
+  assert.strictEqual(elements.get('exportCassandraBtn').disabled, false);
+  assert.strictEqual(elements.get('cassandraMissingHint').hidden, true);
+});
+
+test('Es gibt genau einen Sperrmechanismus, nicht zwei nebeneinander', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  // Knopfzustand und Dateierzeugung fragen dieselbe Funktion.
+  const refresh = source.slice(source.indexOf('function refreshExportButtons'));
+  assert.ok(refresh.slice(0, refresh.indexOf('\n}')).includes('cassandraExportBlockKey('),
+    'refreshExportButtons() fragt den gemeinsamen Sperrgrund');
+  const exportFile = source.slice(source.indexOf('function mapExportFile'));
+  assert.ok(exportFile.slice(0, exportFile.indexOf('\n}')).includes('spec.blockKey('),
+    'mapExportFile() fragt denselben Weg');
+  // Und die Bedingung „taugt als Flaeche“ ist genau eine Zaehlung.
+  assert.strictEqual((source.match(/perimeter\.length\s*<\s*3/g) || []).length, 0,
+    'keine zweite, handgeschriebene Zaehlung des Perimeters neben hasUsablePolygon()');
+});
+
+// Wo im Code darf ueberhaupt noch von Hand gegen 3 gezaehlt werden?
+//
+// Abgrenzung: eine Textsuche kann die Absicht nicht lesen — `points.length >= 3` steht im Code
+// fuer mehrere verschiedene Fragen. Deshalb ist die Grenze **funktionsweise** gezogen und hier
+// ausgeschrieben: jede Funktion, die von Hand zaehlen darf, steht mit Grund und erwarteter
+// Anzahl in dieser Liste. Ein Vorkommen in einer nicht gelisteten Funktion schlaegt an, und ein
+// zusaetzliches in einer gelisteten ebenfalls — beides erzwingt eine bewusste Entscheidung,
+// statt eine zweite Zaehlung durchrutschen zu lassen.
+//
+// Nicht gelistet und damit verboten sind ausdruecklich die Stellen, die dieselbe Frage stellen
+// wie `hasUsablePolygon()` — „taugt diese Kontur als Flaeche, darf sie gemeldet oder exportiert
+// werden“: `validateActiveMap()` (zu wenige Punkte), `closePerimeter()`,
+// `cassandraExportBlockKey()`, `cassandraSkippedAreas()` und `mapToCassandraGeoJson()`.
+const HANDZAEHLUNG_ERLAUBT = {
+  hasUsablePolygon: { anzahl: 1, grund: 'die Definition selbst' },
+  // (1) Geometrie-Primitive: sichern ihre eigene Rechnung auf einem lokalen Parameter ab und
+  //     kennen weder Karte noch Kontur.
+  pointInPolygon: { anzahl: 1, grund: 'Primitiv: unter 3 Ecken gibt es kein Innen' },
+  polygonsIntersect: { anzahl: 2, grund: 'Primitiv: zwei Polygone, je eine Zaehlung' },
+  polygonArea: { anzahl: 1, grund: 'Primitiv: unter 3 Ecken ist die Flaeche 0' },
+  pathLength: { anzahl: 1, grund: 'Primitiv: zaehlt die Schlussstrecke mit' },
+  pathSpacingIssues: { anzahl: 1, grund: 'Primitiv: Anzahl der zu pruefenden Strecken' },
+  // (2) Zeichnen und Geometrie bauen: entscheiden eine Form, nicht die Tauglichkeit.
+  drawThumbnailPath: { anzahl: 1, grund: 'Darstellung: Polygon oder Polylinie' },
+  drawPolyline: { anzahl: 1, grund: 'Darstellung: Polygon oder Polylinie' },
+  nearestBoundaryPoint: { anzahl: 1, grund: 'Darstellung: Anzahl der Kanten' },
+  closeRing: { anzahl: 1, grund: 'Geometrie: ab wann ein Ring geschlossen wird' },
+  geometryForArea: { anzahl: 1, grund: 'Geometrie: Polygon, LineString oder Point' },
+  // (3) „Ist die Kontur offen?“ — steht immer zusammen mit `closed`/`perimeterClosed` und ist
+  //     damit eine andere Frage als „taugt sie als Flaeche“.
+  openContours: { anzahl: 2, grund: 'offene Konturen: Perimeter und Flaechen' },
+  canStartExtension: { anzahl: 1, grund: 'offene Kontur: erweitern nur bei geschlossener' },
+  finishExtension: { anzahl: 1, grund: 'offene Kontur: schliessen nach dem Erweitern' },
+  canCloseAndStartNew: { anzahl: 1, grund: 'offene Kontur: schliessen und neu beginnen' },
+  // (4) Andere Merkmale derselben Punktliste.
+  mapToGeoJson: { anzahl: 2, grund: 'Feld `completePolygon` unseres eigenen Formats' },
+  handleMapTap: { anzahl: 1, grund: 'Trefferflaeche: nur echte Flaechen sind antippbar' },
+  validateActiveMap: { anzahl: 6, grund: 'offene Konturen (2), Innenlage (2) und Ueberlappung (2)' },
+};
+
+test('Es gibt keine zweite handgeschriebene Zaehlung von Flaechen neben hasUsablePolygon()', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  const declaration = /^\s*(?:async\s+)?function\s+([A-Za-z0-9_]+)\s*\(/;
+  const gefunden = new Map();
+  const verstoesse = [];
+  let aktuell = '(Dateiebene)';
+  source.split('\n').forEach((line, index) => {
+    const decl = line.match(declaration);
+    if (decl) aktuell = decl[1];
+    const treffer = line.match(/\.length\s*(?:>=|<)\s*3\b/g);
+    if (!treffer) return;
+    gefunden.set(aktuell, (gefunden.get(aktuell) || 0) + treffer.length);
+    if (!HANDZAEHLUNG_ERLAUBT[aktuell]) {
+      verstoesse.push(`app.js:${index + 1} in ${aktuell}() — ${line.trim()}`);
+    }
+  });
+
+  assert.strictEqual(verstoesse.length, 0,
+    `von Hand gegen 3 gezaehlt, wo hasUsablePolygon() zustaendig ist:\n     ${verstoesse.join('\n     ')}`);
+
+  for (const [name, { anzahl, grund }] of Object.entries(HANDZAEHLUNG_ERLAUBT)) {
+    assert.strictEqual(gefunden.get(name) || 0, anzahl,
+      `${name}() zaehlt ${gefunden.get(name) || 0} mal von Hand, erlaubt sind ${anzahl} (${grund}) — `
+      + 'entweder gehoert die neue Stelle nach hasUsablePolygon(), oder die Liste im Test braucht '
+      + 'einen begruendeten Eintrag');
+  }
+
+  // Die Anzahl allein liesse sich aushebeln, indem jemand eine erlaubte Zaehlung durch eine
+  // verbotene ersetzt. Fuer die beiden Meldungen in der Kartenpruefung wird deshalb zusaetzlich
+  // die Zeile selbst geprueft.
+  for (const key of ['checkPerimeterTooFew', 'checkAreaTooFew']) {
+    const zeile = source.split('\n').find((l) => l.includes(`key:'${key}'`) || l.includes(`key: '${key}'`));
+    assert.ok(zeile && zeile.includes('hasUsablePolygon('),
+      `die Meldung ${key} entsteht aus hasUsablePolygon(), nicht aus einer eigenen Zaehlung`);
+  }
+
+  // Die Frage selbst wird an genau den Stellen gestellt, die sie stellen sollen.
+  for (const fn of ['validateActiveMap', 'closePerimeter', 'cassandraExportBlockKey',
+    'cassandraSkippedAreas', 'mapToCassandraGeoJson']) {
+    const koerper = source.slice(source.indexOf(`function ${fn}(`));
+    assert.ok(koerper.slice(0, koerper.indexOf('\n}')).includes('hasUsablePolygon('),
+      `${fn}() fragt hasUsablePolygon(), statt selbst zu zaehlen`);
+  }
+});
+
+test('Ausgelassene Ausschlussflaechen werden beim Export benannt, der Export laeuft weiter', () => {
+  const { t, sandbox, elements } = setup();
+  t.state.cassandraReference = { lat: 52.26742967, lon: 8.60921633 };
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:10,y:0},{x:10,y:10}];
+  t.state.activeMap.exclusions = [
+    { id:'a', name:'Ausschluss 1', points:[{x:1,y:1},{x:2,y:1},{x:2,y:2}] },
+    { id:'b', name:'Ausschluss 2', points:[{x:4,y:1},{x:4.5,y:1}] },
+  ];
+  sandbox.__lastConfirmRequest = null;
+  const file = captureDownload(sandbox, () => t.exportCurrentMapCassandra());
+  const request = sandbox.__lastConfirmRequest;
+  assert.ok(request, 'es kommt eine Meldung — stilles Weglassen waere hier nicht zulaessig');
+  assert.strictEqual(request.singleButton, true, 'eine Meldung, keine Rueckfrage');
+  assert.ok(request.message.includes('Ausschluss 2'), `die Meldung nennt die Flaeche: ${request.message}`);
+  assert.ok(request.message.includes('2 Punkte'), 'und wie viele Punkte verloren gehen');
+  assert.ok(/\b1\b/.test(request.message), 'und die Anzahl der ausgelassenen Flaechen');
+  assert.ok(!request.message.includes('Ausschluss 1'), 'die uebernommene Flaeche wird nicht genannt');
+  // Der Export selbst laeuft weiter, und was gemeldet wurde, fehlt wirklich.
+  const doc = JSON.parse(file.text);
+  assert.strictEqual(doc.features.filter((f) => f.properties.name === 'exclusion').length, 1);
+  assert.strictEqual(file.fileName.endsWith('.json'), true);
+});
+
+test('Ohne ausgelassene Flaechen kommt keine Meldung', () => {
+  const { t, sandbox } = setup();
+  t.state.cassandraReference = { lat: 52.26742967, lon: 8.60921633 };
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:10,y:0},{x:10,y:10}];
+  t.state.activeMap.exclusions = [{ id:'a', name:'Ausschluss 1', points:[{x:1,y:1},{x:2,y:1},{x:2,y:2}] }];
+  sandbox.__lastConfirmRequest = null;
+  captureDownload(sandbox, () => t.exportCurrentMapCassandra());
+  assert.strictEqual(sandbox.__lastConfirmRequest, null, 'kein Dialog ohne Anlass');
+});
+
+test('Bei gesperrtem Export kommt weder Datei noch Meldung ueber ausgelassene Flaechen', () => {
+  const { t, sandbox } = setup();
+  t.state.cassandraReference = null;
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:10,y:0},{x:10,y:10}];
+  t.state.activeMap.exclusions = [{ id:'b', name:'Ausschluss 1', points:[{x:4,y:1},{x:4.5,y:1}] }];
+  sandbox.__lastConfirmRequest = null;
+  const before = sandbox.document.body.children.length;
+  t.exportCurrentMapCassandra();
+  assert.strictEqual(sandbox.document.body.children.length, before, 'kein Download-Anker');
+  assert.strictEqual(sandbox.__lastConfirmRequest, null,
+    'und keine Meldung ueber Flaechen, die ohnehin nicht exportiert wurden');
+});
+
+test('Der Bezugspunkt wird gemerkt und ist nicht der Kartenursprung', () => {
+  const { t, elements, sandbox } = setup();
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:5,y:0},{x:5,y:5}];
+  t.state.cassandraReference = null;
+  elements.get('cassandraLatInput').value = '52.26742967';
+  elements.get('cassandraLonInput').value = '8.60921633';
+  t.updateCassandraReferenceFromUi();
+  assert.strictEqual(t.cassandraReferenceInUse().lat, 52.26742967);
+  assert.strictEqual(t.state.activeMap.origin, null, 'die Karte bleibt unangetastet');
+  assert.strictEqual(t.state.activeMap.positionMode, 'relative');
+  // Ueberdauert einen Neustart, und der Schluessel traegt ein eigenes Praefix: alle
+  // GitHub-Pages-Projekte teilen sich einen Origin und damit einen localStorage.
+  const stored = sandbox.localStorage.getItem('mapcreator-ardumower-cassandra-reference-v1');
+  assert.strictEqual(JSON.parse(stored).lon, 8.60921633);
+  // Unsinn wird abgelehnt, statt eine versetzte Karte zu erzeugen.
+  elements.get('cassandraLatInput').value = '95';
+  t.updateCassandraReferenceFromUi();
+  assert.strictEqual(t.cassandraReferenceInUse(), null);
+  assert.strictEqual(elements.get('exportCassandraBtn').disabled, true);
+});
+
+test('Ausgelassene Flaechen stehen schon vor dem Export neben den Knoepfen', () => {
+  const { t, elements } = setup();
+  t.state.cassandraReference = { lat: 52.26742967, lon: 8.60921633 };
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:10,y:0},{x:10,y:10}];
+  t.state.activeMap.exclusions = [{ id:'a', name:'Ausschluss 1', points:[{x:1,y:1},{x:2,y:1},{x:2,y:2}] }];
+  t.refreshExportButtons();
+  const hint = elements.get('cassandraSkippedHint');
+  assert.strictEqual(hint.hidden, true, 'ohne Anlass steht da nichts');
+
+  t.state.activeMap.exclusions.push({ id:'b', name:'Ausschluss 2', points:[{x:4,y:1},{x:4.5,y:1}] });
+  t.refreshExportButtons();
+  assert.strictEqual(hint.hidden, false, 'die Auslassung ist sichtbar, bevor die Datei entsteht');
+  assert.ok(hint.textContent.includes('Ausschluss 2'), `der Hinweis nennt die Flaeche: ${hint.textContent}`);
+  assert.ok(hint.textContent.includes('2 Punkte'), 'und wie viele Punkte betroffen sind');
+  assert.ok(!hint.textContent.includes('Ausschluss 1'), 'die uebernommene Flaeche steht nicht darin');
+
+  // Behoben: der Hinweis verschwindet.
+  t.state.activeMap.exclusions[1].points.push({x:4.5,y:1.5});
+  t.refreshExportButtons();
+  assert.strictEqual(hint.hidden, true);
+  assert.strictEqual(hint.textContent, '');
+});
+
+test('Der Hinweis vor dem Export und die Meldung danach sagen dasselbe', () => {
+  const { t, elements, sandbox } = setup();
+  t.state.cassandraReference = { lat: 52.26742967, lon: 8.60921633 };
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:10,y:0},{x:10,y:10}];
+  t.state.activeMap.exclusions = [
+    { id:'a', name:'Ausschluss 1', points:[{x:1,y:1},{x:2,y:1},{x:2,y:2}] },
+    { id:'b', name:'Ausschluss 2', points:[{x:4,y:1},{x:4.5,y:1}] },
+  ];
+  t.refreshExportButtons();
+  const vorher = elements.get('cassandraSkippedHint').textContent;
+  sandbox.__lastConfirmRequest = null;
+  captureDownload(sandbox, () => t.exportCurrentMapCassandra());
+  const nachher = sandbox.__lastConfirmRequest.message;
+  // Beide speisen sich aus cassandraSkippedAreas(), also muss dieselbe Aufstellung darin stehen.
+  for (const teil of t.cassandraSkippedAreas(t.state.activeMap)) {
+    assert.ok(vorher.includes(teil), `der Hinweis vorher nennt ${teil}`);
+    assert.ok(nachher.includes(teil), `die Meldung nachher nennt ${teil}`);
+  }
+});
+
+test('Beim Oeffnen der Menueseite werden die Export-Knoepfe nachgefuehrt', () => {
+  // Dort stehen sie, und die Geometrie kann sich seit dem letzten renderMapControls() geaendert
+  // haben — sonst zeigte die Seite einen Zustand von vor der letzten Bearbeitung.
+  const { t, elements } = setup();
+  t.state.cassandraReference = { lat: 52.26742967, lon: 8.60921633 };
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:10,y:0},{x:10,y:10}];
+  t.state.activeMap.exclusions = [{ id:'b', name:'Ausschluss 1', points:[{x:4,y:1},{x:4.5,y:1}] }];
+  elements.get('cassandraSkippedHint').hidden = true;
+  elements.get('cassandraSkippedHint').textContent = '';
+  t.setMenuOpen(true);
+  assert.strictEqual(elements.get('cassandraSkippedHint').hidden, false,
+    'der Hinweis steht da, sobald die Seite aufgeht');
+  const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  const menu = source.slice(source.indexOf('function setMenuOpen'));
+  assert.ok(menu.slice(0, menu.indexOf('\n}')).includes('refreshExportButtons();'));
+});
+
+test('Die CaSSAndRA-Knoepfe stehen bei den anderen Export-Knoepfen', () => {
+  const markup = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const group = markup.slice(markup.indexOf('class="export-grid"'));
+  const block = group.slice(0, group.indexOf('</div>'));
+  for (const id of ['exportCassandraBtn', 'shareCassandraBtn']) {
+    assert.ok(block.includes(`id="${id}"`), `${id} steht in derselben Gruppe wie der Export`);
+  }
+  const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  assert.ok(source.includes("ui.exportCassandraBtn.addEventListener('click', exportCurrentMapCassandra)"));
+  assert.ok(source.includes("shareCurrentMap('cassandra')"));
+  // Der Hinweistext sagt, welcher Wert gemeint ist — und ausdruecklich, dass es keine
+  // Ortsbestimmung ist.
+  for (const lang of ['de', 'en']) {
+    const hint = lang === 'de'
+      ? source.slice(source.indexOf("cassandraRefHint: '"), source.indexOf("cassandraRefHint: '") + 400)
+      : source.slice(source.lastIndexOf("cassandraRefHint: '"), source.lastIndexOf("cassandraRefHint: '") + 400);
+    assert.ok(/Robotereinstellungen|robot settings/.test(hint),
+      `der Hinweis (${lang}) verweist auf die Robotereinstellungen in CaSSAndRA`);
+  }
 });
 
 (async () => {

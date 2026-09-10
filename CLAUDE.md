@@ -1,7 +1,8 @@
 # MapmakerBT — Projekt-Gedächtnis
 
-> Diese Datei ist **nicht** im Git-Repo (steht in `.gitignore`). Vor jeder neuen Aufgabe komplett lesen,
-> danach kurz und stichpunktartig aktuell halten.
+> Diese Datei **ist im Git-Repo versioniert** (`git ls-files` findet sie, `.gitignore` listet sie
+> nicht). Änderungen an ihr landen also in jedem Commit, der sie mitnimmt. Vor jeder neuen Aufgabe
+> komplett lesen, danach kurz und stichpunktartig aktuell halten.
 
 ## Regeln (vom Nutzer gesetzt, verbindlich)
 
@@ -630,7 +631,15 @@ davon. Endung `.json`, MIME `application/json`, wie CaSSAndRAs eigener Download
 - **7 Nachkommastellen.** Gerechnet, nicht geschätzt: 5 → 472,6 mm, 6 → 61,4 mm, **7 → 6,1 mm**,
   8 → 0,6 mm. Theoretische Obergrenze bei 7 Stellen 7,86 mm (Äquator), 6,51 mm bei 52°.
 - **Flächen unter drei Punkten bleiben draußen**: `Polygon(coordinates[0])` (mapdata.py:515) wirft
-  dann und reißt den ganzen Import mit.
+  dann und reißt den ganzen Import mit. **Nicht still**: `noticeCassandraSkippedAreas()` zeigt beim
+  Export einmal eine Meldung mit Anzahl, Namen und Punktzahl jeder ausgelassenen Fläche — auch der
+  leeren, weil die Entscheidung, ob der Verlust belanglos ist, dem Nutzer gehört. Der Export läuft
+  danach weiter. **Erst handeln, dann melden**: ein Dialog davor verbraucht die Nutzergeste, und
+  `navigator.share()` verlangt eine frische. **Zusätzlich davor sichtbar**: `#cassandraSkippedHint`
+  steht dauerhaft neben den Export-Knöpfen, sobald die aktive Karte solche Flächen führt — gespeist
+  aus derselben `cassandraSkippedAreas()`, damit Hinweis und Meldung dasselbe sagen. Nachgeführt
+  aus `refreshExportButtons()`, das dafür auch aus `setMenuOpen(true)` läuft: die Knöpfe stehen auf
+  der Menüseite, und die Geometrie kann sich seit dem letzten `renderMapControls()` geändert haben.
 - **Fünftes Feature `mapmaker`** mit unseren Metadaten. CaSSAndRAs Import vergleicht
   `properties.name` in einer `if`/`elif`-Kette **ohne `else`** (mapdata.py:511-521) — ein
   unbekannter Name fällt still heraus. Empirisch gegengeprüft: mit und ohne dieses Feature kommen
@@ -653,7 +662,43 @@ Vorbelegung, die nicht gilt, wäre eine Falle (Feld gefüllt, Knopf grau). Kein 
 0/0 — obwohl genau das CaSSAndRAs Auslieferungswert ist (`cfgdata.py:195-196`).
 
 **Ausgegraut statt ausgeblendet** (`refreshExportButtons()`), anders als bei den Teilen-Knöpfen:
-ein fehlender Bezugspunkt ist behebbar, eine fehlende Browserfähigkeit nicht.
+die Bedingungen sind behebbar, eine fehlende Browserfähigkeit nicht. Der Hinweis darunter nennt den
+**Grund wörtlich**, deshalb trägt er kein festes `data-i18n` — der Text kommt aus
+`refreshExportButtons()` und wird über `renderMapControls()` auch beim Sprachwechsel neu gesetzt.
+
+**Zwei Sperrgründe, ein Mechanismus.** `cassandraExportBlockKey(map)` ist die einzige Stelle, die
+entscheidet, und liefert einen Übersetzungsschlüssel oder `null`: fehlender Bezugspunkt
+(`cassandraMissingHint`) oder ein Perimeter unter drei Punkten. Der zweite Grund ist **derselbe
+Befund samt Wortlaut, den die Kartenprüfung ohnehin meldet** (`checkPerimeterTooFew`) — kein
+zweiter Mechanismus daneben. Gefragt wird er von `refreshExportButtons()` (Knopfzustand) **und**
+von `mapExportFile()` über `spec.blockKey` (Dateierzeugung), damit auch das Teilen nicht daran
+vorbeikommt. Die Bedingung „taugt als Fläche" selbst steht genau einmal im Code
+(`hasUsablePolygon()`) und wird von Kartenprüfung, Exportsperre und `closePerimeter()` gemeinsam
+benutzt — ebenso der Ausschluss-Filter in `mapToCassandraGeoJson()` und `cassandraSkippedAreas()`.
+
+**Ein ui-Test verbietet jede zweite handgeschriebene Zählung, und zwar funktionsweise abgegrenzt.**
+Eine Textsuche kann die Absicht nicht lesen: `points.length >= 3` steht im Code für mehrere
+verschiedene Fragen. Der Test führt deshalb eine ausgeschriebene Liste `HANDZAEHLUNG_ERLAUBT`
+(Funktionsname → erwartete Anzahl + Grund) in vier Gruppen: **Geometrie-Primitive** auf einem
+lokalen Parameter (`pointInPolygon`, `polygonsIntersect`, `polygonArea`, `pathLength`,
+`pathSpacingIssues`), **Zeichnen und Geometrie bauen** (`drawThumbnailPath`, `drawPolyline`,
+`nearestBoundaryPoint`, `closeRing`, `geometryForArea`), **„ist die Kontur offen?"** — steht immer
+zusammen mit `closed`/`perimeterClosed` (`openContours`, `canStartExtension`, `finishExtension`,
+`canCloseAndStartNew`), und **andere Merkmale derselben Punktliste** (`mapToGeoJson`s
+`completePolygon`, `handleMapTap`s Trefferfläche, `validateActiveMap`s Innenlage- und
+Überlappungsprüfung). Ein Vorkommen in einer **nicht gelisteten** Funktion schlägt an, ein
+**zusätzliches** in einer gelisteten ebenfalls. Weil die reine Anzahl sich aushebeln ließe, indem
+jemand eine erlaubte Zählung durch eine verbotene ersetzt, prüft der Test für
+`checkPerimeterTooFew` und `checkAreaTooFew` zusätzlich die Zeile selbst.
+
+**Nachgewiesen, nicht behauptet** (Grenzfälle 2/3/4 Punkte, offen und geschlossen, alle drei
+Aufrufer gegen den Stand vor der Änderung): die drei abgelösten Bedingungen sind in allen zwölf
+Fällen ergebnisgleich. Zum Schlusspunkt: **das Modell speichert keinen.** `closePerimeter()` und
+`closeContour()` setzen nur ein Kennzeichen (3 Punkte bleiben 3), und `pointsFromGeoGeometry()`
+schneidet einen aus einer Datei mitgebrachten Schlusspunkt ab (4 Koordinaten → 3 Ecken). Rohe
+Feldlänge und Eckenzahl sind damit dasselbe, alt wie neu. `tests/app-core-test.js` hält die
+Tabelle fest.
+
 
 **Warum der Nutzer den Wert eintragen muss:** Sunray hat **keinen** AT-Befehl, der lat0/lon0
 ausliest. `AT+P` (`comm.cpp:1024` → `cmdPosMode()`, `:474-504`) ist reines Schreiben und antwortet
@@ -675,7 +720,13 @@ API-Ausgabe (`settingstopic.py:69-70`). **Kein Kartenhintergrund, keine Live-Pos
 fällt beim Rundlauf heraus — er muss nur auf beiden Seiten derselbe sein.
 
 **Eigener Rückweg:** `geoJsonToMap()` liest Ursprung und Kartenname aus dem `mapmaker`-Feature,
-wenn oben kein `properties`-Block steht. Ohne das läse unser eigener Import die Grad als Meter.
+**nur wenn oben kein `properties`-Block steht** — der Top-Level-Block gewinnt immer. Ohne diesen
+Rückweg läse unser eigener Import die Grad als Meter; ohne den Vorrang würde ein fremdes Feature
+namens `mapmaker` eine alte Datei umdeuten. `tests/app-core-test.js` führt dafür ein **Prüfmuster
+im alten Format** mit (Struktur und echte Koordinaten aus einer Datei, die der Nutzer mit einer
+früheren Fassung exportiert hat) und weist nach, dass Name, Modus, Ursprung und Koordinaten
+unverändert ankommen — in der relativen wie in der absoluten Variante, samt Gegenprobe mit einem
+untergeschobenen `mapmaker`-Feature.
 
 **Nicht ohne Gerät verifizierbar:** ob CaSSAndRAs Upload-Dialog auf dem Zielgerät die Datei
 tatsächlich annimmt — geprüft ist nur, dass `dcc.Upload` (`uploadsunray.py:14`) kein `accept`
@@ -1497,6 +1548,36 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   deshalb gegen eine zeilengetreue Portierung von `coords_abs_to_rel` und liefert dieselben Zahlen
   wie das Original (4,2720 / 4,7287 / 3,9080 / 4,4286 mm). Hilfe und README in beiden Sprachen
   ergänzt. `APP_VERSION` auf `v52`.
+
+  **Nachtrag am selben Tag:** (a) Ein Perimeter unter drei Punkten sperrt den Export jetzt über
+  **denselben** Weg wie der fehlende Bezugspunkt — die Kartenprüfung kannte den Fall bereits
+  (`checkPerimeterTooFew`), also wurde dort angehängt statt neu gebaut; die Bedingung selbst steht
+  seitdem genau einmal im Code (`hasUsablePolygon()`), auch `closePerimeter()` benutzt sie.
+  (b) Ausgelassene Ausschlussflächen werden beim Export **benannt** statt still weggelassen.
+  (c) Ein bleibendes Prüfmuster im alten GeoJSON-Format sichert die Änderung an `geoJsonToMap()`
+  rückwärts ab. (d) Der Satz, `CLAUDE.md` sei nicht versioniert, war falsch und ist korrigiert.
+  Neun neue ui-Fälle (152), zwei neue Blöcke in `tests/app-core-test.js`; gegen acht simulierte
+  Rückfälle geprüft — einer (ein `mapmaker`-Feature verdrängt den Top-Level-Namen) lief zunächst
+  durch, weil die Sabotage die Reihenfolge gar nicht umkehrte; mit der schärferen Fassung schlägt
+  die Zusicherung „der Top-Level-Name gewinnt" an.
+
+  **Zweiter Nachtrag:** die Gleichheit von `hasUsablePolygon()` mit den drei abgelösten
+  Bedingungen ist an den Grenzfällen 2/3/4 Punkte gegen den Stand vor der Änderung gemessen und
+  als Tabelle in `tests/app-core-test.js` festgehalten; dabei ist die verbliebene zweite
+  Schreibweise in `mapToCassandraGeoJson()` aufgefallen und gemeldet statt stillschweigend
+  angeglichen. Dazu der dauerhafte Hinweis `#cassandraSkippedHint` neben den Export-Knöpfen, der
+  ausgelassene Flächen zeigt, **bevor** die Datei entsteht. Drei neue ui-Fälle (155), ein neuer
+  Block in `tests/app-core-test.js`; gegen fünf simulierte Rückfälle geprüft — einer lief zunächst
+  durch, weil die Sabotage einen Kommentarblock übersah und gar nichts veränderte.
+
+  **Dritter Nachtrag:** die gemeldete vierte Handzählung in `mapToCassandraGeoJson()` ist auf
+  `hasUsablePolygon()` umgestellt, und der Schutztest zählt jetzt nicht mehr nur den Perimeter,
+  sondern jede Schreibweise `…length >= 3` / `< 3` im ganzen `app.js` — funktionsweise gegen eine
+  ausgeschriebene Liste mit Grund je Eintrag abgegrenzt, damit Rendering, Geometrie-Primitive,
+  Offen/Geschlossen-Prüfungen und `completePolygon` nicht fälschlich anschlagen. Gegen vier
+  Sabotagen geprüft, darunter eine **verhaltensgleiche** (die Exportsperre zählt wieder selbst,
+  Ergebnis identisch) — sie fällt trotzdem auf, weil der Test die Struktur prüft, nicht nur die
+  Wirkung.
 
 - 2026-09-08: **Karten teilen (Web Share API).** Neben jedem Export-Knopf im Menü → Karten steht
   jetzt ein Teilen-Knopf; beide Wege holen ihre Datei aus **derselben** Quelle

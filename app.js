@@ -174,7 +174,12 @@ const I18N = {
     cassandraHelp: 'Genau die Form, die CaSSAndRA selbst schreibt und einliest: Weltkoordinaten in Grad, Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Voraussetzung ist der Bezugspunkt bei den Export-Knöpfen — derselbe Wert, der in CaSSAndRA unter den Robotereinstellungen steht.',
     cassandraRefLat: 'CaSSAndRA-Bezugspunkt: Breite', cassandraRefLon: 'CaSSAndRA-Bezugspunkt: Länge',
     cassandraRefHint: 'Trage hier genau denselben Wert ein, der in CaSSAndRA unter den Robotereinstellungen als Breite und Länge steht. Es ist keine Ortsbestimmung: der Wert muss nur auf beiden Seiten derselbe sein, sonst liegt die Karte nach dem Import versetzt. Er gilt für alle Karten dieser Installation.',
-    cassandraMissingHint: 'Der CaSSAndRA-Export ist gesperrt, solange unten kein Bezugspunkt eingetragen ist.',
+    cassandraBlocked: 'Der CaSSAndRA-Export ist gesperrt: {reason}',
+    cassandraSkippedTitle: 'Flächen ausgelassen',
+    cassandraSkippedMessage: '{count} Ausschlussfläche(n) gehen nicht mit in die CaSSAndRA-Datei: {names}. CaSSAndRA verlangt für eine Fläche mindestens 3 Punkte — eine kürzere lässt den Import dort vollständig abbrechen. Der Rest der Karte wird exportiert.',
+    cassandraSkippedItem: '{label} ({count} Punkte)',
+    cassandraSkippedAhead: 'Nicht mit dabei: {names}. CaSSAndRA verlangt je Fläche mindestens 3 Punkte — der Rest der Karte wird exportiert.',
+    cassandraMissingHint: 'Es ist unten kein Bezugspunkt eingetragen.',
     shareHelpNote: 'Karten von einem Gerät auf ein anderes bringen: Auf dem Quellgerät die Karte speichern oder teilen. „Teilen“ übergibt genau dieselbe Datei an das Freigabe-Menü des Geräts, sodass sie ohne Umweg über den Download-Ordner weitergereicht werden kann; welche Ziele dort angeboten werden, entscheidet das Gerät, nicht diese App. Auf dem Zielgerät die Datei über „JSON / GeoJSON importieren“ im Menü unter Karten einlesen. Kann ein Browser keine Dateien teilen, erscheint der Teilen-Knopf gar nicht erst — dann bleibt Speichern der Weg.',
     shareUnsupported: 'Dieser Browser kann keine Dateien teilen. Nutze stattdessen „Als JSON speichern“ bzw. „Als GeoJSON speichern“ und übertrage die Datei von Hand.',
     exportHint: 'JSON enthält das vollständige Mapper-Backup. GeoJSON speichert Perimeter/Ausschlüsse/Dock als Geometrien mit lokalen Sunray-X/Y-Koordinaten in Metern. Die CaSSAndRA-Datei ist dagegen genau so aufgebaut, wie CaSSAndRA sie selbst schreibt, und braucht deshalb den Bezugspunkt unten.',
@@ -391,7 +396,12 @@ const I18N = {
     cassandraHelp: 'Exactly the shape CaSSAndRA writes and reads itself: world coordinates in degrees, perimeter, dock path, search wire and exclusion areas. It requires the reference point next to the export buttons — the same value CaSSAndRA shows under its robot settings.',
     cassandraRefLat: 'CaSSAndRA reference point: latitude', cassandraRefLon: 'CaSSAndRA reference point: longitude',
     cassandraRefHint: 'Enter exactly the same value that CaSSAndRA shows under its robot settings as latitude and longitude. This is not a location fix: the value only has to be identical on both sides, otherwise the map ends up offset after the import. It applies to every map of this installation.',
-    cassandraMissingHint: 'The CaSSAndRA export stays locked until a reference point is entered below.',
+    cassandraBlocked: 'The CaSSAndRA export is locked: {reason}',
+    cassandraSkippedTitle: 'Areas left out',
+    cassandraSkippedMessage: '{count} exclusion area(s) are not part of the CaSSAndRA file: {names}. CaSSAndRA requires at least 3 points per area — a shorter one makes its import fail entirely. The rest of the map is exported.',
+    cassandraSkippedItem: '{label} ({count} points)',
+    cassandraSkippedAhead: 'Not included: {names}. CaSSAndRA requires at least 3 points per area — the rest of the map is exported.',
+    cassandraMissingHint: 'No reference point has been entered below.',
     shareHelpNote: 'Moving a map from one device to another: on the source device, save or share the map. “Share” hands exactly the same file to the device’s share menu, so it can be passed on without the detour via the download folder; which targets appear there is decided by the device, not by this app. On the target device, read the file back in via “Import JSON / GeoJSON” in the menu under Maps. If a browser cannot share files, the share button does not appear at all — saving remains the way there.',
     shareUnsupported: 'This browser cannot share files. Use “Save as JSON” or “Save as GeoJSON” instead and transfer the file manually.',
     exportHint: 'JSON contains the complete MapCreator backup. GeoJSON stores perimeter/exclusions/dock as geometries using local Sunray X/Y coordinates in metres. The CaSSAndRA file instead mirrors exactly what CaSSAndRA itself writes and therefore needs the reference point below.',
@@ -611,7 +621,7 @@ const ui = {
   exportJsonBtn: $('exportJsonBtn'), exportGeoJsonBtn: $('exportGeoJsonBtn'),
   shareJsonBtn: $('shareJsonBtn'), shareGeoJsonBtn: $('shareGeoJsonBtn'), importInput: $('importInput'),
   exportCassandraBtn: $('exportCassandraBtn'), shareCassandraBtn: $('shareCassandraBtn'),
-  cassandraMissingHint: $('cassandraMissingHint'),
+  cassandraMissingHint: $('cassandraMissingHint'), cassandraSkippedHint: $('cassandraSkippedHint'),
   cassandraLatInput: $('cassandraLatInput'), cassandraLonInput: $('cassandraLonInput'),
   mapGallery: $('mapGallery'), mapCountBadge: $('mapCountBadge'),
   elementList: $('elementList'),
@@ -1219,7 +1229,7 @@ function perimeterClosureCandidate() {
 }
 
 async function closePerimeter({ automatic = false } = {}) {
-  if (!ensureMapEditable() || !state.activeMap || state.activeMap.perimeter.length < 3) return;
+  if (!ensureMapEditable() || !state.activeMap || !hasUsablePolygon(state.activeMap.perimeter)) return;
   pushUndo();
   state.activeMap.perimeterClosed = true;
   if (state.autoCaptureRunning) stopAutoCapture();
@@ -1617,6 +1627,10 @@ function setMenuOpen(open, { section = null } = {}) {
     // Altlasten aus frueheren Sitzungen: die Kartenuebersicht zeigt keine leeren Platzhalter.
     if (pruneEmptyExclusions()) saveActiveMap().catch(reportError);
     renderElementList();
+    // Die Export-Knoepfe stehen auf dieser Seite. Ihr Zustand haengt an der Geometrie, die sich
+    // seit dem letzten `renderMapControls()` geaendert haben kann — hier ist der letzte Moment,
+    // bevor der Nutzer sie sieht, und `pruneEmptyExclusions()` ist gerade durchgelaufen.
+    refreshExportButtons();
     if (section) { const el = document.getElementById(section); if (el) el.open = true; }
     ui.menuPage.scrollTop = 0;
   } else {
@@ -3698,7 +3712,7 @@ const MAP_EXPORT_FORMATS = {
   cassandra: {
     extension: '.json',
     mimeType: 'application/json',
-    requiresCassandraReference: true,
+    blockKey: (map) => cassandraExportBlockKey(map),
     build: (map) => JSON.stringify(mapToCassandraGeoJson(map, cassandraReferenceInUse()), null, 2),
   },
 };
@@ -3711,9 +3725,10 @@ const MAP_EXPORT_FORMATS = {
 function mapExportFile(format) {
   const spec = MAP_EXPORT_FORMATS[format];
   if (!spec || !state.activeMap) return null;
-  // Ohne Bezugspunkt entstuende eine Datei, die CaSSAndRA zwar liest, aber an einer anderen
-  // Stelle der Welt — lieber gar keine Datei als eine stillschweigend versetzte Karte.
-  if (spec.requiresCassandraReference && !cassandraReferenceInUse()) return null;
+  // Derselbe Sperrgrund, der die Knoepfe ausgraut — damit kein Weg daran vorbeifuehrt, auch
+  // nicht das Teilen. Lieber gar keine Datei als eine, die stillschweigend versetzt liegt oder
+  // die die Gegenseite beim Einlesen abbrechen laesst.
+  if (spec.blockKey && spec.blockKey(state.activeMap)) return null;
   return {
     text: spec.build(state.activeMap),
     fileName: `${safeFileName(localizedMapName(state.activeMap))}${spec.extension}`,
@@ -3721,10 +3736,12 @@ function mapExportFile(format) {
   };
 }
 
+/** Liefert die erzeugte Datei zurueck, damit Aufrufer erkennen, ob wirklich etwas herauskam. */
 function exportMapFile(format) {
   const file = mapExportFile(format);
-  if (!file) return;
+  if (!file) return null;
   downloadTextFile(file.text, file.fileName, file.mimeType);
+  return file;
 }
 
 function exportCurrentMapJson() { exportMapFile('json'); }
@@ -3766,16 +3783,24 @@ function refreshShareButtons() {
 }
 
 /**
- * Der CaSSAndRA-Export wird **ausgegraut**, nicht ausgeblendet: ein fehlender Bezugspunkt ist
- * behebbar, ein verschwundener Knopf verriete nicht einmal, dass es das Format gibt. Das
- * unterscheidet ihn von den Teilen-Knoepfen, deren Bedingung am Geraet haengt und bleibt.
- * Bewusst **nicht** an `positionMode` gehaengt — eine relativ gefuehrte Karte ist hier brauchbar.
+ * Der CaSSAndRA-Export wird **ausgegraut**, nicht ausgeblendet: seine Bedingungen sind behebbar,
+ * ein verschwundener Knopf verriete nicht einmal, dass es das Format gibt. Das unterscheidet ihn
+ * von den Teilen-Knoepfen, deren Bedingung am Geraet haengt und bleibt. Der Hinweis nennt den
+ * Grund woertlich, damit nicht geraten werden muss, welche der Bedingungen fehlt.
  */
 function refreshExportButtons() {
-  const ready = Boolean(cassandraReferenceInUse());
-  ui.exportCassandraBtn.disabled = !ready;
-  ui.shareCassandraBtn.disabled = !ready;
-  ui.cassandraMissingHint.hidden = ready;
+  const reason = cassandraExportBlockKey(state.activeMap);
+  ui.exportCassandraBtn.disabled = Boolean(reason);
+  ui.shareCassandraBtn.disabled = Boolean(reason);
+  ui.cassandraMissingHint.hidden = !reason;
+  ui.cassandraMissingHint.textContent = reason ? tr('cassandraBlocked', { reason: tr(reason) }) : '';
+  // Die Auslassung soll schon zu sehen sein, bevor die Datei in CaSSAndRA liegt — dieselbe
+  // Aufstellung wie die Meldung nach dem Export, damit beide dasselbe sagen.
+  const skipped = cassandraSkippedAreas(state.activeMap);
+  ui.cassandraSkippedHint.hidden = skipped.length === 0;
+  ui.cassandraSkippedHint.textContent = skipped.length
+    ? tr('cassandraSkippedAhead', { count: skipped.length, names: skipped.join(', ') })
+    : '';
 }
 
 /**
@@ -3785,18 +3810,20 @@ function refreshExportButtons() {
  */
 async function shareCurrentMap(format) {
   const file = mapExportFile(format);
-  if (!file) return;
+  if (!file) return false;
   const nav = shareCapableNavigator();
   if (!nav || !canShareMapFormat(format)) {
     showNotice({ title: tr('shareMapTitle'), message: tr('shareUnsupported') });
-    return;
+    return false;
   }
   const shareFile = new File([file.text], file.fileName, { type: file.mimeType });
   try {
     await nav.share({ files: [shareFile] });
+    return true;
   } catch (error) {
-    if (error && error.name === 'AbortError') return;
+    if (error && error.name === 'AbortError') return false;
     reportError(error);
+    return false;
   }
 }
 
@@ -3841,6 +3868,31 @@ function saveCassandraReference() {
 /** Gesetzt und gueltig? Nur dann darf das CaSSAndRA-Format ueberhaupt entstehen. */
 function cassandraReferenceInUse() {
   return normalizeOrigin(state.cassandraReference);
+}
+
+/**
+ * Taugt diese Punktfolge als Flaeche? Einzige Stelle, an der das entschieden wird — die
+ * Kartenpruefung (`checkPerimeterTooFew`, `checkAreaTooFew`) und die Exportsperre fragen
+ * dieselbe Funktion, damit nicht zwei Zaehlungen nebeneinander laufen und auseinanderdriften.
+ */
+function hasUsablePolygon(points) {
+  return (points || []).length >= 3;
+}
+
+/**
+ * Warum das CaSSAndRA-Format gerade nicht angeboten wird — ein Uebersetzungsschluessel oder
+ * `null`. Ein einziger Ort fuer beide Wege: Knopfzustand (`refreshExportButtons()`) und
+ * Dateierzeugung (`mapExportFile()`).
+ *
+ * Der zweite Grund ist bewusst **derselbe Befund, den die Kartenpruefung ohnehin meldet**
+ * (`validateActiveMap()` → `checkPerimeterTooFew`), samt dessen Wortlaut: `Polygon(coordinates[0])`
+ * (mapdata.py:512) wirft bei weniger als drei Koordinaten, und CaSSAndRAs Import bricht dann
+ * vollstaendig ab (mapdata.py:569) statt nur den Perimeter auszulassen.
+ */
+function cassandraExportBlockKey(map) {
+  if (!cassandraReferenceInUse()) return 'cassandraMissingHint';
+  if (!hasUsablePolygon(map?.perimeter)) return 'checkPerimeterTooFew';
+  return null;
 }
 
 /**
@@ -4104,7 +4156,7 @@ function mapToCassandraGeoJson(map, reference) {
   // Flaechen unter drei Punkten bleiben draussen: `Polygon(coordinates[0])` (mapdata.py:515)
   // wirft dann, und ein einziger solcher Rest reisst den ganzen Import mit.
   (map.exclusions || [])
-    .filter((exclusion) => (exclusion.points || []).length >= 3)
+    .filter((exclusion) => hasUsablePolygon(exclusion.points))
     .forEach((exclusion, index) => {
       features.push({
         type: 'Feature',
@@ -4136,7 +4188,40 @@ function mapToCassandraGeoJson(map, reference) {
   return { type: 'FeatureCollection', features };
 }
 
-function exportCurrentMapCassandra() { exportMapFile('cassandra'); }
+/**
+ * Flaechen, die dieses Format auslaesst, mit Anzeigename und Punktzahl. Gemeldet wird **jede**
+ * ausgelassene Flaeche, auch eine leere: stillschweigend weglassen waere hier das Schlimmere,
+ * und ob der Nutzer den Verlust fuer belanglos haelt, ist seine Entscheidung, nicht unsere.
+ */
+function cassandraSkippedAreas(map) {
+  return (map?.exclusions || [])
+    .map((exclusion, index) => ({ exclusion, index }))
+    .filter(({ exclusion }) => !hasUsablePolygon(exclusion.points))
+    .map(({ exclusion, index }) => tr('cassandraSkippedItem', {
+      label: localizedExclusionName(exclusion, index),
+      count: (exclusion.points || []).length,
+    }));
+}
+
+/**
+ * Einmal je Exportversuch: sagt, was nicht mit hinausgeht. Der Export laeuft danach weiter — die
+ * ausgelassene Flaeche ist kein Fehler der Karte, sondern eine Grenze des Zielformats.
+ * Aufgerufen von beiden Wegen (Speichern und Teilen), damit keiner still bleibt.
+ */
+function noticeCassandraSkippedAreas(map) {
+  const skipped = cassandraSkippedAreas(map);
+  if (!skipped.length) return;
+  showNotice({
+    title: tr('cassandraSkippedTitle'),
+    message: tr('cassandraSkippedMessage', { count: skipped.length, names: skipped.join(', ') }),
+  });
+}
+
+function exportCurrentMapCassandra() {
+  // Erst handeln, dann melden. Andersherum liefe die Meldung dem Teilen in die Quere: ein Dialog
+  // dazwischen verbraucht die Nutzergeste, und `navigator.share()` verlangt eine frische.
+  if (exportMapFile('cassandra')) noticeCassandraSkippedAreas(state.activeMap);
+}
 
 function exportCurrentMapGeoJson() { exportMapFile('geojson'); }
 
@@ -4334,7 +4419,7 @@ function pathSpacingIssues(points, closed) {
 function validateActiveMap() {
   if (!state.activeMap) return;
   const map=state.activeMap; const issues=[];
-  if (map.perimeter.length<3) issues.push({severity:'error',key:'checkPerimeterTooFew',vars:{}});
+  if (!hasUsablePolygon(map.perimeter)) issues.push({severity:'error',key:'checkPerimeterTooFew',vars:{}});
   else if (polygonSelfIntersects(map.perimeter)) issues.push({severity:'error',key:'checkSelfIntersection',vars:{label:tr('perimeter')}});
   if (map.perimeter.length >= 3 && !map.perimeterClosed) issues.push({severity:'warning',key:'checkPerimeterOpen',vars:{}});
   const perimeterSpacing=pathSpacingIssues(map.perimeter,true);
@@ -4342,7 +4427,7 @@ function validateActiveMap() {
   if(perimeterSpacing.long)issues.push({severity:'warning',key:'checkLongSegments',vars:{label:tr('perimeter'),count:perimeterSpacing.long}});
   map.exclusions.forEach((ex,index)=>{
     const label=localizedExclusionName(ex,index);
-    if(ex.points.length>0 && ex.points.length<3)issues.push({severity:'error',key:'checkAreaTooFew',vars:{label}});
+    if(ex.points.length>0 && !hasUsablePolygon(ex.points))issues.push({severity:'error',key:'checkAreaTooFew',vars:{label}});
     if(ex.points.length>=4 && polygonSelfIntersects(ex.points))issues.push({severity:'error',key:'checkSelfIntersection',vars:{label}});
     if(ex.points.length>=3 && map.perimeter.length>=3 && (ex.points.some((p)=>!pointInPolygon(p,map.perimeter)) || polygonEdgesIntersect(ex.points,map.perimeter)))issues.push({severity:'error',key:'checkExclusionOutside',vars:{label}});
     if(ex.points.length>=3 && ex.closed===false)issues.push({severity:'warning',key:'checkAreaOpen',vars:{label}});
@@ -5020,7 +5105,11 @@ function bindEvents() {
   ui.shareJsonBtn.addEventListener('click', () => { shareCurrentMap('json'); });
   ui.shareGeoJsonBtn.addEventListener('click', () => { shareCurrentMap('geojson'); });
   ui.exportCassandraBtn.addEventListener('click', exportCurrentMapCassandra);
-  ui.shareCassandraBtn.addEventListener('click', () => { shareCurrentMap('cassandra'); });
+  ui.shareCassandraBtn.addEventListener('click', () => {
+    shareCurrentMap('cassandra')
+      .then((shared) => { if (shared) noticeCassandraSkippedAreas(state.activeMap); })
+      .catch(reportError);
+  });
   // Bei jeder Aenderung des Wertepaars nachfuehren, nicht erst beim naechsten Menueoeffnen.
   [ui.cassandraLatInput, ui.cassandraLonInput].forEach((input) => input
     .addEventListener('change', () => updateCassandraReferenceFromUi().catch(reportError)));
