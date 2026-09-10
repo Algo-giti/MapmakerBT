@@ -5,6 +5,8 @@ const { loadApp } = require('./app-harness.js');
 const { t } = loadApp({
   exportNames: ['state', 'makeMap', 'normalizeMap', 'polygonSelfIntersects', 'pointInPolygon',
     'polygonEdgesIntersect', 'polygonsIntersect', 'polygonArea', 'pathLength', 'geometryForArea', 'mapToGeoJson', 'geoJsonToMap', 'normalizeOrigin', 'mapOriginInUse',
+    'mapToCassandraGeoJson', 'cassandraExportBlockKey', 'cassandraSkippedAreas', 'hasUsablePolygon',
+    'closePerimeter',
     'validateActiveMap'],
 });
 
@@ -321,6 +323,317 @@ assert.ok(geoWithWaypoints.features.some((f)=>f.properties.role==='waypoints' &&
   m.positionMode = 'relative';
   assert.strictEqual(m.perimeter.map((p)=>`${p.x},${p.y}`).join(' | '), before,
     'auch das Zurueckschalten laesst die Karte unangetastet');
+}
+
+// --- CaSSAndRA-Exportformat: Struktur und Rundlauf --------------------------
+// Vorbild ist CaSSAndRAs eigener Export (`export_geojson`, mapdata.py:665-690). Geprueft wird
+// die WIRKUNG: was CaSSAndRAs Import aus der Datei herausholt, nicht was wir hineinschreiben
+// wollten.
+//
+// EINSCHRAENKUNG, bewusst benannt: CaSSAndRAs Import ist Python und braucht pandas und shapely;
+// die Testform dieses Repos sind reine Node-Skripte ohne Abhaengigkeiten. Der Rundlauf laeuft
+// deshalb gegen eine ZEILENGETREUE PORTIERUNG von `coords_abs_to_rel` (mapdata.py:704-710) und
+// gegen das gemessene Verhalten von shapely (ein geschlossener Ring kommt unveraendert wieder
+// heraus, es entsteht kein doppelter Punkt). Das Original wurde einmalig ausserhalb des Repos
+// dagegen gerechnet; ein Aufruf des echten Imports ist hier nicht moeglich.
+{
+  // mapdata.py:705-706, Zeile fuer Zeile. `math.cos` rechnet im Bogenmass, `rovercfg.lat` steht
+  // in Grad — deshalb die Umrechnung, und deshalb ausdruecklich die Breite des BEZUGSPUNKTS,
+  // nicht die des jeweiligen Punktes.
+  const coordsAbsToRel = (lon, lat, ref) => ({
+    x: (lon - ref.lon) * (111111 * Math.cos((ref.lat * Math.PI) / 180)),
+    y: (lat - ref.lat) * 111111,
+  });
+  const reference = { lat: 52.26742967, lon: 8.60921633 };
+
+  const m = t.makeMap('CaSSAndRA');
+  m.perimeter = [{x:0,y:0},{x:12.5,y:0},{x:12.5,y:8.25},{x:6.125,y:11.4},{x:0,y:8.25}];
+  m.exclusions.push({ id:'ex1', name:'Ausschluss 1', closed:true,
+    points:[{x:3,y:3},{x:4.5,y:3},{x:4.5,y:4.5},{x:3,y:4.5}] });
+  // Eine Flaeche unter drei Punkten darf nicht mit hinaus: `Polygon(coordinates[0])`
+  // (mapdata.py:515) wirft dann und reisst den ganzen Import mit.
+  m.exclusions.push({ id:'ex2', name:'Ausschluss 2', closed:false, points:[{x:9,y:1},{x:9.5,y:1}] });
+  m.dockPoints = [{x:0,y:0},{x:-1.5,y:-2}];
+  m.waypoints = [{x:2,y:2},{x:5,y:5},{x:8,y:2}];
+
+  const doc = t.mapToCassandraGeoJson(m, reference);
+
+  // Genau zwei Schluessel oben — ein dritter mit einem Objekt als Wert laesst `pd.read_json`
+  // (mapdata.py:463) scheitern, und der GeoJSON-Zweig wird dann nie erreicht.
+  // Arrays aus dem vm-Sandkasten haben ein fremdes Prototyp — deshalb ueber Zeichenketten
+  // vergleichen statt ueber deepStrictEqual.
+  assert.strictEqual(Object.keys(doc).sort().join('|'), 'features|type');
+  assert.strictEqual(doc.type, 'FeatureCollection');
+
+  // Reihenfolge und Bezeichner woertlich nach mapdata.py:674, :678, :682, :686.
+  assert.strictEqual(doc.features.map((f) => f.properties.name).join('|'),
+    'perimeter|dockpoints|search wire|exclusion|mapmaker');
+  assert.strictEqual(doc.features.map((f) => (f.geometry ? f.geometry.type : 'null')).join('|'),
+    'Polygon|LineString|LineString|Polygon|null');
+
+  // `properties` traegt beim Kartenteil nur den Namen; `idx` steht auf FEATURE-Ebene (:688).
+  doc.features.slice(0, 4).forEach((f) => assert.strictEqual(Object.keys(f.properties).join('|'), 'name'));
+  assert.strictEqual(doc.features[3].idx, 0);
+  assert.strictEqual('idx' in doc.features[0], false);
+
+  // Dockpfad und Suchdraht werden auch leer geschrieben — das Vorbild legt sie unbedingt an.
+  const empty = t.mapToCassandraGeoJson(t.makeMap('Leer'), reference);
+  assert.strictEqual(empty.features.map((f) => f.properties.name).join('|'),
+    'perimeter|dockpoints|search wire|mapmaker');
+  assert.strictEqual(empty.features[1].geometry.coordinates.length, 0);
+  assert.strictEqual(empty.features[2].geometry.coordinates.length, 0);
+
+  // Ohne Bezugspunkt entsteht keine Datei.
+  assert.strictEqual(t.mapToCassandraGeoJson(m, null), null);
+  assert.strictEqual(t.mapToCassandraGeoJson(m, { lat: 95, lon: 8 }), null);
+
+  // Ringe sind geschlossen (mapdata.py:614-630 haengt den ersten Punkt an), offene Pfade nicht.
+  const ring = doc.features[0].geometry.coordinates[0];
+  assert.strictEqual(ring.length, m.perimeter.length + 1);
+  assert.strictEqual(ring[0].join(','), ring[ring.length - 1].join(','));
+  assert.strictEqual(doc.features[2].geometry.coordinates.length, m.waypoints.length);
+
+  // Sieben Nachkommastellen: gerechnet, nicht geraten — bei 1e-7 Grad Schrittweite liegt der
+  // Rundungsfehler bei hoechstens 0,5e-7 Grad, also rund 5,6 mm je Achse.
+  doc.features.slice(0, 4).forEach((f) => {
+    const coords = f.geometry.type === 'Polygon' ? f.geometry.coordinates[0] : f.geometry.coordinates;
+    coords.forEach(([lon, lat]) => {
+      [lon, lat].forEach((value) => {
+        const decimals = (String(value).split('.')[1] || '').length;
+        assert.ok(decimals <= 7, `zu viele Nachkommastellen: ${value}`);
+      });
+    });
+  });
+
+  // Rundlauf: was CaSSAndRA aus der Datei herausrechnet, gegen unsere Ausgangswerte.
+  const worst = (points, coords) => points.reduce((max, point, index) => {
+    const back = coordsAbsToRel(coords[index][0], coords[index][1], reference);
+    return Math.max(max, Math.hypot(back.x - point.x, back.y - point.y));
+  }, 0);
+
+  const perimeterMm = worst(m.perimeter, doc.features[0].geometry.coordinates[0]) * 1000;
+  const exclusionMm = worst(m.exclusions[0].points, doc.features[3].geometry.coordinates[0]) * 1000;
+  const dockMm = worst(m.dockPoints, doc.features[1].geometry.coordinates) * 1000;
+  const wireMm = worst(m.waypoints, doc.features[2].geometry.coordinates) * 1000;
+  const largestMm = Math.max(perimeterMm, exclusionMm, dockMm, wireMm);
+  assert.ok(largestMm < 10, `Rundlauf ueber 1 cm: ${largestMm.toFixed(4)} mm`);
+  // Die theoretische Obergrenze bei 7 Stellen liegt am Aequator bei 7,86 mm; naeher an der
+  // Grenze duerfte kein Punkt liegen, sonst stimmt an der Umrechnung etwas nicht.
+  assert.ok(largestMm < 7.9, `Rundlauf ueber der theoretischen Grenze: ${largestMm.toFixed(4)} mm`);
+
+  // Punktzahl bleibt erhalten: der Schlusspunkt des Rings ist der erste, kein zusaetzlicher.
+  assert.strictEqual(new Set(doc.features[0].geometry.coordinates[0].map(String)).size, m.perimeter.length);
+
+  // Das Metadaten-Feature traegt `properties.name` — ohne das bricht CaSSAndRAs Import mit
+  // KeyError, weil der Vergleich vor jeder Fallunterscheidung steht (mapdata.py:511).
+  const meta = doc.features[4];
+  assert.strictEqual(meta.properties.name, 'mapmaker');
+  assert.strictEqual(meta.geometry, null);
+  assert.strictEqual(`${meta.properties.origin.lat},${meta.properties.origin.lon}`,
+    `${reference.lat},${reference.lon}`);
+  assert.strictEqual(meta.properties.mapId, m.id);
+
+  // Und die Datei ist fuer uns selbst wieder einlesbar — ueber genau dieses Feature.
+  const back = t.geoJsonToMap(doc);
+  assert.strictEqual(back.positionMode, 'absolute');
+  assert.strictEqual(`${back.origin.lat},${back.origin.lon}`, `${reference.lat},${reference.lon}`);
+  assert.strictEqual(back.perimeter.length, m.perimeter.length);
+  assert.strictEqual(back.exclusions.length, 1);
+  assert.strictEqual(back.waypoints.length, m.waypoints.length);
+  assert.strictEqual(back.dockPoints.length, m.dockPoints.length);
+  const reread = m.perimeter.reduce((max, point, index) =>
+    Math.max(max, Math.hypot(back.perimeter[index].x - point.x, back.perimeter[index].y - point.y)), 0) * 1000;
+  assert.ok(reread < 10, `eigener Rueckweg ueber 1 cm: ${reread.toFixed(4)} mm`);
+
+  console.log(`  CaSSAndRA-Rundlauf: groesste Abweichung ${largestMm.toFixed(4)} mm ` +
+    `(Perimeter ${perimeterMm.toFixed(4)}, Ausschluss ${exclusionMm.toFixed(4)}, ` +
+    `Dock ${dockMm.toFixed(4)}, Suchdraht ${wireMm.toFixed(4)})`);
+}
+
+// --- Rueckwaertsbeleg: GeoJSON im ALTEN Format ------------------------------
+// Pruefmuster, nicht erfunden: die Struktur stammt wortgleich aus einer Datei, die der Nutzer
+// mit einer frueheren Fassung exportiert hat (Top-Level `type`/`name`/`properties`/`features`,
+// `properties.coordinateSystem`, `properties.origin`, Feature-`properties` mit `role`, `label`
+// und `samples`). Die Koordinaten sind die echten ersten Punkte daraus, nur gekuerzt.
+//
+// Anlass: `geoJsonToMap()` holt Ursprung und Namen inzwischen ersatzweise aus dem Feature
+// `mapmaker`, wenn oben kein `properties`-Block steht. Dieser Test haelt fest, dass die alten
+// Dateien davon unberuehrt bleiben — geprueft wird, was ankommt, nicht was gemeint war.
+{
+  const legacySamples = (n) => Array.from({ length: n }, () => ({
+    capturedAt: '2026-09-10T06:56:53.092Z', originalCapturedAt: null, editedAt: null,
+    previousPosition: null, gps: { solution: 2, age: 0.15, accuracy: 0.02 },
+  }));
+
+  // (1) Relativ gefuehrt: lokale Meter, `origin: null`. So liegt die Datei auf der Platte.
+  const legacyRelative = {
+    type: 'FeatureCollection',
+    name: 'Mein',
+    properties: {
+      format: 'ardumower-web-map-geojson', generator: 'MapCreator für Ardumower', version: 2,
+      mapId: '74a5f096-e187-4338-99d6-38f9c68bc279',
+      coordinateSystem: 'sunray-local-xy-meters', units: 'm', origin: null,
+      note: 'Coordinates are local Sunray X/Y values in meters, not WGS84 longitude/latitude.',
+      createdAt: '2026-09-06T10:10:31.436Z', updatedAt: '2026-09-10T06:57:11.302Z',
+    },
+    features: [
+      { type: 'Feature',
+        properties: { role: 'perimeter', name: 'perimeter', label: 'Perimeter',
+          coordinateSystem: 'sunray-local-xy-meters', units: 'm', completePolygon: true,
+          samples: legacySamples(5) },
+        geometry: { type: 'Polygon', coordinates: [[[1.121,4.049],[0.819,3.272],[0.909,1.071],[0.816,0.715],[0.831,0.282],[1.121,4.049]]] } },
+      { type: 'Feature',
+        properties: { role: 'exclusion', exclusionIndex: 0, exclusionId: 'ex-legacy',
+          name: 'exclusion', label: 'Ausschluss 1', coordinateSystem: 'sunray-local-xy-meters',
+          units: 'm', completePolygon: true, samples: legacySamples(3) },
+        geometry: { type: 'Polygon', coordinates: [[[2.031,1.281],[3.243,3.339],[4.26,2.603],[2.031,1.281]]] } },
+    ],
+  };
+
+  const rel = t.geoJsonToMap(legacyRelative);
+  assert.strictEqual(rel.name, 'Mein (Import)', 'der Kartenname kommt weiter von oben');
+  assert.strictEqual(rel.positionMode, 'relative', 'ohne Grad-Kennzeichnung bleibt die Karte relativ');
+  assert.strictEqual(rel.origin, null);
+  // Koordinaten unveraendert: lokale Meter werden nicht angefasst, der Schlusspunkt faellt weg.
+  assert.strictEqual(rel.perimeter.map((p) => `${p.x},${p.y}`).join(' | '),
+    '1.121,4.049 | 0.819,3.272 | 0.909,1.071 | 0.816,0.715 | 0.831,0.282');
+  assert.strictEqual(rel.exclusions.length, 1);
+  assert.strictEqual(rel.exclusions[0].name, 'Ausschluss 1', 'der Anzeigename kommt aus `label`');
+  assert.strictEqual(rel.exclusions[0].points.map((p) => `${p.x},${p.y}`).join(' | '),
+    '2.031,1.281 | 3.243,3.339 | 4.26,2.603');
+  assert.strictEqual(rel.perimeter[0].gps.solution, 2, 'die Aufnahme-Metadaten aus `samples` bleiben');
+
+  // (2) Absolut gefuehrt: Grad plus Top-Level-Ursprung. Genau der Zweig, den die Aenderung
+  // beruehrt hat — steht oben ein `properties`-Block, gewinnt der, egal was in den Features liegt.
+  const origin = { lat: 52.26742967, lon: 8.60921633 };
+  const local = [{x:0,y:0},{x:12.5,y:0},{x:12.5,y:8.25}];
+  const absoluteMap = t.makeMap('Alt-Absolut');
+  absoluteMap.positionMode = 'absolute';
+  absoluteMap.origin = origin;
+  absoluteMap.perimeter = local.map((p) => ({ ...p }));
+  const legacyAbsolute = t.mapToGeoJson(absoluteMap);
+  assert.strictEqual(legacyAbsolute.properties.coordinateSystem, 'wgs84-degrees',
+    'das Pruefmuster traegt die alte Top-Level-Kennzeichnung');
+  assert.ok(legacyAbsolute.properties.origin, 'und den Top-Level-Ursprung');
+
+  const abs = t.geoJsonToMap(legacyAbsolute);
+  assert.strictEqual(abs.name, 'Alt-Absolut (Import)');
+  assert.strictEqual(abs.positionMode, 'absolute');
+  assert.strictEqual(`${abs.origin.lat},${abs.origin.lon}`, `${origin.lat},${origin.lon}`,
+    'der Ursprung kommt weiter aus dem Top-Level-Block');
+  const drift = local.reduce((max, point, index) =>
+    Math.max(max, Math.hypot(abs.perimeter[index].x - point.x, abs.perimeter[index].y - point.y)), 0) * 1000;
+  assert.ok(drift < 10, `alte absolute Datei driftet: ${drift.toFixed(4)} mm`);
+
+  // (3) Gegenprobe: ein Feature namens `mapmaker` in einer ALTEN Datei darf den Top-Level-Block
+  // nicht verdraengen — sonst haette die Aenderung eine Hintertuer aufgemacht.
+  const mitFremdemMapmaker = JSON.parse(JSON.stringify(legacyRelative));
+  mitFremdemMapmaker.features.push({ type: 'Feature',
+    properties: { name: 'mapmaker', label: 'Falscher Name', coordinateSystem: 'wgs84-degrees',
+      origin: { lat: 1, lon: 1 } },
+    geometry: null });
+  const gegenprobe = t.geoJsonToMap(mitFremdemMapmaker);
+  assert.strictEqual(gegenprobe.name, 'Mein (Import)', 'der Top-Level-Name gewinnt');
+  assert.strictEqual(gegenprobe.positionMode, 'relative', 'die Top-Level-Kennzeichnung gewinnt');
+  assert.strictEqual(gegenprobe.perimeter.map((p) => `${p.x},${p.y}`).join(' | '),
+    '1.121,4.049 | 0.819,3.272 | 0.909,1.071 | 0.816,0.715 | 0.831,0.282');
+}
+
+// --- CaSSAndRA-Sperre und ausgelassene Flaechen -----------------------------
+{
+  // Die Bedingung „taugt als Flaeche“ hat genau eine Stelle; Kartenpruefung und Exportsperre
+  // fragen dieselbe.
+  assert.strictEqual(t.hasUsablePolygon([{x:0,y:0},{x:1,y:0},{x:1,y:1}]), true);
+  assert.strictEqual(t.hasUsablePolygon([{x:0,y:0},{x:1,y:0}]), false);
+  assert.strictEqual(t.hasUsablePolygon([]), false);
+  assert.strictEqual(t.hasUsablePolygon(undefined), false);
+
+  const m = t.makeMap('Sperre');
+  t.state.cassandraReference = null;
+  assert.strictEqual(t.cassandraExportBlockKey(m), 'cassandraMissingHint');
+  t.state.cassandraReference = { lat: 52.26742967, lon: 8.60921633 };
+  // Der zweite Grund ist derselbe Schluessel, den die Kartenpruefung meldet.
+  assert.strictEqual(t.cassandraExportBlockKey(m), 'checkPerimeterTooFew');
+  m.perimeter = [{x:0,y:0},{x:1,y:0}];
+  assert.strictEqual(t.cassandraExportBlockKey(m), 'checkPerimeterTooFew');
+  t.state.activeMap = m;
+  t.validateActiveMap();
+  assert.ok(t.state.validationResult.issues.some((i) => i.key === 'checkPerimeterTooFew'),
+    'dieselbe Lage meldet auch die Kartenpruefung');
+  m.perimeter = [{x:0,y:0},{x:5,y:0},{x:5,y:5}];
+  assert.strictEqual(t.cassandraExportBlockKey(m), null);
+
+  // Ausgelassene Flaechen werden benannt, mit Punktzahl — auch die leeren.
+  m.exclusions.push({ id:'a', name:'Ausschluss 1', points:[{x:1,y:1},{x:2,y:1},{x:2,y:2}] });
+  m.exclusions.push({ id:'b', name:'Ausschluss 2', points:[{x:3,y:1},{x:3.5,y:1}] });
+  m.exclusions.push({ id:'c', name:'Ausschluss 3', points:[] });
+  const skipped = t.cassandraSkippedAreas(m);
+  assert.strictEqual(skipped.join(' | '), 'Ausschluss 2 (2 Punkte) | Ausschluss 3 (0 Punkte)');
+  // Und was gemeldet wird, fehlt auch wirklich in der Datei.
+  const doc = t.mapToCassandraGeoJson(m, t.state.cassandraReference);
+  assert.strictEqual(doc.features.filter((f) => f.properties.name === 'exclusion').length, 1);
+  t.state.activeMap = null;
+  t.state.cassandraReference = null;
+}
+
+// --- Grenzfaelle von hasUsablePolygon() ------------------------------------
+// `hasUsablePolygon()` hat drei handgeschriebene Zaehlungen abgeloest. Diese Tabelle haelt fest,
+// was an den Grenzen 2/3/4 Punkte herauskommt — offen wie geschlossen —, damit die Gleichheit
+// mit den alten Bedingungen nicht spaeter unbemerkt wegdriftet.
+//
+// Zum Schlusspunkt: das Modell speichert **keinen**. `closePerimeter()` und `closeContour()`
+// setzen nur ein Kennzeichen, und der Import schneidet einen mitgelieferten Schlusspunkt ab
+// (`pointsFromGeoGeometry()`). Rohe Feldlaenge und Eckenzahl sind damit dasselbe — geprueft.
+{
+  const ecken = (n) => [{x:0,y:0},{x:5,y:0},{x:5,y:5},{x:0,y:5}].slice(0, n);
+  const erwartet = { 2: true, 3: false, 4: false }; // true = „zu wenige Punkte“ wird gemeldet
+
+  for (const n of [2, 3, 4]) {
+    for (const geschlossen of [false, true]) {
+      const m = t.makeMap(`Grenzfall ${n}`);
+      m.perimeter = ecken(n);
+      m.perimeterClosed = geschlossen;
+      t.state.activeMap = m;
+      t.validateActiveMap();
+      assert.strictEqual(
+        t.state.validationResult.issues.some((i) => i.key === 'checkPerimeterTooFew'), erwartet[n],
+        `Kartenpruefung, Perimeter, ${n} Punkte, ${geschlossen ? 'geschlossen' : 'offen'}`);
+
+      const mit = t.makeMap('Flaeche');
+      mit.perimeter = [{x:-9,y:-9},{x:9,y:-9},{x:9,y:9},{x:-9,y:9}];
+      mit.perimeterClosed = true;
+      mit.exclusions.push({ id:'x', name:'Ausschluss 1', closed: geschlossen, points: ecken(n) });
+      t.state.activeMap = mit;
+      t.validateActiveMap();
+      assert.strictEqual(
+        t.state.validationResult.issues.some((i) => i.key === 'checkAreaTooFew'), erwartet[n],
+        `Kartenpruefung, Flaeche, ${n} Punkte, ${geschlossen ? 'geschlossen' : 'offen'}`);
+
+      t.state.cassandraReference = { lat: 52.26742967, lon: 8.60921633 };
+      assert.strictEqual(t.cassandraExportBlockKey(m) === 'checkPerimeterTooFew', erwartet[n],
+        `Exportsperre, ${n} Punkte, ${geschlossen ? 'geschlossen' : 'offen'}`);
+      t.state.cassandraReference = null;
+    }
+  }
+
+  // Das Kennzeichen „geschlossen“ fuegt keinen Punkt hinzu — sonst zaehlte jede der drei
+  // Bedingungen fuer geschlossene Konturen einen Punkt zu viel.
+  const zu = t.makeMap('Schlusspunkt');
+  zu.perimeter = ecken(3);
+  zu.perimeterClosed = true;
+  assert.strictEqual(zu.perimeter.length, 3);
+  assert.notStrictEqual(`${zu.perimeter[0].x},${zu.perimeter[0].y}`,
+    `${zu.perimeter[2].x},${zu.perimeter[2].y}`, 'der letzte Punkt ist nicht der erste');
+
+  // Und ein aus einer Datei mitgebrachter Schlusspunkt landet nicht im Modell.
+  const ausDatei = t.geoJsonToMap({
+    type: 'FeatureCollection', name: 'Ring',
+    properties: { coordinateSystem: 'sunray-local-xy-meters', origin: null },
+    features: [{ type: 'Feature', properties: { role: 'perimeter', name: 'perimeter' },
+      geometry: { type: 'Polygon', coordinates: [[[0,0],[5,0],[5,5],[0,0]]] } }],
+  });
+  assert.strictEqual(ausDatei.perimeter.length, 3, 'vier Koordinaten in der Datei, drei Ecken im Modell');
+  t.state.activeMap = null;
 }
 
 console.log('app core tests: OK');
