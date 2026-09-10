@@ -35,7 +35,7 @@ Die Oberfläche lässt sich zwischen **Deutsch und Englisch** umschalten; Deutsc
 - auf der Karte ablesen, welche Kontur gerade offen und welche geschlossen ist
 - Karten auf Geometrie- und RTK-Probleme prüfen
 - bis zu 10 Karten auf dem Gerät verwalten
-- Karten als JSON-Backup oder als GeoJSON exportieren und wieder importieren
+- Karten als JSON-Backup, als GeoJSON oder im CaSSAndRA-Format exportieren und wieder importieren
 - den Mäher während der Aufnahme mit dem Daumen-Joystick manuell fahren
 - wahlweise mit Joystick oder mit vier Richtungstasten fahren
 - die gesamte Bedienung für Links- oder Rechtshänder spiegeln
@@ -284,7 +284,13 @@ gelöschte Website-Daten bedeuten: Karten sind weg.
 - **GeoJSON-Export** eignet sich zur Weiterverarbeitung: Perimeter und Ausschlussflächen werden
   als Polygone exportiert, Wegpunkte und Dockpfad als LineString. Die Koordinaten bleiben dabei im
   lokalen XY-Meter-System von Sunray, es sind keine Geokoordinaten.
-- Beide Formate lassen sich wieder importieren.
+- **CaSSAndRA-Export** erzeugt genau die Datei, die CaSSAndRA selbst schreibt und einliest:
+  Weltkoordinaten in Grad, dazu Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Er ist
+  gesperrt, solange kein **CaSSAndRA-Bezugspunkt** eingetragen ist. Trage dort denselben Wert
+  ein, der in CaSSAndRA unter den Robotereinstellungen als Breite und Länge steht – es ist keine
+  Ortsbestimmung, der Wert muss nur auf beiden Seiten derselbe sein. Er gilt für alle Karten
+  dieses Geräts und ist unabhängig vom Positionsmodus der einzelnen Karte.
+- Alle drei Formate lassen sich wieder importieren.
 
 **Erstelle regelmäßig JSON-Backups deiner wichtigen Karten.**
 
@@ -425,7 +431,7 @@ The interface can be switched between **German and English**; German is the defa
 - see on the map which contour is currently open and which is closed
 - check maps for geometry and RTK problems
 - keep up to 10 maps on the device
-- export maps as a JSON backup or as GeoJSON, and import them again
+- export maps as a JSON backup, as GeoJSON or in the CaSSAndRA format, and import them again
 - drive the mower manually with the thumb joystick while recording
 - drive either with the joystick or with four direction keys
 - mirror the entire layout for left- or right-handed use
@@ -663,7 +669,13 @@ or cleared site data means the maps are gone.
 - **GeoJSON export** is meant for further processing: perimeter and exclusion areas are exported
   as polygons, waypoints and the dock path as LineStrings. The coordinates stay in Sunray's local
   XY metre system – they are not geographic coordinates.
-- Both formats can be imported again.
+- **CaSSAndRA export** produces exactly the file CaSSAndRA writes and reads itself: world
+  coordinates in degrees, plus perimeter, dock path, search wire and exclusion areas. It stays
+  locked until a **CaSSAndRA reference point** has been entered. Enter the same value CaSSAndRA
+  shows under its robot settings as latitude and longitude – this is not a location fix, the
+  value only has to be identical on both sides. It applies to every map on this device and is
+  independent of an individual map's position mode.
+- All three formats can be imported again.
 
 **Make regular JSON backups of the maps that matter to you.**
 

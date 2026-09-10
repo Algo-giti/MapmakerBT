@@ -5,6 +5,7 @@ const { loadApp } = require('./app-harness.js');
 const { t } = loadApp({
   exportNames: ['state', 'makeMap', 'normalizeMap', 'polygonSelfIntersects', 'pointInPolygon',
     'polygonEdgesIntersect', 'polygonsIntersect', 'polygonArea', 'pathLength', 'geometryForArea', 'mapToGeoJson', 'geoJsonToMap', 'normalizeOrigin', 'mapOriginInUse',
+    'mapToCassandraGeoJson',
     'validateActiveMap'],
 });
 
@@ -321,6 +322,131 @@ assert.ok(geoWithWaypoints.features.some((f)=>f.properties.role==='waypoints' &&
   m.positionMode = 'relative';
   assert.strictEqual(m.perimeter.map((p)=>`${p.x},${p.y}`).join(' | '), before,
     'auch das Zurueckschalten laesst die Karte unangetastet');
+}
+
+// --- CaSSAndRA-Exportformat: Struktur und Rundlauf --------------------------
+// Vorbild ist CaSSAndRAs eigener Export (`export_geojson`, mapdata.py:665-690). Geprueft wird
+// die WIRKUNG: was CaSSAndRAs Import aus der Datei herausholt, nicht was wir hineinschreiben
+// wollten.
+//
+// EINSCHRAENKUNG, bewusst benannt: CaSSAndRAs Import ist Python und braucht pandas und shapely;
+// die Testform dieses Repos sind reine Node-Skripte ohne Abhaengigkeiten. Der Rundlauf laeuft
+// deshalb gegen eine ZEILENGETREUE PORTIERUNG von `coords_abs_to_rel` (mapdata.py:704-710) und
+// gegen das gemessene Verhalten von shapely (ein geschlossener Ring kommt unveraendert wieder
+// heraus, es entsteht kein doppelter Punkt). Das Original wurde einmalig ausserhalb des Repos
+// dagegen gerechnet; ein Aufruf des echten Imports ist hier nicht moeglich.
+{
+  // mapdata.py:705-706, Zeile fuer Zeile. `math.cos` rechnet im Bogenmass, `rovercfg.lat` steht
+  // in Grad — deshalb die Umrechnung, und deshalb ausdruecklich die Breite des BEZUGSPUNKTS,
+  // nicht die des jeweiligen Punktes.
+  const coordsAbsToRel = (lon, lat, ref) => ({
+    x: (lon - ref.lon) * (111111 * Math.cos((ref.lat * Math.PI) / 180)),
+    y: (lat - ref.lat) * 111111,
+  });
+  const reference = { lat: 52.26742967, lon: 8.60921633 };
+
+  const m = t.makeMap('CaSSAndRA');
+  m.perimeter = [{x:0,y:0},{x:12.5,y:0},{x:12.5,y:8.25},{x:6.125,y:11.4},{x:0,y:8.25}];
+  m.exclusions.push({ id:'ex1', name:'Ausschluss 1', closed:true,
+    points:[{x:3,y:3},{x:4.5,y:3},{x:4.5,y:4.5},{x:3,y:4.5}] });
+  // Eine Flaeche unter drei Punkten darf nicht mit hinaus: `Polygon(coordinates[0])`
+  // (mapdata.py:515) wirft dann und reisst den ganzen Import mit.
+  m.exclusions.push({ id:'ex2', name:'Ausschluss 2', closed:false, points:[{x:9,y:1},{x:9.5,y:1}] });
+  m.dockPoints = [{x:0,y:0},{x:-1.5,y:-2}];
+  m.waypoints = [{x:2,y:2},{x:5,y:5},{x:8,y:2}];
+
+  const doc = t.mapToCassandraGeoJson(m, reference);
+
+  // Genau zwei Schluessel oben — ein dritter mit einem Objekt als Wert laesst `pd.read_json`
+  // (mapdata.py:463) scheitern, und der GeoJSON-Zweig wird dann nie erreicht.
+  // Arrays aus dem vm-Sandkasten haben ein fremdes Prototyp — deshalb ueber Zeichenketten
+  // vergleichen statt ueber deepStrictEqual.
+  assert.strictEqual(Object.keys(doc).sort().join('|'), 'features|type');
+  assert.strictEqual(doc.type, 'FeatureCollection');
+
+  // Reihenfolge und Bezeichner woertlich nach mapdata.py:674, :678, :682, :686.
+  assert.strictEqual(doc.features.map((f) => f.properties.name).join('|'),
+    'perimeter|dockpoints|search wire|exclusion|mapmaker');
+  assert.strictEqual(doc.features.map((f) => (f.geometry ? f.geometry.type : 'null')).join('|'),
+    'Polygon|LineString|LineString|Polygon|null');
+
+  // `properties` traegt beim Kartenteil nur den Namen; `idx` steht auf FEATURE-Ebene (:688).
+  doc.features.slice(0, 4).forEach((f) => assert.strictEqual(Object.keys(f.properties).join('|'), 'name'));
+  assert.strictEqual(doc.features[3].idx, 0);
+  assert.strictEqual('idx' in doc.features[0], false);
+
+  // Dockpfad und Suchdraht werden auch leer geschrieben — das Vorbild legt sie unbedingt an.
+  const empty = t.mapToCassandraGeoJson(t.makeMap('Leer'), reference);
+  assert.strictEqual(empty.features.map((f) => f.properties.name).join('|'),
+    'perimeter|dockpoints|search wire|mapmaker');
+  assert.strictEqual(empty.features[1].geometry.coordinates.length, 0);
+  assert.strictEqual(empty.features[2].geometry.coordinates.length, 0);
+
+  // Ohne Bezugspunkt entsteht keine Datei.
+  assert.strictEqual(t.mapToCassandraGeoJson(m, null), null);
+  assert.strictEqual(t.mapToCassandraGeoJson(m, { lat: 95, lon: 8 }), null);
+
+  // Ringe sind geschlossen (mapdata.py:614-630 haengt den ersten Punkt an), offene Pfade nicht.
+  const ring = doc.features[0].geometry.coordinates[0];
+  assert.strictEqual(ring.length, m.perimeter.length + 1);
+  assert.strictEqual(ring[0].join(','), ring[ring.length - 1].join(','));
+  assert.strictEqual(doc.features[2].geometry.coordinates.length, m.waypoints.length);
+
+  // Sieben Nachkommastellen: gerechnet, nicht geraten — bei 1e-7 Grad Schrittweite liegt der
+  // Rundungsfehler bei hoechstens 0,5e-7 Grad, also rund 5,6 mm je Achse.
+  doc.features.slice(0, 4).forEach((f) => {
+    const coords = f.geometry.type === 'Polygon' ? f.geometry.coordinates[0] : f.geometry.coordinates;
+    coords.forEach(([lon, lat]) => {
+      [lon, lat].forEach((value) => {
+        const decimals = (String(value).split('.')[1] || '').length;
+        assert.ok(decimals <= 7, `zu viele Nachkommastellen: ${value}`);
+      });
+    });
+  });
+
+  // Rundlauf: was CaSSAndRA aus der Datei herausrechnet, gegen unsere Ausgangswerte.
+  const worst = (points, coords) => points.reduce((max, point, index) => {
+    const back = coordsAbsToRel(coords[index][0], coords[index][1], reference);
+    return Math.max(max, Math.hypot(back.x - point.x, back.y - point.y));
+  }, 0);
+
+  const perimeterMm = worst(m.perimeter, doc.features[0].geometry.coordinates[0]) * 1000;
+  const exclusionMm = worst(m.exclusions[0].points, doc.features[3].geometry.coordinates[0]) * 1000;
+  const dockMm = worst(m.dockPoints, doc.features[1].geometry.coordinates) * 1000;
+  const wireMm = worst(m.waypoints, doc.features[2].geometry.coordinates) * 1000;
+  const largestMm = Math.max(perimeterMm, exclusionMm, dockMm, wireMm);
+  assert.ok(largestMm < 10, `Rundlauf ueber 1 cm: ${largestMm.toFixed(4)} mm`);
+  // Die theoretische Obergrenze bei 7 Stellen liegt am Aequator bei 7,86 mm; naeher an der
+  // Grenze duerfte kein Punkt liegen, sonst stimmt an der Umrechnung etwas nicht.
+  assert.ok(largestMm < 7.9, `Rundlauf ueber der theoretischen Grenze: ${largestMm.toFixed(4)} mm`);
+
+  // Punktzahl bleibt erhalten: der Schlusspunkt des Rings ist der erste, kein zusaetzlicher.
+  assert.strictEqual(new Set(doc.features[0].geometry.coordinates[0].map(String)).size, m.perimeter.length);
+
+  // Das Metadaten-Feature traegt `properties.name` — ohne das bricht CaSSAndRAs Import mit
+  // KeyError, weil der Vergleich vor jeder Fallunterscheidung steht (mapdata.py:511).
+  const meta = doc.features[4];
+  assert.strictEqual(meta.properties.name, 'mapmaker');
+  assert.strictEqual(meta.geometry, null);
+  assert.strictEqual(`${meta.properties.origin.lat},${meta.properties.origin.lon}`,
+    `${reference.lat},${reference.lon}`);
+  assert.strictEqual(meta.properties.mapId, m.id);
+
+  // Und die Datei ist fuer uns selbst wieder einlesbar — ueber genau dieses Feature.
+  const back = t.geoJsonToMap(doc);
+  assert.strictEqual(back.positionMode, 'absolute');
+  assert.strictEqual(`${back.origin.lat},${back.origin.lon}`, `${reference.lat},${reference.lon}`);
+  assert.strictEqual(back.perimeter.length, m.perimeter.length);
+  assert.strictEqual(back.exclusions.length, 1);
+  assert.strictEqual(back.waypoints.length, m.waypoints.length);
+  assert.strictEqual(back.dockPoints.length, m.dockPoints.length);
+  const reread = m.perimeter.reduce((max, point, index) =>
+    Math.max(max, Math.hypot(back.perimeter[index].x - point.x, back.perimeter[index].y - point.y)), 0) * 1000;
+  assert.ok(reread < 10, `eigener Rueckweg ueber 1 cm: ${reread.toFixed(4)} mm`);
+
+  console.log(`  CaSSAndRA-Rundlauf: groesste Abweichung ${largestMm.toFixed(4)} mm ` +
+    `(Perimeter ${perimeterMm.toFixed(4)}, Ausschluss ${exclusionMm.toFixed(4)}, ` +
+    `Dock ${dockMm.toFixed(4)}, Suchdraht ${wireMm.toFixed(4)})`);
 }
 
 console.log('app core tests: OK');

@@ -609,6 +609,78 @@ Ziele darin stehen, entscheidet nicht diese App.
 die Ziel-App übergibt (Dateiname, Endung, Inhalt) — insbesondere bei Cloud-/Dateisynchronisations-Apps,
 die eigene Vorstellungen vom MIME-Typ haben.
 
+### CaSSAndRA-Exportformat (drittes Format, Stand v52)
+
+Erzeugt **genau die Datei, die CaSSAndRA selbst schreibt** (`export_geojson`,
+`MowManager/CaSSAndRA/CaSSAndRA/src/backend/data/mapdata.py:665-690`) — nicht unsere Vermutung
+davon. Endung `.json`, MIME `application/json`, wie CaSSAndRAs eigener Download
+(`chooseperimeter.py:69`).
+
+**Form, jeder Punkt belegt:**
+- **Genau zwei Schlüssel oben** (`type`, `features`, mapdata.py:670). Ein dritter mit einem Objekt
+  als Wert lässt `pd.read_json` (mapdata.py:463) scheitern — der GeoJSON-Zweig ab :507 wird dann
+  **nie erreicht**. Genau daran scheiterte unser normaler GeoJSON-Export (top-level `properties`).
+- **Reihenfolge** perimeter (:674), dockpoints (:678), search wire (:682), exclusion je Fläche
+  (:686-689). Dockpfad und Suchdraht werden **auch leer** geschrieben, weil das Vorbild sie
+  unbedingt anlegt.
+- `properties` trägt **nur** `name`; `idx` steht auf **Feature**-Ebene, nicht in `properties` (:688).
+- **Geschlossene Ringe** (mapdata.py:614-630 über :668). Empirisch geprüft: shapely liefert für
+  offenen wie geschlossenen Ring dieselben Koordinaten, ein geschlossener erzeugt **keinen**
+  doppelten Punkt — nur ein doppelt geschlossener täte das.
+- **7 Nachkommastellen.** Gerechnet, nicht geschätzt: 5 → 472,6 mm, 6 → 61,4 mm, **7 → 6,1 mm**,
+  8 → 0,6 mm. Theoretische Obergrenze bei 7 Stellen 7,86 mm (Äquator), 6,51 mm bei 52°.
+- **Flächen unter drei Punkten bleiben draußen**: `Polygon(coordinates[0])` (mapdata.py:515) wirft
+  dann und reißt den ganzen Import mit.
+- **Fünftes Feature `mapmaker`** mit unseren Metadaten. CaSSAndRAs Import vergleicht
+  `properties.name` in einer `if`/`elif`-Kette **ohne `else`** (mapdata.py:511-521) — ein
+  unbekannter Name fällt still heraus. Empirisch gegengeprüft: mit und ohne dieses Feature kommen
+  dieselben Zeilen heraus, auch als erstes Feature und mit `geometry: null`. **Zwingend** ist nur,
+  dass es `properties.name` überhaupt trägt: fehlt `properties` oder `name`, bricht der Import mit
+  `KeyError` ab, weil der Vergleich vor jeder Fallunterscheidung steht.
+
+**Umrechnung** ist die exakte Umkehrung von `coords_abs_to_rel` (mapdata.py:704-710) — bewusst
+dieselbe grobe Näherung, weil sich nur so beide Richtungen aufheben; eine geodätisch richtigere
+Formel driftete beim Rückweg. `cos` nimmt **Bogenmaß** und die Breite des **Bezugspunkts**, nie
+die des jeweiligen Punktes.
+
+**Bezugspunkt (`state.cassandraReference`, `CASSANDRA_REFERENCE_KEY`)** gehört zur **Installation**,
+nicht zur Karte, und ist ausdrücklich **nicht** `map.origin`: CaSSAndRA führt selbst nur einen
+einzigen Wert (`rovercfg.lat`/`lon`), und eine relativ geführte Karte ist für dieses Format
+genauso brauchbar. Die Sperre hängt deshalb **nicht** an `positionMode`, sondern allein daran, ob
+das Wertepaar gesetzt und gültig ist. Vorbelegung nur aus einer Karte mit Modus `absolute` **und**
+gültigem Ursprung — und dann wird der Wert auch **übernommen**, nicht bloß angezeigt: eine
+Vorbelegung, die nicht gilt, wäre eine Falle (Feld gefüllt, Knopf grau). Kein Standardwert, kein
+0/0 — obwohl genau das CaSSAndRAs Auslieferungswert ist (`cfgdata.py:195-196`).
+
+**Ausgegraut statt ausgeblendet** (`refreshExportButtons()`), anders als bei den Teilen-Knöpfen:
+ein fehlender Bezugspunkt ist behebbar, eine fehlende Browserfähigkeit nicht.
+
+**Warum der Nutzer den Wert eintragen muss:** Sunray hat **keinen** AT-Befehl, der lat0/lon0
+ausliest. `AT+P` (`comm.cpp:1024` → `cmdPosMode()`, `:474-504`) ist reines Schreiben und antwortet
+mit dem nackten `"P"` (`:502-503`); lat/lon erscheinen in `comm.cpp` nur in `CONSOLE.print`
+(`:498, :500, :1399-1402`), nie in einem `cmdAnswer()`. `AT+S` (`:684-736`) liefert nur
+`stateX`/`stateY` in lokalen Metern. In der Voreinstellung (`absolutePosSource = false`,
+`StateEstimator.h:64`) gibt es dort überhaupt kein lat0/lon0 — der Nullpunkt ist die
+RTK-Basisstation über UBX-NAV-RELPOSNED (`ublox.cpp:81-82`). CaSSAndRA seinerseits lässt den Wert
+von Hand eintragen (`accordion.py:228-232, :617-619`) und schiebt ihn per `AT+P` zum Mäher
+(`sunraycommstack.py:150-158`); ein Parser für eine Antwort mit Werten existiert **nirgends**.
+*(Belege aus `/home/penis/projects/MeinSunray`; auf dem Gerät läuft eine MRTREE-Variante, die
+lokal nicht vorliegt — für die geflashte Firmware ist damit nichts davon belegt.)*
+
+**Ein falscher Wert ist ungefährlich, aber nicht folgenlos.** Vollständige Suche nach
+`rovercfg.lat`/`lon` in CaSSAndRA: reine Rechenkonstante in `mapdata.py:697-698` und `:705-706`
+(Aufrufer ausschließlich Export und Import), Übertragung per `AT+P` in `sunraycommstack.py:156`,
+und sonst nur Anzeige in den eigenen Eingabefeldern (`accordion.py:228, 232, 675`) und die
+API-Ausgabe (`settingstopic.py:69-70`). **Kein Kartenhintergrund, keine Live-Position.** Der Wert
+fällt beim Rundlauf heraus — er muss nur auf beiden Seiten derselbe sein.
+
+**Eigener Rückweg:** `geoJsonToMap()` liest Ursprung und Kartenname aus dem `mapmaker`-Feature,
+wenn oben kein `properties`-Block steht. Ohne das läse unser eigener Import die Grad als Meter.
+
+**Nicht ohne Gerät verifizierbar:** ob CaSSAndRAs Upload-Dialog auf dem Zielgerät die Datei
+tatsächlich annimmt — geprüft ist nur, dass `dcc.Upload` (`uploadsunray.py:14`) kein `accept`
+setzt und der Callback (`:32`) den Dateinamen nicht auswertet.
+
 ### Diagnoseprotokoll (Menü → Diagnose)
 
 **Das Protokoll liegt seit v50 in `state.logEntries`, nicht mehr nur im DOM.** Vorher hängte
@@ -1405,6 +1477,26 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-10: **Drittes Exportformat „CaSSAndRA".** Erzeugt wortgleich die Form von CaSSAndRAs
+  eigenem `export_geojson` (mapdata.py:665-690) statt einer Vermutung davon; Details und Belege im
+  Abschnitt „CaSSAndRA-Exportformat". Vorab geprüft statt angenommen: (V1) `rovercfg.lat`/`lon`
+  wird in CaSSAndRA außer für die Umrechnung und `AT+P` nur in den eigenen Eingabefeldern und der
+  API-Ausgabe gelesen — ein geografisch falscher Wert fällt beim Rundlauf heraus; (V2) ein Feature
+  mit unbekanntem `properties.name` wird durch die `if`/`elif`-Kette ohne `else` still übergangen,
+  empirisch in sieben Varianten bestätigt, weshalb das Metadaten-Feature `mapmaker` gebaut werden
+  durfte; (V3) `dcc.Upload` schränkt Endungen nicht ein und der Callback wertet den Dateinamen
+  nicht aus, deshalb `.json` wie CaSSAndRAs eigener Export; (V4) Auslieferungswert dort ist 0/0
+  (`cfgdata.py:195-196`), das wird bei uns bewusst **nicht** vorbelegt. Der Bezugspunkt ist ein
+  eigenes, installationsweites Wertepaar (`mapcreator-ardumower-cassandra-reference-v1`), nicht
+  `map.origin`, und die Sperre hängt **nicht** am Positionsmodus. Gemessener Rundlauf gegen die
+  echte, kopierte Importfunktion (pandas + shapely, außerhalb des Repos): **größte Abweichung
+  4,73 mm**, alle vier Typen erkannt, keine Dublette, die zweipunktige Fläche korrekt ausgelassen.
+  **Einschränkung des bleibenden Tests:** die Testform des Repos ist reines Node ohne
+  Abhängigkeiten, der Originalimport ist Python — der Test in `tests/app-core-test.js` rechnet
+  deshalb gegen eine zeilengetreue Portierung von `coords_abs_to_rel` und liefert dieselben Zahlen
+  wie das Original (4,2720 / 4,7287 / 3,9080 / 4,4286 mm). Hilfe und README in beiden Sprachen
+  ergänzt. `APP_VERSION` auf `v52`.
 
 - 2026-09-08: **Karten teilen (Web Share API).** Neben jedem Export-Knopf im Menü → Karten steht
   jetzt ein Teilen-Knopf; beide Wege holen ihre Datei aus **derselben** Quelle

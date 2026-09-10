@@ -234,8 +234,15 @@
 <button class="secondary" data-i18n="shareJson" hidden="" id="shareJsonBtn" type="button">Als JSON teilen</button>
 <button class="secondary" data-i18n="saveGeoJson" id="exportGeoJsonBtn" type="button">Als GeoJSON speichern</button>
 <button class="secondary" data-i18n="shareGeoJson" hidden="" id="shareGeoJsonBtn" type="button">Als GeoJSON teilen</button>
+<button class="secondary" data-i18n="saveCassandra" id="exportCassandraBtn" type="button">Für CaSSAndRA speichern</button>
+<button class="secondary" data-i18n="shareCassandra" hidden="" id="shareCassandraBtn" type="button">Für CaSSAndRA teilen</button>
 </div>
-<small class="export-hint" data-i18n="exportHint">JSON enthält das vollständige Mapper-Backup. GeoJSON speichert Perimeter/Ausschlüsse/Dock als Geometrien mit lokalen Sunray-X/Y-Koordinaten in Metern.</small>
+<small class="export-hint" data-i18n="exportHint">JSON enthält das vollständige Mapper-Backup. GeoJSON speichert Perimeter/Ausschlüsse/Dock als Geometrien mit lokalen Sunray-X/Y-Koordinaten in Metern. Die CaSSAndRA-Datei ist dagegen genau so aufgebaut, wie CaSSAndRA sie selbst schreibt, und braucht deshalb den Bezugspunkt unten.</small>
+<small class="export-hint" data-i18n="cassandraMissingHint" hidden="" id="cassandraMissingHint">Der CaSSAndRA-Export ist gesperrt, solange unten kein Bezugspunkt eingetragen ist.</small>
+<div class="view-divider"></div>
+<label class="field compact"><span data-i18n="cassandraRefLat">CaSSAndRA-Bezugspunkt: Breite</span><div class="unit-input"><input id="cassandraLatInput" inputmode="decimal" max="90" min="-90" step="0.0000001" type="number"/><span>°</span></div></label>
+<label class="field compact"><span data-i18n="cassandraRefLon">CaSSAndRA-Bezugspunkt: Länge</span><div class="unit-input"><input id="cassandraLonInput" inputmode="decimal" max="180" min="-180" step="0.0000001" type="number"/><span>°</span></div></label>
+<small class="view-note" data-i18n="cassandraRefHint">Trage hier genau denselben Wert ein, der in CaSSAndRA unter den Robotereinstellungen als Breite und Länge steht. Es ist keine Ortsbestimmung: der Wert muss nur auf beiden Seiten derselbe sein, sonst liegt die Karte nach dem Import versetzt. Er gilt für alle Karten dieser Installation.</small>
 <label class="secondary file-button" data-i18n="importJsonGeoJson" for="importInput">JSON / GeoJSON importieren</label>
 <input accept="application/json,application/geo+json,.json,.geojson" hidden="" id="importInput" type="file"/>
 <button class="secondary" data-i18n="lockCurrentMap" id="lockMapBtn" type="button">Karte sperren</button>
@@ -538,6 +545,7 @@
 <div class="help-two-col">
 <div class="format-card"><strong>JSON</strong><p data-i18n="jsonHelp">Empfohlenes vollständiges Backup für MapCreator. Enthält Kartenstruktur, Punkte und zusätzliche Metadaten wie Aufnahme-/Editierinformationen.</p></div>
 <div class="format-card"><strong>GeoJSON</strong><p data-i18n="geoJsonHelp">Für Geometrie-Austausch. Perimeter und Ausschlüsse werden als Polygone, der Dockpfad als LineString exportiert.</p></div>
+<div class="format-card"><strong>CaSSAndRA</strong><p data-i18n="cassandraHelp">Genau die Form, die CaSSAndRA selbst schreibt und einliest: Weltkoordinaten in Grad, Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Voraussetzung ist der Bezugspunkt bei den Export-Knöpfen — derselbe Wert, der in CaSSAndRA unter den Robotereinstellungen steht.</p></div>
 </div>
 <div class="notice info help-note"><span data-i18n="geoJsonXYWarning">Die Ardumower-Koordinaten sind lokale Sunray-X/Y-Werte in Metern. Sie sind keine GPS-Längen-/Breitengrade und werden deshalb im Export ausdrücklich als lokales metrisches Koordinatensystem gekennzeichnet.</span></div>
 <div class="notice info help-note"><span data-i18n="shareHelpNote">Karten von einem Gerät auf ein anderes bringen: Auf dem Quellgerät die Karte speichern oder teilen. „Teilen“ übergibt genau dieselbe Datei an das Freigabe-Menü des Geräts, sodass sie ohne Umweg über den Download-Ordner weitergereicht werden kann; welche Ziele dort angeboten werden, entscheidet das Gerät, nicht diese App. Auf dem Zielgerät die Datei über „JSON / GeoJSON importieren“ im Menü unter Karten einlesen. Kann ein Browser keine Dateien teilen, erscheint der Teilen-Knopf gar nicht erst — dann bleibt Speichern der Weg.</span></div>
