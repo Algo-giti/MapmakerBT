@@ -779,6 +779,102 @@ früheren Fassung exportiert hat) und weist nach, dass Name, Modus, Ursprung und
 unverändert ankommen — in der relativen wie in der absoluten Variante, samt Gegenprobe mit einem
 untergeschobenen `mapmaker`-Feature.
 
+### Sunray-App-Exportformat (viertes Format, Stand v56)
+
+Erzeugt die Datei, die die **grauonline-Sunray-App** selbst schreibt — Vorlage ist ein echter
+Export des Nutzers (`tests/map/sunrayapp_map.json`, 10 Karten, nicht versioniert).
+Endung `.sunray.json`, MIME `application/json`.
+
+**Form, jeder Punkt belegt:**
+- **Äußere Hülle ist eine Liste von Karten**, auch bei einer einzigen. `import_sunray()` läuft mit
+  `for map_number in range(len(df))` (mapdata.py:471) über die Zeilen.
+- Je Karte: `perimeter`, `exclusions` (Array von Arrays), `waypoints`, `dockpoints`, `name`,
+  `patternAngle`, `mowOfs`, `patternRings`, `doMowExclusions`, `doMowPerimeter`, `doMowArea`,
+  `doPerimeterBorder`, `doExclusionsBorder`.
+- **Konturpunkt:** `X`, `Y`, `delta`, `timestamp`, `sol` — in dieser Reihenfolge.
+  **Wegpunkte tragen nur `X`/`Y`** (in der Vorlage durchgängig).
+- **Koordinaten sind lokale Sunray-Meter** und werden **nicht umgerechnet**. Beleg: X −44…+11,
+  Y −49…+40; als Grad wären das ~4300 km. CaSSAndRAs Sunray-Zweig rechnet nichts um — anders als
+  der GeoJSON-Zweig. **Dieses Format braucht deshalb keinen Bezugspunkt**, und die Sperre des
+  CaSSAndRA-Exports darf hier nicht greifen (`sunray` hat kein `blockKey`).
+- **Ringe bleiben offen** — die Vorlage schreibt in allen zehn Karten keinen Schlusspunkt.
+- **Leere Listen werden geschrieben** (`dockpoints` ist dort 10 von 10 leer).
+
+**`delta` und `timestamp` sind harte Pflichtfelder.** `coords.drop(['delta','timestamp'], axis=1)`
+(mapdata.py:491) steht **ohne** `try`: fehlt eines, wirft `.drop()` einen KeyError, und die
+**ganze Datei** wird abgewiesen — nicht nur die eine Karte. Empirisch an der echten Funktion
+geprüft (`status -1`). `sol` ist dagegen optional (mapdata.py:493-497 fängt es ab), und auch die
+Vorlage lässt es bei 4 von 3468 Punkten weg — wir schreiben es deshalb nur, wenn es gemessen wurde,
+statt eine Güte zu erfinden.
+
+**Was die drei Felder bedeuten** (belegt, nicht geraten):
+- `delta` = `stateEstimator.stateDelta`, Roboterausrichtung in Bogenmaß — `AT+S` baut
+  `S,batterie,stateX,stateY,stateDelta,solution,…` (comm.cpp:684-698, `stateDelta` auf :692).
+  Wertespanne der Vorlage −3,14…+3,12 passt auf ±π.
+- `sol` = `gps.solution` (comm.cpp:694), Konstanten `SOL_INVALID`/`SOL_FLOAT`/`SOL_FIXED`
+  (gps.h:5-7).
+- `timestamp` stammt **nicht** aus Sunray — kein Feld der Statuszeile; die App setzt die
+  Aufnahmezeit selbst, als **ISO-String**, nicht als Zahl.
+
+**Der Mäher sieht diese drei Felder nie.** `AT+W,startidx,x,y,x,y,…` überträgt nur Koordinaten
+(`Comm::cmdWaypoint()`, comm.cpp:354-387), `Map::setPoint(int idx, float x, float y)` (map.cpp:769)
+nimmt nur x und y, und die Firmware-Klasse `Point` (map.h:21-41) hat überhaupt nur `px`/`py` in cm.
+Ein fester Wert wäre für Mäher und CaSSAndRA also folgenlos — **trotzdem wird `delta` seit v56 echt
+mitgespeichert** (`pointFromTelemetry()` legt `gps.delta` ab; wir empfangen den Wert über
+`protocol.js:74` seit jeher). Grund: ob die grauonline-App das Feld beim Wiedereinlesen auswertet,
+ist **nicht belegt** — die App liegt nicht vor. Altbestand ohne `delta` bekommt 0.
+
+**Mähfelder sind Platzhalter, keine Messwerte** (`SUNRAY_APP_MOW_DEFAULTS`). Diese App steuert kein
+Mähen und führt diese Einstellungen nicht. Geschrieben werden die Werte, die in der Vorlage über
+alle zehn Karten gleich sind (`patternRings: false`, alle Mäh-/Randflaggen `true`); `patternAngle`
+und `mowOfs` streuen dort (1,22–3,11 rad bzw. 0,19–0,51 m) und stehen deshalb auf 0 bzw. 0,2.
+
+**Ausgelassene Ausschlussflächen laufen über denselben Weg wie beim CaSSAndRA-Export**:
+`hasUsablePolygon()` filtert, `skippedAreas()` (früher `cassandraSkippedAreas()`, umbenannt weil
+formatunabhängig) stellt sie zusammen, `noticeSunrayExport()` nennt sie. Keine zweite Zählung.
+
+**Gemeldet, nicht gebaut — die 4er-Grenze.** CaSSAndRAs Sunray-Zweig verlangt `len(exclusion_df) > 3`
+(mapdata.py:480), also **mindestens vier** Punkte; eine Fläche mit genau drei wird dort **still**
+verworfen. Anders als im GeoJSON-Zweig reißt sie dabei **nichts** mit — der Rest der Karte kommt an.
+Wir filtern weiterhin mit `hasUsablePolygon()` (≥3), weil die Datei der App-Schreibsicht folgt und
+der Mäher ein Dreieck verarbeiten kann. Eine gesonderte Warnung für Drei-Punkt-Flächen ist bewusst
+**nicht** gebaut; sie wäre die nächste Ausbaustufe, wenn der Fall praktisch auftritt.
+
+**Gemessen:** die erzeugte Datei durch die **echte** Python-Importfunktion ergibt gegenüber der
+Vorlage **0,000000 mm** Abweichung über alle 22 Punkte des Prüfmusters — es wird nichts
+umgerechnet und nichts gerundet. Prüfmuster `tests/fixtures/sunray-app-map.json`: aus der echten
+Datei abgeleitet, auf 14 Punkte ausgedünnt, auf einen erfundenen Nullpunkt verschoben, cm-Raster,
+ein Punkt bewusst ohne `sol` — versioniert, kein Rückschluss auf den Standort.
+
+**Nicht belegt:** wie `dockpoints` in der Vorlage aufgebaut sind (in allen zehn Karten leer); wie
+die App mit Flächen unter acht Punkten umgeht (kleinste vorkommende Fläche hat acht); ob die
+grauonline-App `delta`, `patternAngle` oder `mowOfs` beim Einlesen auswertet.
+
+### Exportknöpfe: Reihenfolge und Gliederung (Stand v56)
+
+Vier Formate in drei Gruppen, nach Zweck statt nach Alter: **Sunray** (für die grauonline-App und
+den Mäher), **CaSSAndRA** (für den Import dort), dann **JSON** (vollständige Sicherung dieser App)
+und **GeoJSON** (Fremdwerkzeuge). Der Hinweistext sagt je Format, wofür es da ist, und ausdrücklich,
+dass JSON und GeoJSON **nicht** für den Import in CaSSAndRA gedacht sind — das war die Verwechslung,
+die überhaupt zu diesem Format geführt hat.
+
+**Der CaSSAndRA-Bezugspunkt steht in derselben Gruppe wie sein Knopf** (`.export-group`,
+`#cassandraGroup`): nur dieses eine Format braucht ihn, und frei unter der Formatbeschreibung sah er
+aus wie eine allgemeine Einstellung. Die Felder bleiben **unabhängig vom Positionsmodus sichtbar** —
+der Bezugspunkt gehört zur Installation, nicht zur Karte. Ein ui-Test grenzt die Gruppe über die
+**div-Verschachtelung** ab, nicht über den nächsten Textschnipsel: ein zusätzlich eingefügtes
+`</div>` nähme die Felder sonst aus der Gruppe, ohne dass der Test es merkt (genau so ist er einmal
+durchgerutscht).
+
+### Verbindungshinweis: parallele HTTP-Verbindungen (Stand v56)
+
+`#httpConflictHint` steht **dauerhaft** und rot hervorgehoben beim Verbinden-Knopf — bewusst kein
+Dialog bei jedem Verbindungsversuch. Der Wortlaut ist als **Beobachtung** formuliert, nicht als
+Ursache: belegt ist bisher nur, dass ein Mäher mit gleichzeitiger CaSSAndRA-Verbindung abbrach und
+ein anderer ohne nicht — **zwei verschiedene Geräte, kein kontrollierter Vergleich**. Ein ui-Test
+prüft in beiden Sprachen, dass die einschränkenden Formulierungen dastehen und keine ursächlichen
+(„verursacht", „is caused by").
+
 ### CaSSAndRA-Dateien einlesen (Stand v55)
 
 **Erkannt wird an der Form, nie an den Zahlen.** `isCassandraGeoJson(data)` ist die einzige
@@ -1656,6 +1752,34 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-11: **Viertes Exportformat „Sunray-App", Knöpfe nach Zweck gegliedert, zwei
+  Wortlaut-Korrekturen.** (T1) Neues Format nach der Schreibsicht der grauonline-App, Vorlage ist
+  ein echter Export mit zehn Karten. Belege und Entscheidungen im eigenen Abschnitt; die beiden
+  Kernbefunde: **`delta` und `timestamp` sind Pflichtfelder** — `coords.drop([...])`
+  (mapdata.py:491) steht ohne `try`, fehlt eines, wird die **ganze Datei** abgewiesen (empirisch
+  geprüft) —, und **das Format braucht keinen Bezugspunkt**, weil CaSSAndRAs Sunray-Zweig nicht
+  umrechnet. Die erzeugte Datei ergibt durch die echte Python-Importfunktion **0,000000 mm**
+  Abweichung. `delta` wird seit jetzt echt mitgespeichert (`gps.delta`) statt erfunden — wir
+  empfangen den Wert über `protocol.js:74` seit jeher, hatten ihn nur nie abgelegt; ob die
+  grauonline-App ihn auswertet, ist **nicht belegt**. `cassandraSkippedAreas()` heißt jetzt
+  `skippedAreas()`, weil beide Formate dieselbe Auslassung teilen — `hasUsablePolygon()` bleibt die
+  einzige Zählung. **Gemeldet, nicht gebaut:** CaSSAndRA verlangt dort `> 3` Punkte je Fläche, eine
+  Drei-Punkt-Fläche wird still verworfen (ohne Totalausfall); eine gesonderte Warnung dafür steht
+  aus. (T2) Reihenfolge Sunray → CaSSAndRA → JSON → GeoJSON, Beschreibung je Format mit dem
+  ausdrücklichen Satz, dass JSON und GeoJSON **nicht** für CaSSAndRA gedacht sind. (T3) Der
+  Bezugspunkt steht jetzt in derselben Gruppe wie der CaSSAndRA-Knopf, bleibt aber unabhängig vom
+  Positionsmodus sichtbar. (T4) **„üblicherweise die der Ladestation" war unbelegt und ist
+  ersetzt:** in der Voreinstellung (`absolutePosSource = false`, StateEstimator.h:64) zählt Sunray
+  relativ zur **RTK-Basisstation** (`posN = gps.relPosN`, StateEstimator.cpp:381-382, aus
+  UBX-NAV-RELPOSNED); mit `absolutePosSource` ist der Nullpunkt der per `AT+P` gesetzte Punkt
+  (`relativeLL(absolutePosSourceLat, …)`, StateEstimator.cpp:379; comm.cpp:486-490) — eine **freie
+  Wahl**, kein Ort im Garten. (T5) Dauerhafter roter Hinweis beim Verbinden zu parallelen
+  HTTP-Verbindungen, ausdrücklich als **Beobachtung** formuliert: zwei verschiedene Geräte, kein
+  kontrollierter Vergleich. Neu: 1 Block in `tests/app-core-test.js`, 4 ui-Fälle (169), Prüfmuster
+  `tests/fixtures/sunray-app-map.json`. Gegen zehn simulierte Rückfälle geprüft — einer rutschte
+  durch (der T3-Test grenzte die Gruppe nach Text statt nach div-Verschachtelung ab) und ist
+  geschärft. i18n-Parität DE/EN maschinell geprüft. `APP_VERSION` auf `v56`.
 
 - 2026-09-11: **CaSSAndRA-Dateien lassen sich einlesen; Ringschluss überlebt jeden Import.**
   Zwei gemeldete Befunde, **eine Wurzel**. (a) Eine echte CaSSAndRA-Datei wurde als lokale Meter

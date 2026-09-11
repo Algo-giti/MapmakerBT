@@ -179,6 +179,10 @@
 <input aria-describedby="passwordHint" autocomplete="off" id="passwordInput" inputmode="numeric" type="password" value="123456"/>
 <small data-i18n="passwordHint" id="passwordHint">Nur für diese Sitzung. Wird nicht mit der Karte gespeichert.</small>
 </label>
+<!-- Dauerhafte Hinweiszeile, bewusst KEIN Dialog bei jedem Verbindungsversuch: der Hinweis
+     gilt immer und soll beim Verbinden lesbar sein, ohne den Weg zu versperren.
+     Muster wie #cassandraSkippedHint, nur rot hervorgehoben. -->
+<small class="export-hint connect-warning" data-i18n="httpConflictHint" id="httpConflictHint">Beobachtung, keine gesicherte Ursache: Läuft parallel eine HTTP-Verbindung zum selben Gerät — etwa CaSSAndRA, die Weboberfläche oder ein anderer Dienst —, kann die Bluetooth-Verbindung stören oder abbrechen. Wenn es Probleme gibt, beende solche Dienste vor dem Verbinden. Belegt ist bisher nur, dass ein Mäher mit gleichzeitiger CaSSAndRA-Verbindung abbrach und ein anderer ohne nicht; das waren zwei verschiedene Geräte, kein kontrollierter Vergleich.</small>
 <div class="connection-actions">
 <button class="primary big-action" data-i18n="searchConnect" id="connectBtn" type="button">Gerät suchen &amp; verbinden</button>
 <button class="secondary" data-i18n="disconnect" disabled="" id="disconnectBtn" type="button">Verbindung trennen</button>
@@ -220,7 +224,7 @@
 <label class="field compact"><span data-i18n="originLat">Breitengrad des Ursprungs</span><div class="unit-input"><input id="originLatInput" inputmode="decimal" max="90" min="-90" step="0.0000001" type="number"/><span>°</span></div></label>
 <label class="field compact"><span data-i18n="originLon">Längengrad des Ursprungs</span><div class="unit-input"><input id="originLonInput" inputmode="decimal" max="180" min="-180" step="0.0000001" type="number"/><span>°</span></div></label>
 </div>
-<small class="view-note" data-i18n="positionModeHint">Gilt nur für diese Karte und nur für den GeoJSON-Export. „Relativ“ ist der Standard und lässt alles wie bisher. Für „Absolut“ trägst du einmalig die GPS-Position des Nullpunkts ein, üblicherweise die der Ladestation.</small>
+<small class="view-note" data-i18n="positionModeHint">Gilt nur für diese Karte und nur für den GeoJSON-Export. „Relativ“ ist der Standard und lässt alles wie bisher. Für „Absolut“ trägst du einmalig die GPS-Position ein, die dem Nullpunkt der Karte entsprechen soll — welcher Punkt das ist, legst du selbst fest. In der Voreinstellung zählt Sunray in Metern relativ zur RTK-Basisstation; ein fester Nullpunkt existiert im Mäher nur, wenn dort über AT+P ein Bezugspunkt gesetzt wurde.</small>
 </div>
 </section>
 <section class="card action-card">
@@ -230,23 +234,33 @@
 </div>
 <div class="stacked-actions">
 <div aria-label="Karte exportieren oder teilen" class="export-grid" data-i18n-aria-label="exportMapAria" role="group">
-<button class="secondary" data-i18n="saveJson" id="exportJsonBtn" type="button">Als JSON speichern</button>
-<button class="secondary" data-i18n="shareJson" hidden="" id="shareJsonBtn" type="button">Als JSON teilen</button>
-<button class="secondary" data-i18n="saveGeoJson" id="exportGeoJsonBtn" type="button">Als GeoJSON speichern</button>
-<button class="secondary" data-i18n="shareGeoJson" hidden="" id="shareGeoJsonBtn" type="button">Als GeoJSON teilen</button>
+<button class="secondary" data-i18n="saveSunray" id="exportSunrayBtn" type="button">Für Sunray-App speichern</button>
+<button class="secondary" data-i18n="shareSunray" hidden="" id="shareSunrayBtn" type="button">Für Sunray-App teilen</button>
+</div>
+<!-- CaSSAndRA-Gruppe: Knopfpaar, Sperrgrund, ausgelassene Flaechen UND die beiden
+     Bezugspunktfelder gehoeren zusammen — nur dieses eine Format braucht den Wert. Die Felder
+     bleiben unabhaengig vom Positionsmodus sichtbar, der Bezugspunkt gehoert zur Installation. -->
+<div class="export-group" id="cassandraGroup">
+<div aria-label="Karte für CaSSAndRA exportieren oder teilen" class="export-grid" data-i18n-aria-label="exportCassandraAria" role="group">
 <button class="secondary" data-i18n="saveCassandra" id="exportCassandraBtn" type="button">Für CaSSAndRA speichern</button>
 <button class="secondary" data-i18n="shareCassandra" hidden="" id="shareCassandraBtn" type="button">Für CaSSAndRA teilen</button>
 </div>
-<small class="export-hint" data-i18n="exportHint">JSON enthält das vollständige Mapper-Backup. GeoJSON speichert Perimeter/Ausschlüsse/Dock als Geometrien mit lokalen Sunray-X/Y-Koordinaten in Metern. Die CaSSAndRA-Datei ist dagegen genau so aufgebaut, wie CaSSAndRA sie selbst schreibt, und braucht deshalb den Bezugspunkt unten.</small>
 <!-- Text kommt aus refreshExportButtons(): er nennt den jeweiligen Sperrgrund, deshalb kein festes data-i18n. -->
 <small class="export-hint" hidden="" id="cassandraMissingHint"></small>
 <!-- Ebenfalls aus refreshExportButtons(): nennt die Flaechen, die dieses Format auslaesst,
      schon bevor die Datei erzeugt wird. Die Meldung nach dem Export bleibt zusaetzlich. -->
 <small class="export-hint" hidden="" id="cassandraSkippedHint"></small>
-<div class="view-divider"></div>
 <label class="field compact"><span data-i18n="cassandraRefLat">CaSSAndRA-Bezugspunkt: Breite</span><div class="unit-input"><input id="cassandraLatInput" inputmode="decimal" max="90" min="-90" step="0.0000001" type="number"/><span>°</span></div></label>
 <label class="field compact"><span data-i18n="cassandraRefLon">CaSSAndRA-Bezugspunkt: Länge</span><div class="unit-input"><input id="cassandraLonInput" inputmode="decimal" max="180" min="-180" step="0.0000001" type="number"/><span>°</span></div></label>
 <small class="view-note" data-i18n="cassandraRefHint">Trage hier genau denselben Wert ein, der in CaSSAndRA unter den Robotereinstellungen als Breite und Länge steht. Es ist keine Ortsbestimmung: der Wert muss nur auf beiden Seiten derselbe sein, sonst liegt die Karte nach dem Import versetzt. Voreingestellt ist 0 / 0 — das ist auch CaSSAndRAs Auslieferungswert, passt also, solange dort nichts eingetragen wurde. Er gilt für alle Karten dieser Installation.</small>
+</div>
+<div aria-label="Karte sichern oder weitergeben" class="export-grid" data-i18n-aria-label="exportBackupAria" role="group">
+<button class="secondary" data-i18n="saveJson" id="exportJsonBtn" type="button">Als JSON speichern</button>
+<button class="secondary" data-i18n="shareJson" hidden="" id="shareJsonBtn" type="button">Als JSON teilen</button>
+<button class="secondary" data-i18n="saveGeoJson" id="exportGeoJsonBtn" type="button">Als GeoJSON speichern</button>
+<button class="secondary" data-i18n="shareGeoJson" hidden="" id="shareGeoJsonBtn" type="button">Als GeoJSON teilen</button>
+</div>
+<small class="export-hint" data-i18n="exportHint">Sunray-App: für die Sunray-App von grauonline und den Mäher selbst. CaSSAndRA: für den Import in CaSSAndRA, braucht den Bezugspunkt oben. JSON: vollständige Sicherung dieser App, mit allen Zusatzdaten. GeoJSON: für Fremdwerkzeuge, die Geometrien lesen. JSON und GeoJSON sind NICHT für den Import in CaSSAndRA gedacht — dafür ist das CaSSAndRA-Format da.</small>
 <label class="secondary file-button" data-i18n="importJsonGeoJson" for="importInput">JSON / GeoJSON importieren</label>
 <input accept="application/json,application/geo+json,.json,.geojson" hidden="" id="importInput" type="file"/>
 <!-- Meldung nach einem Import. Bewusst eine Hinweiszeile an Ort und Stelle und kein Dialog:
@@ -522,7 +536,7 @@
 <div><strong data-i18n="helpExtendTitle">Kontur nachträglich erweitern</strong><span data-i18n="helpExtendText">Ist ein Perimeter oder eine Ausschlussfläche schon geschlossen, öffnet „Erweitern“ in der Kartenleiste sie wieder. Ein Hinweisstreifen über der Karte führt Schritt für Schritt: zwei direkt benachbarte Punkte antippen, dann wird die Kante zwischen ihnen aufgetrennt. Danach nimmst du wie gewohnt weitere Punkte auf — auch mit Automatik —, sie landen genau zwischen den beiden gewählten. „Fertig“ im Hinweisstreifen schließt die Kontur wieder.</span></div>
 <div><strong data-i18n="helpMapToolsTitle">Karten umbenennen &amp; kopieren</strong><span data-i18n="helpMapToolsText">In der Kartenübersicht trägt jede Karte zwei kleine Werkzeuge: der Stift benennt sie um (nur der Name ändert sich), das Kopiersymbol legt eine vollständige, unabhängige Kopie an — mit allen Punkten, dem Positionsmodus und dem Ursprung. Die Kopie bekommt automatisch einen freien Namen, die gerade aktive Karte bleibt aktiv.</span></div>
 <div><strong data-i18n="helpDriveControlTitle">Joystick oder Richtungstasten</strong><span data-i18n="helpDriveControlText">Der kleine Knopf neben dem Fahrfeld schaltet zwischen beidem um; er zeigt das Symbol des Modus, in den er wechselt. Bei Rechtshändern steht er links vom Feld, bei Linkshändern gespiegelt rechts – jeweils direkt über der Fahrtanzeige. Der Joystick fährt wie eine Fernsteuerung: Richtung und Stärke der Auslenkung. Die Richtungstasten kennen nur vorwärts, rückwärts und Drehen auf der Stelle — kein versehentliches Lenken beim Geradeausfahren. Sie fahren mit einer eigenen, langsamen Geschwindigkeit für genaues Rangieren, einstellbar unter Einstellungen › Fahrgeschwindigkeit.</span></div>
-<div><strong data-i18n="helpPositionModeTitle">Positionsmodus</strong><span data-i18n="helpPositionModeText">Jede Karte rechnet standardmäßig in lokalen Metern relativ zum Startpunkt des Mähers („Relativ“) — dafür ist keine Eingabe nötig. „Absolut“ brauchst du nur, wenn du die Karte mit Programmen austauschen willst, die echte Weltkoordinaten erwarten: dort trägst du im Menü unter Karten einmalig die GPS-Position des Nullpunkts ein, meist die der Ladestation. Der Ursprung gehört zur jeweiligen Karte, weil verschiedene Karten meist an verschiedenen Orten liegen. Fehlt ein gültiger Ursprung, bleibt der Export bei lokalen Metern — falsch machen kannst du dabei nichts.</span></div>
+<div><strong data-i18n="helpPositionModeTitle">Positionsmodus</strong><span data-i18n="helpPositionModeText">Jede Karte rechnet standardmäßig in lokalen Metern („Relativ“) — dafür ist keine Eingabe nötig. In der Voreinstellung zählt Sunray diese Meter relativ zur RTK-Basisstation, nicht zu einem Punkt im Garten. „Absolut“ brauchst du nur, wenn du die Karte mit Programmen austauschen willst, die echte Weltkoordinaten erwarten: dort trägst du im Menü unter Karten einmalig die GPS-Position ein, die dem Nullpunkt entsprechen soll. Welcher Punkt das ist, legst du selbst fest — der Mäher hat von sich aus keinen. Nur wenn im Mäher über AT+P ein Bezugspunkt gesetzt wurde, rechnet er selbst gegen diesen; dann ist es genau dieser Wert. Der Ursprung gehört zur jeweiligen Karte, weil verschiedene Karten meist an verschiedenen Orten liegen. Fehlt ein gültiger Ursprung, bleibt der Export bei lokalen Metern — falsch machen kannst du dabei nichts.</span></div>
 <div><strong data-i18n="helpLockTitle">Kartensperre</strong><span data-i18n="helpLockText">Fertige Karten lassen sich gegen versehentliche Änderungen sperren.</span></div>
 </div>
 </section>
@@ -553,6 +567,7 @@
 <div class="help-two-col">
 <div class="format-card"><strong>JSON</strong><p data-i18n="jsonHelp">Empfohlenes vollständiges Backup für MapCreator. Enthält Kartenstruktur, Punkte und zusätzliche Metadaten wie Aufnahme-/Editierinformationen.</p></div>
 <div class="format-card"><strong>GeoJSON</strong><p data-i18n="geoJsonHelp">Für Geometrie-Austausch. Perimeter und Ausschlüsse werden als Polygone, der Dockpfad als LineString exportiert.</p></div>
+<div class="format-card"><strong>Sunray-App</strong><p data-i18n="sunrayHelp">Genau die Form, die die Sunray-App von grauonline schreibt: eine Liste von Karten mit lokalen X/Y-Koordinaten in Metern, je Punkt zusätzlich Ausrichtung, Aufnahmezeit und RTK-Güte. Für die Sunray-App selbst und für den Mäher. CaSSAndRA liest dieses Format ebenfalls. Ein Bezugspunkt wird nicht gebraucht, weil nichts umgerechnet wird.</p></div>
 <div class="format-card"><strong>CaSSAndRA</strong><p data-i18n="cassandraHelp">Genau die Form, die CaSSAndRA selbst schreibt und einliest: Weltkoordinaten in Grad, Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Gerechnet wird gegen den Bezugspunkt bei den Export-Knöpfen — voreingestellt 0 / 0, wie in CaSSAndRA ab Werk. Nach jedem Export steht der verwendete Wert in einer Meldung; er muss in CaSSAndRA derselbe sein. Dateien aus CaSSAndRA lassen sich damit auch <strong>einlesen</strong>: die App erkennt sie an ihrer Form und rechnet die Grad mit demselben Bezugspunkt in lokale Meter zurück. Ist dort nichts eingetragen, wird die Datei nicht importiert — ohne den Wert wären die Grad nicht zu deuten, denn CaSSAndRA schreibt ihn nicht in die Datei.</p></div>
 </div>
 <div class="notice info help-note"><span data-i18n="geoJsonXYWarning">Die Ardumower-Koordinaten sind lokale Sunray-X/Y-Werte in Metern. Sie sind keine GPS-Längen-/Breitengrade und werden deshalb im Export ausdrücklich als lokales metrisches Koordinatensystem gekennzeichnet.</span></div>

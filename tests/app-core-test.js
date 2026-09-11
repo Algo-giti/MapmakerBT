@@ -5,8 +5,9 @@ const { loadApp } = require('./app-harness.js');
 const { t } = loadApp({
   exportNames: ['state', 'makeMap', 'normalizeMap', 'polygonSelfIntersects', 'pointInPolygon',
     'polygonEdgesIntersect', 'polygonsIntersect', 'polygonArea', 'pathLength', 'geometryForArea', 'mapToGeoJson', 'geoJsonToMap', 'normalizeOrigin', 'mapOriginInUse',
-    'mapToCassandraGeoJson', 'cassandraExportBlockKey', 'cassandraSkippedAreas', 'hasUsablePolygon',
+    'mapToCassandraGeoJson', 'cassandraExportBlockKey', 'skippedAreas', 'hasUsablePolygon',
     'isCassandraGeoJson', 'geoRingClosed', 'cassandraReferenceInUse',
+    'mapToSunrayApp', 'sunrayAppPoint', 'skippedAreas', 'mapExportFile', 'MAP_EXPORT_FORMATS',
     'closePerimeter',
     'validateActiveMap'],
 });
@@ -575,7 +576,7 @@ assert.ok(geoWithWaypoints.features.some((f)=>f.properties.role==='waypoints' &&
   m.exclusions.push({ id:'a', name:'Ausschluss 1', points:[{x:1,y:1},{x:2,y:1},{x:2,y:2}] });
   m.exclusions.push({ id:'b', name:'Ausschluss 2', points:[{x:3,y:1},{x:3.5,y:1}] });
   m.exclusions.push({ id:'c', name:'Ausschluss 3', points:[] });
-  const skipped = t.cassandraSkippedAreas(m);
+  const skipped = t.skippedAreas(m);
   assert.strictEqual(skipped.join(' | '), 'Ausschluss 2 (2 Punkte) | Ausschluss 3 (0 Punkte)');
   // Und was gemeldet wird, fehlt auch wirklich in der Datei.
   const doc = t.mapToCassandraGeoJson(m, t.state.cassandraReference);
@@ -861,6 +862,150 @@ assert.ok(geoWithWaypoints.features.some((f)=>f.properties.role==='waypoints' &&
   if (!gefahren) {
     console.log('  HINWEIS: tests/map/ nicht vorhanden — die Pruefung gegen die echten Karten ' +
       'wurde UEBERSPRUNGEN (nicht bestanden). Das Pruefmuster in tests/fixtures/ lief.');
+  }
+}
+
+
+// --- Sunray-App-Format ------------------------------------------------------
+// Die Datei folgt der Schreibsicht der grauonline-App (Vorlage: ein echter Export), nicht dem
+// Minimum, das CaSSAndRA gerade noch akzeptiert. Geprueft wird die WIRKUNG: welche Felder mit
+// welchen Typen herauskommen und was CaSSAndRAs Sunray-Zweig daraus liest.
+{
+  const fs = require('fs');
+  const path = require('path');
+  const muster = JSON.parse(fs.readFileSync(
+    path.join(__dirname, 'fixtures', 'sunray-app-map.json'), 'utf8'));
+
+  // -- Strukturvergleich gegen das Pruefmuster ------------------------------
+  const m = t.makeMap('Sunray');
+  m.perimeter = muster[0].perimeter.map((p) => ({
+    x: p.X, y: p.Y, capturedAt: p.timestamp,
+    gps: 'sol' in p ? { solution: p.sol, delta: p.delta } : { delta: p.delta },
+  }));
+  m.exclusions.push({ id: 'ex1', name: 'A', closed: true,
+    points: muster[0].exclusions[0].map((p) => ({
+      x: p.X, y: p.Y, capturedAt: p.timestamp,
+      gps: 'sol' in p ? { solution: p.sol, delta: p.delta } : { delta: p.delta },
+    })) });
+  m.waypoints = muster[0].waypoints.map((p) => ({ x: p.X, y: p.Y }));
+
+  const doc = t.mapToSunrayApp(m);
+  assert.ok(Array.isArray(doc), 'die aeussere Huelle ist eine Liste von Karten');
+  assert.strictEqual(doc.length, 1);
+  const k = doc[0];
+  assert.deepStrictEqual(Object.keys(k).sort(), Object.keys(muster[0]).sort(),
+    'die Kartenfelder muessen denen der Vorlage entsprechen');
+
+  // Punktfelder und ihre Typen, genau wie in der Vorlage.
+  const vor = muster[0].perimeter[0];
+  const neu = k.perimeter[0];
+  assert.deepStrictEqual(Object.keys(neu), Object.keys(vor),
+    `Punktschluessel und Reihenfolge: erwartet ${Object.keys(vor)}, bekommen ${Object.keys(neu)}`);
+  assert.strictEqual(typeof neu.X, 'number');
+  assert.strictEqual(typeof neu.Y, 'number');
+  assert.strictEqual(typeof neu.delta, 'number');
+  assert.strictEqual(typeof neu.timestamp, 'string',
+    'timestamp ist ein ISO-String, keine Zahl — wie in der Vorlage');
+  assert.ok(/^\d{4}-\d{2}-\d{2}T/.test(neu.timestamp), 'und im ISO-Format');
+  assert.strictEqual(typeof neu.sol, 'number');
+
+  // Wegpunkte tragen NUR X und Y.
+  assert.deepStrictEqual(Object.keys(k.waypoints[0]), ['X', 'Y'],
+    'Wegpunkte tragen in der Vorlage kein delta/timestamp/sol');
+
+  // `sol` faellt weg, wenn es nie gemessen wurde — auch die Vorlage laesst es dann aus.
+  const ohneSol = t.sunrayAppPoint({ x: 1, y: 2, capturedAt: '2026-01-01T00:00:00.000Z', gps: {} });
+  assert.ok(!('sol' in ohneSol), 'ohne Messung wird keine Guete erfunden');
+  assert.ok('delta' in ohneSol && 'timestamp' in ohneSol,
+    'delta und timestamp bleiben immer stehen — CaSSAndRA weist die Datei sonst ab');
+
+  // Ringe bleiben offen, wie in der Vorlage.
+  const pa = k.perimeter[0];
+  const pz = k.perimeter[k.perimeter.length - 1];
+  assert.ok(pa.X !== pz.X || pa.Y !== pz.Y, 'der Perimeterring bleibt offen');
+
+  // Leere Listen werden geschrieben.
+  assert.ok(Array.isArray(k.dockpoints) && k.dockpoints.length === 0,
+    'leere dockpoints stehen trotzdem in der Datei');
+
+  // -- Koordinaten: Meter, unveraendert -------------------------------------
+  const spanne = (pts, achse) => Math.max(...pts.map((p) => p[achse])) - Math.min(...pts.map((p) => p[achse]));
+  assert.ok(Math.abs(spanne(k.perimeter, 'X') - spanne(muster[0].perimeter, 'X')) < 1e-9,
+    'die X-Ausdehnung darf sich nicht aendern — das Format rechnet nicht um');
+  assert.ok(Math.abs(spanne(k.perimeter, 'Y') - spanne(muster[0].perimeter, 'Y')) < 1e-9);
+
+  // -- Kein Bezugspunkt noetig ----------------------------------------------
+  const gemerkt = t.state.cassandraReference;
+  t.state.cassandraReference = null;         // Feld ausdruecklich geleert
+  t.state.activeMap = m;
+  const datei = t.mapExportFile('sunray');
+  assert.ok(datei && datei.text, 'der Sunray-Export darf nicht am fehlenden Bezugspunkt haengen');
+  assert.strictEqual(t.mapExportFile('cassandra'), null,
+    'Gegenprobe: der CaSSAndRA-Export ist im selben Zustand gesperrt');
+  assert.ok(datei.fileName.endsWith('.sunray.json'), `Endung: ${datei.fileName}`);
+  assert.strictEqual(datei.mimeType, 'application/json');
+  t.state.cassandraReference = gemerkt;
+
+  // -- Ausschlussflaechen unter der Mindestpunktzahl -------------------------
+  const m2 = t.makeMap('Filter');
+  m2.perimeter = [{x:0,y:0},{x:10,y:0},{x:10,y:10}].map((p) => ({ ...p, gps: {} }));
+  m2.exclusions.push({ id:'gut', name:'Gut', points:[{x:1,y:1},{x:2,y:1},{x:2,y:2}].map((p)=>({...p,gps:{}})) });
+  m2.exclusions.push({ id:'kurz', name:'Zu kurz', points:[{x:4,y:1},{x:5,y:1}].map((p)=>({...p,gps:{}})) });
+  const gefiltert = t.mapToSunrayApp(m2)[0];
+  assert.strictEqual(gefiltert.exclusions.length, 1,
+    'die zweipunktige Flaeche geht nicht mit hinaus');
+  // Dieselbe Aufstellung wie beim CaSSAndRA-Export, aus derselben Funktion.
+  const ausgelassen = t.skippedAreas(m2);
+  assert.strictEqual(ausgelassen.length, 1);
+  assert.ok(ausgelassen[0].includes('Zu kurz'), `die Meldung nennt die Flaeche: ${ausgelassen[0]}`);
+
+  // -- Was CaSSAndRAs Sunray-Zweig daraus liest ------------------------------
+  // Zeilengetreue Nachbildung von `import_sunray()` (mapdata.py:470-499). Der Zweig rechnet
+  // NICHT um — es geht also um exakte Gleichheit, nicht um eine Toleranz. Einmalig gegen die
+  // echte Python-Funktion gegengerechnet: 0,000000 mm ueber alle 22 Punkte.
+  const liesWieCassandra = (dok) => {
+    const karte = dok[0];
+    // :491 `coords.drop(['delta','timestamp'])` steht NICHT in einem try — fehlt eines der
+    // beiden Felder, wirft .drop() und die ganze Datei wird abgewiesen.
+    const pflicht = (pkt) => {
+      if (!('delta' in pkt) || !('timestamp' in pkt)) throw new Error('KeyError: delta/timestamp');
+      return { X: pkt.X, Y: pkt.Y };
+    };
+    const zeilen = karte.perimeter.map((pkt) => ({ ...pflicht(pkt), type: 'perimeter' }));
+    // :480 `if len(exclusion_df) > 3` — mindestens VIER Punkte, sonst still verworfen.
+    karte.exclusions.forEach((flaeche, i) => {
+      if (flaeche.length > 3) {
+        flaeche.forEach((pkt) => zeilen.push({ ...pflicht(pkt), type: `exclusion_${i}` }));
+      }
+    });
+    return zeilen;
+  };
+
+  const ausVorlage = liesWieCassandra(muster);
+  const ausUnserer = liesWieCassandra(doc);
+  assert.strictEqual(ausUnserer.length, ausVorlage.length,
+    `Punktzahl nach dem Import: erwartet ${ausVorlage.length}, bekommen ${ausUnserer.length}`);
+  assert.deepStrictEqual(
+    [...new Set(ausUnserer.map((z) => z.type))].sort(),
+    [...new Set(ausVorlage.map((z) => z.type))].sort(),
+    'dieselben Typen muessen ankommen');
+  let groessteMm = 0;
+  for (let i = 0; i < ausVorlage.length; i += 1) {
+    groessteMm = Math.max(groessteMm,
+      Math.hypot(ausVorlage[i].X - ausUnserer[i].X, ausVorlage[i].Y - ausUnserer[i].Y) * 1000);
+  }
+  assert.strictEqual(groessteMm, 0,
+    `das Format rechnet nicht um, es darf keine Abweichung geben: ${groessteMm} mm`);
+  console.log(`  Sunray-App-Format: ${ausUnserer.length} Punkte durch CaSSAndRAs Sunray-Zweig, ` +
+    `groesste Abweichung ${groessteMm.toFixed(6)} mm`);
+
+  // Ohne delta oder timestamp weist CaSSAndRA die GANZE Datei ab — empirisch an der echten
+  // Funktion belegt. Deshalb duerfen beide Felder nie fehlen.
+  for (const feld of ['delta', 'timestamp']) {
+    const kaputt = JSON.parse(JSON.stringify(doc));
+    delete kaputt[0].perimeter[0][feld];
+    assert.throws(() => liesWieCassandra(kaputt), /KeyError/,
+      `ohne ${feld} wuerde CaSSAndRA die Datei abweisen`);
   }
 }
 

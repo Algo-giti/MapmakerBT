@@ -35,7 +35,7 @@ Die Oberfläche lässt sich zwischen **Deutsch und Englisch** umschalten; Deutsc
 - auf der Karte ablesen, welche Kontur gerade offen und welche geschlossen ist
 - Karten auf Geometrie- und RTK-Probleme prüfen
 - bis zu 10 Karten auf dem Gerät verwalten
-- Karten als JSON-Backup, als GeoJSON oder im CaSSAndRA-Format exportieren und wieder importieren
+- Karten im Sunray-App-Format, im CaSSAndRA-Format, als JSON-Backup oder als GeoJSON exportieren und wieder importieren
 - den Mäher während der Aufnahme mit dem Daumen-Joystick manuell fahren
 - wahlweise mit Joystick oder mit vier Richtungstasten fahren
 - die gesamte Bedienung für Links- oder Rechtshänder spiegeln
@@ -284,6 +284,11 @@ gelöschte Website-Daten bedeuten: Karten sind weg.
 - **GeoJSON-Export** eignet sich zur Weiterverarbeitung: Perimeter und Ausschlussflächen werden
   als Polygone exportiert, Wegpunkte und Dockpfad als LineString. Die Koordinaten bleiben dabei im
   lokalen XY-Meter-System von Sunray, es sind keine Geokoordinaten.
+- **Sunray-App-Export** erzeugt genau die Datei, die die Sunray-App von grauonline selbst
+  schreibt: eine Liste von Karten mit lokalen X/Y-Koordinaten in Metern, je Punkt zusätzlich
+  Ausrichtung, Aufnahmezeit und RTK-Güte. Gedacht für die Sunray-App und für den Mäher selbst;
+  CaSSAndRA liest dieses Format ebenfalls. Ein Bezugspunkt wird **nicht** gebraucht, weil nichts
+  umgerechnet wird.
 - **CaSSAndRA-Export** erzeugt genau die Datei, die CaSSAndRA selbst schreibt und einliest:
   Weltkoordinaten in Grad, dazu Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Er ist
   gegen den **CaSSAndRA-Bezugspunkt** gerechnet, der bei den Export-Knöpfen steht. Voreingestellt
@@ -321,8 +326,11 @@ der Modus *Relativ*, und für die normale Nutzung ist dort nichts einzustellen.
 
 Der Modus *Absolut* im Menü unter **Karten** ist nur dann interessant, wenn du die Karte mit
 Programmen austauschen willst, die echte Weltkoordinaten erwarten. Dafür trägst du einmalig die
-GPS-Position des Nullpunkts ein, üblicherweise die der Ladestation; der GeoJSON-Export enthält
-danach absolute Längen- und Breitengrade statt Meter. Der Ursprung gehört zur **jeweiligen Karte**,
+GPS-Position ein, die dem Nullpunkt der Karte entsprechen soll; der GeoJSON-Export enthält
+danach absolute Längen- und Breitengrade statt Meter. **Welcher Punkt das ist, legst du selbst
+fest** – der Mäher hat von sich aus keinen festen Nullpunkt: in der Voreinstellung zählt Sunray
+Meter relativ zur RTK-Basisstation. Nur wenn im Mäher über `AT+P` ein Bezugspunkt gesetzt wurde,
+rechnet er selbst gegen diesen; dann ist genau dieser Wert der richtige. Der Ursprung gehört zur **jeweiligen Karte**,
 nicht zur App – verschiedene Karten liegen meist an verschiedenen Orten – und wird mitexportiert,
 damit ein Import die Werte wieder zurückrechnen kann.
 
@@ -440,7 +448,7 @@ The interface can be switched between **German and English**; German is the defa
 - see on the map which contour is currently open and which is closed
 - check maps for geometry and RTK problems
 - keep up to 10 maps on the device
-- export maps as a JSON backup, as GeoJSON or in the CaSSAndRA format, and import them again
+- export maps in the Sunray app format, in the CaSSAndRA format, as a JSON backup or as GeoJSON, and import them again
 - drive the mower manually with the thumb joystick while recording
 - drive either with the joystick or with four direction keys
 - mirror the entire layout for left- or right-handed use
@@ -678,6 +686,10 @@ or cleared site data means the maps are gone.
 - **GeoJSON export** is meant for further processing: perimeter and exclusion areas are exported
   as polygons, waypoints and the dock path as LineStrings. The coordinates stay in Sunray's local
   XY metre system – they are not geographic coordinates.
+- **Sunray app export** produces exactly the file grauonline's Sunray app writes itself: a list
+  of maps with local X/Y coordinates in metres, each point additionally carrying heading, capture
+  time and RTK quality. Meant for the Sunray app and for the mower itself; CaSSAndRA reads this
+  format too. No reference point is needed, because nothing is converted.
 - **CaSSAndRA export** produces exactly the file CaSSAndRA writes and reads itself: world
   coordinates in degrees, plus perimeter, dock path, search wire and exclusion areas. It stays
   computed against the **CaSSAndRA reference point** shown next to the export buttons. It is
@@ -716,8 +728,11 @@ By default every map works in **local metres** relative to the mower's starting 
 
 The *Absolute* mode in the menu under **Maps** is only of interest if you want to exchange the map
 with programs that expect real world coordinates. For that you enter the GPS position of the zero
-point once, usually that of the charging station; the GeoJSON export then contains absolute
-longitude and latitude instead of metres. The origin belongs to the **individual map**, not to the
+position once that the map's zero point should correspond to; the GeoJSON export then contains
+absolute longitude and latitude instead of metres. **Which point that is, is your choice** – the
+mower has no fixed zero point of its own: by default Sunray counts metres relative to the RTK base
+station. Only if a reference point was set in the mower via `AT+P` does it compute against that
+one; then that is exactly the value to use. The origin belongs to the **individual map**, not to the
 app – different maps usually sit in different places – and it is exported along with the file so
 that an import can convert the values back.
 

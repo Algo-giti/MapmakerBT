@@ -3517,3 +3517,31 @@ body.menu-open .app-frame { visibility: hidden; }
   box-shadow: 0 6px 18px rgba(0,0,0,.32);
 }
 .log-jump:active { background: var(--shell-hover); }
+
+/* ===== v55: CaSSAndRA-Exportgruppe =========================================
+   Der Bezugspunkt gehoert sichtbar zum CaSSAndRA-Knopf — nur dieses eine Format braucht ihn.
+   Vorher standen die beiden Eingabefelder frei unter der Formatbeschreibung und wirkten wie eine
+   allgemeine Einstellung des Kartenabschnitts. Bewusst nur eine Kante und Einzug aus den
+   vorhandenen Tokens, keine eigene Flaeche und kein neuer Farbwert: die Gruppe soll zusammen-
+   fassen, nicht um Aufmerksamkeit konkurrieren. */
+.export-group {
+  border-left: 2px solid var(--shell-border);
+  padding-left: 10px;
+  margin-block: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* Die Trennlinie zwischen den Formatgruppen leistet die Gruppe selbst. */
+.export-group + .export-grid { margin-top: 4px; }
+
+/* Verbindungshinweis: rot hervorgehoben, aber weiterhin eine Hinweiszeile und kein Alarm —
+   der Zusammenhang ist eine Beobachtung, keine belegte Ursache. Farbe aus den vorhandenen
+   Tokens, damit sie in beiden Themes traegt. */
+.connect-warning {
+  color: var(--danger, #ff6b6b);
+  border-left: 2px solid var(--danger, #ff6b6b);
+  padding-left: 8px;
+  display: block;
+  margin-block: 6px;
+}

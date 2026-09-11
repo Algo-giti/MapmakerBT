@@ -41,12 +41,13 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'AUTO_CAPTURE_DISTANCE_MIN_CM', 'AUTO_CAPTURE_DISTANCE_MAX_CM', 'BLE_POLL_INTERVAL_MS',
   'mapExportFile', 'exportMapFile', 'exportCurrentMapJson', 'exportCurrentMapGeoJson',
   'shareCurrentMap', 'canShareMapFormat', 'refreshShareButtons',
-  'refreshExportButtons', 'cassandraExportBlockKey', 'cassandraSkippedAreas',
+  'refreshExportButtons', 'cassandraExportBlockKey', 'skippedAreas',
   'noticeCassandraExport', 'exportCurrentMapCassandra', 'renderCassandraReference',
   'loadCassandraReference', 'saveCassandraReference', 'storedCassandraReference',
   'defaultCassandraReference', 'CASSANDRA_REFERENCE_KEY',
   'updateCassandraReferenceFromUi', 'cassandraReferenceInUse', 'mapToCassandraGeoJson',
   'importMapFile', 'isCassandraGeoJson', 'noticeCassandraImport', 'clearImportNotice',
+  'mapToSunrayApp', 'exportCurrentMapSunray', 'noticeSunrayExport', 'skippedAreas',
   'MIN_USER_ZOOM', 'MAX_USER_ZOOM', 'init'];
 
 /** Minimaler IndexedDB-Ersatz, damit saveActiveMap() im Test durchlaeuft. */
@@ -2680,16 +2681,27 @@ test('Ohne Unterstuetzung wird nicht geteilt, sondern auf den Export verwiesen',
 
 test('Die Teilen-Knoepfe stehen bei den Export-Knoepfen und sind verdrahtet', () => {
   const markup = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-  const group = markup.slice(markup.indexOf('class="export-grid"'));
-  const groupEnd = group.indexOf('</div>');
-  const block = group.slice(0, groupEnd);
-  for (const id of ['exportJsonBtn', 'shareJsonBtn', 'exportGeoJsonBtn', 'shareGeoJsonBtn']) {
-    assert.ok(block.includes(`id="${id}"`), `${id} steht in derselben Gruppe wie der Export`);
+  // Seit die Knoepfe nach Zweck gegliedert sind (Sunray / CaSSAndRA / Sicherung), gibt es
+  // mehrere `export-grid`-Gruppen. Jeder Teilen-Knopf muss in derselben Gruppe stehen wie sein
+  // eigener Speichern-Knopf — das ist die Wirkung, um die es geht.
+  const gruppen = markup.split('class="export-grid"').slice(1)
+    .map((teil) => teil.slice(0, teil.indexOf('</div>')));
+  const gruppeMit = (id) => gruppen.find((g) => g.includes(`id="${id}"`));
+  for (const [speichern, teilen] of [
+    ['exportSunrayBtn', 'shareSunrayBtn'],
+    ['exportCassandraBtn', 'shareCassandraBtn'],
+    ['exportJsonBtn', 'shareJsonBtn'],
+    ['exportGeoJsonBtn', 'shareGeoJsonBtn'],
+  ]) {
+    const g = gruppeMit(speichern);
+    assert.ok(g, `${speichern} steht in keiner export-grid-Gruppe`);
+    assert.ok(g.includes(`id="${teilen}"`), `${teilen} steht nicht bei ${speichern}`);
   }
   // Verborgen starten: erst die bestandene Faehigkeitspruefung blendet sie ein, sonst blitzt
   // auf Geraeten ohne Datei-Freigabe kurz ein Knopf auf, der nichts kann.
-  for (const id of ['shareJsonBtn', 'shareGeoJsonBtn']) {
-    const tag = block.slice(block.indexOf(`id="${id}"`) - 120, block.indexOf(`id="${id}"`));
+  for (const id of ['shareSunrayBtn', 'shareCassandraBtn', 'shareJsonBtn', 'shareGeoJsonBtn']) {
+    const g = gruppeMit(id);
+    const tag = g.slice(g.indexOf(`id="${id}"`) - 120, g.indexOf(`id="${id}"`));
     assert.ok(tag.includes('hidden'), `${id} ist im Markup zunaechst ausgeblendet`);
   }
   const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
@@ -2832,7 +2844,7 @@ test('Es gibt genau einen Sperrmechanismus, nicht zwei nebeneinander', () => {
 // Nicht gelistet und damit verboten sind ausdruecklich die Stellen, die dieselbe Frage stellen
 // wie `hasUsablePolygon()` — „taugt diese Kontur als Flaeche, darf sie gemeldet oder exportiert
 // werden“: `validateActiveMap()` (zu wenige Punkte), `closePerimeter()`,
-// `cassandraExportBlockKey()`, `cassandraSkippedAreas()` und `mapToCassandraGeoJson()`.
+// `cassandraExportBlockKey()`, `skippedAreas()` und `mapToCassandraGeoJson()`.
 const HANDZAEHLUNG_ERLAUBT = {
   hasUsablePolygon: { anzahl: 1, grund: 'die Definition selbst' },
   // (1) Geometrie-Primitive: sichern ihre eigene Rechnung auf einem lokalen Parameter ab und
@@ -2898,7 +2910,7 @@ test('Es gibt keine zweite handgeschriebene Zaehlung von Flaechen neben hasUsabl
 
   // Die Frage selbst wird an genau den Stellen gestellt, die sie stellen sollen.
   for (const fn of ['validateActiveMap', 'closePerimeter', 'cassandraExportBlockKey',
-    'cassandraSkippedAreas', 'mapToCassandraGeoJson']) {
+    'skippedAreas', 'mapToCassandraGeoJson']) {
     const koerper = source.slice(source.indexOf(`function ${fn}(`));
     assert.ok(koerper.slice(0, koerper.indexOf('\n}')).includes('hasUsablePolygon('),
       `${fn}() fragt hasUsablePolygon(), statt selbst zu zaehlen`);
@@ -3093,8 +3105,8 @@ test('Der Hinweis vor dem Export und die Meldung danach sagen dasselbe', () => {
   sandbox.__lastConfirmRequest = null;
   captureDownload(sandbox, () => t.exportCurrentMapCassandra());
   const nachher = sandbox.__lastConfirmRequest.message;
-  // Beide speisen sich aus cassandraSkippedAreas(), also muss dieselbe Aufstellung darin stehen.
-  for (const teil of t.cassandraSkippedAreas(t.state.activeMap)) {
+  // Beide speisen sich aus skippedAreas(), also muss dieselbe Aufstellung darin stehen.
+  for (const teil of t.skippedAreas(t.state.activeMap)) {
     assert.ok(vorher.includes(teil), `der Hinweis vorher nennt ${teil}`);
     assert.ok(nachher.includes(teil), `die Meldung nachher nennt ${teil}`);
   }
@@ -3117,12 +3129,37 @@ test('Beim Oeffnen der Menueseite werden die Export-Knoepfe nachgefuehrt', () =>
   assert.ok(menu.slice(0, menu.indexOf('\n}')).includes('refreshExportButtons();'));
 });
 
-test('Die CaSSAndRA-Knoepfe stehen bei den anderen Export-Knoepfen', () => {
+test('Die CaSSAndRA-Knoepfe stehen mit dem Bezugspunkt in einer Gruppe', () => {
   const markup = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-  const group = markup.slice(markup.indexOf('class="export-grid"'));
-  const block = group.slice(0, group.indexOf('</div>'));
-  for (const id of ['exportCassandraBtn', 'shareCassandraBtn']) {
-    assert.ok(block.includes(`id="${id}"`), `${id} steht in derselben Gruppe wie der Export`);
+  // T3: der Bezugspunkt gehoert sichtbar zum CaSSAndRA-Knopf, weil nur dieses Format ihn braucht.
+  // Geprueft wird die Wirkung: Knoepfe und Eingabefelder liegen in derselben Gruppe.
+  const start = markup.indexOf('id="cassandraGroup"');
+  assert.ok(start > 0, 'die CaSSAndRA-Gruppe fehlt im Markup');
+  // Die Gruppe wird ueber die div-Verschachtelung abgegrenzt, nicht ueber den naechsten
+  // Textschnipsel: ein zusaetzlich eingefuegtes </div> wuerde die Felder sonst aus der Gruppe
+  // herausnehmen, ohne dass der Test es merkt (genau so ist er einmal durchgerutscht).
+  const block = (() => {
+    const rest = markup.slice(markup.lastIndexOf('<div', start));
+    let tiefe = 0;
+    const tags = [...rest.matchAll(/<(\/?)div\b/g)];
+    for (const m of tags) {
+      tiefe += m[1] ? -1 : 1;
+      if (tiefe === 0) return rest.slice(0, m.index);
+    }
+    throw new Error('cassandraGroup ist im Markup nicht geschlossen');
+  })();
+  for (const id of ['exportCassandraBtn', 'shareCassandraBtn', 'cassandraLatInput', 'cassandraLonInput']) {
+    assert.ok(block.includes(`id="${id}"`), `${id} steht nicht in der CaSSAndRA-Gruppe`);
+  }
+  // Die Felder bleiben sichtbar: sie duerfen an keiner Stelle `hidden` tragen, der Bezugspunkt
+  // gehoert zur Installation und nicht zum Positionsmodus einer Karte.
+  for (const id of ['cassandraLatInput', 'cassandraLonInput']) {
+    const tag = block.slice(block.indexOf(`id="${id}"`) - 160, block.indexOf(`id="${id}"`));
+    assert.ok(!/\bhidden\b/.test(tag), `${id} darf nicht ausgeblendet starten`);
+  }
+  // Die reinen Sicherungsformate gehoeren NICHT in diese Gruppe.
+  for (const id of ['exportJsonBtn', 'exportGeoJsonBtn', 'exportSunrayBtn']) {
+    assert.ok(!block.includes(`id="${id}"`), `${id} gehoert nicht in die CaSSAndRA-Gruppe`);
   }
   const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
   assert.ok(source.includes("ui.exportCassandraBtn.addEventListener('click', exportCurrentMapCassandra)"));
@@ -3228,6 +3265,97 @@ test('Eigenes GeoJSON und eigener CaSSAndRA-Export gehen unveraendert durch den 
   const b = Math.max(...zurueck2.perimeter.map((p) => p.x)) - Math.min(...zurueck2.perimeter.map((p) => p.x));
   assert.ok(Math.abs(b - 12) < 0.02, `eigener Rundlauf: erwartet 12 m, gemessen ${b.toFixed(3)} m`);
   assert.strictEqual(zurueck2.perimeterClosed, true, 'der Ringschluss ueberlebt den eigenen Rundlauf');
+});
+
+
+test('Exportknoepfe stehen in der Reihenfolge Sunray, CaSSAndRA, JSON, GeoJSON', () => {
+  const markup = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const reihenfolge = ['exportSunrayBtn', 'exportCassandraBtn', 'exportJsonBtn', 'exportGeoJsonBtn']
+    .map((id) => ({ id, pos: markup.indexOf(`id="${id}"`) }));
+  for (const r of reihenfolge) assert.ok(r.pos > 0, `${r.id} fehlt im Markup`);
+  for (let i = 1; i < reihenfolge.length; i += 1) {
+    assert.ok(reihenfolge[i].pos > reihenfolge[i - 1].pos,
+      `${reihenfolge[i].id} steht vor ${reihenfolge[i - 1].id}`);
+  }
+  // Die Beschreibung sagt je Format, wofuer es da ist — und ausdruecklich, wofuer nicht.
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  for (const [lang, treffer] of [
+    ['de', [/Sunray-App/, /CaSSAndRA/, /Sicherung/, /Fremdwerkzeuge/, /NICHT für den Import in CaSSAndRA/]],
+    ['en', [/Sunray app/, /CaSSAndRA/, /backup/, /third-party/, /NOT meant for importing into CaSSAndRA/]],
+  ]) {
+    const i = lang === 'de' ? src.indexOf("exportHint: '") : src.lastIndexOf("exportHint: '");
+    const text = src.slice(i, src.indexOf("',", i));
+    for (const t2 of treffer) assert.ok(t2.test(text), `exportHint (${lang}) sagt nichts zu ${t2}`);
+  }
+});
+
+test('Der Sunray-Export haengt nicht am Bezugspunkt und meldet ohne Dialog-Zwang', () => {
+  const { t } = setup();
+  t.state.cassandraReference = null;              // Feld geleert -> CaSSAndRA gesperrt
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:10,y:0},{x:10,y:10}].map((p) => ({ ...p, gps: {} }));
+  t.refreshExportButtons();
+  assert.strictEqual(t.elementsDisabled === undefined, true);
+
+  const datei = t.mapExportFile('sunray');
+  assert.ok(datei, 'der Sunray-Export bleibt moeglich');
+  assert.strictEqual(t.mapExportFile('cassandra'), null, 'CaSSAndRA ist im selben Zustand gesperrt');
+  const dok = JSON.parse(datei.text);
+  assert.ok(Array.isArray(dok) && dok.length === 1, 'Liste von Karten');
+  assert.strictEqual(dok[0].perimeter.length, 3);
+  for (const pkt of dok[0].perimeter) {
+    assert.ok('delta' in pkt && 'timestamp' in pkt, 'delta und timestamp sind Pflicht');
+  }
+});
+
+test('Die Sunray-Meldung nennt die Einheit und die ausgelassenen Flaechen', () => {
+  const { t, sandbox } = setup();
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:10,y:0},{x:10,y:10}].map((p) => ({ ...p, gps: {} }));
+  t.state.activeMap.exclusions = [
+    { id:'a', name:'Gut', points:[{x:1,y:1},{x:2,y:1},{x:2,y:2}].map((p)=>({...p,gps:{}})) },
+    { id:'b', name:'Zu kurz', points:[{x:4,y:1},{x:5,y:1}].map((p)=>({...p,gps:{}})) },
+  ];
+  sandbox.__lastConfirmRequest = null;
+  t.noticeSunrayExport(t.state.activeMap);
+  const text = String(sandbox.__lastConfirm || '');
+  assert.ok(/Meter|metres/.test(text), `die Meldung nennt die Einheit: ${text}`);
+  // Sie darf keinen konkreten Bezugspunkt-Wert nennen wie die CaSSAndRA-Meldung: dieses Format
+  // rechnet nicht um. Dass keiner gebraucht wird, darf und soll dagegen dastehen.
+  assert.ok(!/Breite \d|L\u00e4nge \d|latitude \d|longitude \d/.test(text),
+    `sie nennt einen Bezugspunkt-Wert, obwohl das Format keinen benutzt: ${text}`);
+  assert.ok(/nicht gebraucht|No reference point is needed/.test(text),
+    'sie sagt ausdruecklich, dass keiner noetig ist');
+  assert.ok(text.includes('Zu kurz'), 'und die ausgelassene Flaeche');
+  // Dieselbe Aufstellung wie beim CaSSAndRA-Export.
+  for (const teil of t.skippedAreas(t.state.activeMap)) {
+    assert.ok(text.includes(teil), `die Aufstellung fehlt in der Meldung: ${teil}`);
+  }
+});
+
+test('Der Verbindungshinweis steht dauerhaft und bleibt eine Beobachtung', () => {
+  const markup = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const tag = markup.match(/<small[^>]*id="httpConflictHint"[^>]*>/);
+  assert.ok(tag, '#httpConflictHint fehlt im Markup');
+  assert.ok(!/\bhidden\b/.test(tag[0]), 'der Hinweis ist dauerhaft sichtbar, nicht ausgeblendet');
+  assert.ok(/connect-warning/.test(tag[0]), 'er ist als Warnung hervorgehoben');
+  const pos = markup.indexOf('id="httpConflictHint"');
+  const connect = markup.indexOf('id="connectBtn"');
+  assert.ok(pos < connect && connect - pos < 800, 'er steht beim Verbinden-Knopf');
+
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  // Kein Dialog bei jedem Verbindungsversuch.
+  assert.ok(!/httpConflictHint[\s\S]{0,200}showNotice/.test(src),
+    'der Hinweis darf nicht als Dialog erscheinen');
+  // Wortlaut: als Beobachtung, nicht als erwiesene Ursache. In beiden Sprachen.
+  for (const [lang, muster] of [
+    ['de', [/Beobachtung/, /keine gesicherte Ursache/, /kein kontrollierter Vergleich/]],
+    ['en', [/observation/, /not an established cause/, /not a controlled comparison/]],
+  ]) {
+    const i = lang === 'de' ? src.indexOf("httpConflictHint: '") : src.lastIndexOf("httpConflictHint: '");
+    const text = src.slice(i, src.indexOf("',", i));
+    for (const m of muster) assert.ok(m.test(text), `Wortlaut (${lang}) fehlt: ${m}`);
+    assert.ok(!/verursacht|liegt daran|is caused by|because of/.test(text),
+      `Wortlaut (${lang}) stellt es als erwiesen dar`);
+  }
 });
 
 (async () => {

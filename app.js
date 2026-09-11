@@ -162,7 +162,7 @@ const I18N = {
     selectedPointInfo: '{label} · Punkt {n}', relearnPoint: 'Punkt neu anlernen', pointRelearned: 'Punkt {n} neu angelernt: X {x} · Y {y}',
     positionMode: 'Positionsmodus', positionModeRelative: 'Relativ (lokale Meter)', positionModeAbsolute: 'Absolut (GPS-Grad)',
     originLat: 'Breitengrad des Ursprungs', originLon: 'Längengrad des Ursprungs',
-    positionModeHint: 'Gilt nur für diese Karte und nur für den GeoJSON-Export. „Relativ“ ist der Standard und lässt alles wie bisher. Für „Absolut“ trägst du einmalig die GPS-Position des Nullpunkts ein, üblicherweise die der Ladestation.',
+    positionModeHint: 'Gilt nur für diese Karte und nur für den GeoJSON-Export. „Relativ“ ist der Standard und lässt alles wie bisher. Für „Absolut“ trägst du einmalig die GPS-Position ein, die dem Nullpunkt der Karte entsprechen soll — welcher Punkt das ist, legst du selbst fest. In der Voreinstellung zählt Sunray in Metern relativ zur RTK-Basisstation; ein fester Nullpunkt existiert im Mäher nur, wenn dort über AT+P ein Bezugspunkt gesetzt wurde.',
     renameMap: 'Karte umbenennen', renameMapHint: 'Neuer Name für diese Karte. Der Inhalt bleibt unverändert.',
     duplicateMap: 'Karte duplizieren', copySuffix: '(Kopie)', copySuffixN: '(Kopie {n})',
     nameEmpty: 'Der Name darf nicht leer sein.', save: 'Speichern',
@@ -171,6 +171,12 @@ const I18N = {
     saveJson: 'Als JSON speichern', saveGeoJson: 'Als GeoJSON speichern',
     shareJson: 'Als JSON teilen', shareGeoJson: 'Als GeoJSON teilen', shareMapTitle: 'Karte teilen',
     saveCassandra: 'Für CaSSAndRA speichern', shareCassandra: 'Für CaSSAndRA teilen',
+    saveSunray: 'Für Sunray-App speichern', shareSunray: 'Für Sunray-App teilen',
+    sunrayHelp: 'Genau die Form, die die Sunray-App von grauonline schreibt: eine Liste von Karten mit lokalen X/Y-Koordinaten in Metern, je Punkt zusätzlich Ausrichtung, Aufnahmezeit und RTK-Güte. Für die Sunray-App selbst und für den Mäher. CaSSAndRA liest dieses Format ebenfalls. Ein Bezugspunkt wird nicht gebraucht, weil nichts umgerechnet wird.',
+    exportCassandraAria: 'Karte für CaSSAndRA exportieren oder teilen',
+    exportBackupAria: 'Karte sichern oder weitergeben',
+    sunrayExportTitle: 'Sunray-App-Export',
+    sunrayExportDone: 'Die Datei ist im Format der Sunray-App von grauonline geschrieben: lokale X/Y-Koordinaten in Metern, wie der Mäher sie selbst führt. Ein Bezugspunkt wird dafür nicht gebraucht.',
     cassandraHelp: 'Genau die Form, die CaSSAndRA selbst schreibt und einliest: Weltkoordinaten in Grad, Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Gerechnet wird gegen den Bezugspunkt bei den Export-Knöpfen — voreingestellt 0 / 0, wie in CaSSAndRA ab Werk. Nach jedem Export steht der verwendete Wert in einer Meldung; er muss in CaSSAndRA derselbe sein. Dateien aus CaSSAndRA lassen sich damit auch **einlesen**: die App erkennt sie an ihrer Form und rechnet die Grad mit demselben Bezugspunkt in lokale Meter zurück. Ist dort nichts eingetragen, wird die Datei nicht importiert — ohne den Wert wären die Grad nicht zu deuten, denn CaSSAndRA schreibt ihn nicht in die Datei.',
     cassandraRefLat: 'CaSSAndRA-Bezugspunkt: Breite', cassandraRefLon: 'CaSSAndRA-Bezugspunkt: Länge',
     cassandraRefHint: 'Trage hier genau denselben Wert ein, der in CaSSAndRA unter den Robotereinstellungen als Breite und Länge steht. Es ist keine Ortsbestimmung: der Wert muss nur auf beiden Seiten derselbe sein, sonst liegt die Karte nach dem Import versetzt. Voreingestellt ist 0 / 0 — das ist auch CaSSAndRAs Auslieferungswert, passt also, solange dort nichts eingetragen wurde. Er gilt für alle Karten dieser Installation.',
@@ -185,9 +191,10 @@ const I18N = {
     cassandraImportNotice: 'Als CaSSAndRA-Datei erkannt und aus Grad in lokale Meter umgerechnet. Verwendeter Bezugspunkt: Breite {lat}, Länge {lon} — derselbe Wert, der in CaSSAndRA unter den Robotereinstellungen steht. Weicht er dort ab, liegt die Karte hier versetzt.',
     shareHelpNote: 'Karten von einem Gerät auf ein anderes bringen: Auf dem Quellgerät die Karte speichern oder teilen. „Teilen“ übergibt genau dieselbe Datei an das Freigabe-Menü des Geräts, sodass sie ohne Umweg über den Download-Ordner weitergereicht werden kann; welche Ziele dort angeboten werden, entscheidet das Gerät, nicht diese App. Auf dem Zielgerät die Datei über „JSON / GeoJSON importieren“ im Menü unter Karten einlesen. Kann ein Browser keine Dateien teilen, erscheint der Teilen-Knopf gar nicht erst — dann bleibt Speichern der Weg.',
     shareUnsupported: 'Dieser Browser kann keine Dateien teilen. Nutze stattdessen „Als JSON speichern“ bzw. „Als GeoJSON speichern“ und übertrage die Datei von Hand.',
-    exportHint: 'JSON enthält das vollständige Mapper-Backup. GeoJSON speichert Perimeter/Ausschlüsse/Dock als Geometrien mit lokalen Sunray-X/Y-Koordinaten in Metern. Die CaSSAndRA-Datei ist dagegen genau so aufgebaut, wie CaSSAndRA sie selbst schreibt, und braucht deshalb den Bezugspunkt unten.',
+    exportHint: 'Sunray-App: für die Sunray-App von grauonline und den Mäher selbst. CaSSAndRA: für den Import in CaSSAndRA, braucht den Bezugspunkt oben. JSON: vollständige Sicherung dieser App, mit allen Zusatzdaten. GeoJSON: für Fremdwerkzeuge, die Geometrien lesen. JSON und GeoJSON sind NICHT für den Import in CaSSAndRA gedacht — dafür ist das CaSSAndRA-Format da.',
     importJsonGeoJson: 'JSON / GeoJSON importieren', deleteCurrentMap: 'Aktuelle Karte löschen',
     bluetoothConnection: 'Bluetooth-Verbindung', sunrayPassword: 'Sunray-Passwort', passwordHint: 'Nur für diese Sitzung. Wird nicht mit der Karte gespeichert.',
+    httpConflictHint: 'Beobachtung, keine gesicherte Ursache: Läuft parallel eine HTTP-Verbindung zum selben Gerät — etwa CaSSAndRA, die Weboberfläche oder ein anderer Dienst —, kann die Bluetooth-Verbindung stören oder abbrechen. Wenn es Probleme gibt, beende solche Dienste vor dem Verbinden. Belegt ist bisher nur, dass ein Mäher mit gleichzeitiger CaSSAndRA-Verbindung abbrach und ein anderer ohne nicht; das waren zwei verschiedene Geräte, kein kontrollierter Vergleich.',
     searchConnect: 'Gerät suchen & verbinden', disconnect: 'Verbindung trennen',
     clearLog: 'Log leeren', exportLog: 'Log exportieren', logEmpty: 'Das Protokoll ist noch leer – es gibt nichts zu exportieren.', logPaused: 'Neue Einträge – zum Ende springen', mapPreviewAria: 'Vorschau der aufgenommenen Mähkarte', exportMapAria: 'Karte exportieren oder teilen',
     notConnected: 'Nicht verbunden', bleConnected: 'BLE verbunden', demoActive: 'Demo aktiv',
@@ -289,7 +296,7 @@ const I18N = {
     helpExtendTitle: 'Kontur nachträglich erweitern', helpExtendText: 'Ist ein Perimeter oder eine Ausschlussfläche schon geschlossen, öffnet „Erweitern“ in der Kartenleiste sie wieder. Ein Hinweisstreifen über der Karte führt Schritt für Schritt: zwei direkt benachbarte Punkte antippen, dann wird die Kante zwischen ihnen aufgetrennt. Danach nimmst du wie gewohnt weitere Punkte auf — auch mit Automatik —, sie landen genau zwischen den beiden gewählten. „Fertig“ im Hinweisstreifen schließt die Kontur wieder.',
     helpMapToolsTitle: 'Karten umbenennen & kopieren', helpMapToolsText: 'In der Kartenübersicht trägt jede Karte zwei kleine Werkzeuge: der Stift benennt sie um (nur der Name ändert sich), das Kopiersymbol legt eine vollständige, unabhängige Kopie an — mit allen Punkten, dem Positionsmodus und dem Ursprung. Die Kopie bekommt automatisch einen freien Namen, die gerade aktive Karte bleibt aktiv.',
     helpDriveControlTitle: 'Joystick oder Richtungstasten', helpDriveControlText: 'Der kleine Knopf neben dem Fahrfeld schaltet zwischen beidem um; er zeigt das Symbol des Modus, in den er wechselt. Bei Rechtshändern steht er links vom Feld, bei Linkshändern gespiegelt rechts – jeweils direkt über der Fahrtanzeige. Der Joystick fährt wie eine Fernsteuerung: Richtung und Stärke der Auslenkung. Die Richtungstasten kennen nur vorwärts, rückwärts und Drehen auf der Stelle — kein versehentliches Lenken beim Geradeausfahren. Sie fahren mit einer eigenen, langsamen Geschwindigkeit für genaues Rangieren, einstellbar unter Einstellungen › Fahrgeschwindigkeit.',
-    helpPositionModeTitle: 'Positionsmodus', helpPositionModeText: 'Jede Karte rechnet standardmäßig in lokalen Metern relativ zum Startpunkt des Mähers („Relativ“) — dafür ist keine Eingabe nötig. „Absolut“ brauchst du nur, wenn du die Karte mit Programmen austauschen willst, die echte Weltkoordinaten erwarten: dort trägst du im Menü unter Karten einmalig die GPS-Position des Nullpunkts ein, meist die der Ladestation. Der Ursprung gehört zur jeweiligen Karte, weil verschiedene Karten meist an verschiedenen Orten liegen. Fehlt ein gültiger Ursprung, bleibt der Export bei lokalen Metern — falsch machen kannst du dabei nichts.',
+    helpPositionModeTitle: 'Positionsmodus', helpPositionModeText: 'Jede Karte rechnet standardmäßig in lokalen Metern („Relativ“) — dafür ist keine Eingabe nötig. In der Voreinstellung zählt Sunray diese Meter relativ zur RTK-Basisstation, nicht zu einem Punkt im Garten. „Absolut“ brauchst du nur, wenn du die Karte mit Programmen austauschen willst, die echte Weltkoordinaten erwarten: dort trägst du im Menü unter Karten einmalig die GPS-Position ein, die dem Nullpunkt entsprechen soll. Welcher Punkt das ist, legst du selbst fest — der Mäher hat von sich aus keinen. Nur wenn im Mäher über AT+P ein Bezugspunkt gesetzt wurde, rechnet er selbst gegen diesen; dann ist es genau dieser Wert. Der Ursprung gehört zur jeweiligen Karte, weil verschiedene Karten meist an verschiedenen Orten liegen. Fehlt ein gültiger Ursprung, bleibt der Export bei lokalen Metern — falsch machen kannst du dabei nichts.',
     helpLockTitle: 'Kartensperre', helpLockText: 'Fertige Karten lassen sich gegen versehentliche Änderungen sperren.',
     viewHelpTitle: 'Ansicht & Bedienung',
     helpRtkTitle: 'RTK-Anzeige', helpRtkText: 'Das Abzeichen in der Kopfzeile zeigt Fix, Float oder No Fix und die Satelliten als Mäher/Station. Nur bei einem echten Fix ist die Position zentimetergenau.',
@@ -387,7 +394,7 @@ const I18N = {
     selectedPointInfo: '{label} · point {n}', relearnPoint: 'Relearn point', pointRelearned: 'Point {n} relearned: X {x} · Y {y}',
     positionMode: 'Position mode', positionModeRelative: 'Relative (local metres)', positionModeAbsolute: 'Absolute (GPS degrees)',
     originLat: 'Latitude of the origin', originLon: 'Longitude of the origin',
-    positionModeHint: 'Applies to this map only and only to the GeoJSON export. “Relative” is the default and keeps everything as before. For “Absolute” you enter the GPS position of the zero point once, usually that of the charging station.',
+    positionModeHint: 'Applies to this map only and only to the GeoJSON export. “Relative” is the default and leaves everything as it was. For “Absolute” you enter, once, the GPS position that the map’s zero point should correspond to — which point that is, is your choice. By default Sunray counts metres relative to the RTK base station; a fixed zero point only exists inside the mower if a reference point was set there via AT+P.',
     renameMap: 'Rename map', renameMapHint: 'New name for this map. Its contents stay unchanged.',
     duplicateMap: 'Duplicate map', copySuffix: '(copy)', copySuffixN: '(copy {n})',
     nameEmpty: 'The name must not be empty.', save: 'Save',
@@ -396,6 +403,12 @@ const I18N = {
     saveJson: 'Save as JSON', saveGeoJson: 'Save as GeoJSON',
     shareJson: 'Share as JSON', shareGeoJson: 'Share as GeoJSON', shareMapTitle: 'Share map',
     saveCassandra: 'Save for CaSSAndRA', shareCassandra: 'Share for CaSSAndRA',
+    saveSunray: 'Save for Sunray app', shareSunray: 'Share for Sunray app',
+    sunrayHelp: 'Exactly the shape grauonline’s Sunray app writes: a list of maps with local X/Y coordinates in metres, each point carrying heading, capture time and RTK quality. For the Sunray app itself and for the mower. CaSSAndRA reads this format too. No reference point is needed, because nothing is converted.',
+    exportCassandraAria: 'Export or share the map for CaSSAndRA',
+    exportBackupAria: 'Back up or pass on the map',
+    sunrayExportTitle: 'Sunray app export',
+    sunrayExportDone: 'The file is written in the format of grauonline’s Sunray app: local X/Y coordinates in metres, exactly as the mower keeps them. No reference point is needed for this.',
     cassandraHelp: 'Exactly the shape CaSSAndRA writes and reads itself: world coordinates in degrees, perimeter, dock path, search wire and exclusion areas. It is computed against the reference point next to the export buttons — preset to 0 / 0, as CaSSAndRA ships it. After every export a notice states the value that was used; it has to match the one in CaSSAndRA. Files from CaSSAndRA can also be **imported**: the app recognises them by their shape and converts the degrees back into local metres using the same reference point. If none is entered, the file is not imported — without that value the degrees cannot be interpreted, because CaSSAndRA does not write it into the file.',
     cassandraRefLat: 'CaSSAndRA reference point: latitude', cassandraRefLon: 'CaSSAndRA reference point: longitude',
     cassandraRefHint: 'Enter exactly the same value that CaSSAndRA shows under its robot settings as latitude and longitude. This is not a location fix: the value only has to be identical on both sides, otherwise the map ends up offset after the import. It is preset to 0 / 0 — which is also CaSSAndRA’s factory value, so it fits as long as nothing was entered there. It applies to every map of this installation.',
@@ -410,9 +423,10 @@ const I18N = {
     cassandraImportNotice: 'Recognised as a CaSSAndRA file and converted from degrees to local metres. Reference point used: latitude {lat}, longitude {lon} — the same value that is set in CaSSAndRA under its robot settings. If it differs there, the map ends up offset here.',
     shareHelpNote: 'Moving a map from one device to another: on the source device, save or share the map. “Share” hands exactly the same file to the device’s share menu, so it can be passed on without the detour via the download folder; which targets appear there is decided by the device, not by this app. On the target device, read the file back in via “Import JSON / GeoJSON” in the menu under Maps. If a browser cannot share files, the share button does not appear at all — saving remains the way there.',
     shareUnsupported: 'This browser cannot share files. Use “Save as JSON” or “Save as GeoJSON” instead and transfer the file manually.',
-    exportHint: 'JSON contains the complete MapCreator backup. GeoJSON stores perimeter/exclusions/dock as geometries using local Sunray X/Y coordinates in metres. The CaSSAndRA file instead mirrors exactly what CaSSAndRA itself writes and therefore needs the reference point below.',
+    exportHint: 'Sunray app: for grauonline’s Sunray app and the mower itself. CaSSAndRA: for importing into CaSSAndRA, needs the reference point above. JSON: a complete backup of this app, including all extra data. GeoJSON: for third-party tools that read geometries. JSON and GeoJSON are NOT meant for importing into CaSSAndRA — the CaSSAndRA format is there for that.',
     importJsonGeoJson: 'Import JSON / GeoJSON', deleteCurrentMap: 'Delete current map',
     bluetoothConnection: 'Bluetooth connection', sunrayPassword: 'Sunray password', passwordHint: 'For this session only. It is not stored with the map.',
+    httpConflictHint: 'An observation, not an established cause: if an HTTP connection to the same device is running at the same time — CaSSAndRA, the web interface or another service —, it may disturb or drop the Bluetooth connection. If you run into trouble, stop such services before connecting. All that has been observed so far is that one mower with a concurrent CaSSAndRA connection dropped out and another one without did not; those were two different devices, not a controlled comparison.',
     searchConnect: 'Find device & connect', disconnect: 'Disconnect',
     clearLog: 'Clear log', exportLog: 'Export log', logEmpty: 'The log is still empty – there is nothing to export.', logPaused: 'New entries – jump to end', mapPreviewAria: 'Preview of the recorded mowing map', exportMapAria: 'Export or share map',
     notConnected: 'Not connected', bleConnected: 'BLE connected', demoActive: 'Demo active',
@@ -514,7 +528,7 @@ const I18N = {
     helpExtendTitle: 'Extending a closed contour', helpExtendText: 'If a perimeter or exclusion area is already closed, “Extend” in the map bar reopens it. A hint strip above the map guides you step by step: tap two directly neighbouring points and the edge between them is cut. Then capture further points as usual — automatic capture included — and they land exactly between the two you picked. “Done” in the hint strip closes the contour again.',
     helpMapToolsTitle: 'Renaming & copying maps', helpMapToolsText: 'In the map overview every map carries two small tools: the pencil renames it (only the name changes), the copy icon creates a complete, independent copy — with all points, the position mode and the origin. The copy automatically gets a free name, and the map you are working on stays active.',
     helpDriveControlTitle: 'Joystick or direction keys', helpDriveControlText: 'The small button beside the drive field switches between the two; it shows the icon of the mode it switches to. For right-handed use it sits to the left of the field, for left-handed use mirrored to the right, directly above the drive status. The joystick drives like a remote control: direction and amount of deflection. The direction keys only know forward, backward and turning on the spot — no accidental steering while driving straight. They use their own slow speed for precise manoeuvring, adjustable under Settings › Drive speed.',
-    helpPositionModeTitle: 'Position mode', helpPositionModeText: 'By default every map works in local metres relative to the mower\u2019s starting point (“Relative”) — nothing to fill in. You only need “Absolute” if you want to exchange the map with programs that expect real world coordinates: there you enter the GPS position of the zero point once, in the menu under Maps, usually that of the charging station. The origin belongs to the individual map, because different maps usually sit in different places. Without a valid origin the export stays in local metres — you cannot get it wrong.',
+    helpPositionModeTitle: 'Position mode', helpPositionModeText: 'Every map works in local metres by default (“Relative”) — no input needed. By default Sunray counts those metres relative to the RTK base station, not to a point in the garden. You only need “Absolute” if you want to exchange the map with programs that expect real world coordinates: there you enter, once, in the menu under Maps, the GPS position the zero point should correspond to. Which point that is, is your choice — the mower has none of its own. Only if a reference point was set in the mower via AT+P does it compute against that one; then it is exactly that value. The origin belongs to the individual map, because different maps usually sit in different places. Without a valid origin the export stays in local metres — you cannot get this wrong.',
     helpLockTitle: 'Map lock', helpLockText: 'Finished maps can be locked against accidental changes.',
     viewHelpTitle: 'View & operation',
     helpRtkTitle: 'RTK display', helpRtkText: 'The badge in the header shows Fix, Float or No Fix and the satellites as mower/station. Only a real fix gives centimetre-accurate positions.',
@@ -627,6 +641,7 @@ const ui = {
   exportJsonBtn: $('exportJsonBtn'), exportGeoJsonBtn: $('exportGeoJsonBtn'),
   shareJsonBtn: $('shareJsonBtn'), shareGeoJsonBtn: $('shareGeoJsonBtn'), importInput: $('importInput'),
   exportCassandraBtn: $('exportCassandraBtn'), shareCassandraBtn: $('shareCassandraBtn'),
+  exportSunrayBtn: $('exportSunrayBtn'), shareSunrayBtn: $('shareSunrayBtn'),
   cassandraMissingHint: $('cassandraMissingHint'), cassandraSkippedHint: $('cassandraSkippedHint'),
   importNotice: $('importNotice'),
   cassandraLatInput: $('cassandraLatInput'), cassandraLonInput: $('cassandraLonInput'),
@@ -2898,6 +2913,11 @@ function pointFromTelemetry() {
     capturedAt: new Date().toISOString(),
     gps: {
       solution: t.solution,
+      // Die Roboterorientierung in Bogenmass (`stateEstimator.stateDelta`, comm.cpp:692). Wir
+      // empfangen sie seit jeher ueber `AT+S`, haben sie aber nie am Punkt abgelegt — die
+      // Sunray-App-Datei fuehrt sie je Punkt, und ein erfundener Wert waere dort eine Aussage
+      // ueber etwas, das tatsaechlich gemessen wurde.
+      delta: t.delta,
       age: t.age,
       accuracy: t.accuracy,
       visibleSatellites: t.visibleSatellites,
@@ -3706,7 +3726,106 @@ function downloadTextFile(content, filename, mimeType) {
 }
 
 /** Endung, MIME-Typ und Inhalt je Exportformat — die einzige Stelle, an der das festgelegt ist. */
+/**
+ * Vorgaben fuer die Maehfelder der Sunray-App-Datei. **Diese App steuert kein Maehen** (feste
+ * Projektregel), fuehrt diese Einstellungen also nicht und kann sie nicht aus der Karte ableiten.
+ * Geschrieben werden deshalb neutrale Werte, die in der echten App-Datei ueber alle zehn Karten
+ * unveraendert vorkommen: `patternRings: false` und alle Maeh-/Randflaggen `true` (10 von 10).
+ * `patternAngle` steht dort je Karte anders (1,22 bis 3,11 rad) und `mowOfs` streut ebenfalls
+ * (0,19 / 0,2 / 0,5 / 0,51 m) — beide sind reine Maehparameter, die der Nutzer in der Zielanwendung
+ * ohnehin einstellt. 0 bzw. 0,2 sind deshalb Platzhalter, keine Messwerte.
+ */
+const SUNRAY_APP_MOW_DEFAULTS = {
+  patternAngle: 0,
+  mowOfs: 0.2,
+  patternRings: false,
+  doMowExclusions: true,
+  doMowPerimeter: true,
+  doMowArea: true,
+  doPerimeterBorder: true,
+  doExclusionsBorder: true,
+};
+
+/**
+ * Ein Konturpunkt in der Schreibweise der Sunray-App: `X`, `Y`, `delta`, `timestamp`, `sol` — in
+ * genau dieser Reihenfolge, wie in der Vorlage.
+ *
+ * **`delta` und `timestamp` sind Pflicht**, nicht Zierde: CaSSAndRAs Sunray-Zweig raeumt sie mit
+ * `coords.drop(['delta','timestamp'], axis=1)` (mapdata.py:491) weg — **ohne** `try`. Fehlt eines,
+ * wirft `.drop()` einen KeyError, und die **ganze Datei** wird abgewiesen, nicht nur die Karte.
+ * Empirisch geprueft gegen die echte Importfunktion.
+ *
+ * **`sol` ist optional** (mapdata.py:493-497 faengt es ab) — auch die echte App-Datei laesst es
+ * bei einzelnen Punkten weg (4 von 3468). Wir schreiben es deshalb nur, wenn wir es haben, statt
+ * eine Guete zu erfinden, die nie gemessen wurde.
+ *
+ * Die Werte sind nicht geraten: `timestamp` ist unser `capturedAt`, `sol` unser
+ * `gps.solution` — beide stammen aus derselben Quelle wie bei der App (`AT+S` liefert
+ * `solution`, comm.cpp:694). `delta` ist die Roboterorientierung in Bogenmass
+ * (`stateEstimator.stateDelta`, comm.cpp:692); sie steht seit dieser Fassung in `gps.delta`.
+ * Fehlt sie bei Altbestand, wird 0 geschrieben — der **Maeher sieht das Feld ohnehin nie**
+ * (`AT+W` uebertraegt nur x und y, comm.cpp:354-387; `Map::setPoint()` map.cpp:769 nimmt nur x
+ * und y; die Firmware-Klasse `Point` map.h:21-41 hat gar kein solches Feld), und CaSSAndRA
+ * verwirft es in derselben Zeile, in der es das Feld liest.
+ */
+function sunrayAppPoint(point) {
+  const out = {
+    X: Number(point.x),
+    Y: Number(point.y),
+    delta: Number.isFinite(Number(point.gps?.delta)) ? Number(point.gps.delta) : 0,
+    timestamp: point.capturedAt || point.originalCapturedAt || new Date(0).toISOString(),
+  };
+  const sol = Number(point.gps?.solution);
+  if (Number.isFinite(sol)) out.sol = sol;
+  return out;
+}
+
+/** Wegpunkte der Sunray-App tragen **nur** `X` und `Y` — kein delta, timestamp oder sol. */
+function sunrayAppWaypoint(point) {
+  return { X: Number(point.x), Y: Number(point.y) };
+}
+
+/**
+ * Die Karte im Format der grauonline-Sunray-App.
+ *
+ * **Aeussere Huelle ist eine Liste**, auch fuer eine einzelne Karte: die Vorlage ist ein Array
+ * von Karten (dort zehn), und `import_sunray()` laeuft mit `for map_number in range(len(df))`
+ * (mapdata.py:471) ueber die Zeilen. Ein einzelnes Objekt waere eine andere Form.
+ *
+ * **Koordinaten bleiben lokale Sunray-Meter** — der Sunray-Zweig rechnet nichts um (anders als
+ * der GeoJSON-Zweig ueber `coords_abs_to_rel`). Dieses Format braucht deshalb **keinen**
+ * Bezugspunkt, und die Sperre des CaSSAndRA-Exports darf hier nicht greifen.
+ *
+ * **Ringe bleiben offen**: die Vorlage schreibt weder beim Perimeter noch bei Ausschlussflaechen
+ * einen Schlusspunkt (in allen zehn Karten geprueft). Unser Modell fuehrt ohnehin keinen.
+ *
+ * **Leere Listen werden geschrieben**, weil die Vorlage sie schreibt (`dockpoints` ist dort in
+ * allen zehn Karten leer, `waypoints` in vieren).
+ */
+function mapToSunrayApp(map) {
+  if (!map) return null;
+  return [{
+    perimeter: (map.perimeter || []).map(sunrayAppPoint),
+    // Flaechen, die als Polygon nicht taugen, bleiben draussen — dieselbe Entscheidung und
+    // dieselbe Meldung wie beim CaSSAndRA-Export, ueber dieselbe Funktion.
+    exclusions: (map.exclusions || [])
+      .filter((exclusion) => hasUsablePolygon(exclusion.points))
+      .map((exclusion) => (exclusion.points || []).map(sunrayAppPoint)),
+    waypoints: (map.waypoints || []).map(sunrayAppWaypoint),
+    dockpoints: (map.dockPoints || []).map(sunrayAppPoint),
+    name: localizedMapName(map),
+    ...SUNRAY_APP_MOW_DEFAULTS,
+  }];
+}
+
 const MAP_EXPORT_FORMATS = {
+  // Endung und MIME aus der Vorlage `sunrayapp_map.json` abgeleitet: gewoehnliches JSON.
+  // **Kein `blockKey`** — dieses Format fuehrt lokale Meter und braucht keinen Bezugspunkt.
+  sunray: {
+    extension: '.sunray.json',
+    mimeType: 'application/json',
+    build: (map) => JSON.stringify(mapToSunrayApp(map), null, 4),
+  },
   json: {
     extension: '.mapcreator-ardumower.json',
     mimeType: 'application/json',
@@ -3791,6 +3910,7 @@ function refreshShareButtons() {
   ui.shareJsonBtn.hidden = !canShareMapFormat('json');
   ui.shareGeoJsonBtn.hidden = !canShareMapFormat('geojson');
   ui.shareCassandraBtn.hidden = !canShareMapFormat('cassandra');
+  ui.shareSunrayBtn.hidden = !canShareMapFormat('sunray');
 }
 
 /**
@@ -3807,7 +3927,7 @@ function refreshExportButtons() {
   ui.cassandraMissingHint.textContent = reason ? tr('cassandraBlocked', { reason: tr(reason) }) : '';
   // Die Auslassung soll schon zu sehen sein, bevor die Datei in CaSSAndRA liegt — dieselbe
   // Aufstellung wie die Meldung nach dem Export, damit beide dasselbe sagen.
-  const skipped = cassandraSkippedAreas(state.activeMap);
+  const skipped = skippedAreas(state.activeMap);
   ui.cassandraSkippedHint.hidden = skipped.length === 0;
   ui.cassandraSkippedHint.textContent = skipped.length
     ? tr('cassandraSkippedAhead', { count: skipped.length, names: skipped.join(', ') })
@@ -4250,7 +4370,12 @@ function mapToCassandraGeoJson(map, reference) {
  * ausgelassene Flaeche, auch eine leere: stillschweigend weglassen waere hier das Schlimmere,
  * und ob der Nutzer den Verlust fuer belanglos haelt, ist seine Entscheidung, nicht unsere.
  */
-function cassandraSkippedAreas(map) {
+/**
+ * Ausschlussflaechen, die als Polygon nicht taugen — mit Name und Punktzahl, fertig zum Anzeigen.
+ * **Formatunabhaengig**, seit auch der Sunray-Export sie auslaesst: die Frage „taugt als Flaeche?“
+ * beantwortet weiterhin allein `hasUsablePolygon()`, es gibt keine zweite Zaehlung daneben.
+ */
+function skippedAreas(map) {
   return (map?.exclusions || [])
     .map((exclusion, index) => ({ exclusion, index }))
     .filter(({ exclusion }) => !hasUsablePolygon(exclusion.points))
@@ -4277,11 +4402,30 @@ function noticeCassandraExport(map) {
   const reference = cassandraReferenceInUse();
   if (!reference) return;
   const parts = [tr('cassandraReferenceUsed', { lat: String(reference.lat), lon: String(reference.lon) })];
-  const skipped = cassandraSkippedAreas(map);
+  const skipped = skippedAreas(map);
   if (skipped.length) {
     parts.push(tr('cassandraSkippedMessage', { count: skipped.length, names: skipped.join(', ') }));
   }
   showNotice({ title: tr('cassandraExportTitle'), message: parts.join(' ') });
+}
+
+/**
+ * Meldung nach dem Sunray-Export. **Ohne Bezugspunkt**, weil das Format keinen braucht — genannt
+ * wird stattdessen, in welchen Einheiten die Datei steht, und was ausgelassen wurde. Dieselbe
+ * Aufstellung wie beim CaSSAndRA-Export (`skippedAreas()`), damit beide Wege dasselbe sagen.
+ */
+function noticeSunrayExport(map) {
+  const parts = [tr('sunrayExportDone')];
+  const skipped = skippedAreas(map);
+  if (skipped.length) {
+    parts.push(tr('cassandraSkippedMessage', { count: skipped.length, names: skipped.join(', ') }));
+  }
+  showNotice({ title: tr('sunrayExportTitle'), message: parts.join(' ') });
+}
+
+function exportCurrentMapSunray() {
+  // Erst handeln, dann melden — wie beim CaSSAndRA-Export.
+  if (exportMapFile('sunray')) noticeSunrayExport(state.activeMap);
 }
 
 function exportCurrentMapCassandra() {
@@ -5270,6 +5414,12 @@ function bindEvents() {
   ui.exportGeoJsonBtn.addEventListener('click', exportCurrentMapGeoJson);
   ui.shareJsonBtn.addEventListener('click', () => { shareCurrentMap('json'); });
   ui.shareGeoJsonBtn.addEventListener('click', () => { shareCurrentMap('geojson'); });
+  ui.exportSunrayBtn.addEventListener('click', exportCurrentMapSunray);
+  ui.shareSunrayBtn.addEventListener('click', () => {
+    shareCurrentMap('sunray')
+      .then((shared) => { if (shared) noticeSunrayExport(state.activeMap); })
+      .catch(reportError);
+  });
   ui.exportCassandraBtn.addEventListener('click', exportCurrentMapCassandra);
   ui.shareCassandraBtn.addEventListener('click', () => {
     shareCurrentMap('cassandra')
