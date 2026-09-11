@@ -113,6 +113,17 @@ function loadApp(options = {}) {
     return sandbox.__confirmAnswer !== false;
   };
 
+  // Auswahllisten laufen ueber askChoice(); dieselbe Konvention. Steuerung:
+  // sandbox.__choiceAnswer (Wert oder null fuer Abbruch), Rueckschau: __lastChoiceRequest.
+  // Ohne gesetzte Antwort wird der erste Eintrag genommen — so laeuft ein Test, der die Auswahl
+  // gar nicht im Blick hat, nicht ins Leere.
+  sandbox.__choiceAdapter = (request) => {
+    sandbox.__lastChoiceRequest = request;
+    if (sandbox.__choiceAnswer === null) return null;
+    if (sandbox.__choiceAnswer !== undefined) return sandbox.__choiceAnswer;
+    return request.options[0]?.value ?? null;
+  };
+
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
 

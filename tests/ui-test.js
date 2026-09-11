@@ -48,6 +48,8 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'updateCassandraReferenceFromUi', 'cassandraReferenceInUse', 'mapToCassandraGeoJson',
   'importMapFile', 'isCassandraGeoJson', 'noticeCassandraImport', 'clearImportNotice',
   'mapToSunrayApp', 'exportCurrentMapSunray', 'noticeSunrayExport', 'skippedAreas',
+  'isSunrayAppFile', 'sunrayAppToMap', 'chooseSunrayMap', 'askChoice', 'sunrayAppMapLabel',
+  'confirmDialogRespond', 'noticeSunrayImport',
   'MIN_USER_ZOOM', 'MAX_USER_ZOOM', 'init'];
 
 /** Minimaler IndexedDB-Ersatz, damit saveActiveMap() im Test durchlaeuft. */
@@ -3356,6 +3358,144 @@ test('Der Verbindungshinweis steht dauerhaft und bleibt eine Beobachtung', () =>
     assert.ok(!/verursacht|liegt daran|is caused by|because of/.test(text),
       `Wortlaut (${lang}) stellt es als erwiesen dar`);
   }
+});
+
+
+test('Sunray-Datei mit einer Karte: keine Auswahl, Meldung nennt Verworfenes', async () => {
+  const { t, elements, sandbox } = setup();
+  t.clearImportNotice();
+  const datei = JSON.parse(fs.readFileSync(
+    path.join(__dirname, 'fixtures', 'sunray-app-map.json'), 'utf8'));
+  sandbox.__lastChoiceRequest = null;
+  const vorher = t.state.maps.length;
+  await t.importMapFile({ text: async () => JSON.stringify(datei) });
+
+  assert.strictEqual(sandbox.__lastChoiceRequest, null,
+    'bei genau einer Karte wird nicht gefragt');
+  assert.strictEqual(t.state.maps.length, vorher + 1, 'die Karte ist entstanden');
+  const karte = t.state.activeMap;
+  assert.strictEqual(karte.perimeter.length, datei[0].perimeter.length);
+  assert.strictEqual(karte.perimeterClosed, true, 'der Perimeter gilt als geschlossen');
+  assert.ok(karte.exclusions.every((e) => e.closed === true));
+  assert.strictEqual(karte.waypoints.length, 0, 'Wegpunkte werden verworfen');
+
+  const notice = elements.get('importNotice');
+  assert.strictEqual(notice.hidden, false, 'die Meldung ist sichtbar');
+  assert.ok(/\b5\b/.test(notice.textContent),
+    `die Zahl der verworfenen Wegpunkte steht im Klartext: ${notice.textContent}`);
+  assert.ok(/Mähpfad|mowing path/.test(notice.textContent), 'mit Begruendung');
+  // Auch die verworfenen Maehfelder werden genannt, nicht stillschweigend geschluckt.
+  assert.ok(/Mäheinstellungen|mowing settings/.test(notice.textContent),
+    `die uebergangenen Felder fehlen in der Meldung: ${notice.textContent}`);
+});
+
+test('Sunray-Datei mit mehreren Karten: der Nutzer waehlt, nie still die erste', async () => {
+  const { t, sandbox } = setup();
+  t.clearImportNotice();
+  const datei = JSON.parse(fs.readFileSync(
+    path.join(__dirname, 'fixtures', 'sunray-app-multi.json'), 'utf8'));
+  assert.ok(datei.length >= 3, 'das Pruefmuster fuehrt mehrere Karten');
+
+  // Die dritte waehlen — sie hat 120 Wegpunkte und keine Ausschlussflaechen.
+  sandbox.__choiceAnswer = '2';
+  sandbox.__lastChoiceRequest = null;
+  await t.importMapFile({ text: async () => JSON.stringify(datei) });
+
+  const anfrage = sandbox.__lastChoiceRequest;
+  assert.ok(anfrage, 'es wird gefragt');
+  assert.strictEqual(anfrage.options.length, datei.length, 'jede Karte steht zur Wahl');
+  assert.ok(/3/.test(String(anfrage.message)), 'die Anzahl steht in der Frage');
+  // Genommen wurde die gewaehlte, nicht die erste.
+  assert.strictEqual(t.state.activeMap.exclusions.length, 0,
+    'es wurde die dritte Karte uebernommen, nicht die erste');
+  assert.ok(t.state.activeMap.name.includes('Hinterer Garten'),
+    `Name der gewaehlten Karte: ${t.state.activeMap.name}`);
+
+  // Namenlose Karte: kein leerer Eintrag, Position immer vorn, alle unterscheidbar.
+  const labels = anfrage.options.map((o) => o.label);
+  assert.strictEqual(new Set(labels).size, labels.length, 'alle Eintraege sind unterscheidbar');
+  for (const [i, label] of labels.entries()) {
+    assert.ok(label.trim().length > 3, `Eintrag ${i} ist leer: ${JSON.stringify(label)}`);
+    assert.ok(label.startsWith(`${i + 1}.`), `Position fehlt vorn: ${label}`);
+  }
+  sandbox.__choiceAnswer = undefined;
+});
+
+test('Abbruch in der Auswahl importiert nichts', async () => {
+  const { t, elements, sandbox } = setup();
+  t.clearImportNotice();
+  const datei = JSON.parse(fs.readFileSync(
+    path.join(__dirname, 'fixtures', 'sunray-app-multi.json'), 'utf8'));
+  sandbox.__choiceAnswer = null;                 // Abbruch
+  const vorher = t.state.maps.length;
+  const vorherAktiv = t.state.activeMap;
+  await t.importMapFile({ text: async () => JSON.stringify(datei) });
+
+  assert.strictEqual(t.state.maps.length, vorher, 'es entsteht keine Karte');
+  assert.strictEqual(t.state.activeMap, vorherAktiv, 'die aktive Karte wechselt nicht');
+  assert.strictEqual(elements.get('importNotice').hidden, true, 'und keine Erfolgsmeldung');
+  sandbox.__choiceAnswer = undefined;
+});
+
+test('Die Auswahl laeuft ueber denselben Dialog wie Rueckfrage und Texteingabe', async () => {
+  const { t, elements, sandbox } = setup();
+  // Ohne Adapter den echten Dialogpfad fahren, wie bei askConfirm/askText.
+  delete sandbox.__choiceAdapter;
+  const select = elements.get('confirmDialogSelect');
+  const antwort = t.askChoice({
+    title: 'Titel', message: 'Text',
+    options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }],
+    confirmLabel: 'Nimm',
+  });
+  assert.strictEqual(elements.get('confirmDialog').hidden, false, 'derselbe Dialog oeffnet');
+  assert.strictEqual(select.hidden, false, 'die Liste ist sichtbar');
+  assert.strictEqual(select.children.length, 2, 'beide Eintraege stehen darin');
+  assert.strictEqual(elements.get('confirmDialogInput').hidden !== false, true,
+    'das Textfeld bleibt aus');
+  assert.strictEqual(elements.get('confirmDialogAccept').textContent, 'Nimm');
+
+  select.value = 'b';
+  t.confirmDialogRespond(true);
+  assert.strictEqual(await antwort, 'b', 'die Antwort ist der gewaehlte Wert');
+  assert.strictEqual(select.hidden, true, 'die Liste wird wieder ausgeblendet');
+
+  // Abbruch liefert null, nicht den vorbelegten Wert.
+  const zweite = t.askChoice({ title: 'T', message: 'M', options: [{ value: 'x', label: 'X' }] });
+  t.confirmDialogRespond(false);
+  assert.strictEqual(await zweite, null, 'Abbruch liefert null');
+
+  // Der Textmodus funktioniert danach unveraendert weiter.
+  const dritte = t.askText({ title: 'T', message: 'M', value: 'alt', confirmLabel: 'OK' });
+  assert.strictEqual(elements.get('confirmDialogSelect').hidden, true,
+    'im Textmodus bleibt die Liste aus');
+  elements.get('confirmDialogInput').value = 'neu';
+  t.confirmDialogRespond(true);
+  assert.strictEqual(await dritte, 'neu');
+});
+
+test('Unsere eigenen Formate gelten nicht als Sunray-Datei und werden unveraendert gelesen', async () => {
+  const { t, elements } = setup();
+  t.state.cassandraReference = { lat: 0, lon: 0 };
+  const m = t.makeMap('Eigen');
+  m.perimeter = [{x:0,y:0},{x:12,y:0},{x:12,y:9}];
+  m.perimeterClosed = true;
+
+  for (const [name, doc] of [
+    ['JSON-Backup', JSON.parse(JSON.stringify(m))],
+    ['GeoJSON', t.mapToGeoJson(m)],
+    ['CaSSAndRA-Export', t.mapToCassandraGeoJson(m, { lat: 0, lon: 0 })],
+  ]) {
+    assert.strictEqual(t.isSunrayAppFile(doc), false, `${name} darf nicht als Sunray-Datei gelten`);
+  }
+
+  t.clearImportNotice();
+  await t.importMapFile({ text: async () => JSON.stringify(t.mapToGeoJson(m)) });
+  const zurueck = t.state.activeMap;
+  assert.strictEqual(zurueck.perimeter.length, 3);
+  assert.strictEqual(zurueck.perimeter[1].x, 12, 'die Meter bleiben Meter');
+  const notice = elements.get('importNotice');
+  assert.ok(notice.hidden === true || !/Mähpfad|mowing path/.test(notice.textContent),
+    'fuer eigene Dateien erscheint keine Sunray-Meldung');
 });
 
 (async () => {

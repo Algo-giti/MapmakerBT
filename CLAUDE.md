@@ -850,6 +850,69 @@ ein Punkt bewusst ohne `sol` — versioniert, kein Rückschluss auf den Standort
 die App mit Flächen unter acht Punkten umgeht (kleinste vorkommende Fläche hat acht); ob die
 grauonline-App `delta`, `patternAngle` oder `mowOfs` beim Einlesen auswertet.
 
+### Sunray-App-Dateien einlesen (Stand v57)
+
+**Erkennung strukturell** (`isSunrayAppFile()`, eine Stelle, wie `isCassandraGeoJson()`): die
+äußere Hülle ist eine **nicht leere Liste**, **jeder** Eintrag ist ein Objekt mit einem Array
+`perimeter`, und **mindestens ein** Perimeter trägt Punkte, deren Felder durchgängig `X`/`Y` als
+Zahlen führen. Großschreibung ist dabei das Merkmal — unser eigenes Modell schreibt `x`/`y` klein.
+Unser JSON-Backup und beide GeoJSON-Formate sind Objekte, keine Listen, und fallen schon am ersten
+Merkmal heraus. **Keine Heuristik über Zahlenwerte.** Eine Liste aus Karten mit ausschließlich
+leeren Konturen gilt bewusst **nicht** als erkannt: sie trägt kein Merkmal, das sie von irgendeiner
+anderen Liste unterscheidet.
+
+**Mehrere Karten: der Nutzer wählt** (`chooseSunrayMap()`). Die Vorlage führt zehn Karten in einer
+Datei. Still die erste zu nehmen ist ausgeschlossen; ein Abbruch bricht den Import **vollständig**
+ab, ohne Karte und ohne Meldung. Bei **genau einer** Karte wird nicht gefragt — ein Dialog mit
+einer einzigen Wahlmöglichkeit wäre Schikane, und die Importmeldung sagt hinterher ohnehin, was
+hereinkam. **`MAX_MAPS` ist dabei kein neuer Fall**: ein Import erzeugt genau eine Karte, und der
+Fall „kein Platz frei" wird in `importMapFile()` wie bisher vorab abgefangen.
+
+**Die Auswahl ist der vierte Modus desselben Dialogs.** `askChoice({ title, message, options })`
+nutzt `#confirmDialog` mit dem neuen `#confirmDialogSelect` — kein zweites Modal, Escape,
+Hintergrundklick und Knopflogik gibt es hier genau einmal. `state.pendingConfirmChoice` schaltet
+`confirmDialogRespond()` in den Auswahlmodus: die Antwort ist dann der gewählte Wert bzw. `null`
+bei Abbruch. Testadapter `globalThis.__choiceAdapter` (Steuerung `sandbox.__choiceAnswer`,
+Rückschau `__lastChoiceRequest`). **Dabei behoben:** jeder Modus blendet die Felder der anderen
+jetzt ausdrücklich aus. Vorher räumte allein `confirmDialogRespond()` auf — damit entschied die
+Reihenfolge der Aufrufe über die Darstellung, und ein Dialog soll bei jedem Öffnen derselbe sein.
+
+**Beschriftung:** `sunrayAppMapLabel()` stellt die **Position immer voran**, nicht nur bei
+namenlosen Karten — die Vorlage führt neun verschiedene Namen bei zehn Karten, zwei Einträge wären
+sonst nicht auseinanderzuhalten. Dazu Punktzahl und Zahl der Flächen; eine Karte ohne Namen wird
+als „(ohne Namen)" geführt und ist nie ein leerer Eintrag.
+
+**Felder eins zu eins** (`sunrayAppPointToModel()`): `timestamp` → `capturedAt`, `sol` →
+`gps.solution`, `delta` → `gps.delta`. Beide Seiten haben dieselbe Quelle, es wird nichts
+umgerechnet. **`gps` entsteht gar nicht**, wenn weder `sol` noch `delta` dastehen — ein leeres
+Objekt ließe `pointQuality()` denselben Schluss ziehen wie eine gemessene schlechte Güte.
+
+**Konturen gelten als geschlossen** — und das ist ausdrücklich **nicht** dieselbe Frage, die
+`geoRingClosed()` für GeoJSON beantwortet. Dort wird geprüft, ob die Datei einen Schlusspunkt
+**trägt**; die Sunray-Vorlage schreibt **nie** einen (in allen zehn Karten geprüft), ihre Konturen
+sind trotzdem geschlossene Polygone. `geoRingClosed()` lieferte hier durchgehend `false` und wäre
+die falsche Auskunft, keine gemeinsame Quelle — ein Test hält genau das fest. Ein **leerer**
+Perimeter gilt nicht als geschlossene Kontur.
+
+**Verworfen wird zweierlei, und beides wird genannt** (`noticeSunrayImport()`, Hinweiszeile
+`#importNotice`, kein Dialog):
+- **`waypoints`** — in der Vorlage 1238 bis 2870 Punkte je Karte: ein von der App **berechneter
+  Mähpfad**, nicht die Handvoll gesetzter Wegpunkte, die unser Modell meint. Die Zahl der
+  weggefallenen Punkte steht im Klartext.
+- **die Mähfelder** `patternAngle`, `mowOfs`, `patternRings`, `doMowExclusions`, `doMowPerimeter`,
+  `doMowArea`, `doPerimeterBorder`, `doExclusionsBorder` — diese App steuert kein Mähen und hat
+  dafür keine Entsprechung. Verwerfen ist in Ordnung, **stillschweigend verwerfen nicht**.
+
+**Gemessen:** Rundlauf lesen → schreiben → lesen über das Prüfmuster: **0,000000 mm** — es wird
+nirgends umgerechnet oder gerundet, und `capturedAt`, `gps.delta` und `gps.solution` überleben
+unverändert. Prüfmuster: `tests/fixtures/sunray-app-map.json` (eine Karte) und
+`sunray-app-multi.json` (drei Karten, davon eine **ohne Namen** und eine mit 120 Wegpunkten) —
+beide abgeleitet, verschoben, versioniert. `tests/map/` wird von keinem Test vorausgesetzt.
+
+**Altbestand bleibt exportierbar:** Punkte ohne `gps.delta` bekommen beim Schreiben 0, Punkte ganz
+ohne `gps` behalten `delta` und `timestamp` (beides Pflichtfelder für CaSSAndRA) und bekommen kein
+erfundenes `sol`. Ein eigener Test hält das fest.
+
 ### Exportknöpfe: Reihenfolge und Gliederung (Stand v56)
 
 Vier Formate in drei Gruppen, nach Zweck statt nach Alter: **Sunray** (für die grauonline-App und
@@ -1752,6 +1815,27 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-11: **Sunray-App-Dateien lassen sich auch lesen.** Erkennung strukturell über
+  `isSunrayAppFile()` (Liste, jeder Eintrag mit `perimeter`, Punkte mit großem `X`/`Y`) — keines
+  unserer eigenen drei Formate gilt als Sunray-Datei, per Test in beide Richtungen abgesichert.
+  **Mehrere Karten wählt der Nutzer**; dafür ist der Bestätigungsdialog um einen vierten Modus
+  gewachsen (`askChoice()` + `#confirmDialogSelect`), kein zweites Modal. Bei genau einer Karte
+  wird nicht gefragt, ein Abbruch importiert nichts, und die Position steht in jeder Beschriftung
+  vorn, weil Namen sich wiederholen können. Felder eins zu eins (`timestamp` → `capturedAt`,
+  `sol` → `gps.solution`, `delta` → `gps.delta`); ohne Messung entsteht **kein** leeres
+  `gps`-Objekt. **Verworfen und gemeldet:** der berechnete Mähpfad in `waypoints` (mit Anzahl im
+  Klartext) und die Mäheinstellungen der Datei. **Widerspruch im Auftrag gemeldet und aufgelöst:**
+  „dieselbe Quelle wie beim GeoJSON-Import" (`geoRingClosed()`) beantwortet die Frage, ob die Datei
+  einen Schlusspunkt trägt — die Sunray-Vorlage trägt nie einen, ihre Konturen sind trotzdem
+  geschlossen; das ist Formatkonvention, keine zweite Lösung derselben Frage, und ein Test hält
+  fest, dass `geoRingClosed()` hier `false` sagen würde. **Dabei behoben:** die Dialogmodi blendeten
+  die Felder der jeweils anderen nicht aus, die Darstellung hing also an der Reihenfolge der
+  Aufrufe. Rundlauf lesen→schreiben→lesen: **0,000000 mm**. Neu: 1 Block in
+  `tests/app-core-test.js`, 5 ui-Fälle (174), Prüfmuster `sunray-app-multi.json`, Harness um
+  `__choiceAdapter` ergänzt. Gegen zwölf simulierte Rückfälle geprüft; einer schlug zunächst nur
+  durch Endlosrekursion fehl und wurde durch die saubere Variante ersetzt. i18n-Parität maschinell
+  geprüft. `APP_VERSION` auf `v57`.
 
 - 2026-09-11: **Viertes Exportformat „Sunray-App", Knöpfe nach Zweck gegliedert, zwei
   Wortlaut-Korrekturen.** (T1) Neues Format nach der Schreibsicht der grauonline-App, Vorlage ist

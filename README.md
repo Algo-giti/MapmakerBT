@@ -288,7 +288,13 @@ gelöschte Website-Daten bedeuten: Karten sind weg.
   schreibt: eine Liste von Karten mit lokalen X/Y-Koordinaten in Metern, je Punkt zusätzlich
   Ausrichtung, Aufnahmezeit und RTK-Güte. Gedacht für die Sunray-App und für den Mäher selbst;
   CaSSAndRA liest dieses Format ebenfalls. Ein Bezugspunkt wird **nicht** gebraucht, weil nichts
-  umgerechnet wird.
+  umgerechnet wird. **Solche Dateien lassen sich auch wieder einlesen.** Enthält die Datei mehrere
+  Karten – die Sunray-App speichert oft alle gemeinsam –, wählst du beim Import eine davon aus.
+  Die **Wegpunkte der Datei werden dabei nicht übernommen**: das ist ein von der Sunray-App
+  berechneter Mähpfad aus oft tausenden Punkten, nicht die Wegpunkte, die du in dieser App selbst
+  setzt. Wie viele Punkte wegfallen, steht nach dem Import unter dem Import-Knopf. Ebenso wenig
+  übernommen werden die Mäheinstellungen der Datei (Musterwinkel, Bahnabstand und die
+  Mäh-/Randflaggen), denn diese App steuert kein Mähen.
 - **CaSSAndRA-Export** erzeugt genau die Datei, die CaSSAndRA selbst schreibt und einliest:
   Weltkoordinaten in Grad, dazu Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Er ist
   gegen den **CaSSAndRA-Bezugspunkt** gerechnet, der bei den Export-Knöpfen steht. Voreingestellt
@@ -689,7 +695,13 @@ or cleared site data means the maps are gone.
 - **Sunray app export** produces exactly the file grauonline's Sunray app writes itself: a list
   of maps with local X/Y coordinates in metres, each point additionally carrying heading, capture
   time and RTK quality. Meant for the Sunray app and for the mower itself; CaSSAndRA reads this
-  format too. No reference point is needed, because nothing is converted.
+  format too. No reference point is needed, because nothing is converted. **Such files can also be
+  read back in.** If the file holds several maps – the Sunray app often stores them all together –
+  you pick one of them during the import. The **file's waypoints are not taken over**: that is a
+  mowing path computed by the Sunray app, often thousands of points, not the waypoints you set
+  yourself in this app. How many points are dropped is shown under the import button afterwards.
+  The file's mowing settings (pattern angle, line offset and the mow/border flags) are left out as
+  well, because this app does not control mowing.
 - **CaSSAndRA export** produces exactly the file CaSSAndRA writes and reads itself: world
   coordinates in degrees, plus perimeter, dock path, search wire and exclusion areas. It stays
   computed against the **CaSSAndRA reference point** shown next to the export buttons. It is

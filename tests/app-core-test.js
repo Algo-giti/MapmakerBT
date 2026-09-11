@@ -8,6 +8,8 @@ const { t } = loadApp({
     'mapToCassandraGeoJson', 'cassandraExportBlockKey', 'skippedAreas', 'hasUsablePolygon',
     'isCassandraGeoJson', 'geoRingClosed', 'cassandraReferenceInUse',
     'mapToSunrayApp', 'sunrayAppPoint', 'skippedAreas', 'mapExportFile', 'MAP_EXPORT_FORMATS',
+    'isSunrayAppFile', 'sunrayAppToMap', 'sunrayAppPointToModel', 'sunrayAppMapLabel',
+    'sunrayDiscardedWaypoints', 'geoRingClosed',
     'closePerimeter',
     'validateActiveMap'],
 });
@@ -1006,6 +1008,154 @@ assert.ok(geoWithWaypoints.features.some((f)=>f.properties.role==='waypoints' &&
     delete kaputt[0].perimeter[0][feld];
     assert.throws(() => liesWieCassandra(kaputt), /KeyError/,
       `ohne ${feld} wuerde CaSSAndRA die Datei abweisen`);
+  }
+}
+
+
+// --- Sunray-App-Format lesen ------------------------------------------------
+// Geprueft wird die WIRKUNG: was nach dem Einlesen im Modell steht, was verworfen wird und was
+// ein Rundlauf in Millimetern kostet. Quelle sind die Pruefmuster aus tests/fixtures/, nicht die
+// echten Karten unter tests/map/ — die sind nicht versioniert.
+{
+  const fs = require('fs');
+  const path = require('path');
+  const lade = (name) => JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', name), 'utf8'));
+  const eine = lade('sunray-app-map.json');
+  const mehrere = lade('sunray-app-multi.json');
+
+  // -- U1: Erkennung ---------------------------------------------------------
+  assert.strictEqual(t.isSunrayAppFile(eine), true, 'das Pruefmuster muss erkannt werden');
+  assert.strictEqual(t.isSunrayAppFile(mehrere), true, 'auch die Datei mit mehreren Karten');
+
+  // Keines unserer eigenen Formate darf als Sunray-Datei gelten.
+  const m0 = t.makeMap('Eigen');
+  m0.perimeter = [{x:0,y:0},{x:10,y:0},{x:10,y:8}];
+  m0.perimeterClosed = true;
+  t.state.cassandraReference = { lat: 0, lon: 0 };
+  for (const [name, doc] of [
+    ['unser JSON-Backup', JSON.parse(JSON.stringify(m0))],
+    ['unser GeoJSON', t.mapToGeoJson(m0)],
+    ['unser CaSSAndRA-Export', t.mapToCassandraGeoJson(m0, { lat: 0, lon: 0 })],
+    ['CaSSAndRA-Pruefmuster', lade('cassandra-perimeter.geojson.json')],
+  ]) {
+    assert.strictEqual(t.isSunrayAppFile(doc), false, `${name} darf nicht als Sunray-Datei gelten`);
+  }
+  // Gegenprobe in die andere Richtung: eine Sunray-Datei ist kein CaSSAndRA-GeoJSON.
+  assert.strictEqual(t.isCassandraGeoJson(eine), false);
+
+  // Jedes Merkmal muss einzeln zum Ausschluss genuegen.
+  assert.strictEqual(t.isSunrayAppFile([]), false, 'die leere Liste traegt kein Merkmal');
+  assert.strictEqual(t.isSunrayAppFile({ 0: eine[0] }), false, 'ein Objekt ist keine Liste');
+  assert.strictEqual(t.isSunrayAppFile([{ name: 'X' }]), false, 'ohne perimeter kein Merkmal');
+  assert.strictEqual(t.isSunrayAppFile([{ perimeter: [] }]), false,
+    'nur leere Perimeter: kein Merkmal, also wird nicht geraten');
+  assert.strictEqual(t.isSunrayAppFile([{ perimeter: [{ x: 1, y: 2 }] }]), false,
+    'kleines x/y ist unser Modell, nicht das der Sunray-App');
+  assert.strictEqual(t.isSunrayAppFile([eine[0], { name: 'ohne perimeter' }]), false,
+    'ein einziger Eintrag ohne perimeter schliesst die Datei aus');
+
+  // -- U4: Felder eins zu eins ------------------------------------------------
+  const karte = t.sunrayAppToMap(eine[0]);
+  assert.strictEqual(karte.perimeter.length, eine[0].perimeter.length, 'Punktzahl Perimeter');
+  assert.strictEqual(karte.exclusions.length, eine[0].exclusions.length, 'Zahl der Flaechen');
+  assert.strictEqual(karte.exclusions[0].points.length, eine[0].exclusions[0].length);
+
+  const vorn = eine[0].perimeter[0];
+  const neu = karte.perimeter[0];
+  assert.strictEqual(neu.x, vorn.X);
+  assert.strictEqual(neu.y, vorn.Y);
+  assert.strictEqual(neu.capturedAt, vorn.timestamp, 'timestamp -> capturedAt');
+  assert.strictEqual(neu.gps.solution, vorn.sol, 'sol -> gps.solution');
+  assert.strictEqual(neu.gps.delta, vorn.delta, 'delta -> gps.delta');
+
+  // Ein Punkt der Vorlage traegt kein `sol` — daraus darf keine erfundene Guete werden.
+  const ohneSol = eine[0].exclusions[0].findIndex((p) => !('sol' in p));
+  assert.ok(ohneSol >= 0, 'das Pruefmuster fuehrt einen Punkt ohne sol');
+  const gelesen = karte.exclusions[0].points[ohneSol];
+  assert.ok(!('solution' in (gelesen.gps || {})), 'ohne sol entsteht keine Guete');
+  assert.strictEqual(gelesen.gps.delta, eine[0].exclusions[0][ohneSol].delta, 'delta bleibt trotzdem');
+
+  // Ganz ohne sol UND delta darf gar kein gps-Objekt entstehen.
+  const nackt = t.sunrayAppPointToModel({ X: 1, Y: 2, timestamp: '2026-01-01T00:00:00.000Z' });
+  assert.ok(!('gps' in nackt), 'ohne jede Messung entsteht kein leeres gps-Objekt');
+
+  // -- U4: Konturen gelten als geschlossen ------------------------------------
+  assert.strictEqual(karte.perimeterClosed, true, 'der Perimeter gilt als geschlossen');
+  assert.ok(karte.exclusions.every((e) => e.closed === true), 'die Flaechen ebenso');
+  // Die Vorlage traegt dabei KEINEN Schlusspunkt — deshalb ist `geoRingClosed()` hier die
+  // falsche Auskunft und wird bewusst nicht befragt.
+  const p = eine[0].perimeter;
+  assert.ok(p[0].X !== p[p.length - 1].X || p[0].Y !== p[p.length - 1].Y,
+    'Gegenprobe: die Vorlage schreibt keinen Schlusspunkt');
+  assert.strictEqual(
+    t.geoRingClosed({ type: 'Polygon', coordinates: [p.map((q) => [q.X, q.Y])] }), false,
+    'geoRingClosed wuerde hier false sagen — es beantwortet eine andere Frage');
+  // Ein leerer Perimeter darf nicht als geschlossene Kontur gelten.
+  assert.strictEqual(t.sunrayAppToMap({ perimeter: [], exclusions: [] }).perimeterClosed, false);
+
+  // -- U3: waypoints werden verworfen und gezaehlt ----------------------------
+  assert.strictEqual(karte.waypoints.length, 0, 'Wegpunkte werden nicht uebernommen');
+  assert.strictEqual(t.sunrayDiscardedWaypoints(eine[0]), eine[0].waypoints.length,
+    'die Zahl der verworfenen Punkte wird gemeldet');
+  assert.strictEqual(t.sunrayDiscardedWaypoints(mehrere[2]), 120);
+  assert.strictEqual(t.sunrayDiscardedWaypoints({ perimeter: [] }), 0, 'ohne waypoints faellt nichts weg');
+
+  // -- U2: Beschriftung, auch ohne Namen --------------------------------------
+  const beschriftungen = mehrere.map((k, i) => t.sunrayAppMapLabel(k, i));
+  assert.ok(beschriftungen[0].includes('Vorderer Garten'));
+  assert.ok(/^1\./.test(beschriftungen[0]), `die Position steht vorn: ${beschriftungen[0]}`);
+  assert.ok(beschriftungen[1].includes('2.'), 'auch die namenlose Karte traegt ihre Position');
+  assert.ok(beschriftungen[1].length > 4, 'und ist kein leerer Eintrag');
+  assert.strictEqual(new Set(beschriftungen).size, beschriftungen.length,
+    'alle Eintraege sind unterscheidbar');
+  for (const b of beschriftungen) assert.ok(/\d+/.test(b), `Umfang fehlt: ${b}`);
+
+  // -- U5: Rundlauf lesen -> schreiben -> lesen -------------------------------
+  const zurueck = t.mapToSunrayApp(karte);
+  const wieder = t.sunrayAppToMap(zurueck[0]);
+  assert.strictEqual(wieder.perimeter.length, karte.perimeter.length, 'Punktzahl ueberlebt');
+  assert.strictEqual(wieder.exclusions.length, karte.exclusions.length, 'Flaechen ueberleben');
+  let groessteMm = 0;
+  for (let i = 0; i < karte.perimeter.length; i += 1) {
+    groessteMm = Math.max(groessteMm, Math.hypot(
+      karte.perimeter[i].x - wieder.perimeter[i].x,
+      karte.perimeter[i].y - wieder.perimeter[i].y) * 1000);
+  }
+  for (let f = 0; f < karte.exclusions.length; f += 1) {
+    for (let i = 0; i < karte.exclusions[f].points.length; i += 1) {
+      groessteMm = Math.max(groessteMm, Math.hypot(
+        karte.exclusions[f].points[i].x - wieder.exclusions[f].points[i].x,
+        karte.exclusions[f].points[i].y - wieder.exclusions[f].points[i].y) * 1000);
+    }
+  }
+  assert.strictEqual(groessteMm, 0,
+    `der Rundlauf rechnet nicht um, es darf nichts abweichen: ${groessteMm} mm`);
+  // Auch die Zusatzfelder ueberleben den Rundlauf.
+  assert.strictEqual(wieder.perimeter[0].capturedAt, karte.perimeter[0].capturedAt);
+  assert.strictEqual(wieder.perimeter[0].gps.delta, karte.perimeter[0].gps.delta);
+  assert.strictEqual(wieder.perimeter[0].gps.solution, karte.perimeter[0].gps.solution);
+  console.log(`  Sunray-Rundlauf lesen->schreiben->lesen: groesste Abweichung ${groessteMm.toFixed(6)} mm`);
+
+  // -- U5: Altbestand ohne gps.delta bleibt exportierbar -----------------------
+  const alt = t.makeMap('Altbestand');
+  alt.perimeter = [
+    { x: 1, y: 2, capturedAt: '2025-05-05T10:00:00.000Z', gps: { solution: 2 } },
+    { x: 3, y: 4, capturedAt: '2025-05-05T10:00:05.000Z', gps: { solution: 2 } },
+    { x: 3, y: 6 },                                   // ganz ohne gps und ohne Zeit
+  ];
+  const altDoc = t.mapToSunrayApp(alt);
+  assert.strictEqual(altDoc[0].perimeter.length, 3);
+  for (const pkt of altDoc[0].perimeter) {
+    assert.strictEqual(typeof pkt.delta, 'number', 'delta bleibt eine Zahl');
+    assert.strictEqual(typeof pkt.timestamp, 'string', 'timestamp bleibt ein String');
+  }
+  assert.strictEqual(altDoc[0].perimeter[0].delta, 0, 'fehlendes delta wird zu 0');
+  assert.strictEqual(altDoc[0].perimeter[0].sol, 2, 'vorhandene Guete bleibt');
+  assert.ok(!('sol' in altDoc[0].perimeter[2]), 'ohne Messung keine erfundene Guete');
+  // Und die Datei bleibt fuer CaSSAndRA lesbar: delta und timestamp sind ueberall da.
+  for (const pkt of altDoc[0].perimeter) {
+    assert.ok('delta' in pkt && 'timestamp' in pkt,
+      'ohne diese beiden Felder wuerde CaSSAndRA die ganze Datei abweisen');
   }
 }
 

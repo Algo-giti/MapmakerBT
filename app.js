@@ -172,9 +172,20 @@ const I18N = {
     shareJson: 'Als JSON teilen', shareGeoJson: 'Als GeoJSON teilen', shareMapTitle: 'Karte teilen',
     saveCassandra: 'Für CaSSAndRA speichern', shareCassandra: 'Für CaSSAndRA teilen',
     saveSunray: 'Für Sunray-App speichern', shareSunray: 'Für Sunray-App teilen',
-    sunrayHelp: 'Genau die Form, die die Sunray-App von grauonline schreibt: eine Liste von Karten mit lokalen X/Y-Koordinaten in Metern, je Punkt zusätzlich Ausrichtung, Aufnahmezeit und RTK-Güte. Für die Sunray-App selbst und für den Mäher. CaSSAndRA liest dieses Format ebenfalls. Ein Bezugspunkt wird nicht gebraucht, weil nichts umgerechnet wird.',
+    sunrayHelp: 'Genau die Form, die die Sunray-App von grauonline schreibt: eine Liste von Karten mit lokalen X/Y-Koordinaten in Metern, je Punkt zusätzlich Ausrichtung, Aufnahmezeit und RTK-Güte. Für die Sunray-App selbst und für den Mäher. CaSSAndRA liest dieses Format ebenfalls. Ein Bezugspunkt wird nicht gebraucht, weil nichts umgerechnet wird. Solche Dateien lassen sich auch einlesen: Enthält die Datei mehrere Karten, wählst du eine aus. Die Wegpunkte der Datei werden dabei nicht übernommen — das ist ein von der Sunray-App berechneter Mähpfad aus oft tausenden Punkten, nicht die selbst gesetzten Wegpunkte dieser App; wie viele Punkte wegfallen, steht nach dem Import unter dem Import-Knopf. Ebenso wenig übernommen werden die Mäheinstellungen der Datei, denn diese App steuert kein Mähen.',
     exportCassandraAria: 'Karte für CaSSAndRA exportieren oder teilen',
     exportBackupAria: 'Karte sichern oder weitergeben',
+    sunrayImportName: 'Sunray-Karte',
+    sunrayChooseTitle: 'Welche Karte importieren?',
+    sunrayChooseMessage: 'Diese Datei enthält {count} Karten. Es wird genau eine übernommen — die übrigen bleiben in der Datei und lassen sich später einzeln importieren.',
+    sunrayChooseConfirm: 'Diese Karte importieren',
+    sunrayMapSummary: '{points} Punkte, {areas} Flächen',
+    sunrayMapLabelNamed: '{n}. {name} · {summary}',
+    sunrayMapLabelPlain: '{n}. (ohne Namen) · {summary}',
+    sunrayImportTitle: 'Sunray-Karte importiert',
+    sunrayImportDone: 'Als Datei der Sunray-App erkannt. Koordinaten sind lokale Meter und wurden unverändert übernommen; Perimeter und Ausschlussflächen gelten als geschlossen.',
+    sunrayImportDropped: '{count} Wegpunkte wurden nicht übernommen: das ist ein von der Sunray-App berechneter Mähpfad, nicht die selbst gesetzten Wegpunkte dieser App.',
+    sunrayImportIgnoredFields: 'Nicht übernommen wurden außerdem die Mäheinstellungen der Datei (Musterwinkel, Bahnabstand, Ringmuster und die Mäh-/Randflaggen) — diese App steuert kein Mähen.',
     sunrayExportTitle: 'Sunray-App-Export',
     sunrayExportDone: 'Die Datei ist im Format der Sunray-App von grauonline geschrieben: lokale X/Y-Koordinaten in Metern, wie der Mäher sie selbst führt. Ein Bezugspunkt wird dafür nicht gebraucht.',
     cassandraHelp: 'Genau die Form, die CaSSAndRA selbst schreibt und einliest: Weltkoordinaten in Grad, Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Gerechnet wird gegen den Bezugspunkt bei den Export-Knöpfen — voreingestellt 0 / 0, wie in CaSSAndRA ab Werk. Nach jedem Export steht der verwendete Wert in einer Meldung; er muss in CaSSAndRA derselbe sein. Dateien aus CaSSAndRA lassen sich damit auch **einlesen**: die App erkennt sie an ihrer Form und rechnet die Grad mit demselben Bezugspunkt in lokale Meter zurück. Ist dort nichts eingetragen, wird die Datei nicht importiert — ohne den Wert wären die Grad nicht zu deuten, denn CaSSAndRA schreibt ihn nicht in die Datei.',
@@ -404,9 +415,20 @@ const I18N = {
     shareJson: 'Share as JSON', shareGeoJson: 'Share as GeoJSON', shareMapTitle: 'Share map',
     saveCassandra: 'Save for CaSSAndRA', shareCassandra: 'Share for CaSSAndRA',
     saveSunray: 'Save for Sunray app', shareSunray: 'Share for Sunray app',
-    sunrayHelp: 'Exactly the shape grauonline’s Sunray app writes: a list of maps with local X/Y coordinates in metres, each point carrying heading, capture time and RTK quality. For the Sunray app itself and for the mower. CaSSAndRA reads this format too. No reference point is needed, because nothing is converted.',
+    sunrayHelp: 'Exactly the shape grauonline’s Sunray app writes: a list of maps with local X/Y coordinates in metres, each point carrying heading, capture time and RTK quality. For the Sunray app itself and for the mower. CaSSAndRA reads this format too. No reference point is needed, because nothing is converted. Such files can also be imported: if the file holds several maps, you pick one. The file’s waypoints are not taken over — that is a mowing path computed by the Sunray app, often thousands of points, not the waypoints you set yourself in this app; how many points are dropped is shown under the import button afterwards. The file’s mowing settings are left out as well, because this app does not control mowing.',
     exportCassandraAria: 'Export or share the map for CaSSAndRA',
     exportBackupAria: 'Back up or pass on the map',
+    sunrayImportName: 'Sunray map',
+    sunrayChooseTitle: 'Which map do you want to import?',
+    sunrayChooseMessage: 'This file contains {count} maps. Exactly one is taken over — the others stay in the file and can be imported individually later.',
+    sunrayChooseConfirm: 'Import this map',
+    sunrayMapSummary: '{points} points, {areas} areas',
+    sunrayMapLabelNamed: '{n}. {name} · {summary}',
+    sunrayMapLabelPlain: '{n}. (no name) · {summary}',
+    sunrayImportTitle: 'Sunray map imported',
+    sunrayImportDone: 'Recognised as a file from the Sunray app. Coordinates are local metres and were taken over unchanged; perimeter and exclusion areas count as closed.',
+    sunrayImportDropped: '{count} waypoints were not taken over: that is a mowing path computed by the Sunray app, not the waypoints you set yourself in this app.',
+    sunrayImportIgnoredFields: 'Also left out were the file’s mowing settings (pattern angle, line offset, ring pattern and the mow/border flags) — this app does not control mowing.',
     sunrayExportTitle: 'Sunray app export',
     sunrayExportDone: 'The file is written in the format of grauonline’s Sunray app: local X/Y coordinates in metres, exactly as the mower keeps them. No reference point is needed for this.',
     cassandraHelp: 'Exactly the shape CaSSAndRA writes and reads itself: world coordinates in degrees, perimeter, dock path, search wire and exclusion areas. It is computed against the reference point next to the export buttons — preset to 0 / 0, as CaSSAndRA ships it. After every export a notice states the value that was used; it has to match the one in CaSSAndRA. Files from CaSSAndRA can also be **imported**: the app recognises them by their shape and converts the degrees back into local metres using the same reference point. If none is entered, the file is not imported — without that value the degrees cannot be interpreted, because CaSSAndRA does not write it into the file.',
@@ -607,6 +629,7 @@ const ui = {
   confirmDialog: $('confirmDialog'), confirmDialogTitle: $('confirmDialogTitle'), confirmDialogText: $('confirmDialogText'),
   confirmDialogActions: $('confirmDialogActions'), confirmDialogCancel: $('confirmDialogCancel'), confirmDialogAccept: $('confirmDialogAccept'),
   confirmDialogInput: $('confirmDialogInput'),
+  confirmDialogSelect: $('confirmDialogSelect'),
   rtkBadge: $('rtkBadge'), rtkText: $('rtkText'), rtkSats: $('rtkSats'), batteryChip: $('batteryChip'), batteryFill: $('batteryFill'), batteryValue: $('batteryValue'),
   // Kartenbuehne
   mapSvg: $('mapSvg'), gridLayer: $('gridLayer'), shapeLayer: $('shapeLayer'), robotLayer: $('robotLayer'),
@@ -705,6 +728,7 @@ const state = {
   extension: null,
   pendingConfirm: null,
   pendingConfirmText: false,
+  pendingConfirmChoice: false,
   pendingUpdate: null,
   lastBleErrorNoticeAt: 0,
   reloadingForUpdate: false,
@@ -1555,6 +1579,8 @@ function askConfirm({ title, message, confirmLabel, cancelLabel, tone = 'neutral
     ui.confirmDialogTitle.textContent = title;
     ui.confirmDialogText.textContent = message;
     ui.confirmDialogCancel.textContent = cancelLabel || tr('cancel');
+    ui.confirmDialogInput.hidden = true;
+    ui.confirmDialogSelect.hidden = true;
     ui.confirmDialogCancel.hidden = singleButton;
     ui.confirmDialogActions.classList.toggle('single', singleButton);
     ui.confirmDialogAccept.textContent = confirmLabel;
@@ -1582,6 +1608,7 @@ function askText({ title, message, value = '', confirmLabel, cancelLabel, maxLen
     ui.confirmDialogTitle.textContent = title;
     ui.confirmDialogText.textContent = message || '';
     ui.confirmDialogInput.hidden = false;
+    ui.confirmDialogSelect.hidden = true;
     ui.confirmDialogInput.maxLength = maxLength;
     ui.confirmDialogInput.value = String(value || '');
     ui.confirmDialogCancel.textContent = cancelLabel || tr('cancel');
@@ -1592,6 +1619,50 @@ function askText({ title, message, value = '', confirmLabel, cancelLabel, maxLen
     ui.confirmDialogAccept.classList.add('primary');
     ui.confirmDialog.hidden = false;
     ui.confirmDialogInput.focus?.();
+  });
+}
+
+/**
+ * Auswahl aus einer Liste im **selben** Dialog wie Rueckfragen und Texteingabe — der vierte Modus
+ * desselben Markups. Liefert den Wert des gewaehlten Eintrags oder `null` bei Abbruch.
+ *
+ * `options` ist eine Liste aus `{ value, label }`. Bewusst kein eigenes Modal: Escape,
+ * Hintergrundklick und die Knopflogik stehen hier schon genau einmal, ein Nachbau waere eine
+ * zweite Stelle zum Pflegen. In Tests haengt sich `globalThis.__choiceAdapter` davor, dieselbe
+ * Konvention wie bei `askConfirm()` und `askText()`.
+ */
+function askChoice({ title, message, options, confirmLabel, cancelLabel }) {
+  if (typeof globalThis.__choiceAdapter === 'function') {
+    const answer = globalThis.__choiceAdapter({ title, message, options, confirmLabel });
+    return Promise.resolve(answer === null || answer === undefined ? null : String(answer));
+  }
+  if (state.pendingConfirm) confirmDialogRespond(false);
+  return new Promise((resolve) => {
+    state.pendingConfirm = resolve;
+    state.pendingConfirmChoice = true;
+    ui.confirmDialogTitle.textContent = title;
+    ui.confirmDialogText.textContent = message || '';
+    ui.confirmDialogSelect.innerHTML = '';
+    for (const option of options) {
+      const el = document.createElement('option');
+      el.value = String(option.value);
+      el.textContent = option.label;
+      ui.confirmDialogSelect.appendChild(el);
+    }
+    ui.confirmDialogSelect.value = String(options[0]?.value ?? '');
+    ui.confirmDialogSelect.hidden = false;
+    // Jeder Modus blendet die Felder der anderen ausdruecklich aus. `confirmDialogRespond()`
+    // raeumt zwar am Ende auf, aber darauf zu bauen hiesse, dass die Reihenfolge der Aufrufe
+    // ueber die Darstellung entscheidet — ein Dialog soll bei jedem Oeffnen derselbe sein.
+    ui.confirmDialogInput.hidden = true;
+    ui.confirmDialogCancel.textContent = cancelLabel || tr('cancel');
+    ui.confirmDialogCancel.hidden = false;
+    ui.confirmDialogActions.classList.remove('single');
+    ui.confirmDialogAccept.textContent = confirmLabel || tr('okUnderstood');
+    ui.confirmDialogAccept.classList.remove('danger');
+    ui.confirmDialogAccept.classList.add('primary');
+    ui.confirmDialog.hidden = false;
+    ui.confirmDialogSelect.focus?.();
   });
 }
 
@@ -1628,14 +1699,21 @@ function reportError(error) {
 function confirmDialogRespond(answer) {
   const resolve = state.pendingConfirm;
   const wasText = state.pendingConfirmText;
+  const wasChoice = state.pendingConfirmChoice;
   const text = ui.confirmDialogInput.value;
+  const choice = ui.confirmDialogSelect.value;
   state.pendingConfirm = null;
   state.pendingConfirmText = false;
+  state.pendingConfirmChoice = false;
   ui.confirmDialog.hidden = true;
   ui.confirmDialogInput.hidden = true;
+  ui.confirmDialogSelect.hidden = true;
   if (!resolve) return;
-  // Im Textmodus ist die Antwort der eingegebene Text, sonst wie bisher ein Wahrheitswert.
-  resolve(wasText ? (answer ? text : null) : Boolean(answer));
+  // Drei Antwortarten aus einem Dialog: gewaehlter Wert, eingegebener Text, Wahrheitswert.
+  // Abbruch ist in den ersten beiden Faellen `null`, damit der Aufrufer ihn von einer leeren
+  // Eingabe unterscheiden kann.
+  if (wasChoice) resolve(answer ? choice : null);
+  else resolve(wasText ? (answer ? text : null) : Boolean(answer));
 }
 
 // --- Menueseite -----------------------------------------------------------
@@ -4505,6 +4583,114 @@ function geoRingClosed(geometry) {
   return Array.isArray(first) && Array.isArray(last) && first[0] === last[0] && first[1] === last[1];
 }
 
+/**
+ * Stammt diese Datei aus der grauonline-Sunray-App?
+ *
+ * **Strukturelle Erkennung, kein Blick auf die Zahlenwerte** — dieselbe Ueberlegung wie bei
+ * `isCassandraGeoJson()`. Gefragt wird nach der Form, die `mapToSunrayApp()` schreibt und die die
+ * Vorlage fuehrt:
+ *  1. die aeussere Huelle ist eine **nicht leere Liste** (die Vorlage traegt zehn Karten, und
+ *     `import_sunray()` laeuft mit `for map_number in range(len(df))`, mapdata.py:471);
+ *  2. **jeder** Eintrag ist ein Objekt mit einem Array `perimeter`;
+ *  3. mindestens ein Perimeter traegt Punkte, und **jeder** Punkt darin fuehrt die Zahlenfelder
+ *     `X` und `Y` (gross geschrieben — unser eigenes Modell schreibt `x`/`y` klein).
+ *
+ * Punkt 3 verlangt bewusst mindestens einen gefuellten Perimeter: eine Liste aus Karten mit
+ * ausschliesslich leeren Konturen traegt kein Merkmal, das sie von irgendeiner anderen Liste
+ * unterscheidet — dann wird nicht geraten.
+ *
+ * Unser eigenes JSON-Backup und beide GeoJSON-Formate sind Objekte, keine Listen, und fallen
+ * schon an Punkt 1 heraus.
+ */
+function isSunrayAppFile(data) {
+  if (!Array.isArray(data) || !data.length) return false;
+  const istPunkt = (p) => Boolean(p) && typeof p === 'object' && !Array.isArray(p)
+    && Number.isFinite(Number(p.X)) && Number.isFinite(Number(p.Y));
+  const karten = data.filter((k) => Boolean(k) && typeof k === 'object' && !Array.isArray(k)
+    && Array.isArray(k.perimeter));
+  if (karten.length !== data.length) return false;
+  const gefuellt = karten.filter((k) => k.perimeter.length);
+  if (!gefuellt.length) return false;
+  return gefuellt.every((k) => k.perimeter.every(istPunkt));
+}
+
+/**
+ * Ein Punkt aus der Sunray-App in unser Modell. Die Zuordnung ist eins zu eins, weil beide
+ * Seiten dieselbe Quelle haben: `timestamp` ist unsere Aufnahmezeit, `sol` die RTK-Loesung aus
+ * `AT+S` (comm.cpp:694) und `delta` die Roboterausrichtung (comm.cpp:692).
+ *
+ * `gps` bleibt **weg**, wenn weder `sol` noch `delta` dastehen — ein leeres Objekt liesse
+ * `pointQuality()` denselben Schluss ziehen wie eine gemessene schlechte Guete.
+ */
+function sunrayAppPointToModel(point) {
+  const out = { x: Number(point.X), y: Number(point.Y) };
+  const capturedAt = typeof point.timestamp === 'string' ? point.timestamp : null;
+  if (capturedAt) out.capturedAt = capturedAt;
+  const gps = {};
+  if (Number.isFinite(Number(point.sol))) gps.solution = Number(point.sol);
+  if (Number.isFinite(Number(point.delta))) gps.delta = Number(point.delta);
+  if (Object.keys(gps).length) out.gps = gps;
+  return out;
+}
+
+/**
+ * Beschriftung einer Karte in der Auswahlliste. Die **Position steht immer vorn**, nicht nur bei
+ * namenlosen Karten: die Vorlage fuehrt neun verschiedene Namen bei zehn Karten, zwei Eintraege
+ * waeren sonst nicht auseinanderzuhalten.
+ */
+function sunrayAppMapLabel(karte, index) {
+  const name = String(karte?.name || '').trim();
+  const punkte = (karte?.perimeter || []).length;
+  const flaechen = (karte?.exclusions || []).filter((e) => Array.isArray(e) && e.length).length;
+  const umfang = tr('sunrayMapSummary', { points: punkte, areas: flaechen });
+  return name
+    ? tr('sunrayMapLabelNamed', { n: index + 1, name, summary: umfang })
+    : tr('sunrayMapLabelPlain', { n: index + 1, summary: umfang });
+}
+
+/**
+ * Eine Karte der Sunray-App in unser Kartenmodell.
+ *
+ * **Konturen gelten als geschlossen.** Das ist ausdruecklich **nicht** dieselbe Frage, die
+ * `geoRingClosed()` fuer GeoJSON beantwortet: dort wird geprueft, ob die Datei einen
+ * Schlusspunkt **traegt**. Die Sunray-Vorlage schreibt **nie** einen (in allen zehn Karten
+ * geprueft) — sie sind trotzdem geschlossene Polygone, der Schlusspunkt gehoert dort schlicht
+ * nicht zur Schreibweise. `geoRingClosed()` lieferte hier also durchgehend `false` und waere die
+ * falsche Auskunft, keine gemeinsame Quelle.
+ *
+ * **`waypoints` werden verworfen**, nicht uebernommen: in der Vorlage stehen dort 1238 bis 2870
+ * Punkte — ein generierter Maehpfad, nicht die handvoll gesetzter Wegpunkte, die unser Modell
+ * meint. Wie viele Punkte dabei wegfallen, meldet der Aufrufer im Klartext.
+ *
+ * **Verworfen werden ausserdem die Maehfelder** `patternAngle`, `mowOfs`, `patternRings`,
+ * `doMowExclusions`, `doMowPerimeter`, `doMowArea`, `doPerimeterBorder` und `doExclusionsBorder`.
+ * Diese App steuert kein Maehen und hat fuer sie keine Entsprechung; sie stillschweigend zu
+ * schlucken waere falsch, deshalb nennt die Importmeldung sie.
+ */
+function sunrayAppToMap(karte) {
+  const map = makeMap(String(karte?.name || '').trim() || tr('sunrayImportName'));
+  map.name = `${map.name} ${tr('importSuffix')}`;
+  map.perimeter = (karte?.perimeter || []).map(sunrayAppPointToModel);
+  map.perimeterClosed = map.perimeter.length > 0;
+  map.exclusions = (karte?.exclusions || [])
+    .filter((flaeche) => Array.isArray(flaeche) && flaeche.length)
+    .map((flaeche, index) => ({
+      id: newId(),
+      name: tr('exclusionN', { n: index + 1 }),
+      points: flaeche.map(sunrayAppPointToModel),
+      closed: true,
+    }));
+  map.dockPoints = (karte?.dockpoints || []).map(sunrayAppPointToModel);
+  // waypoints bleiben bewusst draussen, siehe oben.
+  map.waypoints = [];
+  return map;
+}
+
+/** Punkte, die beim Einlesen wegfallen, weil unser Modell dafuer keine Entsprechung hat. */
+function sunrayDiscardedWaypoints(karte) {
+  return (karte?.waypoints || []).length;
+}
+
 function pointsFromGeoGeometry(geometry, samples = [], origin = null) {
   if (!geometry) return [];
   let coords = [];
@@ -4633,6 +4819,40 @@ function clearImportNotice() {
   ui.importNotice.hidden = true;
 }
 
+/**
+ * Meldung nach dem Einlesen einer Sunray-Datei: was uebernommen wurde und was **nicht**.
+ * Verworfenes stillschweigend zu schlucken waere hier das Schlimmere — der Maehpfad kann
+ * tausende Punkte umfassen, und die Maeheinstellungen der Datei gehen ebenfalls verloren.
+ * Muster und Anzeigemittel wie `noticeCassandraImport()`: Hinweiszeile, kein Dialog.
+ */
+function noticeSunrayImport(verworfeneWegpunkte) {
+  if (!ui.importNotice) return;
+  const parts = [tr('sunrayImportDone')];
+  if (verworfeneWegpunkte > 0) parts.push(tr('sunrayImportDropped', { count: verworfeneWegpunkte }));
+  parts.push(tr('sunrayImportIgnoredFields'));
+  ui.importNotice.textContent = parts.join(' ');
+  ui.importNotice.hidden = false;
+}
+
+/**
+ * Welche Karte der Datei soll es sein? Bei **genau einer** wird nicht gefragt — ein Dialog mit
+ * einer einzigen Wahlmoeglichkeit waere reine Schikane, und die Importmeldung sagt hinterher
+ * ohnehin, was hereinkam. Bei mehreren waehlt der Nutzer; ein Abbruch liefert `null` und der
+ * Import unterbleibt vollstaendig. Still die erste zu nehmen ist ausgeschlossen.
+ */
+async function chooseSunrayMap(data) {
+  if (data.length === 1) return 0;
+  const answer = await askChoice({
+    title: tr('sunrayChooseTitle'),
+    message: tr('sunrayChooseMessage', { count: data.length }),
+    options: data.map((karte, index) => ({ value: String(index), label: sunrayAppMapLabel(karte, index) })),
+    confirmLabel: tr('sunrayChooseConfirm'),
+  });
+  if (answer === null) return null;
+  const index = Number(answer);
+  return Number.isInteger(index) && index >= 0 && index < data.length ? index : null;
+}
+
 async function importMapFile(file) {
   stopAutoCapture();
   clearImportNotice();
@@ -4642,7 +4862,18 @@ async function importMapFile(file) {
   // Vor der Umwandlung gefragt, aber erst nach getaner Arbeit gemeldet: andersherum staende die
   // Meldung auch dann da, wenn der Import gleich darauf scheitert.
   const cassandra = data?.type === 'FeatureCollection' && isCassandraGeoJson(data);
-  const map = data?.type === 'FeatureCollection' ? geoJsonToMap(data) : validateImportedMap(data);
+  const sunray = isSunrayAppFile(data);
+  let verworfeneWegpunkte = 0;
+  let map;
+  if (sunray) {
+    const index = await chooseSunrayMap(data);
+    // Abbruch in der Auswahl: kein Import, keine Meldung, kein halber Zustand.
+    if (index === null) return;
+    verworfeneWegpunkte = sunrayDiscardedWaypoints(data[index]);
+    map = sunrayAppToMap(data[index]);
+  } else {
+    map = data?.type === 'FeatureCollection' ? geoJsonToMap(data) : validateImportedMap(data);
+  }
   await dbRequest('readwrite', (store) => store.put(map));
   state.maps.push(map);
   state.maps.sort((a, b) => a.name.localeCompare(b.name, state.language === 'en' ? 'en' : 'de'));
@@ -4654,6 +4885,7 @@ async function importMapFile(file) {
   renderMap();
   // Erst handeln, dann melden.
   if (cassandra) noticeCassandraImport(map.origin);
+  else if (sunray) noticeSunrayImport(verworfeneWegpunkte);
 }
 
 function segmentsIntersect(a, b, c, d) {

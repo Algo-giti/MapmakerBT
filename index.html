@@ -146,6 +146,10 @@
 <h2 id="confirmDialogTitle">Bestätigen</h2>
 <p class="modal-text" id="confirmDialogText"></p>
 <input class="modal-input" hidden="" id="confirmDialogInput" maxlength="60" type="text"/>
+<!-- Vierter Modus desselben Dialogs (nach Bestaetigung, Meldung, Texteingabe): Auswahl aus einer
+     Liste. Bewusst kein zweites Modal — Escape, Hintergrundklick und Knopflogik gibt es hier
+     bereits genau einmal. -->
+<select class="modal-input" hidden="" id="confirmDialogSelect"></select>
 <div class="modal-actions" id="confirmDialogActions">
 <button class="ghost" data-i18n="cancel" id="confirmDialogCancel" type="button">Abbrechen</button>
 <button class="primary" id="confirmDialogAccept" type="button">OK</button>
@@ -567,7 +571,7 @@
 <div class="help-two-col">
 <div class="format-card"><strong>JSON</strong><p data-i18n="jsonHelp">Empfohlenes vollständiges Backup für MapCreator. Enthält Kartenstruktur, Punkte und zusätzliche Metadaten wie Aufnahme-/Editierinformationen.</p></div>
 <div class="format-card"><strong>GeoJSON</strong><p data-i18n="geoJsonHelp">Für Geometrie-Austausch. Perimeter und Ausschlüsse werden als Polygone, der Dockpfad als LineString exportiert.</p></div>
-<div class="format-card"><strong>Sunray-App</strong><p data-i18n="sunrayHelp">Genau die Form, die die Sunray-App von grauonline schreibt: eine Liste von Karten mit lokalen X/Y-Koordinaten in Metern, je Punkt zusätzlich Ausrichtung, Aufnahmezeit und RTK-Güte. Für die Sunray-App selbst und für den Mäher. CaSSAndRA liest dieses Format ebenfalls. Ein Bezugspunkt wird nicht gebraucht, weil nichts umgerechnet wird.</p></div>
+<div class="format-card"><strong>Sunray-App</strong><p data-i18n="sunrayHelp">Genau die Form, die die Sunray-App von grauonline schreibt: eine Liste von Karten mit lokalen X/Y-Koordinaten in Metern, je Punkt zusätzlich Ausrichtung, Aufnahmezeit und RTK-Güte. Für die Sunray-App selbst und für den Mäher. CaSSAndRA liest dieses Format ebenfalls. Ein Bezugspunkt wird nicht gebraucht, weil nichts umgerechnet wird. Solche Dateien lassen sich auch einlesen: Enthält die Datei mehrere Karten, wählst du eine aus. Die Wegpunkte der Datei werden dabei nicht übernommen — das ist ein von der Sunray-App berechneter Mähpfad aus oft tausenden Punkten, nicht die selbst gesetzten Wegpunkte dieser App; wie viele Punkte wegfallen, steht nach dem Import unter dem Import-Knopf. Ebenso wenig übernommen werden die Mäheinstellungen der Datei, denn diese App steuert kein Mähen.</p></div>
 <div class="format-card"><strong>CaSSAndRA</strong><p data-i18n="cassandraHelp">Genau die Form, die CaSSAndRA selbst schreibt und einliest: Weltkoordinaten in Grad, Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Gerechnet wird gegen den Bezugspunkt bei den Export-Knöpfen — voreingestellt 0 / 0, wie in CaSSAndRA ab Werk. Nach jedem Export steht der verwendete Wert in einer Meldung; er muss in CaSSAndRA derselbe sein. Dateien aus CaSSAndRA lassen sich damit auch <strong>einlesen</strong>: die App erkennt sie an ihrer Form und rechnet die Grad mit demselben Bezugspunkt in lokale Meter zurück. Ist dort nichts eingetragen, wird die Datei nicht importiert — ohne den Wert wären die Grad nicht zu deuten, denn CaSSAndRA schreibt ihn nicht in die Datei.</p></div>
 </div>
 <div class="notice info help-note"><span data-i18n="geoJsonXYWarning">Die Ardumower-Koordinaten sind lokale Sunray-X/Y-Werte in Metern. Sie sind keine GPS-Längen-/Breitengrade und werden deshalb im Export ausdrücklich als lokales metrisches Koordinatensystem gekennzeichnet.</span></div>
