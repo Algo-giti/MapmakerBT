@@ -111,10 +111,10 @@ const I18N = {
     extendCancel: 'Erweitern abbrechen', extendCancelShort: 'Abbrechen',
     extendDone: 'Erweiterung abschließen', extendDoneShort: 'Fertig',
     extendPickFirst: 'Schritt 1 von 2: Den ersten Punkt der Kante antippen, an der die Kontur geöffnet werden soll.',
-    extendPickSecond: 'Schritt 2 von 2: Punkt {n} ist gewählt. Jetzt einen direkt benachbarten Punkt antippen.',
+    extendPickSecond: 'Schritt 2 von 2: Punkt {n} ist gewählt und markiert — an ihm wird später weitergebaut, denn der zuerst getippte Punkt wird immer das offene Ende. Jetzt einen direkt benachbarten Punkt antippen.',
     extendNotAdjacent: 'Die beiden Punkte liegen nicht nebeneinander. Bitte zwei direkt verbundene Punkte wählen.',
     extendWrongContour: 'Bitte einen Punkt der Kontur antippen, die erweitert werden soll.',
-    extendOpened: 'Kontur geöffnet. Jetzt weitere Punkte aufnehmen und danach „Fertig“ antippen.',
+    extendOpened: 'Kontur geöffnet. Neue Punkte hängen sich an den markierten Punkt {n} an. Jetzt aufnehmen und danach „Fertig“ antippen.',
     extendFinished: 'Erweiterung abgeschlossen, die Kontur ist wieder geschlossen.',
     extendCancelled: 'Erweitern abgebrochen — an der Kontur wurde nichts geändert.',
     undoAction: 'Letzten Bearbeitungsschritt rückgängig machen',
@@ -354,10 +354,10 @@ const I18N = {
     extendCancel: 'Cancel extending', extendCancelShort: 'Cancel',
     extendDone: 'Finish extending', extendDoneShort: 'Done',
     extendPickFirst: 'Step 1 of 2: tap the first point of the edge where the contour should open.',
-    extendPickSecond: 'Step 2 of 2: point {n} is selected. Now tap a directly neighbouring point.',
+    extendPickSecond: 'Step 2 of 2: point {n} is selected and highlighted — building continues there later, because the point tapped first always becomes the open end. Now tap a directly neighbouring point.',
     extendNotAdjacent: 'Those two points are not next to each other. Please pick two directly connected points.',
     extendWrongContour: 'Please tap a point of the contour you want to extend.',
-    extendOpened: 'Contour opened. Capture further points, then tap “Done”.',
+    extendOpened: 'Contour opened. New points attach to the highlighted point {n}. Capture them, then tap “Done”.',
     extendFinished: 'Extension finished, the contour is closed again.',
     extendCancelled: 'Extending cancelled — nothing on the contour was changed.',
     undoAction: 'Undo the last editing step',
@@ -3593,10 +3593,14 @@ function isSelectedPoint(meta, index) {
   return pointRefMatches(state.selectedPoint, meta, index);
 }
 
-/** Der erste der beiden fuer die Erweiterung gewaehlten Punkte, damit er sichtbar markiert ist. */
+/**
+ * Das aktive Ende der Erweiterung, damit sichtbar ist, wo weitergebaut wird — in der Auswahlphase
+ * der zuerst getippte Punkt, danach das offene Ende. Beides beantwortet `extensionEndIndex()`;
+ * hier wird nur noch geprueft, ob der gezeichnete Punkt zur erweiterten Kontur gehoert.
+ */
 function isExtensionPick(meta, index) {
   const ext = state.extension;
-  if (!ext || ext.phase !== 'picking' || ext.firstIndex !== index) return false;
+  if (!ext || extensionEndIndex(ext) !== index) return false;
   return meta.role === ext.role && (ext.role !== 'exclusion' || meta.exclusionId === ext.exclusionId);
 }
 
@@ -3797,6 +3801,7 @@ function renderMap() {
 
   refreshContourStatus();
   drawSelectionGuide(transform);
+  drawExtensionGuide(transform);
   drawDistanceGuide(transform);
   drawRobot(transform);
   refreshMapDistanceInfo();
@@ -5149,6 +5154,22 @@ function extensionPoints(ext = state.extension) {
   return state.activeMap.exclusions.find((e) => e.id === ext.exclusionId)?.points || null;
 }
 
+/**
+ * Der Listenplatz, an dem die Erweiterung weiterbaut. **Die einzige Stelle, die diese Frage
+ * beantwortet** — Markierung, Hinweiszeile und Vorschaulinie lesen alle hier, damit sie nie auf
+ * verschiedene Punkte zeigen koennen.
+ *
+ * In der Auswahlphase ist es der **zuerst getippte** Punkt: `reorderForExtension()` macht genau
+ * ihn zum Listenende. Danach ist es das Listenende selbst, denn `appendCurrentPoint()` haengt
+ * ausnahmslos dort an — es wandert also mit jedem aufgenommenen Punkt weiter.
+ */
+function extensionEndIndex(ext = state.extension) {
+  if (!ext) return -1;
+  if (ext.phase === 'picking') return ext.firstIndex ?? -1;
+  const points = extensionPoints(ext);
+  return points && points.length ? points.length - 1 : -1;
+}
+
 function extensionIsClosed(ext = state.extension) {
   if (!ext || !state.activeMap) return false;
   if (ext.role === 'perimeter') return Boolean(state.activeMap.perimeterClosed);
@@ -5307,7 +5328,12 @@ function refreshExtendPanel() {
   ui.extendPanel.hidden = !ext;
   if (!ext) return;
   const picking = ext.phase === 'picking';
-  ui.extendPanelText.textContent = tr(ext.hintKey || (picking ? 'extendPickFirst' : 'extendOpened'), ext.hintVars || {});
+  // Die Nummer des aktiven Endes wird **hier** geholt statt beim Setzen des Hinweises: sie
+  // aendert sich mit jedem aufgenommenen Punkt, ein einmal mitgegebener Wert waere sofort alt.
+  const end = extensionEndIndex(ext);
+  const vars = { ...(ext.hintVars || {}) };
+  if (end >= 0) vars.n = end + 1;
+  ui.extendPanelText.textContent = tr(ext.hintKey || (picking ? 'extendPickFirst' : 'extendOpened'), vars);
   ui.extendPanel.classList.toggle('is-error', ext.hintKey === 'extendNotAdjacent');
   // Abbrechen gibt es nur, solange nichts veraendert wurde; danach fuehrt „Fertig“ heraus.
   ui.extendCancelBtn.hidden = !picking;
@@ -5438,10 +5464,13 @@ function handleMapTap(event) {
     applyPointSelection({ role: nearest.role, index: nearest.index, exclusionId: nearest.exclusionId });
     return;
   }
-  // Waehrend der Erweiterung faengt kein Tipp die Flaeche ab: es geht ausschliesslich um die
+  // Waehrend der **Auswahlphase** faengt kein Tipp die Flaeche ab: es geht ausschliesslich um die
   // beiden Punkte der Kante — dieselbe Ueberlegung wie beim ausgeblendeten Papierkorb waehrend
-  // der Automatik.
-  if (state.extension) {
+  // der Automatik. In Phase `adding` gilt das nicht mehr: dort waehlt ein Punkttipp wieder aus,
+  // und der Tipp ins Leere ist die **einzige** Geste, die eine Auswahl wieder aufhebt. Stand die
+  // Sperre auch dort, liess sich der Zustand „Punkt ausgewaehlt“ nicht mehr verlassen, obwohl der
+  // Hinweisstreifen zum Aufnehmen aufforderte und der Hauptknopf auf „Verschieben“ stand.
+  if (picking) {
     return;
   }
   // Tap in die Flaeche einer fertigen Ausschlusskontur waehlt die ganze Flaeche aus.
@@ -5475,6 +5504,26 @@ function drawSelectionGuide(transform) {
   if (!point) return;
   const selected = toScreen(point, transform); const mower = toScreen(state.telemetry, transform);
   ui.robotLayer.appendChild(svgEl('line', { x1: selected.x, y1: selected.y, x2: mower.x, y2: mower.y, class: 'edit-distance-line' }));
+}
+
+/**
+ * Vorschau waehrend der Erweiterung: die Strecke, die ein jetzt aufgenommener Punkt schliessen
+ * wuerde — vom aktiven Ende zur Maeherposition. Ebene, Aufbau und Bedingungen wie bei
+ * `drawSelectionGuide()`, nur mit anderem Anker.
+ *
+ * **Nicht, solange ein Punkt ausgewaehlt ist:** dann macht der Hauptknopf `Verschieben`
+ * (`addCurrentPoint()`), es wuerde also gar nichts angehaengt, und die Linie behauptete etwas
+ * Falsches. Das loest zugleich die Ueberschneidung mit `drawSelectionGuide()` — beide enden an
+ * der Maeherposition, sichtbar ist deshalb immer nur eine von beiden.
+ */
+function drawExtensionGuide(transform) {
+  const ext = state.extension;
+  if (!ext || ext.phase !== 'adding' || state.selectedPoint || !telemetryIsFresh()) return;
+  const points = extensionPoints(ext);
+  const end = points?.[extensionEndIndex(ext)];
+  if (!end) return;
+  const from = toScreen(end, transform); const mower = toScreen(state.telemetry, transform);
+  ui.robotLayer.appendChild(svgEl('line', { x1: from.x, y1: from.y, x2: mower.x, y2: mower.y, class: 'extend-guide-line' }));
 }
 
 function setHelpStatus(element, text, stateClass) {

@@ -25,7 +25,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'log', 'renderDebugLog', 'onDebugLogScroll', 'scrollLogToEnd', 'clearDebugLog',
   'logExportText', 'logExportFileName', 'exportDebugLog', 'debugLogAtBottom',
   'LOG_ENTRY_LIMIT', 'LOG_EXPORT_LIMIT', 'LOG_BOTTOM_TOLERANCE_PX',
-  'startExtension', 'cancelExtension', 'finishExtension', 'refreshExtendButton', 'refreshExtendPanel',
+  'startExtension', 'cancelExtension', 'finishExtension', 'refreshExtendButton', 'refreshExtendPanel', 'I18N',
   'canStartExtension', 'areNeighbourIndices', 'reorderForExtension', 'appendCurrentPoint', 'undoLastAction',
   'setMode', 'refreshContourStatus', 'activeContour', 'refreshToolbarVisibility',
   'contourStatusChipText', 'selectedPointLabel', 'contourStateSuffix',
@@ -1835,6 +1835,18 @@ function seedClosedPerimeter(t) {
 const perimeterXY = (t) => t.state.activeMap.perimeter.map((p) => `${p.x},${p.y}`).join(' | ');
 /** Laesst die angestossene asynchrone Kette (Speichern, Neuzeichnen) auslaufen. */
 const flush = async () => { for (let i = 0; i < 12; i += 1) await Promise.resolve(); };
+/** Ein Tipp weit weg von jedem Punkt und ausserhalb jeder Flaeche. */
+function tapEmpty(t) {
+  t.renderMap();
+  t.handleMapTap(tapAt(t, 5, 5));
+}
+/** Die Listenplaetze, die in der Zeichnung als aktives Ende markiert sind. */
+function markedIndices(t) {
+  t.renderMap();
+  return t.ui.shapeLayer.children
+    .filter((c) => (c.attributes?.class || '').includes('extend-pick-point'))
+    .map((c) => Number(c.attributes['data-point-index']));
+}
 /** Tippt den Punkt mit dem angegebenen Index auf der Karte an — der echte Bedienweg. */
 function tapPoint(t, points, index) {
   t.renderMap();
@@ -2016,7 +2028,7 @@ test('Auftrennen und jeder neue Punkt sind einzeln rueckgaengig zu machen', asyn
   assert.strictEqual(t.state.extension, null, 'damit endet auch die Erweiterung');
 });
 
-test('Waehrend der Erweiterung sind Einfuegen und Flaechenauswahl abgeschaltet', async () => {
+test('In der Auswahlphase sind Einfuegen und Flaechenauswahl abgeschaltet', async () => {
   const { t } = setup();
   t.state.activeMap.exclusions = [{ id: 'ex1', name: 'Ausschluss 1', closed: true,
     points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }] }];
@@ -2044,6 +2056,153 @@ test('Waehrend der Erweiterung sind Einfuegen und Flaechenauswahl abgeschaltet',
   t.applyPointSelection({ role: 'exclusion', index: 0, exclusionId: 'ex1' });
   assert.strictEqual(t.ui.insertBeforeWrap.hidden, true, 'kein Einfuegen waehrend der Erweiterung');
   assert.strictEqual(t.ui.insertAfterWrap.hidden, true);
+});
+
+test('Ein Tipp ins Leere hebt die Auswahl auch in Phase adding auf — Perimeter wie Flaeche', async () => {
+  // Vorher blieb eine Auswahl dort haengen: der Tipp ins Leere lief in den frueheren Ausstieg
+  // „waehrend der Erweiterung faengt kein Tipp die Flaeche ab“, der nicht nach der Phase fragte.
+  // Der Hauptknopf stand damit dauerhaft auf „Verschieben“, obwohl der Hinweisstreifen zum
+  // Aufnehmen aufforderte.
+  const { t } = setup();
+  seedClosedPerimeter(t);
+  t.startExtension();
+  tapPoint(t, t.state.activeMap.perimeter, 0);
+  tapPoint(t, t.state.activeMap.perimeter, 1);
+  await flush();
+  assert.strictEqual(t.state.extension.phase, 'adding');
+
+  tapPoint(t, t.state.activeMap.perimeter, 2);
+  assert.ok(t.state.selectedPoint, 'ein Punkttipp waehlt in dieser Phase aus');
+  tapEmpty(t);
+  assert.strictEqual(t.state.selectedPoint, null, 'und der Tipp ins Leere hebt das wieder auf');
+
+  // Dieselbe Geste an einer Ausschlussflaeche.
+  const u = setup();
+  u.t.state.activeMap.exclusions = [{ id: 'ex1', name: 'Ausschluss 1', closed: true,
+    points: [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }, { x: 0, y: 4 }] }];
+  u.t.state.activeExclusionId = 'ex1';
+  u.t.setMode('exclusion');
+  const ex = u.t.state.activeMap.exclusions[0];
+  u.t.startExtension();
+  tapPoint(u.t, ex.points, 0);
+  tapPoint(u.t, ex.points, 1);
+  await flush();
+  assert.strictEqual(u.t.state.extension.phase, 'adding');
+  tapPoint(u.t, ex.points, 2);
+  assert.ok(u.t.state.selectedPoint, 'auch an der Flaeche waehlt der Tipp aus');
+  tapEmpty(u.t);
+  assert.strictEqual(u.t.state.selectedPoint, null, 'und laesst sich genauso wieder aufheben');
+});
+
+test('In der Auswahlphase aendert der Tipp ins Leere weiterhin nichts', () => {
+  const { t } = setup();
+  seedClosedPerimeter(t);
+  t.startExtension();
+  tapPoint(t, t.state.activeMap.perimeter, 0);
+  assert.strictEqual(t.state.extension.firstIndex, 0, 'der erste Punkt der Kante ist gewaehlt');
+  tapEmpty(t);
+  assert.strictEqual(t.state.extension.firstIndex, 0, 'ein Fehlgriff daneben wirft ihn nicht weg');
+  assert.strictEqual(t.state.selectedPoint, null, 'und erzeugt keine Punktauswahl');
+  assert.strictEqual(t.state.selectedArea, null, 'auch keine Flaechenauswahl');
+  assert.strictEqual(t.state.extension.phase, 'picking');
+});
+
+test('Der zuerst getippte Punkt ist das Ende, an dem weitergebaut wird', async () => {
+  // Die Regel steckt allein in der Umordnung durch reorderForExtension(); ohne diesen Test
+  // liesse sie sich still umdrehen, ohne dass ein anderer Fall anschlaegt.
+  const appendAfterTaps = async (first, second) => {
+    const { t } = setup();
+    seedClosedPerimeter(t);                       // A(0,0) B(10,0) C(10,10) D(0,10)
+    const before = t.state.activeMap.perimeter.map((p) => `${p.x},${p.y}`);
+    t.startExtension();
+    tapPoint(t, t.state.activeMap.perimeter, first);
+    tapPoint(t, t.state.activeMap.perimeter, second);
+    await flush();
+    t.state.telemetry.x = 99; t.state.telemetry.y = 99; t.state.fixHistory = [];
+    await t.appendCurrentPoint();
+    const after = t.state.activeMap.perimeter;
+    return { erwartet: before[first], vorletzter: `${after[after.length - 2].x},${after[after.length - 2].y}` };
+  };
+
+  const ab = await appendAfterTaps(0, 1);
+  assert.strictEqual(ab.vorletzter, ab.erwartet, 'erst A getippt: der neue Punkt haengt an A');
+  const ba = await appendAfterTaps(1, 0);
+  assert.strictEqual(ba.vorletzter, ba.erwartet, 'erst B getippt: dann haengt er an B');
+  assert.notStrictEqual(ab.erwartet, ba.erwartet, 'die Reihenfolge der Tipps entscheidet wirklich');
+});
+
+test('Markierung, Hinweiszeile und Vorschau nennen dasselbe Ende wie das Anhaengen', async () => {
+  const { t } = setup();
+  seedClosedPerimeter(t);
+  t.startExtension();
+  tapPoint(t, t.state.activeMap.perimeter, 1);                     // B zuerst
+  assert.strictEqual(markedIndices(t).join(','), '1', 'schon in der Auswahlphase markiert');
+  assert.ok(t.ui.extendPanelText.textContent.includes('Punkt 2'), t.ui.extendPanelText.textContent);
+  assert.ok(/zuerst getippte/.test(t.ui.extendPanelText.textContent), 'die Regel steht im Text');
+  const guide = () => t.ui.robotLayer.children.filter((c) => (c.attributes?.class || '').includes('extend-guide-line'));
+  t.renderMap();
+  assert.strictEqual(guide().length, 0,
+    'in der Auswahlphase noch keine Vorschau — es ist nichts aufgetrennt, es haengt nichts an');
+
+  tapPoint(t, t.state.activeMap.perimeter, 2);
+  await flush();
+  const endOf = () => {
+    const marked = markedIndices(t);
+    assert.strictEqual(marked.length, 1, 'genau ein Ende ist markiert');
+    return marked[0];
+  };
+  t.renderMap();
+  let end = endOf();
+  const pts = () => t.state.activeMap.perimeter;
+  assert.strictEqual(`${pts()[end].x},${pts()[end].y}`, '10,0', 'markiert ist der zuerst getippte Punkt B');
+  assert.ok(t.ui.extendPanelText.textContent.includes(`Punkt ${end + 1}`), t.ui.extendPanelText.textContent);
+  // Die Vorschaulinie haengt am selben Punkt und endet an der Maeherposition.
+  assert.strictEqual(guide().length, 1, 'nach dem Auftrennen wird sie gezeichnet');
+  const anchor = t.toScreen(pts()[end], t.state.currentTransform);
+  const mower = t.toScreen(t.state.telemetry, t.state.currentTransform);
+  assert.strictEqual(guide()[0].attributes.x1, String(anchor.x), 'sie beginnt am markierten Ende');
+  assert.strictEqual(guide()[0].attributes.y1, String(anchor.y));
+  assert.strictEqual(guide()[0].attributes.x2, String(mower.x), 'und endet am Maeher');
+
+  // Aufnehmen: der neue Punkt landet genau dort, und die Markierung wandert mit.
+  t.state.telemetry.x = 77; t.state.telemetry.y = 77; t.state.fixHistory = [];
+  const wasEnd = `${pts()[end].x},${pts()[end].y}`;
+  await t.addCurrentPoint();   // der echte Knopfweg: er zeichnet und frischt die Leiste auf
+  t.renderMap();
+  assert.strictEqual(`${pts()[pts().length - 2].x},${pts()[pts().length - 2].y}`, wasEnd,
+    'der neue Punkt haengt hinter dem markierten Ende');
+  end = endOf();
+  assert.strictEqual(end, pts().length - 1, 'markiert ist jetzt der neue Punkt');
+  assert.ok(t.ui.extendPanelText.textContent.includes(`Punkt ${end + 1}`),
+    'und die Hinweiszeile nennt dieselbe Nummer');
+
+  // Mit ausgewaehltem Punkt haengt nichts an — dann darf die Vorschau das auch nicht behaupten.
+  t.applyPointSelection({ role: 'perimeter', index: 0, exclusionId: null });
+  t.renderMap();
+  assert.strictEqual(guide().length, 0, 'bei Auswahl keine Vorschau');
+  assert.strictEqual(
+    t.ui.robotLayer.children.filter((c) => (c.attributes?.class || '').includes('edit-distance-line')).length, 1,
+    'dort zeigt stattdessen die Auswahllinie — nie beide gleichzeitig');
+});
+
+test('Die Texte der Erweiterung tragen in DE und EN dieselben Platzhalter', () => {
+  const { t } = setup();
+  const placeholders = (text) => [...String(text).matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
+  for (const key of ['extendPickFirst', 'extendPickSecond', 'extendOpened']) {
+    const de = t.I18N.de[key]; const en = t.I18N.en[key];
+    assert.ok(de && en, `${key} fehlt in einer Sprache`);
+    assert.strictEqual(placeholders(en), placeholders(de), `${key}: unterschiedliche Platzhalter`);
+  }
+  // Und die Nummer wird tatsaechlich eingesetzt, nicht als {n} stehengelassen.
+  for (const lang of ['de', 'en']) {
+    const u = setup();
+    u.t.state.language = lang;
+    seedClosedPerimeter(u.t);
+    u.t.startExtension();
+    tapPoint(u.t, u.t.state.activeMap.perimeter, 1);
+    assert.ok(!u.t.ui.extendPanelText.textContent.includes('{n}'), `${lang}: Platzhalterrest im Hinweis`);
+    assert.ok(/\b2\b/.test(u.t.ui.extendPanelText.textContent), `${lang}: die Punktnummer fehlt`);
+  }
 });
 
 test('Ein Moduswechsel beendet die Erweiterung und laesst die Kontur offen', async () => {

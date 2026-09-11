@@ -1033,6 +1033,47 @@ diese Liste mit Grund je Eintrag und schlägt sowohl bei einer nicht gelisteten 
 bei einem zusätzlichen Vorkommen in einer gelisteten an — dieselbe Bauart wie der Wächter gegen
 Handzählungen neben `hasUsablePolygon()`.
 
+### Erweitern: das aktive Ende (Stand v60)
+
+**Der zuerst getippte Punkt wird das Ende, an dem weitergebaut wird.** Das ist keine neue Regel —
+`reorderForExtension()` macht ihn zum Listenende, und `appendCurrentPoint()` hängt ausnahmslos
+am Listenende an (`target.push`). Sie stand nur nirgends, weshalb der Nutzer sie nicht kennen
+konnte. Sie ist damit zugleich die **einzige** Stellschraube: ein Umschalten nach dem Auftrennen
+gibt es bewusst nicht, wer das falsche Ende erwischt hat, bricht ab und fängt neu an.
+
+`extensionEndIndex()` ist die **einzige Stelle**, die „welcher Punkt ist das aktive Ende?"
+beantwortet — in der Auswahlphase `ext.firstIndex`, danach das Listenende, das mit jedem
+aufgenommenen Punkt weiterwandert. Drei Leser hängen daran, damit sie nie auf verschiedene Punkte
+zeigen können: die Markierung (`isExtensionPick()`, gilt jetzt in **beiden** Phasen, gezeichnet
+mit den vorhandenen Klassen `.extend-pick-point` / `.extend-pick-ring`), die Hinweiszeile und die
+Vorschaulinie.
+
+**Die Nummer holt `refreshExtendPanel()` live**, sie wird nicht in `hintVars` mitgegeben: sie
+ändert sich mit jedem Punkt, ein einmal gesetzter Wert wäre sofort alt. Der Hinweisstreifen ist
+dafür der richtige Ort und **nicht** `#pointStatus` — die Statuszeile wird von jedem
+Telemetrie-Takt über `show()` in `refreshCaptureState()` überschrieben.
+
+**Vorschaulinie `drawExtensionGuide()`** zieht vom aktiven Ende zur Mäherposition, Bauart und
+Ebene wie `drawSelectionGuide()`. Sie wird **nicht** gezeichnet, solange ein Punkt ausgewählt ist:
+dann verschiebt der Hauptknopf, statt anzuhängen (`addCurrentPoint()`), die Linie behauptete also
+etwas Falsches. Dasselbe löst die Überschneidung — beide Linien enden am Mäher, sichtbar ist immer
+nur eine. Ihre Warnfarbe bindet sie sichtbar an das markierte Ende; `.edit-distance-line` und
+`.boundary-distance-line` liegen farblich ohnehin schon dicht beieinander.
+
+**Der Tipp ins Leere hebt die Auswahl in Phase `adding` wieder auf.** Der Ausstieg in
+`handleMapTap()` fragt jetzt die Phase ab statt nur `state.extension`. Er war für die
+**Auswahlphase** gedacht; dass er auch danach griff, sperrte die einzige Geste, die eine Auswahl
+aufheben kann — der Hauptknopf stand dann dauerhaft auf „Verschieben", während der
+Hinweisstreifen zum Aufnehmen aufforderte. **Mitgegangen ist ein zweiter Verhaltenswechsel:** in
+Phase `adding` wählt ein Tipp in eine Ausschlussfläche wieder die ganze Fläche aus. Das ist so
+gewollt — die Karte soll sich dort verhalten wie sonst auch. In der Auswahlphase bleibt beides
+gesperrt.
+
+**Gemeldet, nicht gebaut:** mit ausgewähltem Punkt steht der Hauptknopf auch während einer
+Erweiterung auf „Verschieben" und **überschreibt** eine bestehende Ecke, statt anzuhängen
+(gemessen: Länge 5 → 5, Punkt 2 von (0,10) auf (55,55)). Der Zustand ist seit v60 wieder
+verlassbar, der Griff selbst steht unverändert.
+
 ### Kartenobergrenze `MAX_MAPS` (Stand v58)
 
 **25 Karten, und die Zahl steht an genau einer Stelle** (`const MAX_MAPS`, app.js). Meldungen und
@@ -1884,6 +1925,26 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-11: **Erweitern: Auswahl wieder aufhebbar, aktives Ende sichtbar.** (K1) Der Ausstieg in
+  `handleMapTap()` fragt jetzt die Phase ab statt nur `state.extension`. Er war für die
+  Auswahlphase gedacht, griff aber auch in Phase `adding` — dort ist eine Punktauswahl wieder
+  möglich, und der Tipp ins Leere ist die **einzige** Geste, die sie aufhebt; sie war damit
+  unverlassbar, während der Hauptknopf auf „Verschieben" stand. **Zweiter Verhaltenswechsel
+  bewusst mitgenommen:** in Phase `adding` wählt ein Tipp in eine Ausschlussfläche wieder die
+  ganze Fläche aus. (K2) Die Regel „der zuerst getippte Punkt wird das offene Ende" existierte
+  bereits in `reorderForExtension()`, wurde aber nirgends genannt; sie steht jetzt im Hinweistext
+  (DE/EN), das aktive Ende bleibt über beide Phasen markiert, und eine Vorschaulinie zieht von ihm
+  zur Mäherposition. Neu ist dafür nur `extensionEndIndex()` als **einzige** Quelle der Frage —
+  Markierung, Hinweiszeile und Vorschau lesen alle dort. Ohne Umdrehlogik, ohne Umschalten, ohne
+  dritte Phase. Die Nummer holt `refreshExtendPanel()` live, weil sie mit jedem Punkt wandert;
+  `#pointStatus` schied aus, weil jeder Telemetrie-Takt sie überschreibt. (K3) **Gemeldet, nicht
+  mitrepariert:** der „Verschieben"-Griff überschreibt mit ausgewähltem Punkt weiterhin eine
+  bestehende Ecke, statt anzuhängen. Neu: 5 ui-Fälle (188); ein Bestandstest hat nur seinen Namen
+  geschärft („In der Auswahlphase …"), seine Zusicherungen sind unverändert und prüfen weiterhin
+  nur die Auswahlphase. Gegen dreizehn simulierte Rückfälle geprüft — einer zerlegte nur die
+  Laufzeit statt das Verhalten und wurde ersetzt, einer (Vorschau schon in der Auswahlphase) lief
+  zunächst durch und hat den Test geschärft. `APP_VERSION` auf `v60`.
 
 - 2026-09-11: **Ringschluss überlebt das Löschen einzelner Punkte.** Zwei gemeldete Symptome, **eine**
   Wurzel: `deleteSelectedPoint()` setzte `perimeterClosed` zurück, obwohl das Entfernen einer Ecke

@@ -2630,6 +2630,10 @@ body.menu-open .app-frame { visibility: hidden; }
    Farbe als die Auswahl: es ist keine Auswahl zum Verschieben, sondern eine Kantenwahl. */
 .map-point.extend-pick-point { stroke: var(--shell-warn, #e7ad46); stroke-width: 4; }
 .extend-pick-ring { fill: none; stroke: var(--shell-warn, #e7ad46); stroke-width: 2; stroke-dasharray: 4 3; }
+/* Vorschau vom aktiven Ende zur Maeherposition: bewusst die Warnfarbe der Markierung, damit
+   Linie und markiertes Ende als eine Einheit lesbar sind — die beiden anderen Hilfslinien
+   (.edit-distance-line, .boundary-distance-line) liegen farblich ohnehin schon dicht beieinander. */
+.extend-guide-line { stroke: var(--shell-warn, #e7ad46); stroke-width: 2; stroke-dasharray: 7 6; vector-effect: non-scaling-stroke; pointer-events: none; opacity: .72; }
 
 
 /* ==========================================================================
