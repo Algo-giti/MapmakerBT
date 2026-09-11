@@ -35,7 +35,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'showUpdateBar', 'applyUpdate', 'offerToCloseContour',
   'deleteSelectedPoint', 'handleMapTap', 'applyPointSelection', 'clearPointSelection', 'refreshCaptureState',
   'renderMap', 'resetViewport', 'clampViewport', 'activeTransform', 'toScreen', 'svgMetrics', 'beginCustomViewport',
-  'updateRtkBadge', 'setMenuOpen', 'onMapPointerDown', 'onMapPointerMove', 'onMapPointerUp', 'beginCaptureHold', 'cancelCaptureHold', 'driveSpeedLimits', 'joystickVectorFromPointer', 'makeMap', 'normalizeMap',
+  'updateRtkBadge', 'setMenuOpen', 'onMapPointerDown', 'onMapPointerMove', 'onMapPointerUp', 'beginCaptureHold', 'cancelCaptureHold', 'movePointToMower', 'captureButtonTap', 'driveSpeedLimits', 'joystickVectorFromPointer', 'makeMap', 'normalizeMap',
   'undoLastAction', 'pushUndo', 'clearUndoStack', 'refreshUndoButton', 'UNDO_STACK_LIMIT',
   'autoCaptureTick', 'applyAutoCaptureModeToUi', 'updateViewPreferencesFromUi',
   'AUTO_CAPTURE_DISTANCE_MIN_CM', 'AUTO_CAPTURE_DISTANCE_MAX_CM', 'BLE_POLL_INTERVAL_MS',
@@ -2183,6 +2183,160 @@ test('Markierung, Hinweiszeile und Vorschau nennen dasselbe Ende wie das Anhaeng
   assert.strictEqual(
     t.ui.robotLayer.children.filter((c) => (c.attributes?.class || '').includes('edit-distance-line')).length, 1,
     'dort zeigt stattdessen die Auswahllinie — nie beide gleichzeitig');
+});
+
+/** Bringt eine geschlossene Kontur in Phase adding und waehlt danach einen Punkt aus. */
+async function seedAddingWithSelection(t, { role = 'perimeter' } = {}) {
+  if (role === 'exclusion') {
+    t.state.activeMap.exclusions = [{ id: 'ex1', name: 'Ausschluss 1', closed: true,
+      points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }] }];
+    t.state.activeExclusionId = 'ex1';
+    t.setMode('exclusion');
+  } else {
+    seedClosedPerimeter(t);
+  }
+  const pts = () => (role === 'exclusion' ? t.state.activeMap.exclusions[0].points : t.state.activeMap.perimeter);
+  t.startExtension();
+  tapPoint(t, pts(), 0);
+  tapPoint(t, pts(), 1);
+  await flush();
+  assert.strictEqual(t.state.extension.phase, 'adding');
+  tapPoint(t, pts(), 1);                       // irgendeinen bestehenden Punkt auswaehlen
+  assert.ok(t.state.selectedPoint, 'ein Punkt ist ausgewaehlt');
+  return pts;
+}
+/** Der echte Bedienweg des Hauptknopfes: gedrueckt halten, bis die Aufnahme ausloest. */
+async function holdCapture(t, clock) {
+  t.beginCaptureHold({ pointerId: 1, preventDefault() {} });
+  await clock.runFor(700);
+  await flush();
+}
+
+test('In Phase adding haengt der Hauptknopf an, auch mit ausgewaehltem Punkt', async () => {
+  // Vorher stand er auf „Verschieben“ und ueberschrieb eine bestehende Ecke der Kontur, die
+  // gerade erweitert wurde — gemessen: Laenge blieb gleich, ein Punkt sprang auf die
+  // Maeherposition.
+  for (const role of ['perimeter', 'exclusion']) {
+    const { t, clock } = setup();
+    const pts = await seedAddingWithSelection(t, { role });
+    const before = pts().map((p) => `${p.x},${p.y}`);
+
+    t.state.telemetry.x = 55; t.state.telemetry.y = 55; t.state.fixHistory = [];
+    t.refreshCaptureState();
+    await holdCapture(t, clock);
+
+    assert.strictEqual(pts().length, before.length + 1, `${role}: die Punktzahl waechst um 1`);
+    assert.deepStrictEqual(pts().slice(0, before.length).map((p) => `${p.x},${p.y}`), before,
+      `${role}: kein bestehender Punkt hat sich veraendert`);
+    assert.strictEqual(`${pts()[pts().length - 1].x},${pts()[pts().length - 1].y}`, '55,55',
+      `${role}: der neue Punkt liegt an der Maeherposition`);
+  }
+});
+
+test('Der eigene Knopf verschiebt denselben Punkt, den der Hauptknopf frueher verschoben hat', async () => {
+  for (const role of ['perimeter', 'exclusion']) {
+    const { t } = setup();
+    const pts = await seedAddingWithSelection(t, { role });
+    const index = t.state.selectedPoint.index;
+    const laenge = pts().length;
+    const unbeteiligt = pts().filter((_, i) => i !== index).map((p) => `${p.x},${p.y}`);
+
+    t.state.telemetry.x = 55; t.state.telemetry.y = 55; t.state.fixHistory = [];
+    t.refreshCaptureState();
+    assert.strictEqual(t.ui.movePointBtn.disabled, false, `${role}: der Knopf ist bedienbar`);
+    await t.movePointToMower();
+    await flush();
+
+    assert.strictEqual(pts().length, laenge, `${role}: es kommt kein Punkt dazu`);
+    assert.strictEqual(`${pts()[index].x},${pts()[index].y}`, '55,55',
+      `${role}: genau der ausgewaehlte Punkt ist gewandert`);
+    assert.deepStrictEqual(pts().filter((_, i) => i !== index).map((p) => `${p.x},${p.y}`), unbeteiligt,
+      `${role}: die uebrigen Punkte bleiben unberuehrt`);
+    assert.strictEqual(t.state.selectedPoint, null, `${role}: danach ist nichts mehr ausgewaehlt`);
+  }
+});
+
+test('Beide Knoepfe stehen gleichzeitig da und sind beschriftet, wie sie wirken', async () => {
+  const { t } = setup();
+  await seedAddingWithSelection(t);
+  t.refreshCaptureState();
+
+  assert.strictEqual(t.ui.captureFabWrap.hidden, false, 'der Hauptknopf steht da');
+  assert.strictEqual(t.ui.moveFabWrap.hidden, false, 'und daneben der Verschieben-Knopf');
+  assert.strictEqual(t.ui.autoFabWrap.hidden, true, 'er nimmt den Platz des Automatik-Knopfes ein');
+  assert.strictEqual(t.ui.captureButtonTitle.textContent, 'Punkt aufnehmen',
+    'der Hauptknopf sagt, was er tut');
+  assert.ok(!t.ui.addPointBtn.classList.contains('move-mode'),
+    'und zeigt das Aufnahme- statt des Verschieben-Symbols');
+  assert.strictEqual(t.ui.moveFabLabel.textContent, 'Verschieben');
+
+  // Die Geste folgt derselben Entscheidung: Halten nimmt auf, ein Tap bewirkt nichts.
+  const vorher = t.state.activeMap.perimeter.map((p) => `${p.x},${p.y}`).join('|');
+  t.captureButtonTap();
+  await flush();
+  assert.strictEqual(t.state.activeMap.perimeter.map((p) => `${p.x},${p.y}`).join('|'), vorher,
+    'ein Tap auf den Hauptknopf verschiebt hier nichts mehr');
+  // Und ein laufendes Halten ueberlebt den naechsten Telemetrie-Takt.
+  t.beginCaptureHold({ pointerId: 1, preventDefault() {} });
+  assert.ok(t.state.captureHold, 'Halten laeuft trotz Auswahl');
+  t.refreshCaptureState();
+  assert.ok(t.state.captureHold, 'und wird vom Telemetrie-Takt nicht abgebrochen');
+  t.cancelCaptureHold();
+});
+
+test('Ausserhalb von Phase adding bleibt der Hauptknopf der Verschieben-Knopf', async () => {
+  const { t } = setup();
+  t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }];
+  t.setMode('perimeter');
+  t.applyPointSelection({ role: 'perimeter', index: 1, exclusionId: null });
+  assert.strictEqual(t.ui.captureButtonTitle.textContent, 'Verschieben');
+  assert.ok(t.ui.addPointBtn.classList.contains('move-mode'));
+  assert.strictEqual(t.ui.moveFabWrap.hidden, true, 'kein zweiter Knopf daneben');
+  assert.strictEqual(t.ui.autoFabWrap.hidden, true, 'der Platz bleibt leer wie bisher');
+
+  t.state.telemetry.x = 9; t.state.telemetry.y = 9; t.state.fixHistory = [];
+  t.refreshCaptureState();
+  t.captureButtonTap();
+  await flush();
+  assert.strictEqual(t.state.activeMap.perimeter.length, 3, 'es kommt kein Punkt dazu');
+  assert.strictEqual(`${t.state.activeMap.perimeter[1].x},${t.state.activeMap.perimeter[1].y}`, '9,9',
+    'der Tap verschiebt wie bisher');
+
+  // Auch in der Auswahlphase einer Erweiterung aendert sich nichts.
+  const u = setup();
+  seedClosedPerimeter(u.t);
+  u.t.startExtension();
+  u.t.applyPointSelection({ role: 'perimeter', index: 1, exclusionId: null });
+  assert.strictEqual(u.t.ui.moveFabWrap.hidden, true, 'in der Auswahlphase kein eigener Knopf');
+  assert.ok(u.t.ui.addPointBtn.classList.contains('move-mode'), 'der Hauptknopf verschiebt dort');
+});
+
+test('Verschoben wird auf genau einem Weg, und der Knopf haengt daran', () => {
+  // Der Harness stubbt addEventListener als No-Op, Klicks sind also nicht simulierbar — die
+  // Verdrahtung wird deshalb im Quelltext geprueft, wie bei den uebrigen Knoepfen auch.
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  assert.ok(/ui\.movePointBtn\.addEventListener\('click',[\s\S]{0,60}?movePointToMower\(\)/.test(src),
+    'der Verschieben-Knopf muss movePointToMower() rufen, nicht den Aufnahmepfad');
+  // relearnSelectedPoint() ist der eigentliche Griff: genau ein Aufrufer, sonst gibt es zwei Wege.
+  const rufer = [...src.matchAll(/relearnSelectedPoint\(\)/g)].length;
+  assert.strictEqual(rufer, 2, `relearnSelectedPoint: 1 Definition + 1 Aufrufer erwartet, gefunden ${rufer}`);
+  assert.ok(/async function movePointToMower\(\)[\s\S]{0,300}?relearnSelectedPoint\(\)/.test(src),
+    'und dieser eine Aufrufer ist movePointToMower()');
+});
+
+test('Eine veraltete Auswahl macht den Hauptknopf nicht zum Verschieben-Knopf', () => {
+  // state.selectedPoint kann auf einen Platz zeigen, den es nicht mehr gibt. Dann darf weder der
+  // Hauptknopf Verschieben versprechen noch duerfen beide oberen Knoepfe zugleich verschwinden.
+  const { t } = setup();
+  t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }];
+  t.setMode('perimeter');
+  t.state.selectedPoint = { role: 'perimeter', index: 7, exclusionId: null };
+  t.refreshCaptureState();
+  assert.strictEqual(t.ui.captureButtonTitle.textContent, 'Punkt aufnehmen',
+    'ohne wirklichen Punkt gibt es nichts zu verschieben');
+  assert.ok(!t.ui.addPointBtn.classList.contains('move-mode'));
+  assert.strictEqual(t.ui.moveFabWrap.hidden, true, 'kein Verschieben-Knopf fuer einen Phantompunkt');
+  assert.strictEqual(t.ui.autoFabWrap.hidden, false, 'der obere Platz bleibt der Automatik');
 });
 
 test('Die Texte der Erweiterung tragen in DE und EN dieselben Platzhalter', () => {

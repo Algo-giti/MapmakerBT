@@ -3042,6 +3042,11 @@ body.menu-open .app-frame { visibility: hidden; }
 .auto-fab svg { width: 22px; height: 22px; fill: currentColor; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .auto-fab .icon-pause { display: none; }
 .auto-fab[disabled] { opacity: .4; }
+/* Der Verschieben-Knopf teilt sich Groesse, Form und Platz mit dem Automatik-Knopf — beide sind
+   nie gleichzeitig sichtbar, sie haengen an derselben Bedingung (`selected`). Nur die Fuellung
+   muss zurueckgenommen werden: das Pfeilkreuz besteht aus offenen Teilpfaden, `fill: currentColor`
+   aus `.auto-fab svg` wuerde sie zuschmieren. */
+.move-fab svg { fill: none; stroke-width: 2; }
 .capture-cluster.auto-active .auto-fab {
   width: 104px; height: 104px;
   border-color: var(--shell-danger-solid);

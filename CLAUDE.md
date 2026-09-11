@@ -1069,10 +1069,33 @@ Phase `adding` wählt ein Tipp in eine Ausschlussfläche wieder die ganze Fläch
 gewollt — die Karte soll sich dort verhalten wie sonst auch. In der Auswahlphase bleibt beides
 gesperrt.
 
-**Gemeldet, nicht gebaut:** mit ausgewähltem Punkt steht der Hauptknopf auch während einer
-Erweiterung auf „Verschieben" und **überschreibt** eine bestehende Ecke, statt anzuhängen
-(gemessen: Länge 5 → 5, Punkt 2 von (0,10) auf (55,55)). Der Zustand ist seit v60 wieder
-verlassbar, der Griff selbst steht unverändert.
+**Seit v61 hängt der Hauptknopf in Phase `adding` immer an**, auch mit ausgewähltem Punkt — vorher
+stand er auf „Verschieben" und **überschrieb** eine bestehende Ecke der Kontur, die gerade
+erweitert wurde (gemessen: Länge 5 → 5, Punkt 2 von (0,10) auf (55,55)). `captureButtonMoves()`
+ist die **einzige Stelle**, die entscheidet, ob der Knopf verschiebt statt aufzunehmen;
+Beschriftung, Symbol, Haltegeste, Tippgeste und die Aktion lesen alle dort, damit der Knopf nicht
+eines sagt und ein anderes tut. **Die Geste gehört mit dazu:** ohne Auswahl wird gehalten, beim
+Verschieben genügt ein Tap — beide Einstiege (`beginCaptureHold()`, `captureButtonTap()`) hängen
+deshalb an derselben Funktion, ebenso das Abbrechen eines laufenden Haltevorgangs in
+`refreshCaptureState()` (sonst hätte jeder Telemetrie-Takt das Halten wieder abgebrochen).
+
+**Verschoben wird dort über den eigenen Knopf `#movePointBtn`**, der den Platz des
+Automatik-Knopfes einnimmt. Der ist frei, und zwar aus zwei voneinander unabhängigen Gründen:
+`ui.autoFabWrap.hidden` hängt an derselben Größe `selected`, und eine Auswahl entsteht nur über
+`applyPointSelection()`, das `setMode()` ruft, das eine laufende Automatik beendet. Beide Knöpfe
+lesen bewusst dieselbe Größe, können sich also nicht überlagern. `movePointToMower()` ist der
+**einzige** Weg zum Verschieben — Hauptknopf und eigener Knopf rufen dieselbe Funktion, und
+`relearnSelectedPoint()` hat genau einen Aufrufer; ein ui-Test hält beides per Quelltextsuche fest.
+
+**Nur in Phase `adding`, bewusst nicht überall.** Außerhalb der Erweiterung tut der Hauptknopf
+ohne Auswahl ohnehin schon Verschiedenes (`Perimeter wieder öffnen`, `Perimeter schließen`),
+„hängt immer an" wäre dort keine sinnvolle Regel; und es gibt keine stehende Aufforderung, die
+ihm widerspräche — der Hinweisstreifen existiert nur, solange `state.extension` gesetzt ist.
+
+**Eine Ausnahme bleibt:** steht der Mäher in Phase `adding` näher als 0,50 m am **ersten** Punkt
+der Liste (also am anderen Ende der aufgetrennten Kante) und hat die Kontur ≥ 5 Punkte, greift
+weiterhin `perimeterClosureCandidate()` und der Knopf schließt den Ring. Das ist gleichbedeutend
+mit „Fertig" und war schon vor v61 so.
 
 ### Kartenobergrenze `MAX_MAPS` (Stand v58)
 
@@ -1925,6 +1948,29 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-11: **Hauptknopf hängt beim Erweitern immer an, Verschieben bekommt einen eigenen Knopf.**
+  Der in v60 gemeldete Griff ist behoben: in Phase `adding` nimmt der Hauptknopf auch mit
+  ausgewähltem Punkt auf, statt eine bestehende Ecke zu überschreiben. **Vorab geprüft und
+  gemeldet statt angenommen:** (M1a) für einen ausgewählten Punkt bot die Oberfläche dort nur
+  Papierkorb und Hauptknopf — „davor/danach" ist während einer Erweiterung ausgeblendet —, und
+  `relearnSelectedPoint()` war **ausschließlich** über den Hauptknopf erreichbar (ein Aufrufer,
+  zwei Gesten, kein Menüweg, Ziehen auf der Karte verschiebt die Ansicht, nicht Punkte).
+  (M1b) Der Platz des Automatik-Knopfes ist immer frei, doppelt abgesichert: gleiche Bedingung
+  `selected`, und eine Punktauswahl beendet über `setMode()` eine laufende Automatik. (M1c) Nur in
+  Phase `adding` getrennt, weil allein dort eine stehende Aufforderung zum Aufnehmen existiert und
+  der Hauptknopf außerhalb ohnehin mehrere Aufgaben trägt. **Beim Bauen aufgefallen:** die
+  Unterscheidung steckt nicht nur in der Beschriftung, sondern in der **Geste** — halten gegen
+  tippen —, und `refreshCaptureState()` hätte ein laufendes Halten bei jedem Telemetrie-Takt
+  abgebrochen; alle vier Stellen hängen jetzt an `captureButtonMoves()`. Kein zweiter Weg daneben:
+  beide Knöpfe rufen `movePointToMower()`. Neu: 6 ui-Fälle (194), 1 layout-Fall (42), neuer
+  i18n-Schlüssel `movePointAction` in DE und EN. **Kein Bestandstest hatte die alte Wirkung
+  festgeschrieben** — geprüft und ausdrücklich verneint, die vorhandenen Fälle zur Punktauswahl
+  betreffen sämtlich den Zustand außerhalb einer Erweiterung und laufen unverändert durch. Gegen
+  dreizehn simulierte Rückfälle geprüft; zwei liefen zunächst durch — der an den Aufnahmepfad
+  umgehängte Knopf (Verdrahtung ist im Harness nicht klickbar, jetzt per Quelltextsuche
+  festgehalten, was zugleich eine kopierte Zweitfassung auffliegen lässt) und der Wegfall der
+  Prüfung auf einen tatsächlich vorhandenen Punkt. `APP_VERSION` auf `v61`.
 
 - 2026-09-11: **Erweitern: Auswahl wieder aufhebbar, aktives Ende sichtbar.** (K1) Der Ausstieg in
   `handleMapTap()` fragt jetzt die Phase ab statt nur `state.extension`. Er war für die

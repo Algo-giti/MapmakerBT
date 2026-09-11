@@ -205,6 +205,22 @@ test('Die Karte traegt oben eine Werkzeugleiste und darunter die Zeichenflaeche'
   assert.ok(!html.includes('class="map-hud"'), 'der alte Overlay-Kasten kehrt nicht zurueck');
 });
 
+
+test('Der Verschieben-Knopf teilt sich Form und Platz mit dem Automatik-Knopf', () => {
+  // Er nimmt dessen Platz ein, wenn ein Punkt ausgewaehlt ist — also muss er dieselbe Groesse
+  // haben, sonst springt die Knopfspalte beim Umschalten.
+  assert.ok(html.includes('id="moveFabWrap"'), 'der Knopf steht im Aufnahme-Cluster');
+  const cluster = html.slice(html.indexOf('id="captureCluster"'), html.indexOf('id="captureFabWrap"'));
+  assert.ok(cluster.includes('id="moveFabWrap"'), 'und zwar im selben Cluster wie der Automatik-Knopf');
+  assert.ok(/id="movePointBtn"[^>]*class="[^"]*\bauto-fab\b/.test(html)
+    || /class="[^"]*\bauto-fab\b[^"]*"[^>]*id="movePointBtn"/.test(html),
+    'er nutzt die Form des Automatik-Knopfes, statt eine zweite Groesse einzufuehren');
+  assert.strictEqual(resolve('.auto-fab', 'width').value, 'var(--fab-size)',
+    'und damit die Groesse der kleinen Randknoepfe');
+  // Das Pfeilkreuz besteht aus offenen Teilpfaden: die Fuellung aus `.auto-fab svg` muss weg.
+  assert.strictEqual(resolve('.move-fab svg', 'fill').value, 'none');
+});
+
 test('Die Werkzeugleiste bricht Beschriftungen nicht um', () => {
   // Das war der gemeldete Fehler: auf schmalen Geraeten stapelten sich die Buchstaben
   // untereinander, weil nur die Knopfbreite zur Verfuegung stand.

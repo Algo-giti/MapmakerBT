@@ -144,7 +144,7 @@ const I18N = {
     bleNoAnswer: 'Der Mäher antwortet nicht mehr – Verbindung wird neu aufgebaut.',
     menu: 'Menü', backToMap: 'Zurück zur Karte', waypoints: 'Wegpunkte', waypoint: 'Wegpunkt',
     rtkFix: 'Fix', rtkFloat: 'Float', rtkNone: 'No Fix', rtkNoData: 'Kein GPS',
-    movePoint: 'Verschieben', movePointHint: 'Tippen: Punkt springt auf die Mäherposition', holdToCapture: 'Zum Aufnehmen gedrückt halten',
+    movePoint: 'Verschieben', movePointAction: 'Punkt auf Mäherposition verschieben', movePointHint: 'Tippen: Punkt springt auf die Mäherposition', holdToCapture: 'Zum Aufnehmen gedrückt halten',
     deletePoint: 'Ausgewählten Punkt löschen', pointDeleted: 'Punkt {n} gelöscht.', fitView: 'Ansicht zurücksetzen',
     driveSettings: 'Fahrgeschwindigkeit', driveSpeedRange: 'Geschwindigkeit', driveSpeedRangeHint: 'Auslenkung des Joysticks regelt stufenlos zwischen Min und Max.',
     driveSpeedMin: 'Minimum', driveSpeedMax: 'Maximum', driveTurnMax: 'Maximale Drehrate',
@@ -387,7 +387,7 @@ const I18N = {
     bleNoAnswer: 'The mower stopped answering – reconnecting.',
     menu: 'Menu', backToMap: 'Back to map', waypoints: 'Waypoints', waypoint: 'Waypoint',
     rtkFix: 'Fix', rtkFloat: 'Float', rtkNone: 'No Fix', rtkNoData: 'No GPS',
-    movePoint: 'Move', movePointHint: 'Tap: the point jumps to the mower position', holdToCapture: 'Hold to capture',
+    movePoint: 'Move', movePointAction: 'Move point to the mower position', movePointHint: 'Tap: the point jumps to the mower position', holdToCapture: 'Hold to capture',
     deletePoint: 'Delete selected point', pointDeleted: 'Point {n} deleted.', fitView: 'Reset view',
     driveSettings: 'Drive speed', driveSpeedRange: 'Speed', driveSpeedRangeHint: 'Joystick deflection scales steplessly between min and max.',
     driveSpeedMin: 'Minimum', driveSpeedMax: 'Maximum', driveTurnMax: 'Maximum turn rate',
@@ -655,6 +655,7 @@ const ui = {
   insertBeforeWrap: $('insertBeforeWrap'), insertBeforeBtn: $('insertBeforeBtn'),
   insertAfterWrap: $('insertAfterWrap'), insertAfterBtn: $('insertAfterBtn'),
   captureCluster: $('captureCluster'), autoFabWrap: $('autoFabWrap'), autoCaptureBtn: $('autoCaptureBtn'), autoCaptureLabel: $('autoCaptureLabel'),
+  moveFabWrap: $('moveFabWrap'), movePointBtn: $('movePointBtn'), moveFabLabel: $('moveFabLabel'),
   captureFabWrap: $('captureFabWrap'), addPointBtn: $('addPointBtn'), captureProgress: $('captureProgress'), captureButtonTitle: $('captureButtonTitle'), captureButtonHint: $('captureButtonHint'),
   mapToolbar: $('mapToolbar'), contourStatus: $('contourStatus'),
   mapNameLabel: $('mapNameLabel'), mapSummary: $('mapSummary'), mapDistanceInfo: $('mapDistanceInfo'), pointStatus: $('pointStatus'), activeMapName: $('activeMapName'), saveState: $('saveState'),
@@ -1758,9 +1759,24 @@ function cancelCaptureHold() {
   ui.captureProgress.style.setProperty('--capture-progress', '0');
 }
 
+/**
+ * Verschiebt der Hauptknopf, statt aufzunehmen? **Die einzige Stelle, die das entscheidet** —
+ * Beschriftung, Symbol, Haltegeste, Tippgeste und die Aktion selbst lesen alle hier, damit der
+ * Knopf nicht eines sagt und ein anderes tut.
+ *
+ * Ja bei ausgewaehltem Punkt — aber **nicht** waehrend einer laufenden Erweiterung
+ * (`phase === 'adding'`). Dort fordert der Hinweisstreifen zum Aufnehmen auf, und der Griff
+ * ueberschrieb stattdessen eine bestehende Ecke: genau die Kontur, die gerade erweitert wird.
+ * Verschoben wird dort ueber den eigenen Knopf `#movePointBtn`, der dieselbe Funktion ruft.
+ */
+function captureButtonMoves() {
+  if (!state.selectedPoint || !getSelectedPoint()) return false;
+  return state.extension?.phase !== 'adding';
+}
+
 /** Aufnahme erfordert Halten, damit Wischen/Zoomen auf der Karte nichts ausloest. */
 function beginCaptureHold(event) {
-  if (ui.addPointBtn.disabled || state.selectedPoint) return;
+  if (ui.addPointBtn.disabled || captureButtonMoves()) return;
   event.preventDefault();
   cancelCaptureHold();
   try { ui.addPointBtn.setPointerCapture(event.pointerId); } catch (_) {}
@@ -1779,9 +1795,9 @@ function beginCaptureHold(event) {
   };
 }
 
-/** Mit ausgewaehltem Punkt genuegt ein Tap: der Punkt wandert auf die Maeherposition. */
+/** Verschiebt der Knopf gerade, genuegt ein Tap; zum Aufnehmen wird weiterhin gehalten. */
 function captureButtonTap() {
-  if (ui.addPointBtn.disabled || !state.selectedPoint) return;
+  if (ui.addPointBtn.disabled || !captureButtonMoves()) return;
   addCurrentPoint().catch((error) => { ui.pointStatus.textContent = error.message; log('CAPTURE', error.message); });
 }
 
@@ -1862,12 +1878,14 @@ function refreshCaptureState() {
   const mapLocked = Boolean(state.activeMap?.locked);
   const selected = state.selectedPoint ? getSelectedPoint() : null;
   const areaSelected = Boolean(selectedExclusion());
+  // Waehrend der Aufnahmephase einer Erweiterung haengt der Hauptknopf an, auch bei Auswahl.
+  const moves = captureButtonMoves();
 
   updateRtkBadge();
   const auto = state.autoCaptureRunning;
   const button = ui.addPointBtn;
   button.classList.remove('capture-fix', 'capture-warning', 'capture-blocked', 'capture-idle', 'capture-stop');
-  button.classList.toggle('move-mode', Boolean(selected));
+  button.classList.toggle('move-mode', moves);
   // Automatik ersetzt den manuellen Knopf, statt neben ihm zu stehen.
   ui.captureCluster.classList.toggle('auto-active', auto);
   // Der ganze Block inklusive Beschriftung verschwindet, nicht nur der Knopf.
@@ -1886,6 +1904,15 @@ function refreshCaptureState() {
   // Mit ausgewaehltem Punkt geht es ums Verschieben, nicht ums Aufnehmen: die Automatik
   // hat in diesem Zustand nichts zu suchen.
   ui.autoFabWrap.hidden = Boolean(selected) || areaSelected;
+  // Der Verschieben-Knopf nimmt den frei gewordenen Platz des Automatik-Knopfes ein. Beide
+  // haengen bewusst an **derselben** Groesse `selected`, koennen sich also nicht ueberlagern.
+  ui.moveFabWrap.hidden = !(selected && !moves) || areaSelected;
+  // Beschriftung aus `tr()` statt aus `data-i18n` — wie beim Automatik-Knopf daneben, dessen
+  // Platz er einnimmt, und damit der Sprachwechsel ihn ohne Umweg erreicht.
+  ui.moveFabLabel.textContent = tr('movePoint');
+  ui.movePointBtn.setAttribute('aria-label', tr('movePointAction'));
+  // Bedienbar unter denselben Bedingungen, unter denen der Hauptknopf frueher verschoben hat.
+  ui.movePointBtn.disabled = mapLocked || !fresh || !coords || blockedByFixRule;
   refreshDeleteButton();
   // Der Rueckgaengig-Knopf folgt derselben Regel wie der Papierkorb: waehrend der Automatik
   // ausgeblendet, damit ueber der Fahrzone nur der grosse Pause-Knopf steht.
@@ -1916,7 +1943,10 @@ function refreshCaptureState() {
   refreshToolbarVisibility();
   // Im Verschieben-Zustand gibt es kein Halten: eine laufende Halteaktion wird verworfen.
   // (Nicht umgekehrt: ein laufendes Halten darf nicht von der 2-s-Telemetrie abgebrochen werden.)
-  if (selected || auto) cancelCaptureHold();
+  // Ausschlaggebend ist die **Wirkung** des Knopfes, nicht die blosse Auswahl: waehrend der
+  // Aufnahmephase einer Erweiterung nimmt er auch mit ausgewaehltem Punkt auf, und jeder
+  // Telemetrie-Takt haette das Halten sonst wieder abgebrochen.
+  if (moves || auto) cancelCaptureHold();
 
   const show = (cls, title, hint, status) => {
     button.classList.add(cls);
@@ -1933,7 +1963,9 @@ function refreshCaptureState() {
   }
 
   // Ausgewaehlter Punkt: der Hauptbutton wird zum Verschieben-Button (ein Tap genuegt).
-  if (selected) {
+  // Waehrend der Aufnahmephase einer Erweiterung nicht — dort haengt er an, und das Verschieben
+  // hat seinen eigenen Knopf. Genau diese Unterscheidung trifft `captureButtonMoves()`.
+  if (moves) {
     const distance = mowerDistanceToSelected();
     button.disabled = !fresh || !coords || blockedByFixRule;
     const label = `${selectedPointLabel()}${Number.isFinite(distance) ? ` · ${distance.toFixed(2)} m` : ''}`;
@@ -3032,6 +3064,17 @@ async function relearnSelectedPoint() {
 }
 
 /**
+ * Den ausgewaehlten Punkt auf die Maeherposition setzen. **Der einzige Weg dorthin** — der
+ * Hauptknopf ruft ihn ausserhalb der Erweiterung, der eigene Knopf `#movePointBtn` waehrend
+ * ihrer Aufnahmephase. Keine zweite, nebenherlaufende Fassung.
+ */
+async function movePointToMower() {
+  if (!state.selectedPoint) return;
+  await relearnSelectedPoint();
+  clearPointSelection();
+}
+
+/**
  * Gemeinsame Vorbedingung fuer jedes Setzen eines Punktes an der Live-Position — aufnehmen wie
  * einfuegen. Liefert den i18n-Schluessel des Hinderungsgrunds oder null, wenn es losgehen kann.
  * Bewusst eine Stelle: „Nur bei RTK FIX“ muss ueberall gleich gelten.
@@ -3240,7 +3283,7 @@ async function toggleAutoCapture() {
 
 async function addCurrentPoint() {
   if (state.activeMap?.locked) { ensureMapEditable(); return; }
-  if (state.selectedPoint) { await relearnSelectedPoint(); clearPointSelection(); return; }
+  if (captureButtonMoves()) { await movePointToMower(); return; }
   if (state.mode === 'perimeter' && state.activeMap?.perimeterClosed) { await reopenPerimeter(); return; }
   if (state.mode === 'perimeter' && perimeterClosureCandidate()) { await closePerimeter(); return; }
   await appendCurrentPoint();
@@ -5652,6 +5695,7 @@ function bindEvents() {
   // Kartenwerkzeuge
   ui.deletePointBtn.addEventListener('click', () => deleteAction().catch(reportError));
   ui.autoCaptureBtn.addEventListener('click', () => toggleAutoCapture().catch(reportError));
+  ui.movePointBtn.addEventListener('click', () => movePointToMower().catch(reportError));
   ui.addPointBtn.addEventListener('pointerdown', beginCaptureHold);
   ['pointerup', 'pointercancel', 'pointerleave'].forEach((name) => ui.addPointBtn.addEventListener(name, cancelCaptureHold));
   ui.addPointBtn.addEventListener('click', captureButtonTap);
