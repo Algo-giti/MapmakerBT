@@ -73,7 +73,13 @@ const VIEW_PREFS_KEY = 'mapcreator-ardumower-view-prefs-v1';
 // neben den Ansichtseinstellungen statt im Kartenmodell. Eigenes Praefix, weil sich alle
 // GitHub-Pages-Projekte einen Origin und damit einen localStorage teilen.
 const CASSANDRA_REFERENCE_KEY = 'mapcreator-ardumower-cassandra-reference-v1';
-const MAX_MAPS = 10;
+/**
+ * Obergrenze des lokalen Kartenbestands. **Die einzige Stelle, an der diese Zahl steht** —
+ * Meldungen und Hilfetexte ziehen sie ueber den Platzhalter `{maxMaps}` heran, den `tr()`
+ * ausnahmslos ersetzt. Nachgerechnet an einer echten Karte (320 Punkte mit vollem gps-Objekt,
+ * ~63 KiB): 25 Karten belegen rund 1,5 MiB in IndexedDB.
+ */
+const MAX_MAPS = 25;
 
 
 const I18N = {
@@ -166,7 +172,7 @@ const I18N = {
     renameMap: 'Karte umbenennen', renameMapHint: 'Neuer Name für diese Karte. Der Inhalt bleibt unverändert.',
     duplicateMap: 'Karte duplizieren', copySuffix: '(Kopie)', copySuffixN: '(Kopie {n})',
     nameEmpty: 'Der Name darf nicht leer sein.', save: 'Speichern',
-    activeMapField: 'Aktive Karte', newMapField: 'Neue Karte', newMapPlaceholder: 'z. B. Hintergarten', createMap: 'Neue Karte anlegen', mapLimitReached: 'Maximal 10 Karten können lokal gespeichert werden. Lösche zuerst eine Karte.',
+    activeMapField: 'Aktive Karte', newMapField: 'Neue Karte', newMapPlaceholder: 'z. B. Hintergarten', createMap: 'Neue Karte anlegen', mapLimitReached: 'Maximal {maxMaps} Karten können lokal gespeichert werden. Lösche zuerst eine Karte.',
     backupManagement: 'Backup & Verwaltung', backupDescription: 'Die Kartendaten liegen in IndexedDB des Browsers. Ein Export ist die einfachste Sicherung.',
     saveJson: 'Als JSON speichern', saveGeoJson: 'Als GeoJSON speichern',
     shareJson: 'Als JSON teilen', shareGeoJson: 'Als GeoJSON teilen', shareMapTitle: 'Karte teilen',
@@ -265,7 +271,7 @@ const I18N = {
     compatDesktop: 'Mit unterstütztem Chromium-Browser kann Web Bluetooth ebenfalls funktionieren. Die Oberfläche ist jedoch primär für Android-Handys und -Tablets ausgelegt.',
     androidMinTitle: 'Android-Version:', androidMinText: 'Google dokumentiert Web Bluetooth für Chrome auf Android ab Android 6.0. Da alte Geräte und Browser-Versionen stark variieren, ist ein aktuelles Android mit aktuellem Chrome klar empfehlenswert.', androidPermissionTitle: 'Bluetooth-Berechtigungen:', androidPermissionText: 'Falls die Gerätesuche blockiert ist, prüfe die Android-App-Berechtigungen von Chrome. Ab Android 12 gibt es dafür die Berechtigungsgruppe „Geräte in der Nähe“.',
     offlineTitle: 'Offline im Garten', offlineWorksTitle: 'Das funktioniert ohne Internet', offlineNeedsTitle: 'Dafür wird Internet benötigt',
-    offlineWorks1: 'Bluetooth-Verbindung zum Ardumower', offlineWorks2: 'Live-X/Y, RTK-Status und Kartenaufnahme', offlineWorks3: 'Automatik-Aufnahme, Punktbearbeitung und Kartenprüfung', offlineWorks4: 'Bis zu 10 Karten im Browserspeicher, inklusive Rückgängig-Verlauf der laufenden Sitzung', offlineWorks5: 'JSON- und GeoJSON-Export',
+    offlineWorks1: 'Bluetooth-Verbindung zum Ardumower', offlineWorks2: 'Live-X/Y, RTK-Status und Kartenaufnahme', offlineWorks3: 'Automatik-Aufnahme, Punktbearbeitung und Kartenprüfung', offlineWorks4: 'Bis zu {maxMaps} Karten im Browserspeicher, inklusive Rückgängig-Verlauf der laufenden Sitzung', offlineWorks5: 'JSON- und GeoJSON-Export',
     pwaTitle: 'Als App installieren (PWA)',
     pwaWhat: 'MapCreator ist eine Progressive Web App: eine Webseite, die sich wie eine installierte App verhält. Auf dem Startbildschirm bekommt sie ein eigenes Symbol, startet im Vollbild ohne Adressleiste und lädt ihre Dateien aus dem lokalen Zwischenspeicher — deshalb läuft sie im Garten auch ohne Internet. Ein App-Store ist nicht beteiligt, es wird nichts zusätzlich heruntergeladen.',
     pwaAndroidTitle: 'Android / Chrome',
@@ -409,7 +415,7 @@ const I18N = {
     renameMap: 'Rename map', renameMapHint: 'New name for this map. Its contents stay unchanged.',
     duplicateMap: 'Duplicate map', copySuffix: '(copy)', copySuffixN: '(copy {n})',
     nameEmpty: 'The name must not be empty.', save: 'Save',
-    activeMapField: 'Active map', newMapField: 'New map', newMapPlaceholder: 'e.g. Back garden', createMap: 'Create new map', mapLimitReached: 'A maximum of 10 maps can be stored locally. Delete a map first.',
+    activeMapField: 'Active map', newMapField: 'New map', newMapPlaceholder: 'e.g. Back garden', createMap: 'Create new map', mapLimitReached: 'A maximum of {maxMaps} maps can be stored locally. Delete a map first.',
     backupManagement: 'Backup & management', backupDescription: 'Map data is stored in the browser’s IndexedDB. Exporting is the easiest way to create a backup.',
     saveJson: 'Save as JSON', saveGeoJson: 'Save as GeoJSON',
     shareJson: 'Share as JSON', shareGeoJson: 'Share as GeoJSON', shareMapTitle: 'Share map',
@@ -508,7 +514,7 @@ const I18N = {
     compatDesktop: 'Web Bluetooth can also work in a supported Chromium browser. The interface is primarily designed for Android phones and tablets.',
     androidMinTitle: 'Android version:', androidMinText: 'Google documents Web Bluetooth for Chrome on Android starting with Android 6.0. Because old devices and browser versions vary widely, a current Android device with current Chrome is strongly recommended.', androidPermissionTitle: 'Bluetooth permissions:', androidPermissionText: 'If device discovery is blocked, check Chrome’s Android app permissions. Starting with Android 12, nearby Bluetooth access is grouped under the “Nearby devices” permission.',
     offlineTitle: 'Offline in the garden', offlineWorksTitle: 'Works without internet', offlineNeedsTitle: 'Internet is needed for',
-    offlineWorks1: 'Bluetooth connection to the Ardumower', offlineWorks2: 'Live X/Y, RTK status and map recording', offlineWorks3: 'Automatic capture, point editing and map checks', offlineWorks4: 'Up to 10 maps in browser storage, including the undo history of the current session', offlineWorks5: 'JSON and GeoJSON export',
+    offlineWorks1: 'Bluetooth connection to the Ardumower', offlineWorks2: 'Live X/Y, RTK status and map recording', offlineWorks3: 'Automatic capture, point editing and map checks', offlineWorks4: 'Up to {maxMaps} maps in browser storage, including the undo history of the current session', offlineWorks5: 'JSON and GeoJSON export',
     pwaTitle: 'Installing it as an app (PWA)',
     pwaWhat: 'MapCreator is a Progressive Web App: a web page that behaves like an installed app. It gets its own icon on the home screen, starts full screen without an address bar, and loads its files from the local cache — which is why it works in the garden without internet. No app store is involved and nothing extra is downloaded.',
     pwaAndroidTitle: 'Android / Chrome',
@@ -568,6 +574,10 @@ const I18N = {
 function tr(key, vars = {}) {
   const dict = I18N[state?.language || 'de'] || I18N.de;
   let text = dict[key] ?? I18N.de[key] ?? key;
+  // Die Kartengrenze steht nur in MAX_MAPS. Sie hier unbedingt einzusetzen ist der Grund, warum
+  // auch Texte ohne eigene Variablen — die per `data-i18n` gesetzten Hilfezeilen — die Zahl
+  // richtig zeigen, ohne dass jemand sie ein zweites Mal von Hand hinschreibt.
+  text = text.replaceAll('{maxMaps}', String(MAX_MAPS));
   Object.entries(vars).forEach(([name, value]) => {
     text = text.replaceAll(`{${name}}`, String(value));
   });

@@ -50,7 +50,8 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'mapToSunrayApp', 'exportCurrentMapSunray', 'noticeSunrayExport', 'skippedAreas',
   'isSunrayAppFile', 'sunrayAppToMap', 'chooseSunrayMap', 'askChoice', 'sunrayAppMapLabel',
   'confirmDialogRespond', 'noticeSunrayImport',
-  'MIN_USER_ZOOM', 'MAX_USER_ZOOM', 'init'];
+  'MIN_USER_ZOOM', 'MAX_USER_ZOOM', 'init',
+  'MAX_MAPS', 'createMapFromInput', 'renderMapControls', 'tr'];
 
 /** Minimaler IndexedDB-Ersatz, damit saveActiveMap() im Test durchlaeuft. */
 function fakeDb() {
@@ -1815,7 +1816,8 @@ test('Ein sehr langer Name sprengt den Kopie-Namen nicht', () => {
 test('Ist die Kartengrenze erreicht, wird nicht dupliziert', async () => {
   const { t, sandbox } = setup();
   const source = seedSecondMap(t);
-  while (t.state.maps.length < 10) t.state.maps.push(t.normalizeMap(t.makeMap(`Fueller ${t.state.maps.length}`)));
+  // Bis an die Grenze auffuellen — die Zahl kommt aus der Konstante, nicht aus dem Test.
+  while (t.state.maps.length < t.MAX_MAPS) t.state.maps.push(t.normalizeMap(t.makeMap(`Fueller ${t.state.maps.length}`)));
   sandbox.__confirmAnswer = true;
   const before = t.state.maps.length;
   await t.duplicateMapById(source.id);
@@ -3496,6 +3498,128 @@ test('Unsere eigenen Formate gelten nicht als Sunray-Datei und werden unveraende
   const notice = elements.get('importNotice');
   assert.ok(notice.hidden === true || !/Mähpfad|mowing path/.test(notice.textContent),
     'fuer eigene Dateien erscheint keine Sunray-Meldung');
+});
+
+// --- Kartengrenze MAX_MAPS -------------------------------------------------
+// Gemessen wird die Wirkung: greift die Grenze bei 25 und nicht bei 10 oder 26, und steht die
+// Zahl in den Texten beider Sprachen. Dazu ein Waechter gegen eine zweite handgeschriebene
+// Zaehlung — dieselbe Ueberlegung wie beim Test gegen Handzaehlungen neben hasUsablePolygon().
+
+/** Fuellt den Bestand auf `n` Karten auf, ohne die Grenze zu befragen. */
+function fuelleKarten(t, n) {
+  t.state.maps = Array.from({ length: n }, (_, i) => t.normalizeMap(t.makeMap(`Karte ${i + 1}`)));
+  t.state.activeMap = t.state.maps[0];
+}
+
+test('Die Kartengrenze greift bei 25, nicht bei 10 und nicht erst bei 26', async () => {
+  const { t } = setup();
+  // Gemessen wird ausschliesslich die Wirkung: wo das Anlegen noch geht und wo es aufhoert.
+  // Die Konstante selbst wird hier bewusst nicht befragt — das waere die Absicht, nicht die
+  // Wirkung, und der Waechtertest unten prueft ihren Wert ohnehin an der Quelle.
+
+  // Bei 10 Karten — der frueheren Grenze — muss das Anlegen weiterhin gehen.
+  fuelleKarten(t, 10);
+  t.ui.newMapName.value = 'Elfte';
+  await t.createMapFromInput();
+  assert.strictEqual(t.state.maps.length, 11, 'bei 10 Karten wird nicht mehr gesperrt');
+
+  // Die letzte freie Stelle: 24 → 25 muss noch durchgehen.
+  fuelleKarten(t, 24);
+  t.ui.newMapName.value = 'Fuenfundzwanzigste';
+  await t.createMapFromInput();
+  assert.strictEqual(t.state.maps.length, 25, 'die 25. Karte entsteht noch');
+
+  // Und bei 25 ist Schluss — nicht erst bei 26.
+  t.ui.newMapName.value = 'Sechsundzwanzigste';
+  await assert.rejects(() => t.createMapFromInput(), /25/,
+    'die 26. Karte wird abgelehnt, und die Meldung nennt die Grenze');
+  assert.strictEqual(t.state.maps.length, 25, 'der Bestand waechst dabei nicht');
+});
+
+test('Die Grenze sperrt auch Import und Duplizieren, und die Oberflaeche sagt es', async () => {
+  const { t, elements } = setup();
+  fuelleKarten(t, 25);
+
+  // Import: scheitert, bevor irgendetwas eingelesen wird.
+  await assert.rejects(() => t.importMapFile({ text: async () => '{}' }), /25/,
+    'am Limit wird gar nicht erst eingelesen');
+
+  // Duplizieren: Meldung statt Ausnahme, Bestand unveraendert.
+  await t.duplicateMapById(t.state.maps[0].id);
+  assert.strictEqual(t.state.maps.length, 25, 'Duplizieren legt am Limit nichts an');
+
+  // Knopfzustaende und das Zaehlfeld.
+  t.renderMapControls();
+  assert.strictEqual(t.ui.newMapBtn.disabled, true, 'der Knopf fuer neue Karten ist gesperrt');
+  assert.strictEqual(t.ui.importInput.disabled, true, 'der Import ist gesperrt');
+  assert.strictEqual(elements.get('mapCountBadge').textContent, '25 / 25',
+    'das Zaehlfeld nennt die Grenze aus der Konstante');
+});
+
+test('Meldung und Hilfetext nennen die Grenze in beiden Sprachen, ohne Platzhalterrest', () => {
+  const { t } = setup();
+  for (const sprache of ['de', 'en']) {
+    t.state.language = sprache;
+    for (const key of ['mapLimitReached', 'offlineWorks4']) {
+      const text = t.tr(key);
+      assert.ok(text.includes(String(t.MAX_MAPS)),
+        `${sprache}/${key} nennt die Grenze: ${text}`);
+      assert.ok(!text.includes('{maxMaps}'),
+        `${sprache}/${key} laesst keinen Platzhalter stehen: ${text}`);
+      assert.ok(!/\b10\b/.test(text),
+        `${sprache}/${key} traegt keine feste 10 mehr: ${text}`);
+    }
+  }
+});
+
+test('Es gibt keine zweite handgeschriebene Zaehlung der Kartengrenze', () => {
+  const quelle = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  const markup = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+
+  // (1) Die Konstante steht genau einmal.
+  const deklarationen = quelle.match(/^\s*const\s+MAX_MAPS\s*=/gm) || [];
+  assert.strictEqual(deklarationen.length, 1, 'MAX_MAPS wird genau einmal deklariert');
+  assert.ok(/const MAX_MAPS = 25;/.test(quelle), 'und traegt den Wert 25');
+
+  // (2) Der Bestand wird nirgends gegen eine Zahl verglichen, immer gegen die Konstante.
+  const verstoesse = [];
+  quelle.split('\n').forEach((zeile, i) => {
+    if (/(?:maps|state\.maps)\.length\s*(?:>=|<=|>|<|===|!==|==)\s*\d/.test(zeile)) {
+      verstoesse.push(`app.js:${i + 1} — ${zeile.trim()}`);
+    }
+  });
+  assert.strictEqual(verstoesse.length, 0,
+    `der Kartenbestand wird von Hand gegen eine Zahl geprueft statt gegen MAX_MAPS:\n     ${verstoesse.join('\n     ')}`);
+
+  // (2b) Das Zaehlfeld nennt die Grenze — die muss aus der Konstante kommen. Eine reine
+  //      Wirkungspruefung faengt das nicht: `25 / 25` sieht von aussen richtig aus, egal woher
+  //      die zweite 25 stammt.
+  const badgeZeile = quelle.split('\n').find((l) => l.includes('mapCountBadge.textContent'));
+  assert.ok(badgeZeile, 'das Zaehlfeld wird gesetzt');
+  assert.ok(badgeZeile.includes('MAX_MAPS'),
+    `das Zaehlfeld zieht die Konstante heran statt einer eigenen Zahl: ${badgeZeile.trim()}`);
+
+  // (3) Die Texte ziehen den Platzhalter heran statt einer ausgeschriebenen Zahl. Der
+  //     Markup-Fallback gehoert dazu: er ist die deutsche Fassung, die ohne applyLanguage()
+  //     dastuende, und veraltete sonst bei der naechsten Aenderung still.
+  for (const key of ['mapLimitReached', 'offlineWorks4']) {
+    const treffer = quelle.match(new RegExp(`${key}: '([^']*)'`, 'g')) || [];
+    assert.strictEqual(treffer.length, 2, `${key} steht in beiden Sprachen`);
+    treffer.forEach((zeile) => {
+      assert.ok(zeile.includes('{maxMaps}'), `${key} nutzt den Platzhalter: ${zeile}`);
+      assert.ok(!/\d/.test(zeile.split("'")[1]), `${key} traegt keine ausgeschriebene Zahl: ${zeile}`);
+    });
+  }
+  const fallback = markup.split('\n').find((l) => l.includes('data-i18n="offlineWorks4"'));
+  assert.ok(fallback && fallback.includes('{maxMaps}'),
+    `der Markup-Fallback nutzt den Platzhalter: ${fallback}`);
+  const zaehlfeld = markup.split('\n').find((l) => l.includes('id="mapCountBadge"'));
+  assert.ok(zaehlfeld && !/\d/.test(zaehlfeld.replace(/i18n|v\d+/g, '')),
+    `das Zaehlfeld traegt keine feste Zahl im Markup: ${zaehlfeld}`);
+
+  // (4) tr() ersetzt den Platzhalter an genau einer Stelle — sonst zoege ein zweiter Weg nach.
+  const ersetzungen = quelle.match(/replaceAll\('\{maxMaps\}'/g) || [];
+  assert.strictEqual(ersetzungen.length, 1, 'der Platzhalter wird an genau einer Stelle ersetzt');
 });
 
 (async () => {

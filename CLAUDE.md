@@ -995,6 +995,37 @@ Durchwinken sähe im Protokoll wie ein bestandener Test aus.
 tatsächlich annimmt — geprüft ist nur, dass `dcc.Upload` (`uploadsunray.py:14`) kein `accept`
 setzt und der Callback (`:32`) den Dateinamen nicht auswertet.
 
+### Kartenobergrenze `MAX_MAPS` (Stand v58)
+
+**25 Karten, und die Zahl steht an genau einer Stelle** (`const MAX_MAPS`, app.js). Meldungen und
+Hilfetexte schreiben sie nicht ab, sondern tragen den Platzhalter `{maxMaps}`, den `tr()`
+**ausnahmslos** ersetzt — auch für die per `data-i18n` gesetzten Texte, die gar keine Variablen
+übergeben. Ohne diesen Weg hätte jede Grenzänderung vier i18n-Werte und einen Markup-Fallback
+hinterhergezogen, und genau das war vorher der Fall.
+
+Das Zählfeld `#mapCountBadge` trägt im Markup **keine** Zahl mehr; `renderMapGallery()` füllt es
+aus der Konstante. Ein Startwert dort wäre eine zweite Behauptung über die Grenze.
+
+**Gemessen, nicht geschätzt:** eine Karte mit den Punktzahlen einer echten (212 Perimeter + 6
+Flächen mit 16/15/21/18/27/11 = 320 Punkte, jeder mit vollem `gps`-Objekt) belegt im internen
+Modell **≈ 63 KiB**; 25 Karten also **≈ 1,5 MiB**. Für IndexedDB belanglos.
+
+**Der Auswahldialog beim Sunray-Import hängt nicht an dieser Zahl.** Seine Einträge kommen aus der
+eingelesenen **Datei**, nicht aus dem Bestand, und `importMapFile()` wirft `mapLimitReached`,
+bevor `chooseSunrayMap()` überhaupt läuft — am Limit erscheint gar kein Dialog.
+
+**Nebeneffekt, gemessen:** `renderMapGallery()` läuft bei **jedem** `saveActiveMap()`, zeichnet
+also bei jedem aufgenommenen Punkt sämtliche Vorschaubilder neu. Im Harness (Stub-DOM, echte
+SVG-Kosten im Browser sind damit **nicht** belegt) 2,29 ms bei 10 Karten gegen **4,07 ms bei 25** —
+gegen die schnellste Speicherkadenz von 500 ms unter 1 %.
+
+**Gemeldet, nicht gebaut — auf vollen Speicher reagiert nichts sinnvoll.** `dbRequest()`
+(app.js:2402-2410) lehnt ab, `saveActiveMap()` (app.js:2530) fängt nichts, und weil es
+`state.saving = true` und „Speichert …" **vor** dem Schreiben setzt, bleibt die Anzeige nach einem
+abgelehnten Schreibvorgang dauerhaft auf „Speichert …" stehen (empirisch geprüft mit einem
+`QuotaExceededError`). Der Fehler selbst geht als allgemeiner Fehlerdialog über `reportError()`
+raus, nicht als „Speicher voll". Unabhängig von der Zahl und deshalb hier nicht mitgeändert.
+
 ### Diagnoseprotokoll (Menü → Diagnose)
 
 **Das Protokoll liegt seit v50 in `state.logEntries`, nicht mehr nur im DOM.** Vorher hängte
@@ -1229,7 +1260,7 @@ auf der Karte („Letzten Punkt“).
   (wird nur noch beim Trennen genutzt). **Der zweite Wert von `AT+M` ist eine Drehrate im
   Roboterrahmen, keine Lenkrichtung** — deshalb spiegelt `joystickVectorFromPointer()` die
   Lenkung bei `linear < 0`, siehe „Rückwärtslenkung“ unten.
-- **Persistenz** (~Z. 1497–1640): IndexedDB `ardumower-bt-mapper`, Store `maps`, max. 10 Karten
+- **Persistenz** (~Z. 1497–1640): IndexedDB `ardumower-bt-mapper`, Store `maps`, max. `MAX_MAPS` Karten
 - **Karten-Rendering** (~Z. 2107–2385): eigenes SVG-Zeichnen, `computeTransform`/`toScreen`
 - **Import/Export** (~Z. 2385–2600): JSON-Backup und GeoJSON
 - **Validierung** (~Z. 2604–2710): Selbstschnitt, Überlappung, Punktabstände, RTK-Qualität
@@ -1815,6 +1846,27 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-11: **Kartenobergrenze von 10 auf 25.** Vorab geprüft und gemeldet statt angenommen:
+  die Zahl stand an **neun** weiteren Stellen von Hand (beide Sprachen von `mapLimitReached` und
+  `offlineWorks4`, der Markup-Fallback, das Zählfeld `0 / 10`, README DE/EN, CLAUDE.md) und war in
+  `tests/` **überhaupt nicht** abgedeckt. Sie steht jetzt nur noch in `MAX_MAPS`; Texte ziehen sie
+  über den Platzhalter `{maxMaps}` heran, den `tr()` ausnahmslos ersetzt — nur so bekommen auch die
+  per `data-i18n` gesetzten Hilfezeilen die richtige Zahl, ohne sie abzuschreiben. Ausdrücklich
+  **nicht** angefasst: die „zehn Karten"-Stellen in den Sunray-Kommentaren — gleiche Zahl, anderer
+  Gegenstand (die Vorlagendatei des Nutzers). **Zur Rückfrage nach dem Auswahldialog:** der hängt
+  gar nicht an `MAX_MAPS`, seine Einträge kommen aus der eingelesenen Datei, und am Limit wird
+  ohnehin vor dem Dialog abgebrochen; er ist zudem ein natives `<select>`. Speicher gemessen:
+  **≈ 63 KiB je Karte, 25 Karten ≈ 1,5 MiB**. **Gemeldet, nicht gebaut:** auf vollen Speicher
+  reagiert nichts sinnvoll, und die Anzeige bleibt nach einem abgelehnten Schreibvorgang dauerhaft
+  auf „Speichert …" stehen (empirisch mit `QuotaExceededError` geprüft) — unabhängig von der Zahl.
+  Neu: 4 ui-Fälle (178), darunter ein Wächter gegen eine zweite handgeschriebene Zählung nach dem
+  Muster des Handzählungs-Tests. **Dabei aufgefallen:** ein Bestandstest hatte die 10 als Literal
+  festgeschrieben und füllt jetzt bis `MAX_MAPS` auf. Gegen zwölf simulierte Rückfälle geprüft —
+  zwei liefen zunächst durch: die Grenzprüfung fing 10 und 26 nur über eine Zusicherung auf die
+  Konstante (also Absicht statt Wirkung, jetzt allein über das Verhalten belegt), und ein von Hand
+  in das Zählfeld geschriebenes `/ 25` blieb unbemerkt, weil `25 / 25` von außen richtig aussieht.
+  i18n-Parität DE/EN geprüft. `APP_VERSION` auf `v58`.
 
 - 2026-09-11: **Sunray-App-Dateien lassen sich auch lesen.** Erkennung strukturell über
   `isSunrayAppFile()` (Liste, jeder Eintrag mit `perimeter`, Punkte mit großem `X`/`Y`) — keines

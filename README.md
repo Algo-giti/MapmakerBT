@@ -34,7 +34,7 @@ Die Oberfläche lässt sich zwischen **Deutsch und Englisch** umschalten; Deutsc
 - die letzten 20 Bearbeitungsschritte einzeln rückgängig machen
 - auf der Karte ablesen, welche Kontur gerade offen und welche geschlossen ist
 - Karten auf Geometrie- und RTK-Probleme prüfen
-- bis zu 10 Karten auf dem Gerät verwalten
+- bis zu 25 Karten auf dem Gerät verwalten
 - Karten im Sunray-App-Format, im CaSSAndRA-Format, als JSON-Backup oder als GeoJSON exportieren und wieder importieren
 - den Mäher während der Aufnahme mit dem Daumen-Joystick manuell fahren
 - wahlweise mit Joystick oder mit vier Richtungstasten fahren
@@ -453,7 +453,7 @@ The interface can be switched between **German and English**; German is the defa
 - undo the last 20 editing steps one at a time
 - see on the map which contour is currently open and which is closed
 - check maps for geometry and RTK problems
-- keep up to 10 maps on the device
+- keep up to 25 maps on the device
 - export maps in the Sunray app format, in the CaSSAndRA format, as a JSON backup or as GeoJSON, and import them again
 - drive the mower manually with the thumb joystick while recording
 - drive either with the joystick or with four direction keys
