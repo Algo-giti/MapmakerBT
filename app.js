@@ -88,6 +88,9 @@ const I18N = {
     joystickSizeHint: '„Mittel“ passt sich der Bildschirmhöhe an. Größer heißt mehr Trefferfläche, kleiner mehr Karte.',
     driveControl: 'Steuerung', driveControlJoystick: 'Joystick', driveControlButtons: 'Richtungstasten',
     driveModeToggle: 'Steuerung umschalten', driveModeToJoystick: 'Zu Joystick wechseln', driveModeToButtons: 'Zu Richtungstasten wechseln', cursorSpeed: 'Geschwindigkeit im Cursor-Modus',
+    driveZones: 'Geschwindigkeitszonen', driveZonesTurn: 'Zonen auch beim Drehen',
+    driveZonesNote: 'Mit Zonen ist jede Richtungstaste längs dreigeteilt: innen das Minimum, in der Mitte der eingetragene Wert, außen das Maximum des Joysticks. Die Zone folgt dem Finger, solange er gedrückt bleibt — weiter nach außen schieben heißt schneller. Ohne Zonen gilt überall der eingetragene Wert.',
+    driveZoneOrderHint: 'Die Zonen ergeben von innen nach außen {slow} · {normal} · {fast} cm/s — diese Staffel steigt nicht durchgehend an. Beim Schieben nach außen wird es dazwischen langsamer. Die Werte gelten wie eingetragen, geändert wird nichts von selbst.',
     driveControlHint: 'Die Richtungstasten fahren bewusst langsam und ohne seitliches Lenken — links und rechts drehen auf der Stelle. Der Joystick bleibt vom Cursor-Wert unberührt.',
     driveUp: 'Vorwärts fahren', driveDown: 'Rückwärts fahren', driveLeft: 'Links drehen', driveRight: 'Rechts drehen',
     handedness: 'Bedienseite', handedRight: 'Rechtshänder', handedLeft: 'Linkshänder',
@@ -312,6 +315,7 @@ const I18N = {
     helpQualityTitle: 'Punktqualität', helpQualityText: 'Der Rand eines Punktes zeigt, zu welchem Element er gehört, die Füllung die RTK-Qualität bei der Aufnahme.',
     helpExtendTitle: 'Kontur nachträglich erweitern', helpExtendText: 'Ist ein Perimeter oder eine Ausschlussfläche schon geschlossen, öffnet „Erweitern“ in der Kartenleiste sie wieder. Ein Hinweisstreifen über der Karte führt Schritt für Schritt: zwei direkt benachbarte Punkte antippen, dann wird die Kante zwischen ihnen aufgetrennt. Danach nimmst du wie gewohnt weitere Punkte auf — auch mit Automatik —, sie landen genau zwischen den beiden gewählten. „Fertig“ im Hinweisstreifen schließt die Kontur wieder.',
     helpMapToolsTitle: 'Karten umbenennen & kopieren', helpMapToolsText: 'In der Kartenübersicht trägt jede Karte zwei kleine Werkzeuge: der Stift benennt sie um (nur der Name ändert sich), das Kopiersymbol legt eine vollständige, unabhängige Kopie an — mit allen Punkten, dem Positionsmodus und dem Ursprung. Die Kopie bekommt automatisch einen freien Namen, die gerade aktive Karte bleibt aktiv.',
+    helpDriveZonesTitle: 'Geschwindigkeitszonen auf den Richtungstasten', helpDriveZonesText: 'Jede Richtungstaste ist längs dreigeteilt: innen das Minimum, in der Mitte der eingetragene Tastenwert, außen das Maximum — dieselben drei Werte, die unter Einstellungen › Fahrgeschwindigkeit ohnehin stehen, es kommt keine neue Zahl dazu. Die Zone folgt dem Finger, solange er gedrückt bleibt: weiter nach außen schieben heißt schneller, zurück zur Mitte wieder langsamer. Die Grenzen sind auf der Taste eingezeichnet, die gerade gefahrene Zone ist hervorgehoben. Loslassen stoppt wie zuvor sofort. Die Einteilung lässt sich abschalten — dann gilt überall der eingetragene Tastenwert —, und ob sie auch für das Drehen auf der Stelle gilt, ist ein eigener Schalter. Die drei Werte sind frei einstellbar und werden nicht sortiert: liegt der mittlere unter dem inneren, wird das Schieben nach außen zwischendurch langsamer. Die Werte gelten dann wie eingetragen, und ein Hinweis bei den Geschwindigkeitsfeldern nennt die Reihenfolge.',
     helpDriveControlTitle: 'Joystick oder Richtungstasten', helpDriveControlText: 'Der kleine Knopf neben dem Fahrfeld schaltet zwischen beidem um; er zeigt das Symbol des Modus, in den er wechselt. Bei Rechtshändern steht er links vom Feld, bei Linkshändern gespiegelt rechts – jeweils direkt über der Fahrtanzeige. Der Joystick fährt wie eine Fernsteuerung: Richtung und Stärke der Auslenkung. Die Richtungstasten kennen nur vorwärts, rückwärts und Drehen auf der Stelle — kein versehentliches Lenken beim Geradeausfahren. Sie fahren mit einer eigenen, langsamen Geschwindigkeit für genaues Rangieren, einstellbar unter Einstellungen › Fahrgeschwindigkeit.',
     helpPositionModeTitle: 'Positionsmodus', helpPositionModeText: 'Jede Karte rechnet standardmäßig in lokalen Metern („Relativ“) — dafür ist keine Eingabe nötig. In der Voreinstellung zählt Sunray diese Meter relativ zur RTK-Basisstation, nicht zu einem Punkt im Garten. „Absolut“ brauchst du nur, wenn du die Karte mit Programmen austauschen willst, die echte Weltkoordinaten erwarten: dort trägst du im Menü unter Karten einmalig die GPS-Position ein, die dem Nullpunkt entsprechen soll. Welcher Punkt das ist, legst du selbst fest — der Mäher hat von sich aus keinen. Nur wenn im Mäher über AT+P ein Bezugspunkt gesetzt wurde, rechnet er selbst gegen diesen; dann ist es genau dieser Wert. Der Ursprung gehört zur jeweiligen Karte, weil verschiedene Karten meist an verschiedenen Orten liegen. Fehlt ein gültiger Ursprung, bleibt der Export bei lokalen Metern — falsch machen kannst du dabei nichts.',
     helpLockTitle: 'Kartensperre', helpLockText: 'Fertige Karten lassen sich gegen versehentliche Änderungen sperren.',
@@ -331,6 +335,9 @@ const I18N = {
     joystickSizeHint: '“Medium” adapts to the screen height. Larger means a bigger target, smaller leaves more map.',
     driveControl: 'Control', driveControlJoystick: 'Joystick', driveControlButtons: 'Direction keys',
     driveModeToggle: 'Switch control', driveModeToJoystick: 'Switch to joystick', driveModeToButtons: 'Switch to direction keys', cursorSpeed: 'Speed in cursor mode',
+    driveZones: 'Speed zones', driveZonesTurn: 'Zones for turning too',
+    driveZonesNote: 'With zones each direction key is split lengthwise into three: the minimum on the inside, the value entered above in the middle, the joystick maximum on the outside. The zone follows your finger while it stays down — sliding further out means faster. Without zones the value entered above applies everywhere.',
+    driveZoneOrderHint: 'From the inside out the zones are {slow} · {normal} · {fast} cm/s — that ladder does not rise all the way. Sliding outwards gets slower in between. The values apply exactly as entered, nothing is changed automatically.',
     driveControlHint: 'The direction keys deliberately drive slowly and without any sideways steering — left and right turn on the spot. The joystick is unaffected by the cursor speed.',
     driveUp: 'Drive forward', driveDown: 'Drive backward', driveLeft: 'Turn left', driveRight: 'Turn right',
     handedness: 'Operating side', handedRight: 'Right-handed', handedLeft: 'Left-handed',
@@ -555,6 +562,7 @@ const I18N = {
     helpQualityTitle: 'Point quality', helpQualityText: 'The outline of a point shows which element it belongs to, the fill shows the RTK quality at the time it was captured.',
     helpExtendTitle: 'Extending a closed contour', helpExtendText: 'If a perimeter or exclusion area is already closed, “Extend” in the map bar reopens it. A hint strip above the map guides you step by step: tap two directly neighbouring points and the edge between them is cut. Then capture further points as usual — automatic capture included — and they land exactly between the two you picked. “Done” in the hint strip closes the contour again.',
     helpMapToolsTitle: 'Renaming & copying maps', helpMapToolsText: 'In the map overview every map carries two small tools: the pencil renames it (only the name changes), the copy icon creates a complete, independent copy — with all points, the position mode and the origin. The copy automatically gets a free name, and the map you are working on stays active.',
+    helpDriveZonesTitle: 'Speed zones on the direction keys', helpDriveZonesText: 'Each direction key is split lengthwise into three: the minimum on the inside, the key speed you entered in the middle, the maximum on the outside — the same three values already under Settings › Drive speed, no new number is added. The zone follows your finger while it stays down: sliding further out means faster, back towards the centre slower again. The boundaries are drawn on the key and the zone currently in use is highlighted. Releasing stops immediately, as before. The split can be switched off — the key speed then applies everywhere — and whether it also applies to turning on the spot is a separate switch. The three values are yours to set and are never sorted: if the middle one is below the inner one, sliding outwards gets slower in between. The values then apply exactly as entered, and a note next to the speed fields spells out the order.',
     helpDriveControlTitle: 'Joystick or direction keys', helpDriveControlText: 'The small button beside the drive field switches between the two; it shows the icon of the mode it switches to. For right-handed use it sits to the left of the field, for left-handed use mirrored to the right, directly above the drive status. The joystick drives like a remote control: direction and amount of deflection. The direction keys only know forward, backward and turning on the spot — no accidental steering while driving straight. They use their own slow speed for precise manoeuvring, adjustable under Settings › Drive speed.',
     helpPositionModeTitle: 'Position mode', helpPositionModeText: 'Every map works in local metres by default (“Relative”) — no input needed. By default Sunray counts those metres relative to the RTK base station, not to a point in the garden. You only need “Absolute” if you want to exchange the map with programs that expect real world coordinates: there you enter, once, in the menu under Maps, the GPS position the zero point should correspond to. Which point that is, is your choice — the mower has none of its own. Only if a reference point was set in the mower via AT+P does it compute against that one; then it is exactly that value. The origin belongs to the individual map, because different maps usually sit in different places. Without a valid origin the export stays in local metres — you cannot get this wrong.',
     helpLockTitle: 'Map lock', helpLockText: 'Finished maps can be locked against accidental changes.',
@@ -649,6 +657,9 @@ const ui = {
   driveModeBtn: $('driveModeBtn'), driveModeLabel: $('driveModeLabel'),
   driveButtons: $('driveButtons'), driveControlSelect: $('driveControlSelect'),
   cursorSpeedInput: $('cursorSpeedInput'), cursorSpeedRow: $('cursorSpeedRow'),
+  driveZonesToggle: $('driveZonesToggle'), driveZonesRow: $('driveZonesRow'),
+  driveZonesTurnToggle: $('driveZonesTurnToggle'), driveZonesTurnRow: $('driveZonesTurnRow'),
+  driveZoneOrderHint: $('driveZoneOrderHint'),
   extendWrap: $('extendWrap'), extendBtn: $('extendBtn'), extendBtnLabel: $('extendBtnLabel'),
   extendPanel: $('extendPanel'), extendPanelText: $('extendPanelText'),
   extendCancelBtn: $('extendCancelBtn'), extendDoneBtn: $('extendDoneBtn'),
@@ -770,6 +781,8 @@ const state = {
   driveVector: { linear: 0, angular: 0 },
   joystickPointerId: null,
   cursorPointerId: null,
+  cursorZone: null,
+  cursorKey: null,
   idleStopTimer: null,
   idleStopFailing: false,
   lastDriveSentAt: 0,
@@ -786,6 +799,7 @@ const state = {
     showTrail: true, showPointQuality: true, keepAwake: true,
     driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
     joystickScale: '1', handed: 'right', driveControl: 'joystick', cursorSpeedCms: 15,
+    driveZones: true, driveZonesTurn: false,
   },
   telemetry: {
     x: null, y: null, delta: null, solution: null, age: null, accuracy: null,
@@ -906,6 +920,8 @@ function refreshControlUi() {
   const { min, max } = driveSpeedLimits();
   const decimal = (v) => v.toFixed(2).replace('.', state.language === 'de' ? ',' : '.');
   if (ui.driveSpeedValue) ui.driveSpeedValue.textContent = `${decimal(min)} – ${decimal(max)} m/s`;
+  // Auch der Sprachwechsel laeuft hier durch (applyLanguage), der Hinweistext ist dynamisch.
+  refreshDriveZoneHint();
   if (!available) {
     clearInterval(state.driveTimer);
     state.driveTimer = null;
@@ -949,17 +965,105 @@ function cursorSpeedLimits() {
   return { min: CURSOR_SPEED_MIN_CMS, max, value };
 }
 
+const CURSOR_DIRECTIONS = ['up', 'down', 'left', 'right'];
+
 /**
- * Fahrbefehl einer der vier Richtungstasten. Vorwaerts/rueckwaerts ist die eingestellte
- * Geschwindigkeit als Laengsfahrt. Links/rechts ist eine **Drehung auf der Stelle**: linear 0,
- * dazu eine Drehrate — genau das, was der Joystick bei reiner Seitwaertsauslenkung schon sendet.
+ * Die drei Geschwindigkeitszonen einer Richtungstaste, von der Mitte nach aussen. **Die einzige
+ * Stelle, die die Grenzen nennt** — das Stylesheet bekommt sie ueber die beiden CSS-Variablen,
+ * die `applyDriveZonePreferences()` von hier aus setzt, damit die gezeichneten Striche und die
+ * gefahrene Geschwindigkeit nicht auseinanderlaufen koennen.
+ *
+ * `until` ist der Anteil der Strecke **Mitte -> Aussenkante**, nicht der sichtbaren Tastenlaenge:
+ * die Mitte selbst ist ein winziges totes Feld zwischen den vier Tasten, und „von der Mitte nach
+ * aussen" ist die Strecke, die der Finger tatsaechlich zurueckzulegen hat.
+ */
+const DRIVE_ZONES = [
+  { key: 'slow', until: 0.40 },
+  { key: 'normal', until: 0.70 },
+  { key: 'fast', until: 1 },
+];
+
+/**
+ * Die Geschwindigkeit je Zone — **ohne eine einzige neue Zahl**. Langsam ist das Joystick-Minimum,
+ * normal die bisherige Tastengeschwindigkeit, schnell das Joystick-Maximum. Damit entsteht keine
+ * Geschwindigkeit, die der Nutzer nicht ohnehin schon fuer das Fahren von Hand freigegeben hat,
+ * und die alte Auflage „Rangieren nie schneller als der Joystick" gilt unveraendert weiter.
+ *
+ * Eine aufsteigende Reihenfolge wird **nicht** erzwungen: `driveSpeedLimits()` sichert nur
+ * `min < max`, die mittlere Zone kann darunter liegen, wenn der Nutzer das Joystick-Minimum hoch
+ * und die Tastengeschwindigkeit niedrig setzt. Die Werte gelten dann wie eingetragen.
+ */
+function cursorZoneSpeeds() {
+  const { min, max } = driveSpeedLimits();
+  return { slow: min, normal: cursorSpeedLimits().value / 100, fast: max };
+}
+
+/**
+ * Steigt die Staffel an? **Die einzige Stelle, die das entscheidet.** `driveSpeedLimits()`
+ * sichert nur `min < max`, `cursorSpeedLimits()` deckelt die mittlere Zone auf `max` —
+ * ungeprueft bleibt `normal` gegen `langsam`: wer das Joystick-Minimum hoch und die
+ * Tastengeschwindigkeit niedrig setzt, bekommt etwa 30 / 5 / 45 cm/s.
+ *
+ * Die Werte gelten dann **wie eingetragen**. Sie werden weder sortiert noch stillschweigend
+ * angehoben — eine heimliche Untergrenze wuerde eine Zahl veraendern, die der Nutzer selbst
+ * eingetippt hat. Sichtbar gemacht wird der Fall stattdessen von `refreshDriveZoneHint()`.
+ *
+ * Gemeldet wird nur ein echter Rueckschritt, nicht blosse Gleichheit: zwei gleiche Werte machen
+ * das Schieben nach aussen nirgends langsamer, es gaebe also nichts zu erklaeren.
+ */
+function cursorZoneLadder() {
+  const speeds = cursorZoneSpeeds();
+  const cms = DRIVE_ZONES.map((zone) => Math.round(speeds[zone.key] * 100));
+  return { cms, descends: cms.some((value, index) => index > 0 && value < cms[index - 1]) };
+}
+
+/** Wirkt die Zoneneinteilung fuer diese Richtung? Drehen hat einen eigenen Schalter. */
+function cursorZonesActive(direction) {
+  if (!state.view.driveZones) return false;
+  if (direction === 'left' || direction === 'right') return Boolean(state.view.driveZonesTurn);
+  return true;
+}
+
+/**
+ * Welche Zone liegt unter dem Finger? Gemessen als Anteil der Strecke von der Mitte des
+ * Tastenkreuzes zur Aussenkante, **laengs** der gedrueckten Richtung. Quer dazu wird nichts
+ * geprueft: der Finger darf die Taste seitlich verlassen, die Zeigererfassung haelt die Fahrt,
+ * und der Zonenwechsel soll allein vom Schieben nach aussen kommen.
+ *
+ * Ohne messbares Feld (vor dem ersten Zeichnen) gilt die **mittlere** Zone — also genau das
+ * Verhalten ohne Zoneneinteilung, statt einer geratenen Geschwindigkeit.
+ */
+function cursorZoneFromPointer(direction, event) {
+  const rect = ui.driveButtons.getBoundingClientRect?.();
+  const across = direction === 'left' || direction === 'right';
+  const half = ((across ? rect?.width : rect?.height) || 0) / 2;
+  if (!(half > 0) || !Number.isFinite(event?.clientX) || !Number.isFinite(event?.clientY)) return 'normal';
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const outward = direction === 'up' ? cy - event.clientY
+    : direction === 'down' ? event.clientY - cy
+      : direction === 'left' ? cx - event.clientX
+        : event.clientX - cx;
+  const share = Math.min(1, Math.max(0, outward / half));
+  return (DRIVE_ZONES.find((zone) => share < zone.until) || DRIVE_ZONES[DRIVE_ZONES.length - 1]).key;
+}
+
+/**
+ * Fahrbefehl einer der vier Richtungstasten. Vorwaerts/rueckwaerts ist die Geschwindigkeit der
+ * Zone als Laengsfahrt. Links/rechts ist eine **Drehung auf der Stelle**: linear 0, dazu eine
+ * Drehrate — genau das, was der Joystick bei reiner Seitwaertsauslenkung schon sendet.
  * Aus cm/s wird die Drehrate ueber die halbe Spurweite: laufen beide Raeder gegenlaeufig mit v,
  * dreht der Maeher mit v / (Breite/2). Die Breite fuehrt die App bereits als Maeherbreite.
- * Gedeckelt auf die eingestellte Hoechst-Drehrate.
+ * Gedeckelt auf die eingestellte Hoechst-Drehrate. **Die Umrechnung steht weiterhin nur hier** —
+ * die Drehzonen erben die Staffel ueber `v`, sie rechnen nicht eigenstaendig.
+ *
+ * Ohne Zone (oder bei abgeschalteter Einteilung) gilt die mittlere Geschwindigkeit, also der
+ * Zustand vor den Zonen.
  */
-function cursorDriveVector(direction) {
+function cursorDriveVector(direction, zone = null) {
   const { turn } = driveSpeedLimits();
-  const v = cursorSpeedLimits().value / 100;
+  const speeds = cursorZoneSpeeds();
+  const v = cursorZonesActive(direction) && zone ? (speeds[zone] ?? speeds.normal) : speeds.normal;
   if (direction === 'up') return { linear: v, angular: 0 };
   if (direction === 'down') return { linear: -v, angular: 0 };
   const halfTrack = clampNumber(state.view.mowerWidth, 0.10, 3.00, 0.35) / 2;
@@ -1076,6 +1180,18 @@ function startDriveHeartbeat() {
   }, DRIVE_HEARTBEAT_MS);
 }
 
+/**
+ * Zeigt die Zone, in der gerade gefahren wird, an der gedrueckten Taste. Getragen wird das von
+ * `data-zone` an genau dem Tastenelement, das den Zeiger bekommen hat — nicht von einer Suche
+ * ueber alle Tasten, damit keine zweite Quelle der Frage „welche Taste ist aktiv?" entsteht.
+ */
+function refreshCursorZoneVisual() {
+  const key = state.cursorKey;
+  if (!key?.dataset) return;
+  if (state.cursorZone && cursorZonesActive(state.driveDirection)) key.dataset.zone = state.cursorZone;
+  else delete key.dataset.zone;
+}
+
 /** Eine der vier Richtungstasten wird gedrueckt: fahren, bis sie losgelassen wird. */
 function beginCursorDrive(direction, event) {
   if (event?.preventDefault) event.preventDefault();
@@ -1086,11 +1202,40 @@ function beginCursorDrive(direction, event) {
   stopDrive({ send: false });
   state.driveDirection = direction;
   state.cursorPointerId = event?.pointerId ?? null;
-  state.driveVector = cursorDriveVector(direction);
+  state.cursorKey = event?.target?.closest?.('[data-direction]') || null;
+  state.cursorZone = cursorZoneFromPointer(direction, event);
+  state.driveVector = cursorDriveVector(direction, state.cursorZone);
+  refreshCursorZoneVisual();
   try { event?.currentTarget?.setPointerCapture?.(event.pointerId); } catch (_) {}
   sendDriveVector(state.driveVector.linear, state.driveVector.angular, { force: true })
     .catch((error) => reportBleError('AT+M', error));
   startDriveHeartbeat();
+}
+
+/**
+ * Der Finger wird auf der gedrueckten Taste verschoben: die Zone folgt ihm. **Diese Funktion
+ * veraendert eine laufende Fahrt und startet nie eine.** Ohne gedrueckte Richtungstaste — also
+ * `state.driveDirection` gleich `null` oder `'joystick'` — kehrt sie ohne jede Wirkung zurueck;
+ * sie ruft weder `beginCursorDrive()` noch `startDriveHeartbeat()` und ruehrt keinen Zeitgeber
+ * an, kann eine bereits beendete Fahrt also auch nicht am Leben halten.
+ *
+ * Zuerst wird `state.driveVector` gesetzt, erst danach gesendet: `sendDriveVector()` verwirft
+ * eine ungezwungene Sendung innerhalb von DRIVE_POINTER_MIN_INTERVAL_MS oder waehrend eines
+ * laufenden Schreibvorgangs — der 650-ms-Takt traegt den neuen Wert dann nach. Genau dieses
+ * Muster nutzt der Joystick in `updateJoystickFromPointer()` bereits.
+ */
+function updateCursorDriveFromPointer(event) {
+  const direction = state.driveDirection;
+  if (!CURSOR_DIRECTIONS.includes(direction)) return;
+  if (state.cursorPointerId !== null && event?.pointerId !== state.cursorPointerId) return;
+  if (!cursorZonesActive(direction)) return;
+  const zone = cursorZoneFromPointer(direction, event);
+  if (zone === state.cursorZone) return;
+  state.cursorZone = zone;
+  state.driveVector = cursorDriveVector(direction, zone);
+  refreshCursorZoneVisual();
+  sendDriveVector(state.driveVector.linear, state.driveVector.angular)
+    .catch((error) => reportBleError('AT+M', error));
 }
 
 function stopDrive({ send = true } = {}) {
@@ -1100,6 +1245,9 @@ function stopDrive({ send = true } = {}) {
   state.driveDirection = null;
   state.joystickPointerId = null;
   state.cursorPointerId = null;
+  state.cursorZone = null;
+  refreshCursorZoneVisual();
+  state.cursorKey = null;
   state.driveVector = { linear: 0, angular: 0 };
   resetJoystickVisual();
   if (ui.driveState) ui.driveState.textContent = tr('driveIdle');
@@ -1168,9 +1316,12 @@ function loadViewPreferences() {
     state.view.handed = saved.handed === 'left' || saved.driveLabelSide === 'right' ? 'left' : 'right';
     state.view.driveControl = saved.driveControl === 'buttons' ? 'buttons' : 'joystick';
     state.view.cursorSpeedCms = Number.isFinite(Number(saved.cursorSpeedCms)) ? Number(saved.cursorSpeedCms) : 15;
+    state.view.driveZones = saved.driveZones !== false;
+    state.view.driveZonesTurn = saved.driveZonesTurn === true;
   } catch (_) {
     state.view = { showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, autoCaptureIntervalS: 5, autoCaptureMode: 'time', autoCaptureDistanceCm: AUTO_CAPTURE_DISTANCE_DEFAULT_CM, showTrail: true, showPointQuality: true, keepAwake: true, driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
-      joystickScale: '1', handed: 'right', driveControl: 'joystick', cursorSpeedCms: 15 };
+      joystickScale: '1', handed: 'right', driveControl: 'joystick', cursorSpeedCms: 15,
+      driveZones: true, driveZonesTurn: false };
   }
 }
 
@@ -1211,6 +1362,8 @@ function applyViewPreferencesToUi() {
   ui.cursorSpeedInput.min = String(cursor.min);
   ui.cursorSpeedInput.max = String(cursor.max);
   ui.cursorSpeedInput.value = String(cursor.value);
+  ui.driveZonesToggle.checked = state.view.driveZones;
+  ui.driveZonesTurnToggle.checked = state.view.driveZonesTurn;
   applyDriveControlMode();
   applyDriveZonePreferences();
 }
@@ -1237,6 +1390,11 @@ function updateViewPreferencesFromUi() {
   // Gegen die aktuelle Hoechstgeschwindigkeit pruefen: Rangieren darf nie schneller werden.
   state.view.cursorSpeedCms = Math.round(clampNumber(ui.cursorSpeedInput.value,
     CURSOR_SPEED_MIN_CMS, Math.round(driveSpeedLimits().max * 100), state.view.cursorSpeedCms));
+  state.view.driveZones = ui.driveZonesToggle.checked;
+  state.view.driveZonesTurn = ui.driveZonesTurnToggle.checked;
+  // Eine laufende Fahrt wuerde sonst mit der Geschwindigkeit der alten Einstellung weiterlaufen,
+  // bis der Finger losgelassen wird — das Menue ist aber ohnehin nur ohne Fahreingabe erreichbar.
+  if (driveInputActive()) stopDrive();
   applyDriveControlMode();
   applyDriveZonePreferences();
   saveViewPreferences();
@@ -1522,6 +1680,25 @@ function applyHandedness() {
 }
 
 /**
+ * Der Hinweis auf eine absteigende Staffel: dauerhafte Zeile bei den Geschwindigkeitsfeldern,
+ * kein Dialog — dasselbe Muster wie `#cassandraSkippedHint` neben den Export-Knoepfen. Er
+ * **sperrt nichts**: die Zonen bleiben vollstaendig bedienbar, benannt wird nur ihre Reihenfolge.
+ *
+ * Gezeigt wird er nur, wenn die Staffel ueberhaupt wirkt — im Tastenmodus mit eingeschalteten
+ * Zonen. Ohne Zonen gilt allein der mittlere Wert, es wird also nirgends langsamer; im
+ * Joystick-Modus ist das betroffene Eingabefeld selbst ausgeblendet (`cursorSpeedRow`).
+ */
+function refreshDriveZoneHint() {
+  const ladder = cursorZoneLadder();
+  const zonesApply = state.view.driveControl === 'buttons' && Boolean(state.view.driveZones);
+  const show = zonesApply && ladder.descends;
+  ui.driveZoneOrderHint.hidden = !show;
+  ui.driveZoneOrderHint.textContent = show
+    ? tr('driveZoneOrderHint', { slow: ladder.cms[0], normal: ladder.cms[1], fast: ladder.cms[2] })
+    : '';
+}
+
+/**
  * Schaltet zwischen Joystick und Richtungstasten um. Beide sitzen in derselben Gitterspalte der
  * Fahrzone, es ist immer genau einer sichtbar — Groesseneinstellung, Fahrtanzeige und
  * Linkshaender-Spiegelung gelten deshalb unveraendert fuer beide.
@@ -1537,6 +1714,13 @@ function applyDriveControlMode() {
   ui.driveModeLabel.textContent = tr(buttons ? 'driveModeToJoystick' : 'driveModeToButtons');
   ui.driveModeBtn.setAttribute('aria-pressed', String(buttons));
   ui.cursorSpeedRow.hidden = !buttons;
+  ui.driveZonesRow.hidden = !buttons;
+  // Der Schalter fuer die Drehtasten hat ohne Zoneneinteilung nichts zu schalten.
+  ui.driveZonesTurnRow.hidden = !buttons || !state.view.driveZones;
+  // Die Striche auf den Tasten haengen an denselben beiden Groessen wie die Wirkung.
+  ui.driveButtons.classList.toggle('zones-on', Boolean(state.view.driveZones));
+  ui.driveButtons.classList.toggle('zones-turn', Boolean(state.view.driveZones && state.view.driveZonesTurn));
+  refreshDriveZoneHint();
 }
 
 /** Schnellumschalter in der Kartenleiste — dieselbe Einstellung wie im Menue. */
@@ -1551,6 +1735,11 @@ function toggleDriveControl() {
 function applyDriveZonePreferences() {
   const scale = JOYSTICK_SCALES.includes(state.view.joystickScale) ? state.view.joystickScale : '1';
   document.documentElement.style.setProperty('--joystick-scale', scale);
+  // Die Zonengrenzen stehen nur in DRIVE_ZONES; das Stylesheet zeichnet die Striche aus diesen
+  // beiden Variablen. Schriebe es eigene Prozentwerte, koennten Strich und Wirkung auseinander
+  // laufen, ohne dass es jemandem auffaellt.
+  document.documentElement.style.setProperty('--drive-zone-inner', `${DRIVE_ZONES[0].until * 100}%`);
+  document.documentElement.style.setProperty('--drive-zone-outer', `${DRIVE_ZONES[1].until * 100}%`);
   applyHandedness();
 }
 
@@ -5706,6 +5895,9 @@ function bindEvents() {
     const key = event.target.closest?.('[data-direction]');
     if (key) beginCursorDrive(key.dataset.direction, event);
   });
+  // Zonenwechsel beim Schieben. Bewusst **kein** eigener Startweg: updateCursorDriveFromPointer()
+  // steigt ohne gedrueckte Richtungstaste sofort wieder aus.
+  ui.driveButtons.addEventListener('pointermove', (event) => updateCursorDriveFromPointer(event));
   ['pointerup', 'pointercancel', 'lostpointercapture', 'pointerleave'].forEach((name) => ui.driveButtons
     .addEventListener(name, (event) => {
       if (state.cursorPointerId === null || event.pointerId === state.cursorPointerId) stopDrive();
@@ -5716,7 +5908,8 @@ function bindEvents() {
     if (state.joystickPointerId === null || event.pointerId === state.joystickPointerId) stopDrive();
   }));
   [ui.driveSpeedMinInput, ui.driveSpeedMaxInput, ui.driveTurnMaxInput, ui.joystickSizeSelect, ui.handedSelect,
-    ui.driveControlSelect, ui.cursorSpeedInput].forEach((input) => input.addEventListener('change', () => {
+    ui.driveControlSelect, ui.cursorSpeedInput, ui.driveZonesToggle, ui.driveZonesTurnToggle]
+    .forEach((input) => input.addEventListener('change', () => {
     updateViewPreferencesFromUi();
     applyViewPreferencesToUi();
   }));

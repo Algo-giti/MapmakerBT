@@ -267,6 +267,21 @@ nichts versehentlich lenkt. Sie fahren mit einer **eigenen, langsamen Geschwindi
 (Startwert 15 cm/s, nie schneller als die eingestellte Höchstgeschwindigkeit); der Joystick bleibt
 davon unberührt. Halten und Loslassen verhalten sich wie beim Joystick.
 
+Jede Richtungstaste ist dabei **längs in drei Geschwindigkeitszonen geteilt**: innen die
+eingestellte Mindestgeschwindigkeit, in der Mitte der Tastenwert, außen die Höchstgeschwindigkeit.
+Es kommt dadurch keine neue Einstellung hinzu – es sind dieselben drei Werte, die unter
+*Einstellungen › Fahrgeschwindigkeit* ohnehin stehen. Die Zone folgt dem Finger, solange er
+gedrückt bleibt: weiter nach außen schieben heißt schneller, zurück zur Mitte wieder langsamer.
+Die Grenzen sind auf der Taste eingezeichnet, die gerade gefahrene Zone ist hervorgehoben.
+Die Einteilung lässt sich abschalten – dann gilt überall der Tastenwert –, und ob sie auch beim
+Drehen auf der Stelle gilt, ist ein eigener Schalter (Vorgabe: aus).
+
+Die drei Werte sind frei einstellbar, und die App sortiert sie **nicht**: wer die
+Mindestgeschwindigkeit des Joysticks über den Tastenwert legt, bekommt eine Staffel, die
+zwischendurch langsamer wird. Geändert wird davon nichts – stattdessen steht bei den
+Geschwindigkeitsfeldern ein Hinweis, der die drei Werte in ihrer tatsächlichen Reihenfolge nennt.
+Die Zonen bleiben dabei voll bedienbar.
+
 Diese App steuert bewusst **kein Mähen**: kein Start, kein Stop, kein Docking und keine
 Mähmotor-Steuerung. Sie nimmt ausschließlich Karten auf.
 
@@ -675,6 +690,19 @@ for left-handed use mirrored to the right, directly above the drive status. The 
 turning on the spot – no diagonals, so nothing steers by accident while driving straight. They use
 their **own slow speed** (15 cm/s to start with, never faster than the configured maximum); the
 joystick is unaffected. Press and release behave just like the joystick.
+
+Each direction key is **split lengthwise into three speed zones**: the configured minimum speed on
+the inside, the key speed in the middle, the maximum speed on the outside. No new setting is added
+– these are the same three values already under *Settings › Drive speed*. The zone follows your
+finger while it stays down: sliding further out means faster, back towards the centre slower again.
+The boundaries are drawn on the key and the zone currently in use is highlighted. The split can be
+switched off – the key speed then applies everywhere – and whether it also applies to turning on
+the spot is a separate switch (off by default).
+
+The three values are yours to set and the app does **not** sort them: if you put the joystick
+minimum above the key speed, you get a ladder that slows down in between. Nothing is changed for
+you – instead a note next to the speed fields spells out the three values in the order they
+actually apply. The zones stay fully usable.
 
 This app deliberately does **not** control mowing: no start, no stop, no docking and no mowing
 motor control. It only records maps.

@@ -20,6 +20,8 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'renderPositionMode', 'updatePositionModeFromUi', 'mapToGeoJson', 'setActiveMapById',
   'mapOriginInUse', 'originFromInputs', 'normalizeOrigin',
   'applyDriveControlMode', 'toggleDriveControl', 'beginCursorDrive', 'cursorDriveVector', 'cursorSpeedLimits',
+  'updateCursorDriveFromPointer', 'cursorZoneFromPointer', 'cursorZoneSpeeds', 'DRIVE_ZONES',
+  'cursorZoneLadder', 'refreshDriveZoneHint',
   'renameMapById', 'duplicateMapById', 'uniqueCopyName', 'askText', 'localizedMapName', 'MAP_NAME_MAX',
   'stopDrive', 'saveViewPreferences',
   'log', 'renderDebugLog', 'onDebugLogScroll', 'scrollLogToEnd', 'clearDebugLog',
@@ -1284,6 +1286,265 @@ test('Halten fahert, Loslassen stoppt sofort', async () => {
   await clock.runFor(50);
   assert.strictEqual(t.state.driveDirection, null);
   assert.ok(tx.last().startsWith('AT+M,0,0'), `Loslassen stoppt sofort, gesendet: ${tx.last()}`);
+});
+
+/** Ein Punkt auf dem Tastenkreuz, `share` als Anteil der Strecke Mitte -> Aussenkante. */
+function padPoint(t, direction, share) {
+  const rect = t.ui.driveButtons.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const away = share * (direction === 'left' || direction === 'right' ? rect.width : rect.height) / 2;
+  if (direction === 'up') return { clientX: cx, clientY: cy - away };
+  if (direction === 'down') return { clientX: cx, clientY: cy + away };
+  if (direction === 'left') return { clientX: cx - away, clientY: cy };
+  return { clientX: cx + away, clientY: cy };
+}
+
+/** Eine Richtungstaste an der Stelle `share` druecken — samt Tastenelement, wie beim echten Tipp. */
+function pressKey(t, direction, share, pointerId = 1) {
+  const key = { dataset: { direction }, closest: () => key };
+  t.beginCursorDrive(direction, {
+    pointerId, target: key, currentTarget: t.ui.driveButtons, preventDefault() {}, ...padPoint(t, direction, share),
+  });
+  return key;
+}
+
+/** Auslieferungswerte der Staffel: 8 / 15 / 25 cm/s, ohne eine einzige neue Zahl. */
+function zonedSetup() {
+  const { t, clock } = setup();
+  const tx = readyToDrive(t);
+  t.state.view.driveSpeedMin = 0.08;
+  t.state.view.driveSpeedMax = 0.25;
+  t.state.view.cursorSpeedCms = 15;
+  t.state.view.driveZones = true;
+  t.state.view.driveZonesTurn = false;
+  t.toggleDriveControl();
+  return { t, clock, tx };
+}
+
+test('Die Zone haengt an der Fingerposition, nicht an der Taste allein', async () => {
+  const { t, clock, tx } = zonedSetup();
+  // Innen langsam, aussen schnell — gemessen am tatsaechlich gesendeten Befehl.
+  for (const [share, speed] of [[0.10, '0.08'], [0.50, '0.15'], [0.90, '0.25']]) {
+    pressKey(t, 'up', share);
+    await clock.runFor(50);
+    assert.ok(tx.last().startsWith(`AT+M,${speed},0.00`),
+      `bei ${Math.round(share * 100)} % von der Mitte muss ${speed} m/s rausgehen, gesendet: ${tx.last()}`);
+    t.stopDrive();
+    await clock.runFor(50);
+  }
+  // Die Grenzen selbst gehoeren zur jeweils aeusseren Zone.
+  const [inner, outer] = t.DRIVE_ZONES.map((zone) => zone.until);
+  assert.strictEqual(t.cursorZoneFromPointer('up', padPoint(t, 'up', inner)), 'normal');
+  assert.strictEqual(t.cursorZoneFromPointer('up', padPoint(t, 'up', outer)), 'fast');
+  // Und wer ueber die Kante hinausschiebt, bleibt in der schnellsten Zone statt herauszufallen.
+  assert.strictEqual(t.cursorZoneFromPointer('up', padPoint(t, 'up', 3)), 'fast');
+});
+
+test('Der Wechsel beim Schieben wirkt auf den gesendeten Befehl', async () => {
+  const { t, clock, tx } = zonedSetup();
+  const key = pressKey(t, 'up', 0.10);
+  await clock.runFor(50);
+  assert.ok(tx.last().startsWith('AT+M,0.08'), `Start innen, gesendet: ${tx.last()}`);
+  assert.strictEqual(key.dataset.zone, 'slow', 'die aktive Zone ist an der Taste markiert');
+
+  // Nach aussen schieben, ohne loszulassen.
+  t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, 'up', 0.90) });
+  // **Zuerst der Vektor:** die Sendung kann an DRIVE_POINTER_MIN_INTERVAL_MS scheitern, der
+  // 650-ms-Takt muss den neuen Wert trotzdem tragen.
+  assert.strictEqual(t.state.driveVector.linear, 0.25, 'der Vektor folgt dem Finger sofort');
+  assert.strictEqual(key.dataset.zone, 'fast', 'die Markierung wandert mit');
+  await clock.runFor(900);
+  assert.ok(tx.last().startsWith('AT+M,0.25'), `spaetestens der Takt traegt es, gesendet: ${tx.last()}`);
+
+  t.stopDrive();
+  await clock.runFor(50);
+  assert.strictEqual(key.dataset.zone, undefined, 'nach dem Loslassen ist keine Zone mehr markiert');
+});
+
+test('Ohne Zoneneinteilung faehrt die Taste wie zuvor', async () => {
+  const { t, clock, tx } = zonedSetup();
+  t.state.view.driveZones = false;
+  for (const share of [0.10, 0.50, 0.90]) {
+    const key = pressKey(t, 'up', share);
+    await clock.runFor(50);
+    assert.ok(tx.last().startsWith('AT+M,0.15,0.00'),
+      `ohne Zonen gilt ueberall der eingetragene Wert, bei ${share} gesendet: ${tx.last()}`);
+    assert.strictEqual(key.dataset.zone, undefined, 'ohne Zonen wird auch nichts markiert');
+    // Und das Schieben aendert daran nichts.
+    t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, 'up', 0.95) });
+    assert.strictEqual(t.state.driveVector.linear, 0.15, 'abgeschaltet heisst abgeschaltet');
+    t.stopDrive();
+    await clock.runFor(50);
+  }
+});
+
+test('Der eigene Schalter entscheidet ueber die Zonen beim Drehen', async () => {
+  const { t, clock, tx } = zonedSetup();
+  // Halbe Spurweite 0,25 m und ein hoher Deckel, damit die Drehraten unverfaelscht vergleichbar
+  // sind: 0,15 / 0,25 = 0,60 rad/s gegen 0,25 / 0,25 = 1,00 rad/s.
+  t.state.view.mowerWidth = 0.50;
+  t.state.view.driveTurnMax = 2.00;
+
+  pressKey(t, 'left', 0.90);
+  await clock.runFor(50);
+  assert.ok(tx.last().startsWith('AT+M,0.00,0.60'),
+    `ohne den Schalter dreht die Taste ueberall gleich, gesendet: ${tx.last()}`);
+  t.stopDrive();
+  await clock.runFor(50);
+
+  t.state.view.driveZonesTurn = true;
+  pressKey(t, 'left', 0.90);
+  await clock.runFor(50);
+  assert.ok(tx.last().startsWith('AT+M,0.00,1.00'),
+    `mit Schalter erbt das Drehen dieselbe Staffel, gesendet: ${tx.last()}`);
+  // Vorwaerts war davon nie betroffen.
+  t.stopDrive();
+  await clock.runFor(50);
+  t.state.view.driveZonesTurn = false;
+  pressKey(t, 'up', 0.90);
+  await clock.runFor(50);
+  assert.ok(tx.last().startsWith('AT+M,0.25'),
+    `der Drehschalter darf das Fahren nicht anfassen, gesendet: ${tx.last()}`);
+  t.stopDrive();
+});
+
+test('Schieben startet keine Fahrt und haelt keine beendete am Leben', async () => {
+  const { t, clock, tx } = zonedSetup();
+  // (a) Es wurde nie gedrueckt.
+  t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, 'up', 0.90) });
+  await clock.runFor(1500);
+  assert.strictEqual(t.state.driveDirection, null, 'ein Wisch ueber das Kreuz darf nichts starten');
+  assert.deepStrictEqual(tx.drives(), [], 'und erst recht keinen Fahrbefehl senden');
+  assert.strictEqual(t.state.driveTimer, null, 'auch keinen Takt anwerfen');
+
+  // (b) Nach dem Loslassen.
+  pressKey(t, 'up', 0.10);
+  await clock.runFor(50);
+  t.stopDrive();
+  await clock.runFor(50);
+  const afterStop = tx.drives().length;
+  t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, 'up', 0.90) });
+  await clock.runFor(1500);
+  assert.strictEqual(t.state.driveDirection, null, 'eine beendete Fahrt bleibt beendet');
+  assert.strictEqual(tx.drives().length, afterStop, 'nach dem Stopp geht nichts mehr raus');
+  assert.strictEqual(t.state.driveTimer, null, 'und es laeuft kein Takt weiter');
+
+  // (c) Ein fremder Zeiger waehrend einer laufenden Tastenfahrt aendert nichts.
+  pressKey(t, 'up', 0.10, 1);
+  await clock.runFor(50);
+  t.updateCursorDriveFromPointer({ pointerId: 9, ...padPoint(t, 'up', 0.90) });
+  assert.strictEqual(t.state.driveVector.linear, 0.08, 'ein zweiter Finger verstellt die Zone nicht');
+
+  // (d) Waehrend der Joystick faehrt, ist das Tastenkreuz nicht zustaendig.
+  t.stopDrive();
+  t.state.driveDirection = 'joystick';
+  t.state.driveVector = { linear: 0.11, angular: 0 };
+  t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, 'up', 0.90) });
+  assert.strictEqual(t.state.driveVector.linear, 0.11, 'der Joystick fuehrt seinen Vektor selbst');
+  t.stopDrive();
+});
+
+test('Der Schiebe-Pfad ist verdrahtet, und alle sechs Stoppwege stehen weiterhin', () => {
+  // Klicks lassen sich im Harness nicht ausloesen (addEventListener ist ein No-Op), deshalb
+  // wird die Verdrahtung im Quelltext festgehalten — dieselbe Bauart wie beim Verschieben-Knopf.
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  assert.ok(/ui\.driveButtons\.addEventListener\('pointermove',[\s\S]{0,90}?updateCursorDriveFromPointer\(/.test(src),
+    'das Schieben muss am Tastenkreuz haengen');
+  assert.ok(/\['pointerup', 'pointercancel', 'lostpointercapture', 'pointerleave'\][\s\S]{0,120}?ui\.driveButtons[\s\S]{0,200}?stopDrive\(\)/.test(src),
+    'alle vier Zeigerenden muessen weiterhin stoppen');
+  assert.ok(/document\.hidden\)\s*\{\s*stopDrive\(\)/.test(src), 'verdeckte Seite stoppt');
+  assert.ok(/window\.addEventListener\('blur',\s*\(\)\s*=>\s*\{\s*stopDrive\(\)/.test(src), 'Fokusverlust stoppt');
+
+  // **Die harte Auflage aus dem Bericht, strukturell festgehalten:** der Schiebe-Pfad darf
+  // nichts starten und nichts am Leben halten. Ein Aufruf von beginCursorDrive(),
+  // startDriveHeartbeat() oder ein eigener Zeitgeber waere genau das.
+  const start = src.indexOf('function updateCursorDriveFromPointer');
+  assert.ok(start > 0, 'der Schiebe-Pfad muss eine eigene Funktion sein');
+  const body = src.slice(start, src.indexOf('\n}', start));
+  for (const verboten of ['beginCursorDrive', 'startDriveHeartbeat', 'setInterval', 'setTimeout', 'driveTimer']) {
+    assert.ok(!body.includes(verboten),
+      `der Schiebe-Pfad darf ${verboten} nicht anfassen — er veraendert eine Fahrt, er fuehrt sie nicht`);
+  }
+});
+
+test('Eine absteigende Staffel wird benannt, nicht stillschweigend korrigiert', async () => {
+  const { t, clock, tx } = zonedSetup();
+  // Ueber die echten Eingabefelder, nicht ueber state.view: genau diesen Weg nimmt der Nutzer.
+  t.applyViewPreferencesToUi();
+  const setSpeeds = (min, max, cursor) => {
+    t.ui.driveSpeedMinInput.value = min;
+    t.ui.driveSpeedMaxInput.value = max;
+    t.ui.cursorSpeedInput.value = cursor;
+    t.updateViewPreferencesFromUi();
+  };
+
+  // Joystick-Minimum ueber der Tastengeschwindigkeit: 30 / 5 / 45 cm/s.
+  setSpeeds('0.30', '0.45', '5');
+  assert.strictEqual(t.ui.driveZoneOrderHint.hidden, false, 'die absteigende Staffel muss dastehen');
+  const text = t.ui.driveZoneOrderHint.textContent;
+  assert.ok(!text.includes('{'), `Platzhalterrest im Hinweis: ${text}`);
+  const zahlen = [...text.matchAll(/\d+/g)].map((m) => m[0]);
+  assert.deepStrictEqual(zahlen, ['30', '5', '45'],
+    `der Hinweis muss die drei Werte in ihrer tatsaechlichen Reihenfolge nennen, steht da: ${text}`);
+
+  // **Der Hinweis sperrt nichts:** die Zonen fahren weiterhin die eingetragenen Werte.
+  for (const [share, speed] of [[0.10, '0.30'], [0.50, '0.05'], [0.90, '0.45']]) {
+    pressKey(t, 'up', share);
+    await clock.runFor(50);
+    assert.ok(tx.last().startsWith(`AT+M,${speed},0.00`),
+      `die Werte gelten wie eingetragen, bei ${share} gesendet: ${tx.last()}`);
+    t.stopDrive();
+    await clock.runFor(50);
+  }
+  // Und nichts davon ist unterwegs sortiert oder angehoben worden.
+  assert.strictEqual(t.state.view.driveSpeedMin, 0.30);
+  assert.strictEqual(t.state.view.cursorSpeedCms, 5);
+  // Spread, weil das Array aus dem Sandkasten eine fremde Array.prototype traegt.
+  assert.deepStrictEqual([...t.cursorZoneLadder().cms], [30, 5, 45]);
+
+  // Den Hinweis gibt es auch auf Englisch, mit denselben Zahlen — ueber den echten Sprachwechsel,
+  // damit auch die Nachfuehrung beim Umschalten mitgeprueft ist.
+  t.toggleLanguage();
+  assert.strictEqual(t.state.language, 'en');
+  assert.deepStrictEqual([...t.ui.driveZoneOrderHint.textContent.matchAll(/\d+/g)].map((m) => m[0]),
+    ['30', '5', '45'], 'auch die englische Fassung nennt die Staffel');
+  assert.ok(!t.ui.driveZoneOrderHint.textContent.includes('{'), 'Platzhalterrest in der englischen Fassung');
+  assert.notStrictEqual(t.ui.driveZoneOrderHint.textContent, text, 'und sie ist nicht der deutsche Satz');
+  t.toggleLanguage();
+  assert.strictEqual(t.ui.driveZoneOrderHint.textContent, text, 'zurueck auf Deutsch steht wieder der deutsche Satz');
+
+  // Der Moduswechsel fuehrt die Zeile mit: im Joystick-Modus ist das betroffene Feld ausgeblendet.
+  t.toggleDriveControl();
+  assert.strictEqual(t.ui.driveZoneOrderHint.hidden, true, 'im Joystick-Modus hat die Staffel nichts zu sagen');
+  t.toggleDriveControl();
+  assert.strictEqual(t.ui.driveZoneOrderHint.hidden, false, 'zurueck im Tastenmodus steht sie wieder da');
+  assert.deepStrictEqual([...t.ui.driveZoneOrderHint.textContent.matchAll(/\d+/g)].map((m) => m[0]),
+    ['30', '5', '45'], 'und nennt nach dem Wechsel dieselben Zahlen');
+
+  // Ohne Zonen wird nirgends langsamer — dann gaebe es nichts zu erklaeren.
+  t.ui.driveZonesToggle.checked = false;
+  t.updateViewPreferencesFromUi();
+  assert.strictEqual(t.ui.driveZoneOrderHint.hidden, true, 'ohne Zonen ist die Reihenfolge belanglos');
+  t.ui.driveZonesToggle.checked = true;
+
+  // Aufsteigende Staffel: kein Hinweis, und der Text bleibt leer statt nur ausgeblendet.
+  setSpeeds('0.08', '0.25', '15');
+  assert.strictEqual(t.ui.driveZoneOrderHint.hidden, true, 'eine aufsteigende Staffel ist nicht erklaerungsbeduerftig');
+  assert.strictEqual(t.ui.driveZoneOrderHint.textContent, '', 'und hinterlaesst keinen alten Text');
+  assert.strictEqual(t.cursorZoneLadder().descends, false);
+
+  // Zwei gleiche Werte sind kein Rueckschritt: es wird nichts langsamer.
+  setSpeeds('0.15', '0.25', '15');
+  assert.strictEqual(t.ui.driveZoneOrderHint.hidden, true, 'gleiche Werte machen das Schieben nirgends langsamer');
+
+  for (const key of ['driveZoneOrderHint']) {
+    const de = [...String(t.I18N.de[key]).matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
+    const en = [...String(t.I18N.en[key]).matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
+    assert.ok(de && en, `${key} fehlt in einer Sprache`);
+    assert.strictEqual(en, de, `${key}: unterschiedliche Platzhalter`);
+    assert.strictEqual(de, 'fast,normal,slow');
+  }
 });
 
 test('Links dreht auf der Stelle, ohne Vortrieb', async () => {

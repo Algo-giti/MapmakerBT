@@ -2355,6 +2355,15 @@ body.menu-open .app-frame { visibility: hidden; }
      das Feld hoechstens werden darf, ohne dass das Tastenkreuz unten herauslaeuft. */
   --drive-pad-key-min: 44px;
   --drive-pad-gap: 4px;
+  /* Waagerechter Versatz, der einer senkrecht zur 45-Grad-Diagonale gemessenen halben Fuge
+     entspricht: bei 45 Grad das 1/sqrt(2)-fache, also `gap / 2 * sqrt(2)`. Ohne diesen Faktor
+     waere die Fuge zwischen zwei Keilen schmaler als die zwischen Taste und Rand. */
+  --drive-pad-cut: calc(var(--drive-pad-gap) * 0.7071);
+  /* Die Rechnung stammt aus dem alten Dreierraster (drei gestapelte Tasten). Seit dem
+     diagonalen Schnitt ist sie nicht mehr die Herleitung, aber weiterhin die **schaerfere** der
+     beiden Schranken: der Keil ist an der inneren Zonengrenze `0,4 * F - 2 * cut` breit, was
+     schon ab 125 px Feldgroesse ueber dem Daumenziel liegt. 140 px erfuellt das mit Abstand;
+     `tests/layout-test.js` rechnet beides nach, statt es zu unterstellen. */
   --drive-field-min: calc(3 * var(--drive-pad-key-min) + 2 * var(--drive-pad-gap));
   --joystick-size: clamp(var(--drive-field-min), calc(25dvh * var(--joystick-scale, 1)),
     min(calc(240px * var(--joystick-scale, 1)), 38dvh, calc(100vw - var(--drive-side-reserve))));
@@ -2453,39 +2462,117 @@ body.menu-open .app-frame { visibility: hidden; }
      diese Asymmetrie hat gefehlt. Beide Steuerungen muessen dieselbe Randbox haben. */
   margin: 0;
   /* Ebenfalls Altlast: die alte Regel benennt Bereiche („forward“, „stop“ …), die es im
-     heutigen Markup nicht mehr gibt. Platziert wird ueber Zeilennummern, die Namen sind tote
-     Last und koennten ein kuenftiges `grid-area: forward` still ins Leere laufen lassen. */
+     heutigen Markup nicht mehr gibt. Sie ist tote Last und koennte ein kuenftiges
+     `grid-area: forward` still ins Leere laufen lassen. */
   grid-template-areas: none;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  gap: var(--drive-pad-gap);
+  grid-template-columns: none;
+  grid-template-rows: none;
+  /* **Diagonaler Schnitt statt Dreierraster.** Auf einem 3x3-Raster belegten die vier Tasten nur
+     die Kantenmitten; Mitte und Ecken lagen brach. Zur Mitte hin verlaengern laesst sich das dort
+     nicht, weil alle vier dieselbe Mittelzelle beanspruchen und sich ueberlagern wuerden. Die
+     Diagonalen teilen das Quadrat stattdessen ueberschneidungsfrei in vier Keile — jede Taste
+     reicht damit von ihrer Aussenkante bis fast an den Mittelpunkt und wird rund die Haelfte
+     laenger. Die Tasten liegen uebereinander und werden erst durch `clip-path` getrennt; die
+     Trefferpruefung folgt der Beschneidung, es kann also nur eine Taste gemeint sein. */
+  position: relative;
+  display: block;
+  /* Die Fugen zwischen den Keilen sind der durchscheinende Untergrund der Flaeche. */
+  background: var(--shell-border);
+  border-radius: 14px;
   touch-action: none;
 }
+
 .drive-key {
   /* **Der Grund fuer die abgeschnittene Taste unten.** Global gilt `button { min-height: 46px }`.
-     Eine `1fr`-Gitterzeile kann ihr Kind nicht unter dessen Mindesthoehe druecken, das Kreuz
+     Eine Gitterzeile konnte ihr Kind nicht unter dessen Mindesthoehe druecken, das Kreuz
      brauchte damit immer mindestens 3 x 46 + 2 x 4 = 146 px — mehr, als das Feld in kleinen
      Groessenstufen hoch ist. Der Ueberhang lief unten aus der Fahrzone heraus und wurde vom
      Bildschirmrand gekappt; der runde Joystick ist kein Button und hatte dieses Minimum nie,
-     deshalb trat es nur im Tastenmodus auf. Die Tasten skalieren jetzt mit dem Feld, und
-     `--drive-field-min` haelt sie dabei ueber dem Daumenziel. */
+     deshalb trat es nur im Tastenmodus auf. Seit dem diagonalen Schnitt fuellt jede Taste das
+     ganze Feld und wird beschnitten, die Mindesthoehe kann also nichts mehr aufblaehen — die
+     Null bleibt trotzdem stehen, damit ein Rueckbau auf ein Raster nicht dieselbe Falle stellt. */
   min-height: 0;
+  position: absolute;
+  inset: 0;
   display: grid;
-  place-items: center;
   padding: 0;
-  border: 1px solid var(--shell-border);
-  border-radius: 12px;
+  border: 0;
+  border-radius: 0;
   background: var(--shell-panel);
   color: var(--shell-text);
   touch-action: none;
 }
-.drive-key svg { width: 42%; height: 42%; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+/* Das Symbol sitzt nicht in der Mitte des Feldes, sondern in der Mitte des **Keils** — sonst
+   laegen alle vier Pfeile uebereinander im Mittelpunkt und waeren weggeschnitten. */
+.drive-key svg { width: 15%; height: 15%; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.drive-key.key-up svg { place-self: start center; margin-top: 6%; }
+.drive-key.key-down svg { place-self: end center; margin-bottom: 6%; }
+.drive-key.key-left svg { place-self: center start; margin-left: 6%; }
+.drive-key.key-right svg { place-self: center end; margin-right: 6%; }
 .drive-key:active { background: var(--shell-hover); }
-.drive-key.key-up { grid-area: 1 / 2; }
-.drive-key.key-left { grid-area: 2 / 1; }
-.drive-key.key-right { grid-area: 2 / 3; }
-.drive-key.key-down { grid-area: 3 / 2; }
+
+/* Die vier Keile. Aussen um `--drive-pad-gap` eingerueckt, damit der Untergrund als Rahmen
+   stehen bleibt; die Diagonalen um `--drive-pad-cut` versetzt, damit zwischen zwei Keilen
+   dieselbe Fuge steht. Die Spitzen enden dadurch von selbst kurz vor dem Mittelpunkt — das
+   winzige tote Feld dort ist gewollt, es trennt die vier Richtungen sauber. */
+.drive-key.key-up {
+  clip-path: polygon(calc(var(--drive-pad-gap) + var(--drive-pad-cut)) var(--drive-pad-gap),
+    calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut)) var(--drive-pad-gap),
+    50% calc(50% - var(--drive-pad-cut)));
+}
+.drive-key.key-down {
+  clip-path: polygon(calc(var(--drive-pad-gap) + var(--drive-pad-cut)) calc(100% - var(--drive-pad-gap)),
+    50% calc(50% + var(--drive-pad-cut)),
+    calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut)) calc(100% - var(--drive-pad-gap)));
+}
+.drive-key.key-left {
+  clip-path: polygon(var(--drive-pad-gap) calc(var(--drive-pad-gap) + var(--drive-pad-cut)),
+    calc(50% - var(--drive-pad-cut)) 50%,
+    var(--drive-pad-gap) calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut)));
+}
+.drive-key.key-right {
+  clip-path: polygon(calc(100% - var(--drive-pad-gap)) calc(var(--drive-pad-gap) + var(--drive-pad-cut)),
+    calc(100% - var(--drive-pad-gap)) calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut)),
+    calc(50% + var(--drive-pad-cut)) 50%);
+}
+
+/* **Die Zonen.** Die Achse laeuft von der Mitte des Feldes (50 %) zur Aussenkante der jeweiligen
+   Taste (100 %); ein Anteil q der Strecke Mitte->Kante liegt deshalb bei `50% + q/2`. Die
+   Grenzen kommen aus `--drive-zone-inner`/`--drive-zone-outer`, die `applyDriveZonePreferences()`
+   aus DRIVE_ZONES setzt — im Stylesheet steht keine eigene Prozentzahl, sonst koennten Strich
+   und gefahrene Geschwindigkeit auseinanderlaufen. */
+.drive-key.key-up { --zone-axis: to top; }
+.drive-key.key-down { --zone-axis: to bottom; }
+.drive-key.key-left { --zone-axis: to left; }
+.drive-key.key-right { --zone-axis: to right; }
+.drive-pad.zones-on .drive-key {
+  --zone-inner: calc(50% + var(--drive-zone-inner, 40%) / 2);
+  --zone-outer: calc(50% + var(--drive-zone-outer, 70%) / 2);
+  background-image: linear-gradient(var(--zone-axis),
+    transparent calc(var(--zone-inner) - 1px), var(--shell-border) calc(var(--zone-inner) - 1px),
+    var(--shell-border) calc(var(--zone-inner) + 1px), transparent calc(var(--zone-inner) + 1px),
+    transparent calc(var(--zone-outer) - 1px), var(--shell-border) calc(var(--zone-outer) - 1px),
+    var(--shell-border) calc(var(--zone-outer) + 1px), transparent calc(var(--zone-outer) + 1px));
+}
+/* Ohne den zweiten Schalter tragen die Drehtasten keine Grenzen — sie haben dann auch keine. */
+.drive-pad.zones-on:not(.zones-turn) .key-left,
+.drive-pad.zones-on:not(.zones-turn) .key-right { background-image: none; }
+
+/* Die Zone, in der gerade gefahren wird. `data-zone` setzt `refreshCursorZoneVisual()` an genau
+   der gedrueckten Taste; das Band liegt ueber den Grenzstrichen. */
+.drive-pad.zones-on .drive-key[data-zone] {
+  background-image: linear-gradient(var(--zone-axis),
+    transparent var(--zone-from), var(--accent-soft) var(--zone-from),
+    var(--accent-soft) var(--zone-to), transparent var(--zone-to)),
+    linear-gradient(var(--zone-axis),
+    transparent calc(var(--zone-inner) - 1px), var(--shell-border) calc(var(--zone-inner) - 1px),
+    var(--shell-border) calc(var(--zone-inner) + 1px), transparent calc(var(--zone-inner) + 1px),
+    transparent calc(var(--zone-outer) - 1px), var(--shell-border) calc(var(--zone-outer) - 1px),
+    var(--shell-border) calc(var(--zone-outer) + 1px), transparent calc(var(--zone-outer) + 1px));
+}
+.drive-key[data-zone="slow"] { --zone-from: 50%; --zone-to: var(--zone-inner); }
+.drive-key[data-zone="normal"] { --zone-from: var(--zone-inner); --zone-to: var(--zone-outer); }
+.drive-key[data-zone="fast"] { --zone-from: var(--zone-outer); --zone-to: 100%; }
 
 /* Das Erweitern-Werkzeug: im laufenden Vorgang („Fertig“) hervorgehoben, damit erkennbar ist,
    dass die Kontur gerade offen ist. */
@@ -3305,6 +3392,17 @@ body.menu-open .app-frame { visibility: hidden; }
   font-weight: 500;
   line-height: 1.45;
   color: var(--shell-muted);
+}
+
+/* Absteigende Zonenstaffel: Warnfarbe statt Fehlerfarbe — die Zonen funktionieren weiterhin,
+   ueberraschend ist nur ihre Reihenfolge. Die Spezifitaet (0,3,0) muss ueber der Grundregel
+   darueber (0,2,0) liegen, sonst faerbt sich nichts. Farbe aus dem Token, damit sie in Hell
+   und Dunkel lesbar bleibt. */
+.menu-body .view-note.is-warning {
+  color: var(--warn);
+  border-left: 2px solid color-mix(in srgb, var(--warn), transparent 45%);
+  padding-left: 8px;
+  margin-block: 6px;
 }
 
 /* Die Kartenflaeche kommt aus dem Hintergrund des SVG statt aus einem Rechteck mit fester

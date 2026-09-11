@@ -579,9 +579,13 @@ test('Das Tastenkreuz hat dieselbe Randbox wie der Joystick — kein Ueberhang n
   // schmalen Feldern seitlich heraustreiben.
   const columns = pad('grid-template-columns').value || '';
   assert.ok(!/minmax/.test(columns), `feste Mindestbreiten sprengen schmale Felder: ${columns}`);
-  // Und die Bereichsnamen der Altlast sind zurueckgesetzt, damit Platzierung nur ueber
-  // Zeilennummern laeuft.
+  // Und die Bereichsnamen der Altlast sind zurueckgesetzt.
   assert.strictEqual(pad('grid-template-areas').value, 'none');
+  // Seit dem diagonalen Schnitt ist die Flaeche kein Raster mehr. Die Altlast beschreibt aber
+  // weiterhin eines; sie darf nicht wieder greifen koennen, sonst stuenden die beschnittenen
+  // Tasten ploetzlich in Zellen und das Kreuz saehe wieder aus wie vorher.
+  assert.strictEqual(pad('display').value, 'block',
+    'die Flaeche traegt die Tasten uebereinander und trennt sie per clip-path, nicht in Zellen');
 });
 
 test('Das Tastenkreuz bleibt im Cursor-Modus auf dem Schirm — nachgerechnet je Groessenstufe', () => {
@@ -621,42 +625,90 @@ test('Das Tastenkreuz bleibt im Cursor-Modus auf dem Schirm — nachgerechnet je
   }
 });
 
-test('Das Tastenkreuz passt in jeder Groessenstufe vollstaendig ins Fahrfeld', () => {
-  // Der Fehler: global gilt `button { min-height: 46px }`, und eine 1fr-Gitterzeile kann ihr
-  // Kind nicht darunter druecken. Das Kreuz brauchte damit immer mindestens 3 x 46 + 2 x 4 px,
-  // lief in kleinen Stufen unten aus der Fahrzone heraus und wurde vom Bildschirmrand gekappt.
-  // Der runde Joystick ist kein Button und hatte dieses Minimum nie — deshalb nur im Tastenmodus.
+test('Der diagonale Schnitt: Laenge, Breite und Fugen nachgerechnet', () => {
+  // **Nachfolger des alten Rastertests.** Frueher war jede Taste ein Drittel des Feldes, und
+  // `(Feld - 2 * Luecke) / 3 >= 44px` pruefte Laenge und Breite in einem. Seit dem diagonalen
+  // Schnitt sind das zwei verschiedene Groessen: der Keil ist laengs `F/2 - cut` lang und quer
+  // ueberall verschieden breit. Die 44-px-Untergrenze gilt weiter — aber fuer die **Breite**,
+  // und zwar an der engsten Stelle, die der Finger fuer eine Zone treffen muss.
   const px = (sel, prop) => parseFloat(resolve(sel, prop).value);
-  assert.strictEqual(resolve('button', 'min-height').value, '46px',
-    'die globale Mindesthoehe besteht weiter — genau deshalb braucht es die Ausnahme');
-  assert.strictEqual(resolve('.drive-key', 'min-height').value, '0',
-    'ohne Zuruecksetzen waechst das Kreuz ueber das Feld hinaus');
-  // Die Untergrenze des Feldes ist aus Tastengroesse und Luecke gerechnet, nicht geraten.
   const keyMin = px('.drive-zone .drive-control', '--drive-pad-key-min');
   const padGap = px('.drive-zone .drive-control', '--drive-pad-gap');
-  assert.ok(keyMin >= 44, `jede Taste bleibt ein Daumenziel (${keyMin}px)`);
-  const fieldMin = (resolve('.drive-zone .drive-control', '--drive-field-min') || {}).value || '';
-  assert.ok(/3\s*\*\s*var\(--drive-pad-key-min\)/.test(fieldMin.replace(/\s+/g, ' '))
-    && /2\s*\*\s*var\(--drive-pad-gap\)/.test(fieldMin.replace(/\s+/g, ' ')),
-    `die Untergrenze muss aus beiden Werten folgen, ist "${fieldMin}"`);
-  const size = (resolve('.drive-zone .drive-control', '--joystick-size').value || '').replace(/\s+/g, ' ');
-  assert.ok(size.startsWith('clamp(var(--drive-field-min)'),
-    `die Untergrenze der Feldgroesse ist genau diese Rechnung: ${size}`);
-  assert.strictEqual(resolve('.drive-zone .drive-pad', 'gap').value, 'var(--drive-pad-gap)',
-    'die Luecke im Kreuz muss dieselbe sein, mit der gerechnet wurde');
-  // Nachgerechnet fuer schmale und niedrige Telefone in allen vier Stufen: das Feld ist nie
-  // kleiner als das Kreuz braucht, und beide Steuerungsarten teilen sich dieselbe Rechnung.
-  const padMin = 3 * keyMin + 2 * padGap;
   const reserve = px('.drive-zone .drive-control', '--drive-side-reserve');
+
+  assert.ok(keyMin >= 44, `jede Taste bleibt ein Daumenziel (${keyMin}px)`);
+  // Die globale Mindesthoehe besteht weiter; die Ausnahme fuer die Tasten bleibt stehen, damit
+  // ein Rueckbau auf ein Raster nicht dieselbe Falle stellt wie vor v46.
+  assert.strictEqual(resolve('button', 'min-height').value, '46px');
+  assert.strictEqual(resolve('.drive-key', 'min-height').value, '0');
+
+  // Die Fuge zwischen zwei Keilen wird senkrecht zur 45-Grad-Diagonale gemessen. Der waagerechte
+  // Versatz dafuer ist gap/2 * sqrt(2) — ohne diesen Faktor waere sie schmaler als die Fuge zum
+  // Rand, und genau das faellt am Geraet als schiefe Optik auf.
+  const cutExpr = (resolve('.drive-zone .drive-control', '--drive-pad-cut').value || '').replace(/\s+/g, ' ');
+  const factor = parseFloat((cutExpr.match(/\*\s*([\d.]+)/) || [])[1]);
+  assert.ok(/var\(--drive-pad-gap\)/.test(cutExpr), `der Versatz muss aus der Luecke folgen, ist "${cutExpr}"`);
+  assert.ok(Math.abs(factor - Math.SQRT1_2) < 0.001,
+    `der Versatz ist gap * ${factor}, erwartet wird gap * ${Math.SQRT1_2.toFixed(4)} (= sqrt(2)/2)`);
+  const cut = padGap * factor;
+
+  // Alle vier Richtungen sind beschnitten, jede anders, und keine schreibt eigene Zahlen —
+  // Luecke und Versatz kommen aus den beiden Token.
+  const clips = new Map();
+  for (const dir of ['up', 'down', 'left', 'right']) {
+    const clip = (resolve(`.drive-key.key-${dir}`, 'clip-path').value || '').replace(/\s+/g, ' ');
+    assert.ok(clip.startsWith('polygon('), `.key-${dir} ist nicht beschnitten: "${clip}"`);
+    assert.ok(/var\(--drive-pad-gap\)/.test(clip) && /var\(--drive-pad-cut\)/.test(clip),
+      `.key-${dir} schreibt eigene Masse statt der Token: "${clip}"`);
+    assert.ok(!clips.has(clip), `.key-${dir} hat dieselbe Form wie .key-${clips.get(clip)}`);
+    clips.set(clip, dir);
+  }
+
+  // Die Zonengrenzen stehen nur in app.js; das Stylesheet zeichnet sie aus den Variablen, die
+  // applyDriveZonePreferences() daraus setzt. Eine Prozentzahl im Stylesheet waere eine zweite
+  // Behauptung ueber dieselbe Grenze.
+  const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  const bounds = [...app.matchAll(/until:\s*([\d.]+)/g)].map((m) => Number(m[1]));
+  assert.deepStrictEqual(bounds, [0.40, 0.70, 1],
+    `DRIVE_ZONES muss die drei Grenzen tragen, gefunden: ${bounds.join(', ')}`);
+  const lines = (resolve('.drive-pad.zones-on .drive-key', 'background-image').value || '').replace(/\s+/g, ' ');
+  for (const name of ['--drive-zone-inner', '--drive-zone-outer']) {
+    assert.ok(lines.includes(name) || (resolve('.drive-pad.zones-on .drive-key', `--zone-${name.endsWith('inner') ? 'inner' : 'outer'}`).value || '').includes(name),
+      `die Grenzstriche muessen ${name} lesen statt eine eigene Prozentzahl: "${lines}"`);
+  }
+
+  // **Querrichtung, die eigentliche 44-px-Pruefung.** Der Keil ist im Abstand d von der Mitte
+  // `2d - 2 * cut` breit. Die engste Stelle, die noch eine Zone trennt, ist die innere
+  // Zonengrenze bei d = inner * F/2 — weiter innen liegt nur die langsamste Zone, die ohnehin
+  // ganz an der Spitze beginnt. Nachgerechnet fuer schmale und niedrige Telefone in allen vier
+  // Stufen, genau wie zuvor die Tastengroesse.
+  const padMin = 3 * keyMin + 2 * padGap;
   const field = (scale, w, h) => Math.max(padMin,
     Math.min(25 * h / 100 * scale, 240 * scale, 38 * h / 100, w - reserve));
-  for (const [w, h] of [[360, 640], [360, 800], [320, 568], [412, 915]]) {
+  for (const [w, h] of [[360, 640], [360, 800], [320, 568], [412, 915], [393, 786]]) {
     for (const scale of [0.75, 1, 1.25, 1.5]) {
-      const value = field(scale, w, h);
-      assert.ok(value >= padMin, `${w}x${h} Stufe ${scale}: Feld ${value}px < Kreuz ${padMin}px`);
-      assert.ok(value / 3 >= 44 - padGap, `${w}x${h} Stufe ${scale}: Taste zu klein`);
+      const F = field(scale, w, h);
+      const widthAtInner = 2 * (bounds[0] * F / 2) - 2 * cut;
+      assert.ok(widthAtInner >= keyMin,
+        `${w}x${h} Stufe ${scale}: an der inneren Zonengrenze nur ${widthAtInner.toFixed(1)}px breit`);
+      // Und der Keil ist laenger als die Taste im alten Raster — das war der Zweck der Uebung.
+      const lengthNow = F / 2 - cut;
+      const lengthBefore = (F - 2 * padGap) / 3;
+      assert.ok(lengthNow > lengthBefore,
+        `${w}x${h} Stufe ${scale}: ${lengthNow.toFixed(1)}px sind nicht laenger als die fruehere Taste (${lengthBefore.toFixed(1)}px)`);
     }
   }
+
+  // Die Untergrenze des Feldes stammt noch aus dem Dreierraster. Sie bleibt stehen, aber nur,
+  // solange sie die schaerfere der beiden Schranken ist: die Breitenbedingung verlangt
+  // F >= (44 + 2 * cut) / inner.
+  const fieldMin = (resolve('.drive-zone .drive-control', '--drive-field-min') || {}).value || '';
+  assert.ok(/3\s*\*\s*var\(--drive-pad-key-min\)/.test(fieldMin.replace(/\s+/g, ' ')),
+    `die Untergrenze muss nachvollziehbar bleiben, ist "${fieldMin}"`);
+  const neededForWidth = (keyMin + 2 * cut) / bounds[0];
+  assert.ok(padMin >= neededForWidth,
+    `die Feld-Untergrenze ${padMin}px unterschreitet die Breitenbedingung ${neededForWidth.toFixed(1)}px`);
+
   // Und das Kreuz fuellt dasselbe Feld wie der Kreis — eine Platzpruefung fuer beide Modi.
   for (const selector of ['.drive-zone .joystick-base', '.drive-zone .drive-pad']) {
     assert.strictEqual(resolve(selector, 'height').value, '100%', `${selector} fuellt das Feld`);
@@ -1007,6 +1059,30 @@ test('Die Import-Hinweiszeile startet ausgeblendet und liegt beim Import-Knopf',
   const abstand = html.indexOf(zeile[0]) - html.indexOf('id="importInput"');
   assert.ok(abstand > 0 && abstand < 400,
     `#importNotice steht nicht beim Import-Knopf (Abstand ${abstand} Zeichen)`);
+});
+
+test('Die Zeile zur Zonenstaffel steht bei den Geschwindigkeitsfeldern und ist sichtbar abgesetzt', () => {
+  const zeile = html.match(/<small[^>]*id="driveZoneOrderHint"[^>]*>/);
+  assert.ok(zeile, '#driveZoneOrderHint fehlt im Markup');
+  assert.ok(/\bhidden\b/.test(zeile[0]),
+    'ohne `hidden` im Markup steht beim Laden eine leere, aber abgesetzte Zeile da');
+  // Sie gehoert zu den Geschwindigkeitsfeldern, nicht irgendwohin — dieselbe Ueberlegung wie bei
+  // #cassandraSkippedHint neben den Export-Knoepfen.
+  const abstand = html.indexOf(zeile[0]) - html.indexOf('id="cursorSpeedInput"');
+  assert.ok(abstand > 0 && abstand < 900,
+    `#driveZoneOrderHint steht nicht bei den Geschwindigkeitsfeldern (Abstand ${abstand} Zeichen)`);
+
+  // **Der ganze Zweck ist Sichtbarkeit.** `.menu-body .view-note` (0,2,0) faerbt jede Notiz
+  // gedaempft; die Warnfassung muss sich elementbezogen durchsetzen, sonst sieht der Hinweis aus
+  // wie die Erklaerzeile darueber und geht unter.
+  const note = { ancestors: ['menu-body'], tag: 'small' };
+  const warn = effectiveStyle({ ...note, classes: ['view-note', 'is-warning'] }, 'color');
+  const plain = effectiveStyle({ ...note, classes: ['view-note'] }, 'color');
+  assert.ok(/var\(--warn\)/.test(warn.value || ''),
+    `der Hinweis traegt nicht die Warnfarbe, sondern "${warn.value}" aus "${warn.selector}"`);
+  assert.notStrictEqual(warn.value, plain.value, 'Warnfassung und Grundregel duerfen nicht gleich aussehen');
+  // Und die Farbe kommt aus dem Token, das es in Hell und Dunkel gibt.
+  assert.ok(resolve(':root', '--warn').value, '--warn fehlt in der Hell-Palette');
 });
 
 for (const c of cases) {

@@ -292,6 +292,80 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    sichtbar bleibt — der Test rechnet vier gängige Auflösungen in allen vier Stufen nach, nicht
    den echten Umbruch.
 
+   **Geschwindigkeitszonen auf den Richtungstasten (Stand v62).** Jede Taste ist längs in drei
+   Zonen geteilt, von der Mitte nach außen **40 % langsam, 30 % normal, 30 % schnell**. Die Zone
+   folgt dem Finger, solange er gedrückt bleibt.
+
+   **Keine neue Geschwindigkeitszahl.** langsam = `driveSpeedMin`, normal = `cursorSpeedCms`,
+   schnell = `driveSpeedMax` (`cursorZoneSpeeds()`). Die Vorgaben ergeben ohne Zutun die Staffel
+   8 / 15 / 25 cm/s. Der entscheidende Punkt: die schnellste Zone ist genau die Geschwindigkeit,
+   die der Nutzer für den Joystick ohnehin freigegeben hat — es entsteht **kein neues Maximum**,
+   und die alte Auflage „Rangieren nie schneller als der Joystick" gilt unverändert. Vier
+   Einstellungszahlen bleiben vier.
+
+   **Die Staffel kann absteigen; korrigiert wird sie nicht, sichtbar gemacht schon (Stand v62).**
+   `driveSpeedLimits()` sichert `min < max`, und `cursorSpeedLimits()` deckelt den mittleren Wert
+   auf `max`. Ungeprüft bleibt allein `normal` gegen `langsam`: wer das Joystick-Minimum auf
+   30 cm/s und die Tastengeschwindigkeit auf 5 cm/s setzt, bekommt 30 / 5 / 45. Gefährlich ist das
+   nicht (das Maximum wird nie überschritten), nur überraschend.
+
+   **Entscheidung des Nutzers: die Werte gelten wie eingetragen** — keine Sortierung, keine stille
+   Untergrenze. Beides änderte eine Zahl, die der Nutzer selbst eingetippt hat: Sortieren löste die
+   mittlere Zone vom Eingabefeld, eine Untergrenze höbe den Tastenwert heimlich an, sobald jemand
+   das Joystick-Minimum hochsetzt. Stattdessen benennt `refreshDriveZoneHint()` den Fall als
+   dauerhafte Zeile `#driveZoneOrderHint` bei den Geschwindigkeitsfeldern — Muster wie
+   `#cassandraSkippedHint`, kein Dialog. Er **sperrt nichts**, die Zonen bleiben voll bedienbar.
+
+   `cursorZoneLadder()` ist die einzige Stelle, die die Reihenfolge beurteilt, und liefert die drei
+   Werte in cm/s samt `descends`. Gemeldet wird nur ein **echter Rückschritt**, nicht bloße
+   Gleichheit: zwei gleiche Werte machen das Schieben nirgends langsamer, es gäbe nichts zu
+   erklären. Gezeigt wird die Zeile nur, wenn die Staffel überhaupt wirkt — Tastenmodus **und**
+   Zonen an; ohne Zonen gilt allein der mittlere Wert, und im Joystick-Modus ist `cursorSpeedRow`
+   selbst ausgeblendet. Nachgeführt aus `applyDriveControlMode()` (jede Feldänderung, jeder
+   Moduswechsel) **und** `refreshControlUi()` (Sprachwechsel über `applyLanguage()`); der Text ist
+   dynamisch und trägt deshalb kein festes `data-i18n`, wie bei `refreshExportButtons()`.
+
+   **`DRIVE_ZONES` ist die einzige Stelle, die die Grenzen nennt.** Das Stylesheet zeichnet die
+   Striche aus `--drive-zone-inner` / `--drive-zone-outer`, die `applyDriveZonePreferences()` von
+   dort setzt — eine eigene Prozentzahl im CSS wäre eine zweite Behauptung über dieselbe Grenze,
+   und Strich und gefahrene Geschwindigkeit könnten auseinanderlaufen, ohne dass es auffällt.
+   Gemessen wird der Anteil der Strecke **Mitte → Außenkante**, nicht der sichtbaren Tastenlänge.
+
+   **Der Schiebe-Pfad `updateCursorDriveFromPointer()` verändert nur, er startet nie.** Ohne
+   gedrückte Richtungstaste (`state.driveDirection` ist `null` oder `'joystick'`) kehrt er ohne
+   jede Wirkung zurück; er ruft weder `beginCursorDrive()` noch `startDriveHeartbeat()` und fasst
+   keinen Zeitgeber an, kann eine beendete Fahrt also auch nicht am Leben halten. Ein ui-Test hält
+   beides fest: das Verhalten und — per Quelltextsuche über den Funktionsrumpf — die Struktur.
+   **Zuerst `state.driveVector`, dann senden:** `sendDriveVector()` verwirft eine ungezwungene
+   Sendung innerhalb von `DRIVE_POINTER_MIN_INTERVAL_MS` (160 ms) oder während eines laufenden
+   Schreibvorgangs, der 650-ms-Takt trägt den neuen Wert dann nach. Dasselbe Muster nutzt der
+   Joystick seit jeher.
+
+   **Zwei Schalter**, beide unter *Einstellungen › Fahrgeschwindigkeit* und nur im Tastenmodus
+   sichtbar: `driveZones` (Vorgabe **an** — die schnellste Zone führt keine Geschwindigkeit ein,
+   die nicht schon freigegeben war) und `driveZonesTurn` (Vorgabe **aus** — genaues Drehen auf der
+   Stelle ist der Grund, überhaupt Tasten statt Joystick zu nehmen; außerdem staucht der Deckel
+   `driveTurnMax` die oberen Zonen: bei den Vorgaben ergäbe die schnellste Zone 1,43 rad/s, die auf
+   1,15 gekappt werden). Die Drehzonen **erben** die Staffel über `cursorDriveVector()` — die
+   Umrechnung cm/s → rad/s über die halbe Spurweite steht weiterhin nur dort.
+
+   **Diagonaler Schnitt statt Dreierraster.** Auf dem 3×3-Raster belegten die vier Tasten nur die
+   Kantenmitten; Mitte und Ecken lagen brach, und zur Mitte hin verlängern ließ sich dort nichts,
+   weil alle vier dieselbe Mittelzelle beansprucht hätten. Die Flächen liegen jetzt übereinander
+   (`position: absolute; inset: 0`) und werden per `clip-path` in vier Keile getrennt; die
+   Trefferprüfung folgt der Beschneidung. Die Fuge zwischen zwei Keilen wird **senkrecht zur
+   45-Grad-Diagonale** gemessen, der waagerechte Versatz dafür ist `--drive-pad-cut` =
+   `gap / 2 · √2` — ohne diesen Faktor wäre sie schmaler als die Fuge zum Rand. Die Spitzen enden
+   dadurch von selbst kurz vor dem Mittelpunkt; das winzige tote Feld dort trennt die vier
+   Richtungen.
+
+   **Die 44-px-Untergrenze gilt jetzt der Breite, nicht mehr der Tastengröße.** Früher prüfte
+   `(Feld − 2·Lücke) / 3 ≥ 44` Länge und Breite in einem. Der Keil ist im Abstand *d* von der Mitte
+   `2d − 2·cut` breit; an der inneren Zonengrenze (*d* = 0,4·F/2) verlangt das F ≥ 125 px.
+   `--drive-field-min` (140 px) stammt noch aus dem Raster, ist damit aber weiterhin die
+   **schärfere** der beiden Schranken — `tests/layout-test.js` rechnet beides nach, statt es zu
+   unterstellen, und prüft zusätzlich, dass jeder Keil länger ist als die frühere Taste.
+
    **Der Tastenmodus hat eine eigene Geschwindigkeit** `state.view.cursorSpeedCms` (Startwert
    **15 cm/s**, Untergrenze 2 cm/s, Obergrenze die eingestellte `driveSpeedMax` in cm/s —
    Rangieren darf nie schneller werden als der Joystick). Sie gilt für **alle vier** Tasten, das
@@ -1948,6 +2022,44 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-11: **Geschwindigkeitszonen auf den Richtungstasten.** Jede Taste ist längs dreigeteilt
+  (40/30/30 von der Mitte nach außen), die Zone folgt dem Finger, solange er gedrückt bleibt.
+  **Vorab geprüft und gemeldet statt angenommen:** (N1a) alle sechs Wege, auf denen eine Fahrt
+  heute endet, senden `AT+M,0,0` — die vier Zeigerenden am Tastenkreuz, verdeckte Seite und
+  Fokusverlust; empirisch gemessen mit aufgezeichneten Listenern, weil das Harness
+  `addEventListener` sonst verwirft. Kein vorzuziehender Fehler; die Firmware-Totmannschaltung
+  (`motor.cpp:186-187`, ausgewertet `:286-291`) trägt weiterhin nicht, weil **jeder** Aufrufer von
+  `setLinearAngularSpeed()` sie zurücksetzt. (N1c) Der ausschlaggebende Befund: am Tastenkreuz war
+  **kein `pointermove` verdrahtet** — die Geschwindigkeit wurde einmal beim Drücken gesetzt und vom
+  Takt nur wiederholt, das Schieben brauchte den Pfad also neu. (N1e) „Zur Mitte verlängern" geht
+  auf dem 3×3-Raster nicht ohne Überlappung; daher der diagonale Schnitt, der Mitte **und** Ecken
+  nutzt und die Tasten rund um die Hälfte länger macht. **Keine neue Geschwindigkeitszahl:** die
+  drei Zonen sind `driveSpeedMin` / `cursorSpeedCms` / `driveSpeedMax`, es entsteht kein Maximum,
+  das der Nutzer nicht schon für den Joystick freigegeben hat. Der Schiebe-Pfad verändert eine
+  Fahrt ausschließlich und startet nie eine — per Verhaltens- **und** Strukturtest festgehalten;
+  die sechs Stoppwege wurden nach dem Umbau erneut gemessen, auch mitten in einem Zonenwechsel.
+  **Gemeldet, nicht selbst entschieden:** die Staffel kann absteigen, wenn das Joystick-Minimum
+  über der Tastengeschwindigkeit liegt (gemessen 30/5/45 cm/s); die Werte gelten vorerst wie
+  eingetragen. Neu: 6 ui-Fälle (200), zwei Layout-Fälle von der Raster- auf die Keilgeometrie
+  umgeschrieben (42), neue i18n-Schlüssel `driveZones`, `driveZonesTurn`, `driveZonesNote` und der
+  Hilfeeintrag `helpDriveZones*` in DE und EN. Gegen sechzehn simulierte Rückfälle geprüft, alle
+  gefangen. `APP_VERSION` auf `v62`.
+
+  **Nachtrag am selben Tag (W1 entschieden):** die absteigende Staffel wird **benannt statt
+  korrigiert**. Weder Sortieren noch eine stille Untergrenze — beides veränderte eine vom Nutzer
+  eingetippte Zahl. Neu sind `cursorZoneLadder()` als einzige Stelle, die die Reihenfolge
+  beurteilt, und die dauerhafte Zeile `#driveZoneOrderHint` bei den Geschwindigkeitsfeldern, die
+  die drei Werte in ihrer tatsächlichen Reihenfolge nennt (Muster `#cassandraSkippedHint`, kein
+  Dialog, sperrt nichts). Bloße Gleichheit gilt bewusst **nicht** als Rückschritt. Neu: 1 ui-Fall
+  (201) — Wirkung über die echten Eingabefelder, den echten Moduswechsel und den echten
+  Sprachwechsel, inklusive der Zusicherung, dass die gesendeten Fahrbefehle in beiden Fällen die
+  eingetragenen Werte sind — und 1 layout-Fall (43), der elementbezogen nachrechnet, dass die
+  Warnfassung sich gegen `.menu-body .view-note` durchsetzt. Gegen neun simulierte Rückfälle
+  geprüft, alle gefangen; die erste Fassung des Layout-Falls fing eine Spezifitätssabotage
+  zunächst nicht, weil gleiche Spezifität bei späterer Position ohnehin gewinnt — mit der
+  vorgezogenen Regel schlägt er an. Hilfe und README in beiden Sprachen nachgezogen.
+  `APP_VERSION` bleibt `v62`, die Fassung ist noch nicht ausgeliefert.
 
 - 2026-09-11: **Hauptknopf hängt beim Erweitern immer an, Verschieben bekommt einen eigenen Knopf.**
   Der in v60 gemeldete Griff ist behoben: in Phase `adding` nimmt der Hauptknopf auch mit
