@@ -628,8 +628,17 @@ davon. Endung `.json`, MIME `application/json`, wie CaSSAndRAs eigener Download
 - **Geschlossene Ringe** (mapdata.py:614-630 über :668). Empirisch geprüft: shapely liefert für
   offenen wie geschlossenen Ring dieselben Koordinaten, ein geschlossener erzeugt **keinen**
   doppelten Punkt — nur ein doppelt geschlossener täte das.
-- **7 Nachkommastellen.** Gerechnet, nicht geschätzt: 5 → 472,6 mm, 6 → 61,4 mm, **7 → 6,1 mm**,
-  8 → 0,6 mm. Theoretische Obergrenze bei 7 Stellen 7,86 mm (Äquator), 6,51 mm bei 52°.
+- **7 Nachkommastellen — unsere Wahl, keine Eigenschaft des Vorbilds.** CaSSAndRAs eigener
+  Export **rundet nicht**: `coords_rel_to_abs()` (mapdata.py:696-703) gibt volle Doubles zurück,
+  `.values.tolist()` und `json.dumps` schreiben sie unverändert. Nachgeprüft an zwei echten
+  CaSSAndRA-Dateien — dort stehen **20 Nachkommastellen**. Die Rundung führt allein
+  `localToAbsolute()` (`DEGREE_DECIMALS`, app.js) ein, und sie ist der einzige Grund, warum der
+  Rundlauf überhaupt eine Abweichung hat. Gerechnet, nicht geschätzt: 5 → 472,6 mm, 6 → 61,4 mm,
+  **7 → 6,1 mm**, 8 → 0,6 mm. Theoretische Obergrenze bei 7 Stellen 7,86 mm (Äquator), 6,51 mm
+  bei 52°. Gemessen über beide echten Karten gegen die echte Python-Importfunktion: **7,85 mm**.
+  **Folge, die beachtet werden muss:** eine Karte, deren Koordinaten viel kleiner sind als
+  1e-7 Grad, fällt durch diese Rundung vollständig auf [0, 0] zusammen — genau das passierte,
+  solange der Import Grad als Meter las.
 - **Flächen unter drei Punkten bleiben draußen**: `Polygon(coordinates[0])` (mapdata.py:515) wirft
   dann und reißt den ganzen Import mit. **Nicht still**: `noticeCassandraSkippedAreas()` zeigt beim
   Export einmal eine Meldung mit Anzahl, Namen und Punktzahl jeder ausgelassenen Fläche — auch der
@@ -769,6 +778,59 @@ im alten Format** mit (Struktur und echte Koordinaten aus einer Datei, die der N
 früheren Fassung exportiert hat) und weist nach, dass Name, Modus, Ursprung und Koordinaten
 unverändert ankommen — in der relativen wie in der absoluten Variante, samt Gegenprobe mit einem
 untergeschobenen `mapmaker`-Feature.
+
+### CaSSAndRA-Dateien einlesen (Stand v55)
+
+**Erkannt wird an der Form, nie an den Zahlen.** `isCassandraGeoJson(data)` ist die einzige
+Stelle; alle Merkmale müssen zutreffen, eines genügt zum Ausschluss:
+
+1. **genau zwei Top-Level-Schlüssel**, `type` und `features` (mapdata.py:670) — unser eigenes
+   GeoJSON führt dort zusätzlich `name` und `properties`;
+2. jedes Feature trägt `properties` mit **ausschließlich** `name` — damit ist `properties.role`
+   (unser internes Merkmal) mit ausgeschlossen;
+3. jeder Name stammt aus `CASSANDRA_FEATURE_NAMES` (`perimeter`, `dockpoints`, `search wire`,
+   `exclusion`) — damit ist das Metadaten-Feature `mapmaker` mit ausgeschlossen, mit dem sich
+   **unser eigener** CaSSAndRA-Export zu erkennen gibt;
+4. mindestens ein Feature: ohne eines trägt die Datei kein Merkmal.
+
+**Warum ausdrücklich keine Heuristik über die Größenordnung.** „Betrag kleiner als 1, also Grad"
+wäre geraten und ist nachweislich falsch: steht in CaSSAndRA ein echter Bezugspunkt, liegen die
+Werte bei ~52 und ~13 und sähen wie Meter aus. Die Form der Datei dagegen ist eindeutig, weil
+`export_geojson` sie fest verdrahtet baut.
+
+**Der Bezugspunkt steht nicht in der Datei** — er lebt allein in CaSSAndRAs `rovercfg.lat`/`lon`.
+Er kommt deshalb aus `cassandraReferenceInUse()`, also aus derselben Einstellung wie beim Export.
+**Ist dort nichts Gültiges gesetzt, wird nicht importiert** (`cassandraImportNoReference`), und
+zwar bewusst **ohne** Rückfall auf 0/0: die Vorgabe gehört in `loadCassandraReference()`, nicht in
+den Importweg — sonst hätte ein ausdrücklich geleertes Feld hier keine Wirkung mehr, genau wie bei
+der Exportsperre.
+
+**Gemeldet wird als Hinweiszeile, nicht als Dialog.** `noticeCassandraImport()` schreibt Format
+und verwendeten Bezugspunkt im Klartext nach `#importNotice` — dasselbe Muster wie
+`#cassandraSkippedHint` neben den Export-Knöpfen. Ein Modal wäre hier falsch: der Import läuft auf
+der Menüseite, und die Meldung soll dort stehen, wo der Nutzer gerade ist. Die Überlegung dahinter
+ist dieselbe wie bei `noticeCassandraExport()` — der Wert, an dem alles hängt, wird genannt statt
+vorausgesetzt. **Erst handeln, dann melden**; `clearImportNotice()` räumt vor jedem Import auf.
+
+**Ringschluss: eine Quelle, zwei Leser.** `geoRingClosed(geometry)` entscheidet, ob die Datei den
+Schlusspunkt trägt. `pointsFromGeoGeometry()` schneidet ihn daraufhin ab, `geoJsonToMap()` setzt
+daraufhin `perimeterClosed` bzw. `exclusion.closed`. Vorher hing beides an derselben Bedingung in
+zwei Ausprägungen, und die zweite fehlte schlicht: **jede importierte Karte galt als offen**, auch
+aus unserem eigenen GeoJSON. Die Funktion kennt weiterhin nur Geometrie — die Rolle bleibt beim
+Aufrufer, der sie ohnehin hat.
+
+**Gemessen** (`tests/app-core-test.js`, beide echten Karten): 39,010 × 49,760 m und
+38,270 × 87,780 m, exakt die wahren Werte, Perimeter und alle Flächen geschlossen. Vollständiger
+Rundlauf gegen die **echte** Python-Importfunktion (pandas + shapely, außerhalb des Repos):
+größte Abweichung **7,85 mm** bei einer theoretischen Grenze von 7,86 mm — der Rest ist die
+7-Stellen-Rundung unseres Exports. Vorher kam dieselbe Karte mit 0,000 × 0,000 m an.
+
+**Prüfmuster statt echter Karten** (`tests/fixtures/cassandra-perimeter.geojson.json`): aus
+karte-a abgeleitet, auf 14 Punkte ausgedünnt, auf einen erfundenen Nullpunkt verschoben, cm-Raster
+— trägt keinen Rückschluss auf das Grundstück und ist deshalb versioniert. **`tests/map/` ist in
+`.gitignore` und wird von keinem Test vorausgesetzt**: die Prüfung gegen die echten Karten läuft
+nur, wo sie liegen, und meldet sonst ausdrücklich, dass sie **übersprungen** wurde — ein stilles
+Durchwinken sähe im Protokoll wie ein bestandener Test aus.
 
 **Nicht ohne Gerät verifizierbar:** ob CaSSAndRAs Upload-Dialog auf dem Zielgerät die Datei
 tatsächlich annimmt — geprüft ist nur, dass `dcc.Upload` (`uploadsunray.py:14`) kein `accept`
@@ -1594,6 +1656,36 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-11: **CaSSAndRA-Dateien lassen sich einlesen; Ringschluss überlebt jeden Import.**
+  Zwei gemeldete Befunde, **eine Wurzel**. (a) Eine echte CaSSAndRA-Datei wurde als lokale Meter
+  gelesen, weil die Grad-Erkennung allein an `properties.coordinateSystem` hing — einem Feld, das
+  `export_geojson` (mapdata.py:665-690) gar nicht schreibt. Gemessen: eine 39 × 50 m große Karte
+  kam mit **0,48 mm** an, Faktor exakt 111111. Neu ist die strukturelle Erkennung
+  `isCassandraGeoJson()`, ausdrücklich **keine** Heuristik über die Größenordnung — die wäre
+  geraten und bei einem echten Bezugspunkt (~52/~13) nachweislich falsch. (b) Unser eigener Export
+  war in CaSSAndRA unsichtbar, sobald er aus einem so importierten Bestand stammte: die
+  7-Stellen-Rundung machte aus der 0,48-mm-Karte **212 identische Punkte auf [0,0]** — durch die
+  echte Python-Importfunktion geprüft, die dazu „Import successfull" meldet. Mit (a) behoben, (b)
+  brauchte keinen eigenen Eingriff. **Der Bezugspunkt war ausgeschlossen, nicht vermutet:** die
+  Testkarten tragen Koordinaten um 0, und CaSSAndRA schreibt sie mit `rovercfg.lat`/`lon` — der
+  Wert stand dort also auf 0/0, wie unser Export auch. (c) `geoRingClosed()` ist jetzt die einzige
+  Quelle des Ringschlusses; sie speist das Abschneiden des Schlusspunktes **und** das Setzen von
+  `perimeterClosed`/`exclusion.closed`. Letzteres fehlte bisher ganz — **jede** importierte Karte
+  galt als offen, auch aus unserem eigenen GeoJSON. Ohne gültigen Bezugspunkt wird gar nicht
+  importiert (kein Rückfall auf 0/0, gleiche Überlegung wie bei der Exportsperre); gemeldet wird
+  als Hinweiszeile `#importNotice`, nicht als Dialog. Nachgemessen: beide echten Karten kommen mit
+  **39,010 × 49,760 m** und **38,270 × 87,780 m** an, Rundlauf gegen die echte Importfunktion
+  **7,85 mm** bei 7,86 mm theoretischer Grenze. Neu: 1 Block in `tests/app-core-test.js`, 3
+  ui-Fälle (165), 1 layout-Fall (41), das versionierte Prüfmuster
+  `tests/fixtures/cassandra-perimeter.geojson.json`. Gegen zehn simulierte Rückfälle geprüft —
+  einer traf zunächst nicht den gemeinten Fehler und wurde geschärft. **Dabei aufgefallen:** ein
+  Bestandstest hatte die alte, falsche Wirkung festgeschrieben (CaSSAndRA-Vokabular als Meter
+  gelesen); er prüft jetzt nur noch das Vokabular, und der Bezugspunkt wird wie nach
+  `loadCassandraReference()` gesetzt, statt die Tests in einem Zustand laufen zu lassen, den die
+  App nicht kennt. **Korrigiert:** die Angabe „7 Nachkommastellen" beim CaSSAndRA-Format war eine
+  Eigenschaft **unseres** Exports, nicht des Vorbilds — CaSSAndRA rundet nicht (20 Stellen in
+  beiden echten Dateien). `APP_VERSION` auf `v55`.
 
 - 2026-09-10: **Drittes Exportformat „CaSSAndRA".** Erzeugt wortgleich die Form von CaSSAndRAs
   eigenem `export_geojson` (mapdata.py:665-690) statt einer Vermutung davon; Details und Belege im

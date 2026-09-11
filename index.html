@@ -249,6 +249,10 @@
 <small class="view-note" data-i18n="cassandraRefHint">Trage hier genau denselben Wert ein, der in CaSSAndRA unter den Robotereinstellungen als Breite und Länge steht. Es ist keine Ortsbestimmung: der Wert muss nur auf beiden Seiten derselbe sein, sonst liegt die Karte nach dem Import versetzt. Voreingestellt ist 0 / 0 — das ist auch CaSSAndRAs Auslieferungswert, passt also, solange dort nichts eingetragen wurde. Er gilt für alle Karten dieser Installation.</small>
 <label class="secondary file-button" data-i18n="importJsonGeoJson" for="importInput">JSON / GeoJSON importieren</label>
 <input accept="application/json,application/geo+json,.json,.geojson" hidden="" id="importInput" type="file"/>
+<!-- Meldung nach einem Import. Bewusst eine Hinweiszeile an Ort und Stelle und kein Dialog:
+     der Import laeuft auf dieser Seite, und ein Modal darueber muesste erst weggeklickt werden.
+     Dasselbe Muster wie #cassandraSkippedHint. -->
+<small aria-live="polite" class="export-hint" hidden="" id="importNotice"></small>
 <button class="secondary" data-i18n="lockCurrentMap" id="lockMapBtn" type="button">Karte sperren</button>
 <button class="danger" data-i18n="deleteCurrentMap" id="deleteMapBtn" type="button">Aktuelle Karte löschen</button>
 </div>
@@ -549,7 +553,7 @@
 <div class="help-two-col">
 <div class="format-card"><strong>JSON</strong><p data-i18n="jsonHelp">Empfohlenes vollständiges Backup für MapCreator. Enthält Kartenstruktur, Punkte und zusätzliche Metadaten wie Aufnahme-/Editierinformationen.</p></div>
 <div class="format-card"><strong>GeoJSON</strong><p data-i18n="geoJsonHelp">Für Geometrie-Austausch. Perimeter und Ausschlüsse werden als Polygone, der Dockpfad als LineString exportiert.</p></div>
-<div class="format-card"><strong>CaSSAndRA</strong><p data-i18n="cassandraHelp">Genau die Form, die CaSSAndRA selbst schreibt und einliest: Weltkoordinaten in Grad, Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Gerechnet wird gegen den Bezugspunkt bei den Export-Knöpfen — voreingestellt 0 / 0, wie in CaSSAndRA ab Werk. Nach jedem Export steht der verwendete Wert in einer Meldung; er muss in CaSSAndRA derselbe sein.</p></div>
+<div class="format-card"><strong>CaSSAndRA</strong><p data-i18n="cassandraHelp">Genau die Form, die CaSSAndRA selbst schreibt und einliest: Weltkoordinaten in Grad, Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Gerechnet wird gegen den Bezugspunkt bei den Export-Knöpfen — voreingestellt 0 / 0, wie in CaSSAndRA ab Werk. Nach jedem Export steht der verwendete Wert in einer Meldung; er muss in CaSSAndRA derselbe sein. Dateien aus CaSSAndRA lassen sich damit auch <strong>einlesen</strong>: die App erkennt sie an ihrer Form und rechnet die Grad mit demselben Bezugspunkt in lokale Meter zurück. Ist dort nichts eingetragen, wird die Datei nicht importiert — ohne den Wert wären die Grad nicht zu deuten, denn CaSSAndRA schreibt ihn nicht in die Datei.</p></div>
 </div>
 <div class="notice info help-note"><span data-i18n="geoJsonXYWarning">Die Ardumower-Koordinaten sind lokale Sunray-X/Y-Werte in Metern. Sie sind keine GPS-Längen-/Breitengrade und werden deshalb im Export ausdrücklich als lokales metrisches Koordinatensystem gekennzeichnet.</span></div>
 <div class="notice info help-note"><span data-i18n="shareHelpNote">Karten von einem Gerät auf ein anderes bringen: Auf dem Quellgerät die Karte speichern oder teilen. „Teilen“ übergibt genau dieselbe Datei an das Freigabe-Menü des Geräts, sodass sie ohne Umweg über den Download-Ordner weitergereicht werden kann; welche Ziele dort angeboten werden, entscheidet das Gerät, nicht diese App. Auf dem Zielgerät die Datei über „JSON / GeoJSON importieren“ im Menü unter Karten einlesen. Kann ein Browser keine Dateien teilen, erscheint der Teilen-Knopf gar nicht erst — dann bleibt Speichern der Weg.</span></div>

@@ -6,9 +6,15 @@ const { t } = loadApp({
   exportNames: ['state', 'makeMap', 'normalizeMap', 'polygonSelfIntersects', 'pointInPolygon',
     'polygonEdgesIntersect', 'polygonsIntersect', 'polygonArea', 'pathLength', 'geometryForArea', 'mapToGeoJson', 'geoJsonToMap', 'normalizeOrigin', 'mapOriginInUse',
     'mapToCassandraGeoJson', 'cassandraExportBlockKey', 'cassandraSkippedAreas', 'hasUsablePolygon',
+    'isCassandraGeoJson', 'geoRingClosed', 'cassandraReferenceInUse',
     'closePerimeter',
     'validateActiveMap'],
 });
+
+// Bezugspunkt wie nach `loadCassandraReference()` im Auslieferungszustand. Ohne ihn ist
+// `state.cassandraReference` null, und Dateien im CaSSAndRA-Format werden bewusst abgewiesen —
+// die Tests liefen sonst in einem Zustand, den die App gar nicht kennt.
+t.state.cassandraReference = { lat: 0, lon: 0 };
 
 const square = [{x:0,y:0},{x:4,y:0},{x:4,y:4},{x:0,y:4}];
 const bowtie = [{x:0,y:0},{x:4,y:4},{x:0,y:4},{x:4,y:0}];
@@ -158,7 +164,9 @@ assert.ok(geoWithWaypoints.features.some((f)=>f.properties.role==='waypoints' &&
 
 // --- Import erkennt beide Vokabulare ---------------------------------------
 {
-  // Reine CaSSAndRA-Bezeichner, ganz ohne unser `role`.
+  // Reine CaSSAndRA-Bezeichner, ganz ohne unser `role`. Diese Datei erfuellt damit alle Merkmale
+  // des CaSSAndRA-Formats und wird seit der Formaterkennung aus Grad umgerechnet — geprueft wird
+  // hier weiterhin nur das Vokabular (welche Rolle kommt wo an), nicht die Koordinatenwerte.
   const foreign = {
     type: 'FeatureCollection',
     features: [
@@ -677,6 +685,183 @@ assert.ok(geoWithWaypoints.features.some((f)=>f.properties.role==='waypoints' &&
   console.log(`  CaSSAndRA-Rundlauf bei lat0=0: groesste Abweichung ${largestMm.toFixed(4)} mm ` +
     `(Perimeter ${perimeterMm.toFixed(4)}, Ausschluss ${exclusionMm.toFixed(4)}, ` +
     `Dock ${dockMm.toFixed(4)}, Suchdraht ${wireMm.toFixed(4)})`);
+}
+
+
+// --- CaSSAndRA-Import: Formaterkennung und Umrechnung -----------------------
+// Anlass: eine echte CaSSAndRA-Datei wurde als lokale Meter gelesen, weil die Grad-Erkennung
+// allein an `properties.coordinateSystem` hing — einem Feld, das CaSSAndRAs `export_geojson`
+// (mapdata.py:665-690) gar nicht schreibt. Eine 39-m-Karte kam als 0,48 mm an.
+//
+// Geprueft wird die WIRKUNG, nicht die Absicht: Ausdehnung in Metern, Zustand der Konturen,
+// Abweichung im Rundlauf.
+{
+  const fs = require('fs');
+  const path = require('path');
+
+  // Bezugspunkt wie im Auslieferungszustand. Bewusst hier gesetzt und nicht im Importweg
+  // vorausgesetzt: `state.cassandraReference` ist ohne `loadCassandraReference()` null, und
+  // genau dann darf nicht importiert werden.
+  const setReference = (value) => { t.state.cassandraReference = value; };
+
+  // -- Erkennung: die vier Merkmale, gegen echte Dateien gefahren ------------
+  const fixturePath = path.join(__dirname, 'fixtures', 'cassandra-perimeter.geojson.json');
+  const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
+  assert.strictEqual(t.isCassandraGeoJson(fixture), true,
+    'das abgeleitete Pruefmuster muss als CaSSAndRA-Format erkannt werden');
+
+  // Unser EIGENER CaSSAndRA-Export darf NICHT als Fremdformat gelten — er traegt das
+  // Metadaten-Feature `mapmaker` und damit seine eigene Ursprungsangabe. Wuerde er hier
+  // durchgehen, uebergaebe der Import ihn an den Bezugspunkt der Einstellung statt an den
+  // Wert, mit dem die Datei tatsaechlich entstanden ist.
+  setReference({ lat: 0, lon: 0 });
+  const eigenerCassandra = t.mapToCassandraGeoJson((() => {
+    const m = t.makeMap('Eigener');
+    m.perimeter = [{x:0,y:0},{x:10,y:0},{x:10,y:8},{x:0,y:8}];
+    m.perimeterClosed = true;
+    return m;
+  })(), { lat: 0, lon: 0 });
+  assert.strictEqual(t.isCassandraGeoJson(eigenerCassandra), false,
+    'unser eigener CaSSAndRA-Export darf nicht als Fremdformat erkannt werden');
+  assert.ok(eigenerCassandra.features.some((f) => f?.properties?.name === 'mapmaker'),
+    'Gegenprobe: er traegt das mapmaker-Feature tatsaechlich');
+
+  // Unser eigenes GeoJSON: Top-Level `name`/`properties`, Feature-`properties.role`.
+  const eigenesGeoJson = t.mapToGeoJson((() => {
+    const m = t.makeMap('Eigenes');
+    m.perimeter = [{x:0,y:0},{x:10,y:0},{x:10,y:8}];
+    return m;
+  })());
+  assert.strictEqual(t.isCassandraGeoJson(eigenesGeoJson), false,
+    'unser eigenes GeoJSON darf nicht als CaSSAndRA-Format erkannt werden');
+
+  // Jedes einzelne Merkmal muss zum Ausschluss genuegen.
+  const klon = () => JSON.parse(JSON.stringify(fixture));
+  const mitDrittemSchluessel = klon(); mitDrittemSchluessel.name = 'X';
+  assert.strictEqual(t.isCassandraGeoJson(mitDrittemSchluessel), false,
+    'ein dritter Top-Level-Schluessel schliesst das Format aus');
+  const mitRole = klon(); mitRole.features[0].properties.role = 'perimeter';
+  assert.strictEqual(t.isCassandraGeoJson(mitRole), false,
+    'properties.role schliesst das Format aus');
+  const mitLabel = klon(); mitLabel.features[0].properties.label = 'Perimeter';
+  assert.strictEqual(t.isCassandraGeoJson(mitLabel), false,
+    'ein zweiter properties-Schluessel schliesst das Format aus');
+  const fremderName = klon(); fremderName.features[0].properties.name = 'boundary';
+  assert.strictEqual(t.isCassandraGeoJson(fremderName), false,
+    'ein Name ausserhalb des Vokabulars schliesst das Format aus');
+  const mitMapmaker = klon();
+  mitMapmaker.features.push({ type: 'Feature', properties: { name: 'mapmaker' }, geometry: null });
+  assert.strictEqual(t.isCassandraGeoJson(mitMapmaker), false,
+    'ein mapmaker-Feature schliesst das Fremdformat aus');
+  const leer = { type: 'FeatureCollection', features: [] };
+  assert.strictEqual(t.isCassandraGeoJson(leer), false,
+    'ohne Feature traegt die Datei kein Merkmal');
+
+  // -- Umrechnung: Ausdehnung in Metern -------------------------------------
+  // Das Pruefmuster ist aus einer echten Karte abgeleitet, ausgeduennt und auf einen erfundenen
+  // Nullpunkt verschoben; die Sollwerte stammen aus seiner eigenen Konstruktion.
+  const spanne = (punkte) => ({
+    w: Math.max(...punkte.map((p) => p.x)) - Math.min(...punkte.map((p) => p.x)),
+    h: Math.max(...punkte.map((p) => p.y)) - Math.min(...punkte.map((p) => p.y)),
+  });
+  setReference({ lat: 0, lon: 0 });
+  const ausFixture = t.geoJsonToMap(fixture);
+  const sF = spanne(ausFixture.perimeter);
+  // Toleranz 2 cm: die Umrechnung laeuft ueber 1/111111 und zurueck, dabei bleibt
+  // Gleitkomma-Rauschen weit unterhalb eines Zentimeters.
+  assert.ok(Math.abs(sF.w - 35.97) < 0.02 && Math.abs(sF.h - 41.31) < 0.02,
+    `Pruefmuster muss 35,97 x 41,31 m ergeben, ist ${sF.w.toFixed(3)} x ${sF.h.toFixed(3)} m`);
+  assert.strictEqual(ausFixture.positionMode, 'absolute');
+  assert.strictEqual(ausFixture.origin.lat, 0);
+  assert.strictEqual(ausFixture.origin.lon, 0);
+
+  // -- Ringschluss (B3) ------------------------------------------------------
+  assert.strictEqual(ausFixture.perimeterClosed, true,
+    'der geschlossene Ring der Datei muss als geschlossene Kontur ankommen');
+  assert.ok(ausFixture.exclusions.length >= 1);
+  assert.ok(ausFixture.exclusions.every((e) => e.closed === true),
+    'auch Ausschlussflaechen muessen als geschlossen ankommen');
+  // Der Schlusspunkt selbst gehoert nicht ins Modell.
+  const ersterF = ausFixture.perimeter[0];
+  const letzterF = ausFixture.perimeter[ausFixture.perimeter.length - 1];
+  assert.ok(ersterF.x !== letzterF.x || ersterF.y !== letzterF.y,
+    'der doppelte Schlusspunkt darf nicht im Modell stehen');
+
+  // Gegenprobe: ein OFFENER Ring darf nicht als geschlossen gelten.
+  const offen = klon();
+  offen.features[0].geometry.coordinates[0].pop();
+  const ausOffen = t.geoJsonToMap(offen);
+  assert.strictEqual(ausOffen.perimeterClosed, false,
+    'ein offener Ring darf nicht als geschlossen ankommen');
+  // Gleiche Eckenzahl, verschiedenes Kennzeichen: beim geschlossenen Ring faellt der doppelte
+  // Punkt weg, beim offenen ist er gar nicht erst da. Genau das trennt Form von Zustand.
+  assert.strictEqual(ausOffen.perimeter.length, ausFixture.perimeter.length,
+    'geschlossener und offener Ring muessen dieselbe Eckenzahl ergeben');
+
+  // -- Ohne gueltigen Bezugspunkt entsteht keine Karte -----------------------
+  for (const ungueltig of [null, { lat: 0 }, { lat: 200, lon: 0 }]) {
+    setReference(ungueltig);
+    assert.throws(() => t.geoJsonToMap(fixture), /.+/,
+      `ohne gueltigen Bezugspunkt (${JSON.stringify(ungueltig)}) darf keine Karte entstehen`);
+  }
+  setReference({ lat: 0, lon: 0 });
+
+  // -- Rundlauf: Datei -> Import -> Export -> CaSSAndRAs Import --------------
+  // Zeilengetreue Portierung von `coords_abs_to_rel` (mapdata.py:704-710), dieselbe wie oben.
+  const coordsAbsToRel = (lon, lat, ref) => ({
+    x: (lon - ref.lon) * (111111 * Math.cos((ref.lat * Math.PI) / 180)),
+    y: (lat - ref.lat) * 111111,
+  });
+  const referenz = { lat: 0, lon: 0 };
+  const zurueck = t.mapToCassandraGeoJson(ausFixture, referenz);
+  const originalRing = fixture.features[0].geometry.coordinates[0];
+  const neuerRing = zurueck.features[0].geometry.coordinates[0];
+  assert.strictEqual(neuerRing.length, originalRing.length,
+    'der Rundlauf darf die Punktzahl nicht veraendern');
+  let groessteMm = 0;
+  for (let i = 0; i < originalRing.length; i += 1) {
+    const a = coordsAbsToRel(originalRing[i][0], originalRing[i][1], referenz);
+    const b = coordsAbsToRel(neuerRing[i][0], neuerRing[i][1], referenz);
+    groessteMm = Math.max(groessteMm, Math.hypot(a.x - b.x, a.y - b.y) * 1000);
+  }
+  // Obergrenze wie beim Export: 7 Nachkommastellen sind 0,5e-7 Grad je Achse, also 5,56 mm je
+  // Achse und 7,86 mm als Vektor am Aequator.
+  assert.ok(groessteMm < 7.9,
+    `Rundlauf ueber der theoretischen Grenze: ${groessteMm.toFixed(4)} mm`);
+  console.log(`  CaSSAndRA-Rundlauf (Pruefmuster): groesste Abweichung ${groessteMm.toFixed(4)} mm`);
+
+  // -- Die echten Karten des Nutzers, falls vorhanden ------------------------
+  // `tests/map/` ist nicht versioniert (echte Karten, .gitignore). Der Test laeuft deshalb nur
+  // dort, wo die Dateien liegen, und sagt sonst ausdruecklich, dass er uebersprungen wurde —
+  // ein stilles Durchwinken saehe im Protokoll wie ein bestandener Test aus.
+  const echteKarten = [
+    { datei: 'karte-a.json', w: 39.010, h: 49.760 },
+    { datei: 'karte-b.json', w: 38.270, h: 87.780 },
+  ];
+  let gefahren = 0;
+  for (const fall of echteKarten) {
+    const pfad = path.join(__dirname, 'map', fall.datei);
+    if (!fs.existsSync(pfad)) continue;
+    const daten = JSON.parse(fs.readFileSync(pfad, 'utf8'));
+    assert.strictEqual(t.isCassandraGeoJson(daten), true, `${fall.datei} muss erkannt werden`);
+    setReference({ lat: 0, lon: 0 });
+    const karte = t.geoJsonToMap(daten);
+    const s = spanne(karte.perimeter);
+    // Toleranz 1 cm: die Quellwerte liegen auf dem Zentimeterraster, das CaSSAndRA von Sunray
+    // uebernimmt; mehr Abweichung waere ein Rechenfehler, keine Rundung.
+    assert.ok(Math.abs(s.w - fall.w) < 0.01 && Math.abs(s.h - fall.h) < 0.01,
+      `${fall.datei}: erwartet ${fall.w} x ${fall.h} m, gemessen ${s.w.toFixed(3)} x ${s.h.toFixed(3)} m`);
+    assert.strictEqual(karte.perimeterClosed, true, `${fall.datei}: Perimeter muss geschlossen sein`);
+    assert.ok(karte.exclusions.every((e) => e.closed === true),
+      `${fall.datei}: alle Ausschlussflaechen muessen geschlossen sein`);
+    gefahren += 1;
+    console.log(`  ${fall.datei}: ${s.w.toFixed(3)} x ${s.h.toFixed(3)} m, Perimeter geschlossen, ` +
+      `${karte.exclusions.length} Flaechen geschlossen`);
+  }
+  if (!gefahren) {
+    console.log('  HINWEIS: tests/map/ nicht vorhanden — die Pruefung gegen die echten Karten ' +
+      'wurde UEBERSPRUNGEN (nicht bestanden). Das Pruefmuster in tests/fixtures/ lief.');
+  }
 }
 
 console.log('app core tests: OK');

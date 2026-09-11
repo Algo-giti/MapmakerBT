@@ -294,7 +294,12 @@ gelöschte Website-Daten bedeuten: Karten sind weg.
   damit ein Versehen auffällt, bevor die Datei in CaSSAndRA liegt. Leerst du beide Felder, ist der
   Export gesperrt. Der Bezugspunkt gilt für alle Karten dieses Geräts und ist unabhängig vom
   Positionsmodus der einzelnen Karte.
-- Alle drei Formate lassen sich wieder importieren.
+- Alle drei Formate lassen sich wieder importieren. **Auch Dateien, die CaSSAndRA selbst
+  geschrieben hat**: die App erkennt sie an ihrer Form und rechnet die Grad mit demselben
+  Bezugspunkt zurück in lokale Meter. Nach dem Import steht neben dem Import-Knopf, dass die Datei
+  als CaSSAndRA-Datei erkannt wurde und welcher Bezugspunkt dabei benutzt wurde. Ist dort nichts
+  eingetragen, wird die Datei **nicht** importiert – ohne den Wert wären die Grad nicht zu deuten,
+  denn CaSSAndRA schreibt ihn nicht mit in die Datei. Trage ihn ein und importiere erneut.
 
 **Erstelle regelmäßig JSON-Backups deiner wichtigen Karten.**
 
@@ -683,7 +688,12 @@ or cleared site data means the maps are gone.
   mistake shows up before the file reaches CaSSAndRA. Clearing both fields locks the export. The
   reference point applies to every map on this device and is independent of an individual map's
   position mode.
-- All three formats can be imported again.
+- All three formats can be imported again, **including files CaSSAndRA wrote itself**: the app
+  recognises them by their shape and converts the degrees back into local metres using the same
+  reference point. After the import, a line next to the import button states that the file was
+  recognised as a CaSSAndRA file and which reference point was used. If none is entered, the file
+  is **not** imported – without that value the degrees cannot be interpreted, because CaSSAndRA
+  does not write it into the file. Enter it and import again.
 
 **Make regular JSON backups of the maps that matter to you.**
 

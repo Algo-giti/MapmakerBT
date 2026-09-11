@@ -171,7 +171,7 @@ const I18N = {
     saveJson: 'Als JSON speichern', saveGeoJson: 'Als GeoJSON speichern',
     shareJson: 'Als JSON teilen', shareGeoJson: 'Als GeoJSON teilen', shareMapTitle: 'Karte teilen',
     saveCassandra: 'Für CaSSAndRA speichern', shareCassandra: 'Für CaSSAndRA teilen',
-    cassandraHelp: 'Genau die Form, die CaSSAndRA selbst schreibt und einliest: Weltkoordinaten in Grad, Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Gerechnet wird gegen den Bezugspunkt bei den Export-Knöpfen — voreingestellt 0 / 0, wie in CaSSAndRA ab Werk. Nach jedem Export steht der verwendete Wert in einer Meldung; er muss in CaSSAndRA derselbe sein.',
+    cassandraHelp: 'Genau die Form, die CaSSAndRA selbst schreibt und einliest: Weltkoordinaten in Grad, Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Gerechnet wird gegen den Bezugspunkt bei den Export-Knöpfen — voreingestellt 0 / 0, wie in CaSSAndRA ab Werk. Nach jedem Export steht der verwendete Wert in einer Meldung; er muss in CaSSAndRA derselbe sein. Dateien aus CaSSAndRA lassen sich damit auch **einlesen**: die App erkennt sie an ihrer Form und rechnet die Grad mit demselben Bezugspunkt in lokale Meter zurück. Ist dort nichts eingetragen, wird die Datei nicht importiert — ohne den Wert wären die Grad nicht zu deuten, denn CaSSAndRA schreibt ihn nicht in die Datei.',
     cassandraRefLat: 'CaSSAndRA-Bezugspunkt: Breite', cassandraRefLon: 'CaSSAndRA-Bezugspunkt: Länge',
     cassandraRefHint: 'Trage hier genau denselben Wert ein, der in CaSSAndRA unter den Robotereinstellungen als Breite und Länge steht. Es ist keine Ortsbestimmung: der Wert muss nur auf beiden Seiten derselbe sein, sonst liegt die Karte nach dem Import versetzt. Voreingestellt ist 0 / 0 — das ist auch CaSSAndRAs Auslieferungswert, passt also, solange dort nichts eingetragen wurde. Er gilt für alle Karten dieser Installation.',
     cassandraBlocked: 'Der CaSSAndRA-Export ist gesperrt: {reason}',
@@ -181,6 +181,8 @@ const I18N = {
     cassandraSkippedItem: '{label} ({count} Punkte)',
     cassandraSkippedAhead: 'Nicht mit dabei: {names}. CaSSAndRA verlangt je Fläche mindestens 3 Punkte — der Rest der Karte wird exportiert.',
     cassandraMissingHint: 'Es ist unten kein Bezugspunkt eingetragen.',
+    cassandraImportNoReference: 'Diese Datei stammt aus CaSSAndRA und enthält Grad-Koordinaten, aber keinen Bezugspunkt — CaSSAndRA schreibt ihn nicht in die Datei. Trage unter „CaSSAndRA-Bezugspunkt“ Breite und Länge ein (denselben Wert wie in CaSSAndRA unter den Robotereinstellungen, im Auslieferungszustand 0 und 0) und importiere die Datei danach erneut.',
+    cassandraImportNotice: 'Als CaSSAndRA-Datei erkannt und aus Grad in lokale Meter umgerechnet. Verwendeter Bezugspunkt: Breite {lat}, Länge {lon} — derselbe Wert, der in CaSSAndRA unter den Robotereinstellungen steht. Weicht er dort ab, liegt die Karte hier versetzt.',
     shareHelpNote: 'Karten von einem Gerät auf ein anderes bringen: Auf dem Quellgerät die Karte speichern oder teilen. „Teilen“ übergibt genau dieselbe Datei an das Freigabe-Menü des Geräts, sodass sie ohne Umweg über den Download-Ordner weitergereicht werden kann; welche Ziele dort angeboten werden, entscheidet das Gerät, nicht diese App. Auf dem Zielgerät die Datei über „JSON / GeoJSON importieren“ im Menü unter Karten einlesen. Kann ein Browser keine Dateien teilen, erscheint der Teilen-Knopf gar nicht erst — dann bleibt Speichern der Weg.',
     shareUnsupported: 'Dieser Browser kann keine Dateien teilen. Nutze stattdessen „Als JSON speichern“ bzw. „Als GeoJSON speichern“ und übertrage die Datei von Hand.',
     exportHint: 'JSON enthält das vollständige Mapper-Backup. GeoJSON speichert Perimeter/Ausschlüsse/Dock als Geometrien mit lokalen Sunray-X/Y-Koordinaten in Metern. Die CaSSAndRA-Datei ist dagegen genau so aufgebaut, wie CaSSAndRA sie selbst schreibt, und braucht deshalb den Bezugspunkt unten.',
@@ -394,7 +396,7 @@ const I18N = {
     saveJson: 'Save as JSON', saveGeoJson: 'Save as GeoJSON',
     shareJson: 'Share as JSON', shareGeoJson: 'Share as GeoJSON', shareMapTitle: 'Share map',
     saveCassandra: 'Save for CaSSAndRA', shareCassandra: 'Share for CaSSAndRA',
-    cassandraHelp: 'Exactly the shape CaSSAndRA writes and reads itself: world coordinates in degrees, perimeter, dock path, search wire and exclusion areas. It is computed against the reference point next to the export buttons — preset to 0 / 0, as CaSSAndRA ships it. After every export a notice states the value that was used; it has to match the one in CaSSAndRA.',
+    cassandraHelp: 'Exactly the shape CaSSAndRA writes and reads itself: world coordinates in degrees, perimeter, dock path, search wire and exclusion areas. It is computed against the reference point next to the export buttons — preset to 0 / 0, as CaSSAndRA ships it. After every export a notice states the value that was used; it has to match the one in CaSSAndRA. Files from CaSSAndRA can also be **imported**: the app recognises them by their shape and converts the degrees back into local metres using the same reference point. If none is entered, the file is not imported — without that value the degrees cannot be interpreted, because CaSSAndRA does not write it into the file.',
     cassandraRefLat: 'CaSSAndRA reference point: latitude', cassandraRefLon: 'CaSSAndRA reference point: longitude',
     cassandraRefHint: 'Enter exactly the same value that CaSSAndRA shows under its robot settings as latitude and longitude. This is not a location fix: the value only has to be identical on both sides, otherwise the map ends up offset after the import. It is preset to 0 / 0 — which is also CaSSAndRA’s factory value, so it fits as long as nothing was entered there. It applies to every map of this installation.',
     cassandraBlocked: 'The CaSSAndRA export is locked: {reason}',
@@ -404,6 +406,8 @@ const I18N = {
     cassandraSkippedItem: '{label} ({count} points)',
     cassandraSkippedAhead: 'Not included: {names}. CaSSAndRA requires at least 3 points per area — the rest of the map is exported.',
     cassandraMissingHint: 'No reference point has been entered below.',
+    cassandraImportNoReference: 'This file comes from CaSSAndRA and holds degree coordinates, but no reference point — CaSSAndRA does not write one into the file. Enter latitude and longitude under “CaSSAndRA reference point” (the same value as in CaSSAndRA under its robot settings, 0 and 0 as shipped) and import the file again.',
+    cassandraImportNotice: 'Recognised as a CaSSAndRA file and converted from degrees to local metres. Reference point used: latitude {lat}, longitude {lon} — the same value that is set in CaSSAndRA under its robot settings. If it differs there, the map ends up offset here.',
     shareHelpNote: 'Moving a map from one device to another: on the source device, save or share the map. “Share” hands exactly the same file to the device’s share menu, so it can be passed on without the detour via the download folder; which targets appear there is decided by the device, not by this app. On the target device, read the file back in via “Import JSON / GeoJSON” in the menu under Maps. If a browser cannot share files, the share button does not appear at all — saving remains the way there.',
     shareUnsupported: 'This browser cannot share files. Use “Save as JSON” or “Save as GeoJSON” instead and transfer the file manually.',
     exportHint: 'JSON contains the complete MapCreator backup. GeoJSON stores perimeter/exclusions/dock as geometries using local Sunray X/Y coordinates in metres. The CaSSAndRA file instead mirrors exactly what CaSSAndRA itself writes and therefore needs the reference point below.',
@@ -624,6 +628,7 @@ const ui = {
   shareJsonBtn: $('shareJsonBtn'), shareGeoJsonBtn: $('shareGeoJsonBtn'), importInput: $('importInput'),
   exportCassandraBtn: $('exportCassandraBtn'), shareCassandraBtn: $('shareCassandraBtn'),
   cassandraMissingHint: $('cassandraMissingHint'), cassandraSkippedHint: $('cassandraSkippedHint'),
+  importNotice: $('importNotice'),
   cassandraLatInput: $('cassandraLatInput'), cassandraLonInput: $('cassandraLonInput'),
   mapGallery: $('mapGallery'), mapCountBadge: $('mapCountBadge'),
   elementList: $('elementList'),
@@ -4299,6 +4304,63 @@ function validateImportedMap(data) {
   return clone;
 }
 
+/**
+ * Die vier Feature-Namen, die CaSSAndRAs eigener Export schreibt (mapdata.py:674-689). Bewusst
+ * eine geschlossene Liste: sie ist zugleich das Merkmal, an dem eine fremde Datei erkannt wird.
+ */
+const CASSANDRA_FEATURE_NAMES = new Set(['perimeter', 'dockpoints', 'search wire', 'exclusion']);
+
+/**
+ * Stammt diese Datei aus CaSSAndRAs eigenem `export_geojson` (mapdata.py:665-690)?
+ *
+ * **Strukturelle Erkennung, ausdruecklich keine Heuristik ueber die Zahlen.** Eine Regel wie
+ * „Betrag kleiner als 1, also Grad“ waere geraten und nachweislich falsch: steht in CaSSAndRA
+ * ein echter Bezugspunkt, liegen die Werte bei ~52 und ~13 und saehen wie Meter aus. Die Form
+ * der Datei dagegen ist eindeutig, weil `export_geojson` sie fest verdrahtet baut.
+ *
+ * Alle Merkmale muessen zutreffen; eines genuegt zum Ausschluss:
+ *  1. genau zwei Schluessel oben, `type` und `features` (mapdata.py:670) — unser eigenes GeoJSON
+ *     fuehrt dort zusaetzlich `name` und `properties`;
+ *  2. jedes Feature traegt `properties` mit **ausschliesslich** `name`. Damit ist zugleich
+ *     ausgeschlossen, dass irgendwo `properties.role` steht — unser internes Merkmal;
+ *  3. jeder Name stammt aus `CASSANDRA_FEATURE_NAMES`. Damit ist zugleich ausgeschlossen, dass
+ *     das Metadaten-Feature `mapmaker` dabei ist, mit dem unser eigener CaSSAndRA-Export sich zu
+ *     erkennen gibt — der darf hier auf keinen Fall als Fremdformat durchgehen, sonst wuerde
+ *     seine eigene Ursprungsangabe uebergangen.
+ *
+ * Eine leere Feature-Liste gilt nicht als erkannt: ohne ein einziges Feature traegt die Datei
+ * kein Merkmal, und ohne Merkmal wird nicht umgerechnet.
+ */
+function isCassandraGeoJson(data) {
+  if (!data || data.type !== 'FeatureCollection' || !Array.isArray(data.features)) return false;
+  const keys = Object.keys(data);
+  if (keys.length !== 2 || !keys.includes('type') || !keys.includes('features')) return false;
+  if (!data.features.length) return false;
+  return data.features.every((feature) => {
+    const props = feature?.properties;
+    if (!props || typeof props !== 'object' || Array.isArray(props)) return false;
+    const propKeys = Object.keys(props);
+    return propKeys.length === 1 && propKeys[0] === 'name' && CASSANDRA_FEATURE_NAMES.has(props.name);
+  });
+}
+
+/**
+ * Ist der Ring dieser Polygon-Geometrie geschlossen, traegt die Datei also den Schlusspunkt?
+ *
+ * **Einzige Stelle, an der das entschieden wird.** `pointsFromGeoGeometry()` schneidet den
+ * doppelten Punkt daraufhin ab, `geoJsonToMap()` setzt daraufhin das Kennzeichen der Kontur —
+ * zwei Leser, eine Quelle. Vorher hing beides an derselben Bedingung in zwei Auspraegungen,
+ * und die zweite fehlte schlicht: der Schlusspunkt fiel weg, `perimeterClosed` blieb `false`.
+ */
+function geoRingClosed(geometry) {
+  if (geometry?.type !== 'Polygon') return false;
+  const coords = geometry.coordinates?.[0] || [];
+  if (coords.length < 2) return false;
+  const first = coords[0];
+  const last = coords[coords.length - 1];
+  return Array.isArray(first) && Array.isArray(last) && first[0] === last[0] && first[1] === last[1];
+}
+
 function pointsFromGeoGeometry(geometry, samples = [], origin = null) {
   if (!geometry) return [];
   let coords = [];
@@ -4307,11 +4369,9 @@ function pointsFromGeoGeometry(geometry, samples = [], origin = null) {
   else if (geometry.type === 'Polygon') coords = geometry.coordinates?.[0] || [];
   else throw new Error(tr('unsupportedGeometry', { type: geometry.type || tr('unknown') }));
 
-  if (geometry.type === 'Polygon' && coords.length > 1) {
-    const first = coords[0];
-    const last = coords[coords.length - 1];
-    if (Array.isArray(first) && Array.isArray(last) && first[0] === last[0] && first[1] === last[1]) coords = coords.slice(0, -1);
-  }
+  // Den Schlusspunkt traegt das Modell nicht — es merkt sich nur, dass die Kontur geschlossen
+  // ist. Dieselbe Pruefung liest `geoJsonToMap()`, um genau das zu setzen.
+  if (geoRingClosed(geometry)) coords = coords.slice(0, -1);
 
   return coords.map((coord, index) => {
     if (!Array.isArray(coord) || coord.length < 2 || !Number.isFinite(Number(coord[0])) || !Number.isFinite(Number(coord[1]))) {
@@ -4362,7 +4422,21 @@ function geoJsonToMap(data) {
   // schlimmer als eine klare Fehlermeldung.
   const declared = String(meta.coordinateSystem || '').toLowerCase();
   let origin = null;
-  if (declared === 'wgs84-degrees') {
+  if (isCassandraGeoJson(data)) {
+    // CaSSAndRAs Format sagt nirgends, dass es Grad fuehrt — `export_geojson` schreibt nur `type`
+    // und `features` (mapdata.py:670). Erkannt wird es deshalb an der Form, und die Grad sind
+    // dann eine Eigenschaft des Formats, keine Vermutung ueber die Zahlen.
+    //
+    // Der Bezugspunkt steht **nicht** in der Datei: er lebt allein in CaSSAndRAs `rovercfg.lat`
+    // und `lon`. Ohne ihn sind die Grad nicht zurueckzurechnen, deshalb wird hier lieber gar
+    // nicht importiert als eine Karte an einem erfundenen Ort erzeugt. Bewusst **kein** Rueckfall
+    // auf 0/0: die Vorgabe gehoert in die Einstellung (`loadCassandraReference()`), nicht in den
+    // Importweg — sonst haette ein ausdruecklich geleertes Feld hier keine Wirkung mehr.
+    origin = cassandraReferenceInUse();
+    if (!origin) throw new Error(tr('cassandraImportNoReference'));
+    map.positionMode = 'absolute';
+    map.origin = origin;
+  } else if (declared === 'wgs84-degrees') {
     origin = normalizeOrigin(meta.origin);
     if (!origin) throw new Error(tr('missingOrigin'));
     map.positionMode = 'absolute';
@@ -4373,11 +4447,16 @@ function geoJsonToMap(data) {
     const points = pointsFromGeoGeometry(feature.geometry, feature?.properties?.samples || [], origin);
     if (role === 'perimeter') {
       map.perimeter = points;
+      // Den Ringschluss traegt die Datei, und genau hier ging er bisher verloren: der doppelte
+      // Punkt wurde abgeschnitten, das Kennzeichen aber nie gesetzt — jede importierte Karte galt
+      // als offen. Gilt fuer jeden GeoJSON-Import, nicht nur fuer CaSSAndRA-Dateien.
+      map.perimeterClosed = geoRingClosed(feature.geometry);
     } else if (role === 'exclusion') {
       map.exclusions.push({
         id: newId(),
         name: importedExclusionName(feature?.properties, map.exclusions.length + 1),
         points,
+        closed: geoRingClosed(feature.geometry),
       });
     } else if (role === 'dock' || role === 'dockpoints' || role === 'dockpath') {
       map.dockPoints = points;
@@ -4391,11 +4470,34 @@ function geoJsonToMap(data) {
   return map;
 }
 
+/**
+ * Meldung nach einem Import im Klartext — dieselbe Ueberlegung wie bei `noticeCassandraExport()`:
+ * die Umrechnung haengt an einem Wert, den nur der Nutzer mit CaSSAndRA abgleichen kann, also
+ * wird er genannt statt vorausgesetzt. Nur das Anzeigemittel ist ein anderes (Hinweiszeile statt
+ * Dialog), weil der Import auf der Menueseite laeuft und ein Modal dort im Weg staende.
+ */
+function noticeCassandraImport(origin) {
+  if (!ui.importNotice) return;
+  ui.importNotice.textContent = tr('cassandraImportNotice', { lat: String(origin.lat), lon: String(origin.lon) });
+  ui.importNotice.hidden = false;
+}
+
+/** Vor jedem Import zuruecksetzen, damit kein Hinweis von der vorigen Datei stehen bleibt. */
+function clearImportNotice() {
+  if (!ui.importNotice) return;
+  ui.importNotice.textContent = '';
+  ui.importNotice.hidden = true;
+}
+
 async function importMapFile(file) {
   stopAutoCapture();
+  clearImportNotice();
   if (state.maps.length >= MAX_MAPS) throw new Error(tr('mapLimitReached'));
   const text = await file.text();
   const data = JSON.parse(text);
+  // Vor der Umwandlung gefragt, aber erst nach getaner Arbeit gemeldet: andersherum staende die
+  // Meldung auch dann da, wenn der Import gleich darauf scheitert.
+  const cassandra = data?.type === 'FeatureCollection' && isCassandraGeoJson(data);
   const map = data?.type === 'FeatureCollection' ? geoJsonToMap(data) : validateImportedMap(data);
   await dbRequest('readwrite', (store) => store.put(map));
   state.maps.push(map);
@@ -4406,6 +4508,8 @@ async function importMapFile(file) {
   renderMapControls();
   await saveActiveMap();
   renderMap();
+  // Erst handeln, dann melden.
+  if (cassandra) noticeCassandraImport(map.origin);
 }
 
 function segmentsIntersect(a, b, c, d) {

@@ -979,6 +979,20 @@ test('Struktur: alle Menueabschnitte sind direkte Kinder ihres Akkordeon-Contain
 });
 
 let failed = 0;
+
+test('Die Import-Hinweiszeile startet ausgeblendet und liegt beim Import-Knopf', () => {
+  const zeile = html.match(/<small[^>]*id="importNotice"[^>]*>/);
+  assert.ok(zeile, '#importNotice fehlt im Markup');
+  assert.ok(/\bhidden\b/.test(zeile[0]),
+    'ohne `hidden` im Markup blitzt die Meldung beim Laden kurz auf');
+  assert.ok(/aria-live/.test(zeile[0]), 'die Meldung muss vorgelesen werden');
+  // Sie gehoert neben den Import-Knopf, nicht irgendwohin: dieselbe Ueberlegung wie bei
+  // #cassandraSkippedHint neben den Export-Knoepfen.
+  const abstand = html.indexOf(zeile[0]) - html.indexOf('id="importInput"');
+  assert.ok(abstand > 0 && abstand < 400,
+    `#importNotice steht nicht beim Import-Knopf (Abstand ${abstand} Zeichen)`);
+});
+
 for (const c of cases) {
   try { c.fn(); } catch (error) {
     failed += 1;

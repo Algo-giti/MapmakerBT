@@ -46,6 +46,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'loadCassandraReference', 'saveCassandraReference', 'storedCassandraReference',
   'defaultCassandraReference', 'CASSANDRA_REFERENCE_KEY',
   'updateCassandraReferenceFromUi', 'cassandraReferenceInUse', 'mapToCassandraGeoJson',
+  'importMapFile', 'isCassandraGeoJson', 'noticeCassandraImport', 'clearImportNotice',
   'MIN_USER_ZOOM', 'MAX_USER_ZOOM', 'init'];
 
 /** Minimaler IndexedDB-Ersatz, damit saveActiveMap() im Test durchlaeuft. */
@@ -3135,6 +3136,98 @@ test('Die CaSSAndRA-Knoepfe stehen bei den anderen Export-Knoepfen', () => {
     assert.ok(/Robotereinstellungen|robot settings/.test(hint),
       `der Hinweis (${lang}) verweist auf die Robotereinstellungen in CaSSAndRA`);
   }
+});
+
+
+test('CaSSAndRA-Datei: Import meldet Format und Bezugspunkt im Klartext, ohne Dialog', async () => {
+  const { t, elements, sandbox } = setup();
+  t.state.cassandraReference = { lat: 0, lon: 0 };
+  const notice = elements.get('importNotice');
+  // Im Browser sorgt das `hidden` im Markup fuer den Startzustand, im Stub diese Funktion.
+  t.clearImportNotice();
+  assert.strictEqual(notice.hidden, true, 'vor dem Import steht da nichts');
+  assert.strictEqual(notice.textContent, '');
+
+  // 20 x 10 m, geschlossener Ring, in Grad bei lat0/lon0 = 0 — die Form, die CaSSAndRA schreibt.
+  const g = (x, y) => [x / 111111, y / 111111];
+  const datei = { type: 'FeatureCollection', features: [
+    { type: 'Feature', properties: { name: 'perimeter' },
+      geometry: { type: 'Polygon', coordinates: [[g(0,0), g(20,0), g(20,10), g(0,10), g(0,0)]] } },
+    { type: 'Feature', properties: { name: 'dockpoints' }, geometry: { type: 'LineString', coordinates: [] } },
+    { type: 'Feature', properties: { name: 'search wire' }, geometry: { type: 'LineString', coordinates: [] } },
+  ] };
+  assert.strictEqual(t.isCassandraGeoJson(datei), true);
+
+  // „Kein Dialog“ wird ueber den Dialog-Haken geprueft, nicht ueber ein hidden-Attribut: der
+  // Element-Stub kennt den Startzustand aus dem Markup nicht.
+  sandbox.__lastConfirmRequest = null;
+  const vorher = t.state.maps.length;
+  await t.importMapFile({ text: async () => JSON.stringify(datei) });
+
+  assert.strictEqual(t.state.maps.length, vorher + 1, 'die Karte ist entstanden');
+  const karte = t.state.activeMap;
+  // Wirkung, nicht Absicht: die Ausdehnung in Metern.
+  const breite = Math.max(...karte.perimeter.map((p) => p.x)) - Math.min(...karte.perimeter.map((p) => p.x));
+  const hoehe = Math.max(...karte.perimeter.map((p) => p.y)) - Math.min(...karte.perimeter.map((p) => p.y));
+  assert.ok(Math.abs(breite - 20) < 0.01 && Math.abs(hoehe - 10) < 0.01,
+    `erwartet 20 x 10 m, gemessen ${breite.toFixed(3)} x ${hoehe.toFixed(3)} m`);
+  assert.strictEqual(karte.perimeterClosed, true, 'der geschlossene Ring kommt als geschlossen an');
+
+  // Die Meldung steht als Hinweiszeile da — nicht als Dialog.
+  assert.strictEqual(notice.hidden, false, 'die Meldung ist sichtbar');
+  assert.ok(notice.textContent.includes('CaSSAndRA'), `Format genannt: ${notice.textContent}`);
+  assert.ok(/Breite 0/.test(notice.textContent) && /L\u00e4nge 0/.test(notice.textContent),
+    `Bezugspunkt im Klartext: ${notice.textContent}`);
+  assert.strictEqual(sandbox.__lastConfirmRequest, null, 'kein Dialog, nur die Hinweiszeile');
+});
+
+test('CaSSAndRA-Datei ohne gueltigen Bezugspunkt: keine Karte, Meldung nennt den naechsten Schritt', async () => {
+  const { t, elements } = setup();
+  t.state.cassandraReference = null;          // Feld ausdruecklich geleert
+  t.clearImportNotice();
+  const g = (x, y) => [x / 111111, y / 111111];
+  const datei = { type: 'FeatureCollection', features: [
+    { type: 'Feature', properties: { name: 'perimeter' },
+      geometry: { type: 'Polygon', coordinates: [[g(0,0), g(20,0), g(20,10), g(0,0)]] } },
+  ] };
+  const vorher = t.state.maps.length;
+  let fehler = null;
+  await t.importMapFile({ text: async () => JSON.stringify(datei) }).catch((e) => { fehler = e; });
+
+  assert.ok(fehler, 'der Import muss abbrechen');
+  assert.strictEqual(t.state.maps.length, vorher, 'es darf keine Karte entstehen');
+  assert.ok(/Bezugspunkt/.test(fehler.message), `die Meldung nennt den Grund: ${fehler.message}`);
+  assert.ok(/erneut/.test(fehler.message), 'und den naechsten Schritt');
+  assert.strictEqual(elements.get('importNotice').hidden, true, 'keine Erfolgsmeldung');
+});
+
+test('Eigenes GeoJSON und eigener CaSSAndRA-Export gehen unveraendert durch den Import', async () => {
+  const { t, elements } = setup();
+  t.state.cassandraReference = { lat: 52.26742967, lon: 8.60921633 };
+  const m = t.makeMap('Eigen');
+  t.clearImportNotice();
+  m.perimeter = [{x:0,y:0},{x:12,y:0},{x:12,y:9}];
+  m.perimeterClosed = true;
+
+  // Unser eigenes GeoJSON traegt `properties.role` und bleibt in lokalen Metern.
+  const eigen = t.mapToGeoJson(m);
+  assert.strictEqual(t.isCassandraGeoJson(eigen), false);
+  await t.importMapFile({ text: async () => JSON.stringify(eigen) });
+  const zurueck = t.state.activeMap;
+  assert.strictEqual(zurueck.perimeter.length, 3);
+  assert.strictEqual(zurueck.perimeter[1].x, 12, 'die Meter bleiben Meter');
+  assert.strictEqual(elements.get('importNotice').hidden, true,
+    'fuer eigene Dateien erscheint keine CaSSAndRA-Meldung');
+
+  // Unser eigener CaSSAndRA-Export traegt das mapmaker-Feature mit eigenem Ursprung.
+  const eigenCass = t.mapToCassandraGeoJson(m, { lat: 52.26742967, lon: 8.60921633 });
+  assert.strictEqual(t.isCassandraGeoJson(eigenCass), false,
+    'der eigene Export darf nicht als Fremdformat gelten');
+  await t.importMapFile({ text: async () => JSON.stringify(eigenCass) });
+  const zurueck2 = t.state.activeMap;
+  const b = Math.max(...zurueck2.perimeter.map((p) => p.x)) - Math.min(...zurueck2.perimeter.map((p) => p.x));
+  assert.ok(Math.abs(b - 12) < 0.02, `eigener Rundlauf: erwartet 12 m, gemessen ${b.toFixed(3)} m`);
+  assert.strictEqual(zurueck2.perimeterClosed, true, 'der Ringschluss ueberlebt den eigenen Rundlauf');
 });
 
 (async () => {

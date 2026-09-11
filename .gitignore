@@ -6,3 +6,6 @@ Thumbs.db
 
 # Node (falls später Tooling dazukommt)
 node_modules/
+
+# Echte Testkarten des Nutzers (nicht veroeffentlichen)
+tests/map/
