@@ -263,18 +263,32 @@ Fahrfeld schaltet zwischen beidem um; er zeigt das Symbol des Modus, in den er w
 Joystick-Modus also das Steuerkreuz. Bei Rechtshändern steht er links vom Feld, bei Linkshändern
 gespiegelt rechts, jeweils direkt über der Fahrtanzeige. Dieselbe Wahl steht auch unter *Einstellungen › Fahrgeschwindigkeit*. Die Tasten kennen bewusst nur
 vorwärts, rückwärts und Drehen auf der Stelle – keine Diagonalen, damit beim Geradeausfahren
-nichts versehentlich lenkt. Sie fahren mit einer **eigenen, langsamen Geschwindigkeit**
-(Startwert 15 cm/s, nie schneller als die eingestellte Höchstgeschwindigkeit); der Joystick bleibt
-davon unberührt. Halten und Loslassen verhalten sich wie beim Joystick.
+nichts versehentlich lenkt. Vorwärts und rückwärts fahren mit einer **eigenen, langsamen
+Geschwindigkeit** (Startwert 15 cm/s, nie schneller als die eingestellte Höchstgeschwindigkeit);
+der Joystick bleibt davon unberührt. Halten und Loslassen verhalten sich wie beim Joystick.
 
-Jede Richtungstaste ist dabei **längs in drei Geschwindigkeitszonen geteilt**: innen die
+Die vier Tasten sind als **Sanduhr** geschnitten: vorwärts und rückwärts sind breite Trapeze,
+links und rechts schmale Keile. Das folgt der Bedienung – bei vor und zurück schiebt der Daumen
+über die ganze Länge, links und rechts sind Korrekturen auf der Stelle.
+
+**Vorwärts und rückwärts sind längs in drei Geschwindigkeitszonen geteilt**: innen die
 eingestellte Mindestgeschwindigkeit, in der Mitte der Tastenwert, außen die Höchstgeschwindigkeit.
 Es kommt dadurch keine neue Einstellung hinzu – es sind dieselben drei Werte, die unter
 *Einstellungen › Fahrgeschwindigkeit* ohnehin stehen. Die Zone folgt dem Finger, solange er
 gedrückt bleibt: weiter nach außen schieben heißt schneller, zurück zur Mitte wieder langsamer.
 Die Grenzen sind auf der Taste eingezeichnet, die gerade gefahrene Zone ist hervorgehoben.
-Die Einteilung lässt sich abschalten – dann gilt überall der Tastenwert –, und ob sie auch beim
-Drehen auf der Stelle gilt, ist ein eigener Schalter (Vorgabe: aus).
+Jede Zone trägt zusätzlich einen **Chevron**, der nach außen breiter, flacher und kräftiger wird.
+Die Einteilung lässt sich abschalten – dann gilt für beide Richtungen der Tastenwert, und
+vorwärts wie rückwärts zeigen nur noch den einen Chevron der mittleren Geschwindigkeit: die Taste
+zeigt nichts, was sie nicht tut.
+
+**Links und rechts haben keine Zonen.** Das Drehen auf der Stelle läuft immer mit der Hälfte der
+eingestellten Höchstgeschwindigkeit – bei den Vorgaben also 12,5 cm/s –, gedeckelt durch die
+eingestellte Höchst-Drehrate. Sie tragen je einen nach außen zeigenden Chevron.
+
+Die Größe des Fahrfelds stellst du unter *Einstellungen › Fahrgeschwindigkeit* ein. In kleinen
+Stufen werden die **Drehtasten** schmaler als ein Daumen; die App sagt das dann als Hinweis bei
+der Größeneinstellung und ändert die Größe **nicht** von selbst.
 
 Die drei Werte sind frei einstellbar, und die App sortiert sie **nicht**: wer die
 Mindestgeschwindigkeit des Joysticks über den Tastenwert legt, bekommt eine Staffel, die
@@ -687,17 +701,30 @@ the drive field switches between the two; it shows the icon of the mode it switc
 joystick mode it shows the direction pad. For right-handed use it sits to the left of the field,
 for left-handed use mirrored to the right, directly above the drive status. The same choice is available under
 *Settings › Drive speed*. The keys deliberately only know forward, backward and
-turning on the spot – no diagonals, so nothing steers by accident while driving straight. They use
-their **own slow speed** (15 cm/s to start with, never faster than the configured maximum); the
-joystick is unaffected. Press and release behave just like the joystick.
+turning on the spot – no diagonals, so nothing steers by accident while driving straight. Forward
+and reverse use their **own slow speed** (15 cm/s to start with, never faster than the configured
+maximum); the joystick is unaffected. Press and release behave just like the joystick.
 
-Each direction key is **split lengthwise into three speed zones**: the configured minimum speed on
-the inside, the key speed in the middle, the maximum speed on the outside. No new setting is added
-– these are the same three values already under *Settings › Drive speed*. The zone follows your
-finger while it stays down: sliding further out means faster, back towards the centre slower again.
-The boundaries are drawn on the key and the zone currently in use is highlighted. The split can be
-switched off – the key speed then applies everywhere – and whether it also applies to turning on
-the spot is a separate switch (off by default).
+The four keys are cut as an **hourglass**: forward and reverse are wide trapezoids, left and right
+narrow wedges. That follows how they are used – for forward and back your thumb slides along the
+whole length, while left and right are corrections on the spot.
+
+**Forward and reverse are split lengthwise into three speed zones**: the configured minimum speed
+on the inside, the key speed in the middle, the maximum speed on the outside. No new setting is
+added – these are the same three values already under *Settings › Drive speed*. The zone follows
+your finger while it stays down: sliding further out means faster, back towards the centre slower
+again. The boundaries are drawn on the key and the zone currently in use is highlighted. Each zone
+also carries a **chevron** that grows wider, flatter and stronger towards the outside. The split
+can be switched off – the key speed then applies to both directions, and forward and reverse show
+only the single chevron of the middle speed: the key shows nothing it does not do.
+
+**Left and right have no zones.** Turning on the spot always runs at half the configured maximum
+speed – 12.5 cm/s with the defaults – capped by the configured maximum turn rate. They each carry one
+outward-pointing chevron.
+
+The size of the drive field is set under *Settings › Drive speed*. At small sizes the **turn keys**
+become narrower than a thumb; the app says so as a note next to the size setting and does **not**
+change the size for you.
 
 The three values are yours to set and the app does **not** sort them: if you put the joystick
 minimum above the key speed, you get a ladder that slows down in between. Nothing is changed for

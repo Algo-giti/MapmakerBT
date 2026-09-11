@@ -21,7 +21,8 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'mapOriginInUse', 'originFromInputs', 'normalizeOrigin',
   'applyDriveControlMode', 'toggleDriveControl', 'beginCursorDrive', 'cursorDriveVector', 'cursorSpeedLimits',
   'updateCursorDriveFromPointer', 'cursorZoneFromPointer', 'cursorZoneSpeeds', 'DRIVE_ZONES',
-  'cursorZoneLadder', 'refreshDriveZoneHint',
+  'cursorZoneLadder', 'refreshDriveZoneHint', 'turnKeyIncircle', 'refreshTurnKeyHint',
+  'applyDriveZonePreferences',
   'renameMapById', 'duplicateMapById', 'uniqueCopyName', 'askText', 'localizedMapName', 'MAP_NAME_MAX',
   'stopDrive', 'saveViewPreferences',
   'log', 'renderDebugLog', 'onDebugLogScroll', 'scrollLogToEnd', 'clearDebugLog',
@@ -1253,13 +1254,20 @@ test('Jede Richtungstaste fahrt mit der eigenen Cursor-Geschwindigkeit', () => {
   assert.ok(Math.abs(down.linear + 0.12) < 1e-9);
   assert.strictEqual(down.angular, 0);
 
-  // Links/rechts drehen auf der Stelle: linear 0, Drehrate aus v / halber Spurweite.
+  // Links/rechts drehen auf der Stelle: linear 0, Drehrate aus v / halber Spurweite. **`v` ist
+  // hier die Haelfte des Hoechstwerts, nicht die Tastengeschwindigkeit** — der Keil hat seit der
+  // Sanduhrform keine Zonen, und der halbe Hoechstwert fuehrt keine neue Zahl ein.
   const left = t.cursorDriveVector('left');
   const right = t.cursorDriveVector('right');
   assert.strictEqual(left.linear, 0, 'Drehung auf der Stelle');
   assert.strictEqual(right.linear, 0);
-  assert.ok(Math.abs(left.angular - 0.6) < 1e-9, '0,12 / 0,20 = 0,6 rad/s');
-  assert.ok(Math.abs(right.angular + 0.6) < 1e-9, 'rechts ist genau gespiegelt');
+  assert.ok(Math.abs(left.angular - 0.75) < 1e-9, '(0,30 / 2) / 0,20 = 0,75 rad/s');
+  assert.ok(Math.abs(right.angular + 0.75) < 1e-9, 'rechts ist genau gespiegelt');
+  // Und die Tastengeschwindigkeit bewegt daran nichts.
+  t.state.view.cursorSpeedCms = 25;
+  assert.ok(Math.abs(t.cursorDriveVector('left').angular - 0.75) < 1e-9,
+    'das Drehen haengt am Hoechstwert, nicht am Tastenwert');
+  t.state.view.cursorSpeedCms = 12;
 
   // Die eingestellte Hoechst-Drehrate bleibt die Obergrenze.
   t.state.view.driveTurnMax = 0.30;
@@ -1317,7 +1325,6 @@ function zonedSetup() {
   t.state.view.driveSpeedMax = 0.25;
   t.state.view.cursorSpeedCms = 15;
   t.state.view.driveZones = true;
-  t.state.view.driveZonesTurn = false;
   t.toggleDriveControl();
   return { t, clock, tx };
 }
@@ -1325,7 +1332,7 @@ function zonedSetup() {
 test('Die Zone haengt an der Fingerposition, nicht an der Taste allein', async () => {
   const { t, clock, tx } = zonedSetup();
   // Innen langsam, aussen schnell — gemessen am tatsaechlich gesendeten Befehl.
-  for (const [share, speed] of [[0.10, '0.08'], [0.50, '0.15'], [0.90, '0.25']]) {
+  for (const [share, speed] of [[0.10, '0.08'], [0.60, '0.15'], [0.90, '0.25']]) {
     pressKey(t, 'up', share);
     await clock.runFor(50);
     assert.ok(tx.last().startsWith(`AT+M,${speed},0.00`),
@@ -1379,33 +1386,67 @@ test('Ohne Zoneneinteilung faehrt die Taste wie zuvor', async () => {
   }
 });
 
-test('Der eigene Schalter entscheidet ueber die Zonen beim Drehen', async () => {
+test('Drehen laeuft mit fester Geschwindigkeit, unabhaengig von Zone und Schalter', async () => {
   const { t, clock, tx } = zonedSetup();
-  // Halbe Spurweite 0,25 m und ein hoher Deckel, damit die Drehraten unverfaelscht vergleichbar
-  // sind: 0,15 / 0,25 = 0,60 rad/s gegen 0,25 / 0,25 = 1,00 rad/s.
+  // Halbe Spurweite 0,25 m und ein hoher Deckel, damit die Drehrate unverfaelscht ablesbar ist:
+  // die Haelfte des Hoechstwerts ist 0,125 m/s, geteilt durch 0,25 m ergibt 0,50 rad/s.
   t.state.view.mowerWidth = 0.50;
   t.state.view.driveTurnMax = 2.00;
 
-  pressKey(t, 'left', 0.90);
+  // (a) Innen wie aussen dasselbe — der Keil hat keine Zonen.
+  for (const share of [0.10, 0.60, 0.95]) {
+    const key = pressKey(t, 'left', share);
+    await clock.runFor(50);
+    assert.ok(tx.last().startsWith('AT+M,0.00,0.50'),
+      `links dreht ueberall gleich, bei ${share} gesendet: ${tx.last()}`);
+    assert.strictEqual(key.dataset.zone, undefined, 'und traegt nirgends eine Zonenmarkierung');
+    // Auch das Schieben aendert nichts.
+    t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, 'left', 0.95) });
+    assert.strictEqual(t.state.driveVector.angular, 0.50, 'das Schieben aendert die Drehrate nicht');
+    t.stopDrive();
+    await clock.runFor(50);
+  }
+
+  // (b) Rechts ist dasselbe mit umgekehrtem Vorzeichen.
+  pressKey(t, 'right', 0.90);
   await clock.runFor(50);
-  assert.ok(tx.last().startsWith('AT+M,0.00,0.60'),
-    `ohne den Schalter dreht die Taste ueberall gleich, gesendet: ${tx.last()}`);
+  assert.ok(tx.last().startsWith('AT+M,0.00,-0.50'), `rechts dreht gegenlaeufig, gesendet: ${tx.last()}`);
   t.stopDrive();
   await clock.runFor(50);
 
-  t.state.view.driveZonesTurn = true;
+  // (c) Der Zonenschalter fasst das Drehen nicht an — weder an noch aus.
+  t.state.view.driveZones = false;
   pressKey(t, 'left', 0.90);
   await clock.runFor(50);
-  assert.ok(tx.last().startsWith('AT+M,0.00,1.00'),
-    `mit Schalter erbt das Drehen dieselbe Staffel, gesendet: ${tx.last()}`);
-  // Vorwaerts war davon nie betroffen.
+  assert.ok(tx.last().startsWith('AT+M,0.00,0.50'),
+    `ohne Zonen dreht es genauso, gesendet: ${tx.last()}`);
   t.stopDrive();
   await clock.runFor(50);
-  t.state.view.driveZonesTurn = false;
-  pressKey(t, 'up', 0.90);
+  t.state.view.driveZones = true;
+
+  // (d) Es haengt am Hoechstwert, nicht an der Tastengeschwindigkeit: der Tastenwert wandert,
+  // die Drehrate nicht; der Hoechstwert wandert, die Drehrate mit.
+  t.state.view.cursorSpeedCms = 8;
+  pressKey(t, 'left', 0.90);
   await clock.runFor(50);
-  assert.ok(tx.last().startsWith('AT+M,0.25'),
-    `der Drehschalter darf das Fahren nicht anfassen, gesendet: ${tx.last()}`);
+  assert.ok(tx.last().startsWith('AT+M,0.00,0.50'),
+    `die Tastengeschwindigkeit darf das Drehen nicht bewegen, gesendet: ${tx.last()}`);
+  t.stopDrive();
+  await clock.runFor(50);
+  t.state.view.driveSpeedMax = 0.40;
+  pressKey(t, 'left', 0.90);
+  await clock.runFor(50);
+  assert.ok(tx.last().startsWith('AT+M,0.00,0.80'),
+    `die Haelfte von 0,40 m/s ergibt 0,80 rad/s, gesendet: ${tx.last()}`);
+  t.stopDrive();
+  await clock.runFor(50);
+
+  // (e) Der Deckel greift weiterhin.
+  t.state.view.driveTurnMax = 0.30;
+  pressKey(t, 'left', 0.90);
+  await clock.runFor(50);
+  assert.ok(tx.last().startsWith('AT+M,0.00,0.30'),
+    `driveTurnMax deckelt die feste Drehrate, gesendet: ${tx.last()}`);
   t.stopDrive();
 });
 
@@ -1547,16 +1588,86 @@ test('Eine absteigende Staffel wird benannt, nicht stillschweigend korrigiert', 
   }
 });
 
+test('Zu schmale Drehtasten werden benannt, nicht heimlich vergroessert', () => {
+  const { t, sandbox } = setup();
+  // Die Formgroessen stehen im Stylesheet und werden von dort gelesen. Hier gibt es kein Layout,
+  // deshalb werden genau die Werte untergeschoben, die `styles.css` traegt — dass sie
+  // uebereinstimmen, rechnet `tests/layout-test.js` nach.
+  sandbox.__cssTokens = { '--drive-pad-gap': '4px', '--drive-pad-waist': '0.5', '--drive-pad-key-min': '44px' };
+  const setzeFeld = (F) => { t.ui.driveButtons.getBoundingClientRect = () => ({ left: 0, top: 0, width: F, height: F }); };
+
+  // Tastenmodus, kleinstes Feld: der groesste Kreis im Keil misst rund 29 px.
+  setzeFeld(140);
+  t.toggleDriveControl();
+  assert.strictEqual(t.state.view.driveControl, 'buttons');
+  assert.ok(t.turnKeyIncircle(140, 4, 0.5) < 44, 'bei 140px ist der Keil kein Daumenziel');
+  assert.strictEqual(t.ui.driveTurnSizeHint.hidden, false, 'die Zeile muss bei 140px dastehen');
+  const de = t.ui.driveTurnSizeHint.textContent;
+  assert.ok(de.includes('44'), `die Zeile muss das Mass nennen, steht da: ${de}`);
+  assert.ok(!de.includes('{'), `Platzhalterrest: ${de}`);
+
+  // **Die Groesse wird nicht angetastet** — es wird nur benannt.
+  const stufe = t.state.view.joystickScale;
+  t.refreshTurnKeyHint();
+  assert.strictEqual(t.state.view.joystickScale, stufe, 'der Hinweis darf die Groessenstufe nicht veraendern');
+
+  // Gross genug: die Zeile verschwindet und hinterlaesst keinen alten Text.
+  setzeFeld(204);
+  t.refreshTurnKeyHint();
+  assert.strictEqual(t.ui.driveTurnSizeHint.hidden, true, 'ab rund 204px ist der Keil ein Daumenziel');
+  assert.strictEqual(t.ui.driveTurnSizeHint.textContent, '', 'und die Zeile bleibt nicht als Rest stehen');
+  // Knapp darunter steht sie wieder da — die Schwelle wirkt, sie ist nicht nur gerechnet.
+  setzeFeld(203);
+  t.refreshTurnKeyHint();
+  assert.strictEqual(t.ui.driveTurnSizeHint.hidden, false, 'knapp unter der Schwelle muss die Zeile stehen');
+
+  // **Im Joystick-Modus nie** — dort gibt es keine Drehtasten, die zu schmal sein koennten.
+  setzeFeld(140);
+  t.toggleDriveControl();
+  assert.strictEqual(t.state.view.driveControl, 'joystick');
+  assert.strictEqual(t.ui.driveTurnSizeHint.hidden, true, 'im Joystick-Modus hat die Zeile nichts zu sagen');
+  assert.strictEqual(t.ui.driveTurnSizeHint.textContent, '');
+  t.toggleDriveControl();
+  assert.strictEqual(t.ui.driveTurnSizeHint.hidden, false, 'zurueck im Tastenmodus steht sie wieder da');
+
+  // Die Groessenstufe fuehrt sie nach: derselbe Weg, den der Nutzer im Menue nimmt.
+  setzeFeld(230);
+  t.applyDriveZonePreferences();
+  assert.strictEqual(t.ui.driveTurnSizeHint.hidden, true, 'nach der Groessenaenderung muss sie weg sein');
+
+  // Ohne lesbare Formgroessen wird nichts behauptet, statt eine Zahl zu raten.
+  setzeFeld(140);
+  sandbox.__cssTokens = {};
+  t.refreshTurnKeyHint();
+  assert.strictEqual(t.ui.driveTurnSizeHint.hidden, true, 'ohne Tokenwerte darf nichts behauptet werden');
+  sandbox.__cssTokens = { '--drive-pad-gap': '4px', '--drive-pad-waist': '0.5', '--drive-pad-key-min': '44px' };
+  t.refreshTurnKeyHint();
+
+  // Beide Sprachen, ueber den echten Sprachwechsel.
+  t.toggleLanguage();
+  assert.strictEqual(t.state.language, 'en');
+  const en = t.ui.driveTurnSizeHint.textContent;
+  assert.notStrictEqual(en, de, 'die englische Fassung ist nicht der deutsche Satz');
+  assert.ok(en.includes('44'), `auch die englische Fassung nennt das Mass: ${en}`);
+  t.toggleLanguage();
+  assert.strictEqual(t.ui.driveTurnSizeHint.textContent, de);
+  for (const key of ['driveTurnSizeHint']) {
+    assert.ok(t.I18N.de[key] && t.I18N.en[key], `${key} fehlt in einer Sprache`);
+  }
+});
+
 test('Links dreht auf der Stelle, ohne Vortrieb', async () => {
   const { t, clock } = setup();
   const tx = readyToDrive(t);
   t.state.view.cursorSpeedCms = 10;
+  t.state.view.driveSpeedMax = 0.20;
   t.state.view.mowerWidth = 0.40;
   t.toggleDriveControl();
 
   t.beginCursorDrive('left', { pointerId: 1, preventDefault() {} });
   await clock.runFor(50);
-  assert.ok(tx.last().startsWith('AT+M,0.00,0.50'), `linear 0, Drehrate 0,10/0,20, gesendet: ${tx.last()}`);
+  assert.ok(tx.last().startsWith('AT+M,0.00,0.50'),
+    `linear 0, Drehrate (0,20/2)/0,20, gesendet: ${tx.last()}`);
   t.stopDrive();
 });
 

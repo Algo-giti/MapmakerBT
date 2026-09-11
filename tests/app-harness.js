@@ -86,6 +86,11 @@ function loadApp(options = {}) {
     console, structuredClone, TextEncoder, TextDecoder, Blob, File, DataView, Uint8Array, ArrayBuffer,
     crypto: require('crypto').webcrypto,
     document: documentStub,
+    // Die Formgroessen der Fahrtasten stehen im Stylesheet; app.js liest sie ueber
+    // getComputedStyle. Hier gibt es kein Layout, deshalb ein Stub, den die Tests ueber
+    // `sandbox.__cssTokens` fuellen — ohne Eintrag liefert er nichts und der Aufrufer
+    // verzichtet auf die Auskunft, statt zu raten.
+    getComputedStyle: () => ({ getPropertyValue: (name) => (sandbox.__cssTokens || {})[name] || '' }),
     window: { isSecureContext: true, addEventListener() {}, matchMedia: () => ({ matches: false, addEventListener() {} }) },
     navigator: { bluetooth: undefined, onLine: true },
     localStorage: { getItem: (k) => localStore.get(k) ?? null, setItem: (k, v) => localStore.set(k, String(v)) },

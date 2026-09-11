@@ -84,10 +84,17 @@ function selectorMatches(selector, { classes, ancestors, tag }) {
   if (lastTag && lastTag !== tag) return false;
   if (!(last.match(/\.[\w-]+/g) || []).every((c) => classes.includes(c.slice(1)))) return false;
   return compounds.slice(0, -1).every((compound) => {
-    if (/[:\[]/.test(compound)) return false;
-    const compoundTag = (compound.match(/^[a-z][\w-]*/) || [])[0];
+    // Merkmale an einem **Vorfahren** sind pruefbar, wenn der Test sie ausdruecklich mitgibt:
+    // `ancestors: ['drive-pad', 'zones-on', '[data-zone]']`. Ohne Eintrag passt die Regel nicht —
+    // so bleibt das Verhalten fuer alle bisherigen Aufrufe unveraendert, und eine Regel, die
+    // sich an `[data-zone]` haengt, laesst sich gezielt nachweisen statt nur zu vermuten.
+    const attrs = compound.match(/\[[^\]]+\]/g) || [];
+    if (attrs.some((a) => !ancestors.includes(a))) return false;
+    const bare = compound.replace(/\[[^\]]+\]/g, '');
+    if (/:/.test(bare)) return false;
+    const compoundTag = (bare.match(/^[a-z][\w-]*/) || [])[0];
     if (compoundTag && !ancestors.includes(compoundTag)) return false;
-    return (compound.match(/\.[\w-]+/g) || []).every((c) => ancestors.includes(c.slice(1)));
+    return (bare.match(/\.[\w-]+/g) || []).every((c) => ancestors.includes(c.slice(1)));
   });
 }
 
@@ -625,93 +632,525 @@ test('Das Tastenkreuz bleibt im Cursor-Modus auf dem Schirm — nachgerechnet je
   }
 });
 
-test('Der diagonale Schnitt: Laenge, Breite und Fugen nachgerechnet', () => {
-  // **Nachfolger des alten Rastertests.** Frueher war jede Taste ein Drittel des Feldes, und
-  // `(Feld - 2 * Luecke) / 3 >= 44px` pruefte Laenge und Breite in einem. Seit dem diagonalen
-  // Schnitt sind das zwei verschiedene Groessen: der Keil ist laengs `F/2 - cut` lang und quer
-  // ueberall verschieden breit. Die 44-px-Untergrenze gilt weiter — aber fuer die **Breite**,
-  // und zwar an der engsten Stelle, die der Finger fuer eine Zone treffen muss.
-  const px = (sel, prop) => parseFloat(resolve(sel, prop).value);
-  const keyMin = px('.drive-zone .drive-control', '--drive-pad-key-min');
-  const padGap = px('.drive-zone .drive-control', '--drive-pad-gap');
-  const reserve = px('.drive-zone .drive-control', '--drive-side-reserve');
+/**
+ * **Gemeinsamer Rechner fuer das Tastenkreuz.** Die vier `clip-path`-Polygone und die Kaesten der
+ * Chevrons werden aus dem Stylesheet **ausgewertet**, nicht nachgebildet: Token aufloesen,
+ * Prozente auf die Feldgroesse beziehen, dann die reine Arithmetik rechnen. Ein falscher Faktor
+ * faellt damit auf, auch wenn er fuer sich genommen plausibel aussieht.
+ *
+ * Hier steht er einmal, weil drei Faelle darauf zugreifen: Fugen und Schranken, der Inkreis der
+ * Drehtasten und die Lage der Chevrons.
+ */
+const drive = (() => {
+  const CTL = '.drive-zone .drive-control';
+  const raw = (sel, prop) => (resolve(sel, prop).value || '').replace(/\s+/g, ' ').trim();
+  const px = (sel, prop) => parseFloat(raw(sel, prop));
+  const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const bounds = [...app.matchAll(/until:\s*([\d.]+)/g)].map((m) => Number(m[1]));
+
+  const tokens = {};
+  for (const name of ['--drive-pad-gap', '--drive-pad-key-min', '--drive-pad-cut-x', '--drive-pad-cut-y',
+    '--drive-pad-waist', '--drive-pad-waist-half', '--drive-pad-waist-lift', '--drive-pad-waist-slide',
+    '--drive-chevron-air', '--drive-chevron-stroke', '--drive-chevron-turn',
+    '--drive-chevron-rise-slow', '--drive-chevron-rise-normal', '--drive-chevron-rise-fast',
+    '--drive-chevron-rise-turn']) tokens[name] = raw(CTL, name);
+  for (const name of ['--zone-inner', '--zone-outer', '--drive-turn-depth']) tokens[name] = raw('.drive-key', name);
+  // Die beiden Zonengrenzen setzt `applyDriveZonePreferences()` aus DRIVE_ZONES. Eingesetzt
+  // werden genau diese Werte — das Stylesheet wird damit gegen die **gefahrenen** Grenzen
+  // nachgerechnet und nicht gegen seinen eigenen Rueckfallwert.
+  tokens['--drive-zone-inner'] = `${bounds[0] * 100}%`;
+  tokens['--drive-zone-outer'] = `${bounds[1] * 100}%`;
+
+  const substitute = (expr, extra = {}) => {
+    const all = { ...tokens, ...extra };
+    let out = expr;
+    for (let i = 0; i < 16 && /var\(/.test(out); i += 1) {
+      out = out.replace(/var\(\s*(--[\w-]+)\s*(?:,[^()]*)?\)/g, (m, name) => {
+        assert.ok(all[name] !== undefined && all[name] !== '', `unbekanntes Token ${name} in "${expr}"`);
+        return `(${all[name]})`;
+      });
+    }
+    assert.ok(!/var\(/.test(out), `var() nicht aufloesbar in "${expr}"`);
+    return out;
+  };
+  const toPx = (expr, F, extra = {}) => {
+    let t = substitute(expr, extra).replace(/calc/g, '')
+      .replace(/([\d.]+)%/g, (m, n) => `(${F} * ${n} / 100)`)
+      .replace(/([\d.]+)px/g, '$1');
+    assert.ok(/^[\d\s().+\-*/]+$/.test(t), `unerwarteter Ausdruck: "${t}"`);
+    return Function(`"use strict"; return (${t});`)();
+  };
+  /** „X Y, X Y, …" in Punkte zerlegen — calc() enthaelt keine Kommas, Klammertiefe genuegt. */
+  const splitTop = (body, sep) => {
+    const out = []; let depth = 0; let cur = '';
+    for (const ch of body) {
+      if (ch === '(') depth += 1;
+      if (ch === ')') depth -= 1;
+      if (ch === sep && depth === 0) { out.push(cur); cur = ''; } else cur += ch;
+    }
+    out.push(cur);
+    return out.map((s) => s.trim()).filter(Boolean);
+  };
+  const polygonOf = (dir, F) => {
+    const clip = raw(`.drive-key.key-${dir}`, 'clip-path');
+    assert.ok(clip.startsWith('polygon('), `.key-${dir} ist nicht beschnitten: "${clip}"`);
+    // Keine Form darf eigene Masse schreiben: erlaubt sind nur Token und die Prozente 50/100.
+    const bare = clip.replace(/var\([^()]*\)/g, '');
+    for (const num of bare.match(/[\d.]+/g) || []) {
+      assert.ok(num === '50' || num === '100',
+        `.key-${dir} schreibt die eigene Zahl ${num} statt eines Token: "${clip}"`);
+    }
+    return splitTop(clip.slice('polygon('.length, -1), ',')
+      .map((pt) => splitTop(pt, ' ').map((c) => toPx(c, F)));
+  };
+
+  // --- Abstand zweier konvexer Flaechen, ehrlich gemessen -------------------
+  const segDist = (p, a, b) => {
+    const vx = b[0] - a[0]; const vy = b[1] - a[1];
+    const l2 = vx * vx + vy * vy;
+    const t = l2 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * vx + (p[1] - a[1]) * vy) / l2)) : 0;
+    return Math.hypot(p[0] - (a[0] + t * vx), p[1] - (a[1] + t * vy));
+  };
+  const inside = (p, poly) => {
+    let pos = 0; let neg = 0;
+    for (let i = 0; i < poly.length; i += 1) {
+      const a = poly[i]; const b = poly[(i + 1) % poly.length];
+      const cr = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+      if (cr > 1e-9) pos += 1;
+      if (cr < -1e-9) neg += 1;
+    }
+    return pos === 0 || neg === 0;
+  };
+  /** 0, sobald sich die Flaechen ueberschneiden — sonst der kleinste Abstand Kante zu Kante. */
+  const polyDistance = (A, B) => {
+    for (const p of A) if (inside(p, B)) return 0;
+    for (const p of B) if (inside(p, A)) return 0;
+    let best = Infinity;
+    for (let i = 0; i < A.length; i += 1) {
+      for (let j = 0; j < B.length; j += 1) {
+        const [a1, a2] = [A[i], A[(i + 1) % A.length]];
+        const [b1, b2] = [B[j], B[(j + 1) % B.length]];
+        best = Math.min(best, segDist(a1, b1, b2), segDist(a2, b1, b2), segDist(b1, a1, a2), segDist(b2, a1, a2));
+      }
+    }
+    return best;
+  };
+
+  // --- Chevrons -------------------------------------------------------------
+  const chevTokens = (dir, cls) => {
+    const extra = {};
+    for (const name of ['--chev-rise', '--chev-a0', '--chev-a1']) {
+      const value = raw(`.drive-key .${cls}`, name);
+      if (value) extra[name] = value;
+    }
+    for (const name of ['--chev-a', '--chev-w', '--chev-box-w', '--chev-box-h', '--chev-turn-x', '--chev-x', '--chev-y']) {
+      const value = raw(`.key-${dir} .drive-chevron`, name);
+      if (value) extra[name] = value;
+    }
+    return extra;
+  };
+  /**
+   * Der umschliessende Kasten eines Chevrons in px. `overflow: visible` laesst den Strich ueber
+   * den Pfad hinausstehen, der Kasten ist deshalb um die volle Strichstaerke groesser als das
+   * Element — genauso, wie es am Geraet aussieht.
+   */
+  const chevronBox = (dir, cls, F) => {
+    const extra = chevTokens(dir, cls);
+    const at = (name) => toPx(extra[name], F, extra);
+    const stroke = toPx(raw('.drive-chevron', 'stroke-width'), F, extra);
+    const w = at('--chev-box-w') + stroke;
+    const h = at('--chev-box-h') + stroke;
+    const cx = at('--chev-x');
+    const cy = at('--chev-y');
+    return { cx, cy, w, h, stroke, span: toPx(extra['--chev-w'], F, extra),
+      rise: toPx('calc(var(--chev-w) * var(--chev-rise))', F, extra),
+      corners: [[cx - w / 2, cy - h / 2], [cx + w / 2, cy - h / 2],
+        [cx + w / 2, cy + h / 2], [cx - w / 2, cy + h / 2]] };
+  };
+  /** Das Band der Zone in Elementkoordinaten, laengs der Achse der Taste. */
+  const chevronBand = (dir, cls, F) => {
+    const extra = chevTokens(dir, cls);
+    const a0 = toPx(extra['--chev-a0'], F, extra);
+    const a1 = toPx(extra['--chev-a1'], F, extra);
+    return dir === 'up' || dir === 'left' ? [F - a1, F - a0] : [a0, a1];
+  };
+
+  const keyMin = px(CTL, '--drive-pad-key-min');
+  const padGap = px(CTL, '--drive-pad-gap');
+  const waist = parseFloat(raw(CTL, '--drive-pad-waist'));
+  const padMin = 3 * keyMin + 2 * padGap;
+  const reserve = px(CTL, '--drive-side-reserve');
+  const field = (scale, w, h) => Math.max(padMin,
+    Math.min(25 * h / 100 * scale, 240 * scale, 38 * h / 100, w - reserve));
+  /** Die zwanzig Faelle: fuenf gaengige Aufloesungen mal vier Groessenstufen. */
+  const allFields = () => {
+    const out = [];
+    for (const [w, h] of [[360, 640], [360, 800], [320, 568], [412, 915], [393, 786]]) {
+      for (const scale of [0.75, 1, 1.25, 1.5]) out.push([`${w}x${h} Stufe ${scale}`, field(scale, w, h)]);
+    }
+    return out;
+  };
+
+  return { raw, px, CTL, app, bounds, tokens, toPx, polygonOf, polyDistance, inside,
+    chevronBox, chevronBand, keyMin, padGap, waist, padMin, reserve, field, allFields };
+})();
+
+test('Die Sanduhrform: Fugen, Breiten und Schranken nachgerechnet', () => {
+  // **Neu geschrieben, nicht angepasst.** Der Vorgaenger rechnete die Keilbreite als `2d - 2*cut`.
+  // Das galt fuer das X durch die Mitte, wo alle vier Tasten dieselbe Form hatten. Seit der
+  // Sanduhr sind es zwei verschiedene Formen: vor/zurueck sind Trapeze (aussen breit, zur Taille
+  // hin schmaler), links/rechts Keile (aussen breit, nach innen auf eine Spitze zulaufend).
+  // Eine gemeinsame Breitenformel gibt es nicht mehr, und die alte gilt fuer keine der beiden.
+  const { raw, CTL, keyMin, padGap, waist, padMin, bounds, polygonOf, polyDistance, allFields } = drive;
 
   assert.ok(keyMin >= 44, `jede Taste bleibt ein Daumenziel (${keyMin}px)`);
+  assert.ok(waist > 0 && waist < 1, `--drive-pad-waist muss zwischen 0 und 1 liegen, ist ${waist}`);
   // Die globale Mindesthoehe besteht weiter; die Ausnahme fuer die Tasten bleibt stehen, damit
   // ein Rueckbau auf ein Raster nicht dieselbe Falle stellt wie vor v46.
   assert.strictEqual(resolve('button', 'min-height').value, '46px');
   assert.strictEqual(resolve('.drive-key', 'min-height').value, '0');
 
-  // Die Fuge zwischen zwei Keilen wird senkrecht zur 45-Grad-Diagonale gemessen. Der waagerechte
-  // Versatz dafuer ist gap/2 * sqrt(2) — ohne diesen Faktor waere sie schmaler als die Fuge zum
-  // Rand, und genau das faellt am Geraet als schiefe Optik auf.
-  const cutExpr = (resolve('.drive-zone .drive-control', '--drive-pad-cut').value || '').replace(/\s+/g, ' ');
-  const factor = parseFloat((cutExpr.match(/\*\s*([\d.]+)/) || [])[1]);
-  assert.ok(/var\(--drive-pad-gap\)/.test(cutExpr), `der Versatz muss aus der Luecke folgen, ist "${cutExpr}"`);
-  assert.ok(Math.abs(factor - Math.SQRT1_2) < 0.001,
-    `der Versatz ist gap * ${factor}, erwartet wird gap * ${Math.SQRT1_2.toFixed(4)} (= sqrt(2)/2)`);
-  const cut = padGap * factor;
+  // --- Die beiden Fugenfaktoren muessen zur Taille passen ------------------
+  // Die Faktoren sind ausgerechnet und koennen deshalb von der Taille abdriften — hier wird die
+  // geschlossene Form nachgerechnet, statt den Zahlen zu glauben. (Ausgerechnet nicht, weil CSS
+  // kein sqrt() haette — das gibt es seit Chrome 120 —, sondern weil ein nicht unterstuetzter
+  // Ausdruck clip-path still ungueltig machen wuerde und dieser Test die Formen selbst auswertet.)
+  const factorOf = (prop) => {
+    const expr = raw(CTL, prop);
+    assert.ok(/var\(--drive-pad-gap\)/.test(expr), `${prop} muss aus der Fuge folgen, ist "${expr}"`);
+    return parseFloat((expr.match(/\*\s*([\d.]+)/) || [])[1]);
+  };
+  const wantX = Math.sqrt((1 - waist) ** 2 + 1) / 2;
+  const wantY = wantX / (1 - waist);
+  const facX = factorOf('--drive-pad-cut-x');
+  const facY = factorOf('--drive-pad-cut-y');
+  assert.ok(Math.abs(facX - wantX) < 1e-5,
+    `--drive-pad-cut-x ist gap * ${facX}, zur Taille ${waist} gehoert gap * ${wantX.toFixed(6)}`);
+  assert.ok(Math.abs(facY - wantY) < 1e-5,
+    `--drive-pad-cut-y ist gap * ${facY}, zur Taille ${waist} gehoert gap * ${wantY.toFixed(6)}`);
+  const cutX = padGap * facX;
+  const cutY = padGap * facY;
 
-  // Alle vier Richtungen sind beschnitten, jede anders, und keine schreibt eigene Zahlen —
-  // Luecke und Versatz kommen aus den beiden Token.
-  const clips = new Map();
-  for (const dir of ['up', 'down', 'left', 'right']) {
-    const clip = (resolve(`.drive-key.key-${dir}`, 'clip-path').value || '').replace(/\s+/g, ' ');
-    assert.ok(clip.startsWith('polygon('), `.key-${dir} ist nicht beschnitten: "${clip}"`);
-    assert.ok(/var\(--drive-pad-gap\)/.test(clip) && /var\(--drive-pad-cut\)/.test(clip),
-      `.key-${dir} schreibt eigene Masse statt der Token: "${clip}"`);
-    assert.ok(!clips.has(clip), `.key-${dir} hat dieselbe Form wie .key-${clips.get(clip)}`);
-    clips.set(clip, dir);
+  // --- Die Fuge zwischen **allen sechs** Paarungen -------------------------
+  // Bis v63 wurde nur vorwaerts<->links gemessen, und zwar als Abstand zur **Geraden** durch die
+  // Keilkante. Genau die eine Paarung, die dabei nie vorkam, war kaputt: vorwaerts und rueckwaerts
+  // schrieben fuer ihre Taillenkante denselben Ausdruck und beruehrten sich auf 61,5 px Laenge
+  // ohne jeden Abstand — waehrend zu den Keilen 4 px standen und das alte X dort sogar 5,66 px
+  // liess. Gemessen wird deshalb jetzt Flaeche gegen Flaeche, mit echter Abstandsrechnung
+  // (0, sobald sie sich ueberschneiden), fuer jede Paarung und jede der zwanzig Feldgroessen.
+  const NACHBARN = [['up', 'down'], ['up', 'left'], ['up', 'right'], ['left', 'down'], ['right', 'down']];
+  for (const [label, F] of allFields()) {
+    const P = {
+      up: polygonOf('up', F), down: polygonOf('down', F),
+      left: polygonOf('left', F), right: polygonOf('right', F),
+    };
+    assert.strictEqual(P.up.length, 4, 'vorwaerts ist ein Trapez, kein Dreieck');
+    assert.strictEqual(P.down.length, 4, 'rueckwaerts ist ein Trapez, kein Dreieck');
+    assert.strictEqual(P.left.length, 3, 'links ist ein Keil');
+    assert.strictEqual(P.right.length, 3, 'rechts ist ein Keil');
+    for (const [a, b] of NACHBARN) {
+      const d = polyDistance(P[a], P[b]);
+      assert.ok(Math.abs(d - padGap) < 1e-6,
+        `${label}: die Fuge zwischen ${a} und ${b} misst ${d.toFixed(6)}px statt ${padGap}px`);
+    }
+    // Links und rechts sind keine Nachbarn: zwischen ihren Spitzen bleibt das tote Feld, und es
+    // darf nie unter die Fuge fallen (dann liefen die beiden Keile ineinander).
+    const quer = polyDistance(P.left, P.right);
+    assert.ok(quer >= padGap - 1e-6,
+      `${label}: links und rechts stehen nur ${quer.toFixed(3)}px auseinander`);
+    // Und zum Rand ist die Fuge genauso breit — der Grund fuer die Faktoren ueberhaupt.
+    assert.ok(Math.abs(P.up[0][1] - padGap) < 1e-9, `${label}: vorwaerts haelt ${P.up[0][1]}px zum Rand`);
+    assert.ok(Math.abs(P.left[0][0] - padGap) < 1e-9, `${label}: links haelt ${P.left[0][0]}px zum Rand`);
+    // Die Taille ist breiter als die Fuge — sonst kippt das Trapez in sich zusammen.
+    assert.ok(P.up[2][0] > P.up[3][0],
+      `${label}: die Taille ist mit ${(P.up[2][0] - P.up[3][0]).toFixed(2)}px nicht breiter als die Fuge`);
   }
 
-  // Die Zonengrenzen stehen nur in app.js; das Stylesheet zeichnet sie aus den Variablen, die
-  // applyDriveZonePreferences() daraus setzt. Eine Prozentzahl im Stylesheet waere eine zweite
-  // Behauptung ueber dieselbe Grenze.
-  const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
-  const bounds = [...app.matchAll(/until:\s*([\d.]+)/g)].map((m) => Number(m[1]));
-  assert.deepStrictEqual(bounds, [0.40, 0.70, 1],
+  // --- Die Zonengrenzen stehen nur in app.js ------------------------------
+  assert.deepStrictEqual(bounds, [0.50, 0.80, 1],
     `DRIVE_ZONES muss die drei Grenzen tragen, gefunden: ${bounds.join(', ')}`);
-  const lines = (resolve('.drive-pad.zones-on .drive-key', 'background-image').value || '').replace(/\s+/g, ' ');
+  const lines = raw('.drive-pad.zones-on .drive-key', 'background-image');
   for (const name of ['--drive-zone-inner', '--drive-zone-outer']) {
-    assert.ok(lines.includes(name) || (resolve('.drive-pad.zones-on .drive-key', `--zone-${name.endsWith('inner') ? 'inner' : 'outer'}`).value || '').includes(name),
+    const short = name.endsWith('inner') ? 'inner' : 'outer';
+    // Die beiden Variablen stehen seit den Chevrons an `.drive-key` statt an
+    // `.drive-pad.zones-on .drive-key` — der eine Chevron ohne Zonen braucht sie auch dann.
+    assert.ok(lines.includes(name) || raw('.drive-key', `--zone-${short}`).includes(name),
       `die Grenzstriche muessen ${name} lesen statt eine eigene Prozentzahl: "${lines}"`);
   }
-
-  // **Querrichtung, die eigentliche 44-px-Pruefung.** Der Keil ist im Abstand d von der Mitte
-  // `2d - 2 * cut` breit. Die engste Stelle, die noch eine Zone trennt, ist die innere
-  // Zonengrenze bei d = inner * F/2 — weiter innen liegt nur die langsamste Zone, die ohnehin
-  // ganz an der Spitze beginnt. Nachgerechnet fuer schmale und niedrige Telefone in allen vier
-  // Stufen, genau wie zuvor die Tastengroesse.
-  const padMin = 3 * keyMin + 2 * padGap;
-  const field = (scale, w, h) => Math.max(padMin,
-    Math.min(25 * h / 100 * scale, 240 * scale, 38 * h / 100, w - reserve));
-  for (const [w, h] of [[360, 640], [360, 800], [320, 568], [412, 915], [393, 786]]) {
-    for (const scale of [0.75, 1, 1.25, 1.5]) {
-      const F = field(scale, w, h);
-      const widthAtInner = 2 * (bounds[0] * F / 2) - 2 * cut;
-      assert.ok(widthAtInner >= keyMin,
-        `${w}x${h} Stufe ${scale}: an der inneren Zonengrenze nur ${widthAtInner.toFixed(1)}px breit`);
-      // Und der Keil ist laenger als die Taste im alten Raster — das war der Zweck der Uebung.
-      const lengthNow = F / 2 - cut;
-      const lengthBefore = (F - 2 * padGap) / 3;
-      assert.ok(lengthNow > lengthBefore,
-        `${w}x${h} Stufe ${scale}: ${lengthNow.toFixed(1)}px sind nicht laenger als die fruehere Taste (${lengthBefore.toFixed(1)}px)`);
-    }
+  // Links und rechts tragen keine Grenzen mehr — sie haben keine Zonen.
+  for (const dir of ['left', 'right']) {
+    assert.strictEqual(resolve(`.drive-pad.zones-on .key-${dir}`, 'background-image').value, 'none',
+      `.key-${dir} darf keine Zonengrenzen zeichnen`);
+    assert.strictEqual(resolve(`.drive-pad.zones-on .key-${dir}[data-zone]`, 'background-image').value, 'none',
+      `.key-${dir} darf auch mit data-zone kein Band zeichnen`);
   }
 
-  // Die Untergrenze des Feldes stammt noch aus dem Dreierraster. Sie bleibt stehen, aber nur,
-  // solange sie die schaerfere der beiden Schranken ist: die Breitenbedingung verlangt
-  // F >= (44 + 2 * cut) / inner.
-  const fieldMin = (resolve('.drive-zone .drive-control', '--drive-field-min') || {}).value || '';
-  assert.ok(/3\s*\*\s*var\(--drive-pad-key-min\)/.test(fieldMin.replace(/\s+/g, ' ')),
-    `die Untergrenze muss nachvollziehbar bleiben, ist "${fieldMin}"`);
-  const neededForWidth = (keyMin + 2 * cut) / bounds[0];
-  assert.ok(padMin >= neededForWidth,
-    `die Feld-Untergrenze ${padMin}px unterschreitet die Breitenbedingung ${neededForWidth.toFixed(1)}px`);
+  // --- Die 44-px-Bedingung, je Richtung verschieden -----------------------
+  // **Vor/zurueck** ist ein Trapez: am schmalsten an der Taille, und die innere Zonengrenze
+  // liegt ein Stueck weiter aussen. **Links/rechts** ist ein Keil — was dort zaehlt, rechnet der
+  // eigene Fall „Der Inkreis der Drehtasten" nach; die Aussenkante allein taeuscht.
+  const widthUD = (F, d) => 2 * (waist * (F / 2 - padGap) + (1 - waist) * d - cutX + padGap / 2 * (1 - waist));
+  const outerLR = (F) => 2 * (F / 2 - padGap - cutY);
+  for (const [label, F] of allFields()) {
+    const up = drive.polygonOf('up', F);
+    const left = drive.polygonOf('left', F);
+    assert.ok(Math.abs((up[2][0] - up[3][0]) - widthUD(F, 0)) < 1e-6,
+      `${label}: Taille gerechnet ${widthUD(F, 0).toFixed(3)}px, im Polygon ${(up[2][0] - up[3][0]).toFixed(3)}px`);
+    assert.ok(Math.abs((left[2][1] - left[0][1]) - outerLR(F)) < 1e-6,
+      `${label}: Aussenkante gerechnet ${outerLR(F).toFixed(3)}px, im Polygon ${(left[2][1] - left[0][1]).toFixed(3)}px`);
+
+    assert.ok(outerLR(F) >= keyMin,
+      `${label}: der Keil links/rechts ist an der Aussenkante nur ${outerLR(F).toFixed(1)}px hoch`);
+    assert.ok(widthUD(F, 0) >= keyMin,
+      `${label}: das Trapez ist an der Taille nur ${widthUD(F, 0).toFixed(1)}px breit`);
+    assert.ok(widthUD(F, bounds[0] * F / 2) >= keyMin,
+      `${label}: an der inneren Zonengrenze nur ${widthUD(F, bounds[0] * F / 2).toFixed(1)}px breit`);
+    // Vor/zurueck ist laenger als die Taste im alten Dreierraster — das war der Zweck des
+    // diagonalen Schnitts. Fuer links/rechts gilt das ausdruecklich **nicht**.
+    const lengthUD = F / 2 - padGap - padGap / 2;
+    const lengthBefore = (F - 2 * padGap) / 3;
+    assert.ok(lengthUD > lengthBefore,
+      `${label}: vorwaerts ist mit ${lengthUD.toFixed(1)}px nicht laenger als die fruehere Taste (${lengthBefore.toFixed(1)}px)`);
+  }
+
+  // --- Die Schranke fuer --drive-field-min, aus den drei Bedingungen -------
+  const fieldMinExpr = raw(CTL, '--drive-field-min');
+  assert.ok(/3 \* var\(--drive-pad-key-min\)/.test(fieldMinExpr),
+    `die Untergrenze muss nachvollziehbar bleiben, ist "${fieldMinExpr}"`);
+  const needOuter = keyMin + 2 * padGap + 2 * cutY;
+  const needWaist = 2 * ((keyMin / 2 + cutX - padGap / 2 * (1 - waist)) / waist + padGap);
+  const needInner = (keyMin / 2 + cutX - padGap / 2 * (1 - waist) + waist * padGap)
+    / (waist / 2 + (1 - waist) * bounds[0] / 2);
+  for (const [name, need] of [['Aussenkante links/rechts', needOuter],
+    ['Taille vor/zurueck', needWaist], ['innere Zonengrenze', needInner]]) {
+    assert.ok(padMin >= need,
+      `die Feld-Untergrenze ${padMin}px unterschreitet die Bedingung „${name}" (${need.toFixed(1)}px)`);
+  }
 
   // Und das Kreuz fuellt dasselbe Feld wie der Kreis — eine Platzpruefung fuer beide Modi.
   for (const selector of ['.drive-zone .joystick-base', '.drive-zone .drive-pad']) {
     assert.strictEqual(resolve(selector, 'height').value, '100%', `${selector} fuellt das Feld`);
+  }
+});
+
+test('Der Inkreis der Drehtasten und die Schwelle, an der der Hinweis verschwindet', () => {
+  // `turnKeyIncircle()` in app.js ist die **einzige** Stelle, die beurteilt, ob eine Drehtaste
+  // noch ein Daumenziel ist. Hier wird sie gegen die tatsaechlich ausgewerteten clip-path-Polygone
+  // gerechnet — nicht gegen eine zweite Formel, die dieselben Annahmen wiederholte.
+  const { app, padGap, waist, keyMin, polygonOf, allFields, inside } = drive;
+  const { loadApp } = require('./app-harness.js');
+  const { t } = loadApp({ exportNames: ['turnKeyIncircle'] });
+
+  /** Groesster Kreis im Polygon, direkt gemessen: Mittelpunkt maximalen Randabstands. */
+  const incircleOfPolygon = (poly) => {
+    const edgeDist = (p) => Math.min(...poly.map((a, i) => {
+      const b = poly[(i + 1) % poly.length];
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      return Math.abs((p[0] - a[0]) * (b[1] - a[1]) - (p[1] - a[1]) * (b[0] - a[0])) / len;
+    }));
+    const xs = poly.map((p) => p[0]); const ys = poly.map((p) => p[1]);
+    let best = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
+    if (!inside(best, poly)) best = [poly[0][0], poly[0][1]];
+    let step = Math.max(...xs) - Math.min(...xs);
+    let value = inside(best, poly) ? edgeDist(best) : 0;
+    for (let i = 0; i < 200; i += 1) {
+      let moved = false;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const p = [best[0] + dx * step, best[1] + dy * step];
+        if (!inside(p, poly)) continue;
+        const d = edgeDist(p);
+        if (d > value) { value = d; best = p; moved = true; }
+      }
+      if (!moved) step /= 2;
+      if (step < 1e-7) break;
+    }
+    return 2 * value;
+  };
+
+  let unter = 0;
+  for (const [label, F] of allFields()) {
+    for (const dir of ['left', 'right']) {
+      const gemessen = incircleOfPolygon(polygonOf(dir, F));
+      const gerechnet = t.turnKeyIncircle(F, padGap, waist);
+      assert.ok(Math.abs(gemessen - gerechnet) < 1e-3,
+        `${label} ${dir}: turnKeyIncircle sagt ${gerechnet.toFixed(4)}px, im Polygon stecken ${gemessen.toFixed(4)}px`);
+    }
+    if (t.turnKeyIncircle(F, padGap, waist) < keyMin) unter += 1;
+  }
+  // Der Befund, der die Hinweiszeile ueberhaupt noetig macht — festgehalten, nicht behauptet.
+  assert.strictEqual(unter, 12, `der Keil unterschreitet ${keyMin}px in ${unter} statt 12 der 20 Faelle`);
+
+  // Die Schwelle wird **abgeleitet**, nicht hingeschrieben.
+  let lo = 100; let hi = 400;
+  for (let i = 0; i < 200; i += 1) {
+    const mid = (lo + hi) / 2;
+    if (t.turnKeyIncircle(mid, padGap, waist) >= keyMin) hi = mid; else lo = mid;
+  }
+  assert.ok(Math.abs(Math.ceil(hi * 100) / 100 - 203.34) < 1e-9,
+    `voll ab ${(Math.ceil(hi * 100) / 100).toFixed(2)}px statt 203.34px Feldgroesse`);
+  assert.ok(t.turnKeyIncircle(140, padGap, waist) < 29.1 && t.turnKeyIncircle(140, padGap, waist) > 29.0,
+    'im kleinsten Fall bleiben rund 29,0px');
+  // Unbrauchbare Eingaben liefern 0 und damit „zu schmal" — nie eine geratene Zahl.
+  for (const args of [[0, padGap, waist], [140, padGap, 0], [140, padGap, 1], [8, padGap, waist]]) {
+    assert.strictEqual(t.turnKeyIncircle(...args), 0, `turnKeyIncircle(${args}) muss 0 liefern`);
+  }
+
+  // --- Waechter: keine zweite Rechnung daneben -----------------------------
+  assert.strictEqual((app.match(/function turnKeyIncircle\(/g) || []).length, 1,
+    'turnKeyIncircle darf es nur einmal geben');
+  assert.strictEqual((app.match(/turnKeyIncircle\(/g) || []).length, 2,
+    'genau eine Definition und genau ein Aufrufer — sonst steht die Beurteilung an zwei Stellen');
+  assert.strictEqual((app.match(/Math\.sqrt\(\(1 - /g) || []).length, 1,
+    'die Fugenfaktoren duerfen nur in turnKeyIncircle nachgerechnet werden');
+  assert.ok(!/203[.,]3/.test(app),
+    'die Schwelle gehoert nicht als Zahl in den Code — sie folgt aus der Funktion');
+  // Und die 44 px kommen aus dem Stylesheet, nicht aus einer zweiten Zahl in app.js.
+  assert.ok(/--drive-pad-key-min/.test(app) && /shape\.keyMin/.test(app),
+    'das Daumenmass muss aus --drive-pad-key-min gelesen werden');
+  const hintBody = app.slice(app.indexOf('function refreshTurnKeyHint'),
+    app.indexOf('function refreshDriveZoneHint'));
+  assert.ok(!/\b44\b/.test(hintBody), 'in der Hinweiszeile darf keine eigene 44 stehen');
+  assert.ok(/driveControl === 'buttons'/.test(hintBody),
+    'die Zeile gilt nur im Tastenmodus — im Joystick-Modus gibt es keine Drehtasten');
+});
+
+test('Die Chevrons: Anzahl, Sichtbarkeit und Lage', () => {
+  const { padGap, polygonOf, chevronBox, chevronBand, allFields, inside, raw } = drive;
+
+  // --- Anzahl im Markup ----------------------------------------------------
+  const buttonOf = (dir) => {
+    const m = html.match(new RegExp(`<button[^>]*data-direction="${dir}"[^>]*>([\\s\\S]*?)</button>`));
+    assert.ok(m, `die Taste ${dir} fehlt im Markup`);
+    return m[1];
+  };
+  for (const [dir, anzahl] of [['up', 3], ['down', 3], ['left', 1], ['right', 1]]) {
+    const body = buttonOf(dir);
+    const chevrons = body.match(/class="drive-chevron[^"]*"/g) || [];
+    assert.strictEqual(chevrons.length, anzahl,
+      `${dir} traegt ${chevrons.length} Chevrons statt ${anzahl}`);
+    assert.strictEqual((body.match(/<svg/g) || []).length, anzahl,
+      `${dir} darf ausser den Chevrons kein weiteres Symbol tragen`);
+    assert.strictEqual((body.match(/aria-hidden="true"/g) || []).length, anzahl,
+      `${dir}: jedes Chevron muss aria-hidden sein, der Name steht am Button`);
+  }
+  for (const [dir, klassen] of [['up', ['chev-slow', 'chev-normal', 'chev-fast']],
+    ['down', ['chev-slow', 'chev-normal', 'chev-fast']], ['left', ['chev-turn']], ['right', ['chev-turn']]]) {
+    for (const cls of klassen) {
+      assert.ok(buttonOf(dir).includes(cls), `${dir} fehlt der Chevron ${cls}`);
+    }
+  }
+  // Der aria-Name haengt unveraendert am Button, nicht am Symbol.
+  for (const dir of ['up', 'down', 'left', 'right']) {
+    assert.ok(new RegExp(`<button[^>]*data-direction="${dir}"[^>]*data-i18n-aria-label=`).test(html)
+      || new RegExp(`<button[^>]*data-i18n-aria-label=[^>]*data-direction="${dir}"`).test(html),
+      `${dir} muss seinen Namen weiterhin als aria-label am Button tragen`);
+  }
+  // Reine Zeichnung: die Trefferflaeche bleibt die beschnittene Taste.
+  assert.strictEqual(raw('.drive-chevron', 'pointer-events'), 'none',
+    'ein Chevron darf nie das Ziel eines Tipps werden');
+
+  // --- Sichtbarkeit, ueber die aufgeloeste Kaskade -------------------------
+  // `getComputedStyle` gibt es hier nicht — dieser Test laeuft in reinem Node ohne Browser.
+  // `effectiveStyle()` wertet stattdessen **jede** passende Regel aus und entscheidet nach
+  // Spezifitaet und Reihenfolge; das ist die Frage „was sieht der Nutzer", nicht „was steht da".
+  const sichtbar = (klassen, vorfahren) => {
+    const value = effectiveStyle({ classes: klassen, ancestors: vorfahren, tag: 'svg' }, 'display').value;
+    return value !== 'none';
+  };
+  const KEYS = [['up', ['chev-slow', 'chev-normal', 'chev-fast']], ['down', ['chev-slow', 'chev-normal', 'chev-fast']]];
+  for (const [dir, klassen] of KEYS) {
+    for (const merkmal of [[], ['[data-zone]']]) {
+      const aus = ['drive-pad', 'drive-key', `key-${dir}`, ...merkmal];
+      const an = ['drive-pad', 'zones-on', 'drive-key', `key-${dir}`, ...merkmal];
+      const zahlAus = klassen.filter((c) => sichtbar(['drive-chevron', c], aus)).length;
+      const zahlAn = klassen.filter((c) => sichtbar(['drive-chevron', c], an)).length;
+      const wo = merkmal.length ? ' (mit data-zone)' : '';
+      assert.strictEqual(zahlAus, 1, `${dir}: ohne Zonen muessen genau 1 Chevron sichtbar sein, es sind ${zahlAus}${wo}`);
+      assert.strictEqual(zahlAn, 3, `${dir}: mit Zonen muessen genau 3 sichtbar sein, es sind ${zahlAn}${wo}`);
+      assert.ok(sichtbar(['drive-chevron', 'chev-normal'], aus),
+        `${dir}: ohne Zonen muss der Chevron der **normalen** Zone stehenbleiben${wo}`);
+    }
+  }
+  // Die Drehtasten zeigen ihren einen Chevron in jedem Fall.
+  for (const dir of ['left', 'right']) {
+    for (const vorfahren of [['drive-pad', 'drive-key', `key-${dir}`],
+      ['drive-pad', 'zones-on', 'drive-key', `key-${dir}`, '[data-zone]']]) {
+      assert.ok(sichtbar(['drive-chevron', 'chev-turn'], vorfahren),
+        `${dir}: der Dreh-Chevron muss immer sichtbar sein`);
+    }
+  }
+  // Umgeschaltet wird allein ueber die Klasse am Feld — sonst koennte der Layout-Test die Frage
+  // gar nicht statisch beantworten, und der Nachweis fiele auf „Absicht" zurueck.
+  assert.ok(/zones-on/.test(drive.app) && /classList\.toggle\('zones-on'/.test(drive.app),
+    'die Sichtbarkeit muss an der CSS-Klasse zones-on haengen');
+  // Und `data-zone` darf an den Chevrons nichts veraendern: die aktive Zone zeigt allein das Band.
+  for (const rule of rules) {
+    for (const selector of rule.selectors || []) {
+      if (!/chev-/.test(selector)) continue;
+      assert.ok(!/data-zone/.test(selector),
+        `keine Chevron-Regel darf sich an data-zone haengen: "${selector}"`);
+    }
+  }
+
+  // --- Lage: aus den Zonengrenzen, ohne eigene Zahl ------------------------
+  for (const [cls, quelle] of [['chev-slow', '--drive-zone-inner'], ['chev-normal', '--drive-zone-outer'],
+    ['chev-fast', '--drive-zone-outer']]) {
+    const kette = [raw('.key-up .drive-chevron', '--chev-a'),
+      raw(`.drive-key .${cls}`, '--chev-a0'), raw(`.drive-key .${cls}`, '--chev-a1'),
+      raw('.drive-key', '--zone-inner'), raw('.drive-key', '--zone-outer')].join(' ');
+    assert.ok(kette.includes(quelle),
+      `${cls} muss seine Lage aus ${quelle} beziehen statt aus einer eigenen Prozentzahl`);
+  }
+  for (const cls of ['chev-slow', 'chev-normal', 'chev-fast']) {
+    for (const prop of ['--chev-a0', '--chev-a1']) {
+      const expr = raw(`.drive-key .${cls}`, prop);
+      const bare = expr.replace(/var\([^()]*\)/g, '');
+      for (const num of bare.match(/[\d.]+/g) || []) {
+        assert.ok(num === '50' || num === '100',
+          `${cls} { ${prop} } schreibt die eigene Zahl ${num}: "${expr}"`);
+      }
+    }
+  }
+
+  // --- Der Kasten liegt im Band UND in der Taste, in allen 20 Faellen ------
+  for (const [label, F] of allFields()) {
+    for (const dir of ['up', 'down']) {
+      const poly = polygonOf(dir, F);
+      const breiten = [];
+      for (const cls of ['chev-slow', 'chev-normal', 'chev-fast']) {
+        const box = chevronBox(dir, cls, F);
+        const [lo, hi] = chevronBand(dir, cls, F);
+        breiten.push(box.w);
+        for (const ecke of box.corners) {
+          assert.ok(inside(ecke, poly),
+            `${label} ${dir}/${cls}: die Ecke (${ecke[0].toFixed(1)}|${ecke[1].toFixed(1)}) liegt ausserhalb der Taste`);
+        }
+        assert.ok(box.cy - box.h / 2 >= lo - 1e-6 && box.cy + box.h / 2 <= hi + 1e-6,
+          `${label} ${dir}/${cls}: der Kasten (${(box.cy - box.h / 2).toFixed(1)}..${(box.cy + box.h / 2).toFixed(1)}) verlaesst sein Band (${lo.toFixed(1)}..${hi.toFixed(1)})`);
+        assert.ok(box.stroke > 0 && box.rise > 0 && box.span > 0,
+          `${label} ${dir}/${cls}: entartete Masse`);
+      }
+      // Nach aussen breiter — der Zweck des nach aussen fallenden Anstiegs. Die Baender werden
+      // nach aussen kuerzer (0,25 F / 0,15 F / 0,1 F - Fuge), ein gleichfoermig skalierter
+      // Chevron wuerde dadurch nach aussen **kleiner**.
+      assert.ok(breiten[0] < breiten[1] && breiten[1] < breiten[2],
+        `${label} ${dir}: die Chevrons werden nach aussen nicht breiter (${breiten.map((b) => b.toFixed(1)).join(' / ')})`);
+    }
+    for (const dir of ['left', 'right']) {
+      const poly = polygonOf(dir, F);
+      const box = chevronBox(dir, 'chev-turn', F);
+      for (const ecke of box.corners) {
+        assert.ok(inside(ecke, poly),
+          `${label} ${dir}: die Ecke (${ecke[0].toFixed(1)}|${ecke[1].toFixed(1)}) liegt ausserhalb des Keils`);
+      }
+      // 45-Grad-Form: der Anstieg misst genau die halbe Spanne.
+      assert.ok(Math.abs(box.rise - box.span / 2) < 1e-6,
+        `${label} ${dir}: der Dreh-Chevron ist nicht in 45-Grad-Form (${box.rise.toFixed(2)} zu ${box.span.toFixed(2)})`);
+      // Und er ist deutlich groesser als der fruehere Mini-Pfeil (15 % der Taste).
+      assert.ok(box.span > 0.15 * F,
+        `${label} ${dir}: der Dreh-Chevron ist mit ${box.span.toFixed(1)}px nicht groesser als der fruehere Pfeil`);
+    }
+    assert.ok(padGap > 0);
   }
 });
 

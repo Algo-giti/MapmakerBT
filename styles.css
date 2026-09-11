@@ -2355,15 +2355,75 @@ body.menu-open .app-frame { visibility: hidden; }
      das Feld hoechstens werden darf, ohne dass das Tastenkreuz unten herauslaeuft. */
   --drive-pad-key-min: 44px;
   --drive-pad-gap: 4px;
-  /* Waagerechter Versatz, der einer senkrecht zur 45-Grad-Diagonale gemessenen halben Fuge
-     entspricht: bei 45 Grad das 1/sqrt(2)-fache, also `gap / 2 * sqrt(2)`. Ohne diesen Faktor
-     waere die Fuge zwischen zwei Keilen schmaler als die zwischen Taste und Rand. */
-  --drive-pad-cut: calc(var(--drive-pad-gap) * 0.7071);
+  /* **Die Einschnuerung der Sanduhr — an genau einer Stelle.** 0 waere das alte X durch die
+     Mitte, 1 ein Kreuz aus vier Rechtecken. Der Wert ist der Anteil der halben nutzbaren
+     Ausdehnung `H = 50% - Fuge`, den die halbe Taille misst: bei 0,5 laufen die vier
+     Trennlinien nicht auf den Mittelpunkt zu, sondern auf die beiden Punkte `50% +- H/2`.
+     Vorwaerts und rueckwaerts werden dadurch breite Trapeze, links und rechts schmale Keile —
+     bei vor/zurueck schiebt der Daumen ueber die ganze Laenge, links/rechts sind Korrekturen
+     auf der Stelle. */
+  --drive-pad-waist: 0.5;
+  /* Halbe Taillenbreite als Laenge. Steht hier und nicht viermal in den Formen. */
+  --drive-pad-waist-half: calc((50% - var(--drive-pad-gap)) * var(--drive-pad-waist));
+  /* **Die Fuge zwischen vorwaerts und rueckwaerts.** Bis v63 schrieben beide Trapeze fuer ihre
+     Taillenkante denselben Ausdruck — die Flaechen beruehrten sich dort auf ganzer Laenge, der
+     Abstand war 0 px, waehrend zu den Keilen und zum Rand 4 px standen. Beim alten X lagen die
+     beiden Spitzen sogar 2 * cut = 5,66 px auseinander; die Sanduhr hatte das ersatzlos verloren.
+     Jede Taillenkante rueckt deshalb um die halbe Fuge von der Feldmitte weg — und wandert dabei
+     **auf ihrer eigenen Schraege** mit: je Pixel senkrecht nach aussen um `1 - Taille` seitlich
+     nach aussen. Nur so bleibt die Fuge zu den Keilen unveraendert genau `--drive-pad-gap`; ein
+     Versatz um `--drive-pad-cut-y` wuerde die Kante von ihrer Linie herunterziehen. */
+  --drive-pad-waist-lift: calc(var(--drive-pad-gap) / 2);
+  --drive-pad-waist-slide: calc(var(--drive-pad-gap) / 2 * (1 - var(--drive-pad-waist)));
+  /* **Die Chevrons auf den Fahrtasten.** Sie ersetzen die frueheren Mini-Pfeile und sind reine
+     Zeichnung — `pointer-events: none`, die Trefferflaeche bleibt die beschnittene Taste.
+     Lage und Groesse folgen vollstaendig aus den Zonengrenzen und den Formtoken; die vier Zahlen
+     hier sind das einzige Gestalterische daran und stehen deshalb an derselben Stelle wie die
+     Taille.
+       air    Luft zur Grenzlinie: der Kasten fuellt sein Band bis auf diesen Anteil.
+       stroke Strichstaerke je Laengsmass — waechst dadurch nach aussen mit der Breite mit.
+       rise-* Anstieg je Zone (Hoehe durch Breite). Nach aussen **flacher**, damit der Chevron
+              trotz des kuerzer werdenden Bandes nach aussen **breiter** wird: die drei Baender
+              messen laengs der Achse 0,25 F / 0,15 F / 0,1 F - Fuge, die aeussere Zone hat also
+              den wenigsten Weg. Ohne das Abflachen wuerde der schnelle Chevron der kleinste.
+       turn   Anteil der Keiltiefe, den der Chevron der Drehtasten einnimmt (45-Grad-Form). */
+  --drive-chevron-air: 0.2;
+  --drive-chevron-stroke: 0.08;
+  --drive-chevron-rise-slow: 0.55;
+  --drive-chevron-rise-normal: 0.26;
+  --drive-chevron-rise-fast: 0.075;
+  --drive-chevron-rise-turn: 0.5;
+  --drive-chevron-turn: 0.67;
+  /* Deckkraft je Zone: innen blass, aussen kraeftig. Die Hervorhebung der aktiven Zone macht
+     weiterhin **allein** das Band — `data-zone` veraendert an den Chevrons nichts, sonst saehe
+     man zwei Aussagen ueber denselben Zustand. */
+  --drive-chevron-dim-slow: 0.38;
+  --drive-chevron-dim-normal: 0.6;
+  --drive-chevron-dim-fast: 0.9;
+  /* Die beiden Versaetze, die die Fuge zwischen zwei Tasten auf ihrer ganzen Laenge genau
+     `--drive-pad-gap` breit halten — **senkrecht zur Trennlinie gemessen**, nicht waagerecht.
+     Seit der Einschnuerung stehen die Linien nicht mehr im 45-Grad-Winkel, und der eine Faktor
+     1/sqrt(2) von frueher traegt nicht mehr fuer beide Richtungen:
+       Trapez, waagerecht versetzt:  gap/2 * sqrt((1-k)^2 + 1)         -> k=0,5: 0,559017
+       Keil,   senkrecht versetzt:   gap/2 * sqrt((1-k)^2 + 1)/(1-k)   -> k=0,5: 1,118034
+     Bei k = 0 fallen beide auf das alte 0,7071 zusammen.
+     Beide Faktoren sind **ausgerechnet, nicht per `sqrt()` gebildet** — aber nicht, weil CSS die
+     Funktion nicht haette: `pow()`, `sqrt()` und `hypot()` gibt es seit **Chrome und Chrome fuer
+     Android 120** (https://developer.chrome.com/blog/chrome-120-beta), und Android/Chrome ist die
+     Zielplattform. Der Grund ist ein anderer: `tests/layout-test.js` rechnet die vier Formen
+     selbst nach und wertet dazu die `clip-path`-Ausdruecke aus. Ein Ausdruck, den ein Browser
+     nicht unterstuetzt, macht `clip-path` **still ungueltig** — die Taste waere dann gar nicht
+     beschnitten, ohne Fehlermeldung. Ausgerechnete Faktoren sind fuer beide Seiten lesbar; dass
+     sie zur Taille passen, rechnet der Test aus `--drive-pad-waist` nach.
+ */
+  --drive-pad-cut-x: calc(var(--drive-pad-gap) * 0.559017);
+  --drive-pad-cut-y: calc(var(--drive-pad-gap) * 1.118034);
   /* Die Rechnung stammt aus dem alten Dreierraster (drei gestapelte Tasten). Seit dem
-     diagonalen Schnitt ist sie nicht mehr die Herleitung, aber weiterhin die **schaerfere** der
-     beiden Schranken: der Keil ist an der inneren Zonengrenze `0,4 * F - 2 * cut` breit, was
-     schon ab 125 px Feldgroesse ueber dem Daumenziel liegt. 140 px erfuellt das mit Abstand;
-     `tests/layout-test.js` rechnet beides nach, statt es zu unterstellen. */
+     diagonalen Schnitt ist sie nicht mehr die Herleitung, aber weiterhin die **schaerfste** der
+     Schranken. Die Sanduhr verlangt bei k = 0,5 (44 px Daumenziel, 4 px Fuge): Aussenkante des
+     Keils ab 60,9 px Feldgroesse, Trapez an der inneren Zonengrenze ab 70,0 px, Trapez an
+     seiner Taille ab 104,9 px. 140 px erfuellt alle drei mit Abstand;
+     `tests/layout-test.js` rechnet sie nach, statt es zu unterstellen. */
   --drive-field-min: calc(3 * var(--drive-pad-key-min) + 2 * var(--drive-pad-gap));
   --joystick-size: clamp(var(--drive-field-min), calc(25dvh * var(--joystick-scale, 1)),
     min(calc(240px * var(--joystick-scale, 1)), 38dvh, calc(100vw - var(--drive-side-reserve))));
@@ -2502,38 +2562,68 @@ body.menu-open .app-frame { visibility: hidden; }
   color: var(--shell-text);
   touch-action: none;
 }
-/* Das Symbol sitzt nicht in der Mitte des Feldes, sondern in der Mitte des **Keils** — sonst
-   laegen alle vier Pfeile uebereinander im Mittelpunkt und waeren weggeschnitten. */
-.drive-key svg { width: 15%; height: 15%; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.drive-key.key-up svg { place-self: start center; margin-top: 6%; }
-.drive-key.key-down svg { place-self: end center; margin-bottom: 6%; }
-.drive-key.key-left svg { place-self: center start; margin-left: 6%; }
-.drive-key.key-right svg { place-self: center end; margin-right: 6%; }
+/* **Die Chevrons.** Sie ersetzen die frueheren Mini-Pfeile (ein Symbol je Taste, 15 % gross,
+   an den Rand der Taste geschoben). Vorwaerts und rueckwaerts tragen je drei — einen je Zone —,
+   die Drehtasten je einen; die Anzahl sagt damit dasselbe wie das Fahrverhalten.
+   Rein zeichnend: `pointer-events: none`, jedes SVG ist `aria-hidden`, der zugaengliche Name
+   steht unveraendert als `aria-label` am Button. Der Kasten wird ueber seine Mitte gesetzt,
+   `overflow: visible` laesst den Strich ueber den Pfad hinausstehen, statt ihn halb wegzuschneiden
+   — deshalb ist der umschliessende Kasten `Breite + Strich` mal `Anstieg + Strich`, und genau so
+   rechnet `tests/layout-test.js` nach. `non-scaling-stroke` haelt den Strich gleich dick, obwohl
+   die viewBox ungleichmaessig gestreckt wird. */
+.drive-chevron {
+  position: absolute;
+  left: var(--chev-x);
+  top: var(--chev-y);
+  width: var(--chev-box-w);
+  height: var(--chev-box-h);
+  transform: translate(-50%, -50%);
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: calc(var(--chev-w) * var(--drive-chevron-stroke));
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.drive-chevron path { vector-effect: non-scaling-stroke; }
 .drive-key:active { background: var(--shell-hover); }
 
-/* Die vier Keile. Aussen um `--drive-pad-gap` eingerueckt, damit der Untergrund als Rahmen
-   stehen bleibt; die Diagonalen um `--drive-pad-cut` versetzt, damit zwischen zwei Keilen
-   dieselbe Fuge steht. Die Spitzen enden dadurch von selbst kurz vor dem Mittelpunkt — das
-   winzige tote Feld dort ist gewollt, es trennt die vier Richtungen sauber. */
+/* Die vier Flaechen der Sanduhr. Aussen um `--drive-pad-gap` eingerueckt, damit der Untergrund
+   als Rahmen stehen bleibt; die Trennlinien laufen auf die beiden Taillenpunkte statt auf den
+   Mittelpunkt und sind um `--drive-pad-cut-x` (Trapez, waagerecht) bzw. `--drive-pad-cut-y`
+   (Keil, senkrecht) versetzt, damit die Fuge dazwischen senkrecht gemessen genauso breit ist
+   wie die zum Rand. Vor/zurueck sind Trapeze — aussen ueber die volle Breite, an der Taille
+   `2 * waist-half` —, links/rechts Keile mit der Spitze `waist-half + cut-x` vor der Mitte.
+   Die beiden Taillenkanten stehen seit dem Nachbau um `--drive-pad-waist-lift` von der Mitte ab
+   und um `--drive-pad-waist-slide` seitlich nach aussen: dadurch trennt die volle Fuge auch
+   vorwaerts von rueckwaerts, nicht nur die Trapeze von den Keilen.
+   Keine der vier Formen schreibt eine eigene Zahl: Fuge, Taille und alle Versaetze sind Token. */
 .drive-key.key-up {
-  clip-path: polygon(calc(var(--drive-pad-gap) + var(--drive-pad-cut)) var(--drive-pad-gap),
-    calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut)) var(--drive-pad-gap),
-    50% calc(50% - var(--drive-pad-cut)));
+  clip-path: polygon(calc(var(--drive-pad-gap) + var(--drive-pad-cut-x)) var(--drive-pad-gap),
+    calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut-x)) var(--drive-pad-gap),
+    calc(50% + var(--drive-pad-waist-half) - var(--drive-pad-cut-x) + var(--drive-pad-waist-slide))
+      calc(50% - var(--drive-pad-waist-lift)),
+    calc(50% - var(--drive-pad-waist-half) + var(--drive-pad-cut-x) - var(--drive-pad-waist-slide))
+      calc(50% - var(--drive-pad-waist-lift)));
 }
 .drive-key.key-down {
-  clip-path: polygon(calc(var(--drive-pad-gap) + var(--drive-pad-cut)) calc(100% - var(--drive-pad-gap)),
-    50% calc(50% + var(--drive-pad-cut)),
-    calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut)) calc(100% - var(--drive-pad-gap)));
+  clip-path: polygon(calc(var(--drive-pad-gap) + var(--drive-pad-cut-x)) calc(100% - var(--drive-pad-gap)),
+    calc(50% - var(--drive-pad-waist-half) + var(--drive-pad-cut-x) - var(--drive-pad-waist-slide))
+      calc(50% + var(--drive-pad-waist-lift)),
+    calc(50% + var(--drive-pad-waist-half) - var(--drive-pad-cut-x) + var(--drive-pad-waist-slide))
+      calc(50% + var(--drive-pad-waist-lift)),
+    calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut-x)) calc(100% - var(--drive-pad-gap)));
 }
 .drive-key.key-left {
-  clip-path: polygon(var(--drive-pad-gap) calc(var(--drive-pad-gap) + var(--drive-pad-cut)),
-    calc(50% - var(--drive-pad-cut)) 50%,
-    var(--drive-pad-gap) calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut)));
+  clip-path: polygon(var(--drive-pad-gap) calc(var(--drive-pad-gap) + var(--drive-pad-cut-y)),
+    calc(50% - var(--drive-pad-waist-half) - var(--drive-pad-cut-x)) 50%,
+    var(--drive-pad-gap) calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut-y)));
 }
 .drive-key.key-right {
-  clip-path: polygon(calc(100% - var(--drive-pad-gap)) calc(var(--drive-pad-gap) + var(--drive-pad-cut)),
-    calc(100% - var(--drive-pad-gap)) calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut)),
-    calc(50% + var(--drive-pad-cut)) 50%);
+  clip-path: polygon(calc(100% - var(--drive-pad-gap)) calc(var(--drive-pad-gap) + var(--drive-pad-cut-y)),
+    calc(100% - var(--drive-pad-gap)) calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut-y)),
+    calc(50% + var(--drive-pad-waist-half) + var(--drive-pad-cut-x)) 50%);
 }
 
 /* **Die Zonen.** Die Achse laeuft von der Mitte des Feldes (50 %) zur Aussenkante der jeweiligen
@@ -2545,19 +2635,24 @@ body.menu-open .app-frame { visibility: hidden; }
 .drive-key.key-down { --zone-axis: to bottom; }
 .drive-key.key-left { --zone-axis: to left; }
 .drive-key.key-right { --zone-axis: to right; }
-.drive-pad.zones-on .drive-key {
+/* Die beiden Grenzen in Elementkoordinaten. Sie standen bis v63 unter
+   `.drive-pad.zones-on .drive-key` und waren damit nur bei eingeschalteten Zonen definiert —
+   der eine Chevron, den vorwaerts und rueckwaerts **ohne** Zonen zeigen, sitzt aber an genau
+   derselben Stelle wie der der normalen Zone und braucht sie deshalb auch dann. Sie gehoeren
+   zur Taste, nicht zum Schalter, und stehen jetzt hier. */
+.drive-key {
   --zone-inner: calc(50% + var(--drive-zone-inner, 40%) / 2);
   --zone-outer: calc(50% + var(--drive-zone-outer, 70%) / 2);
+  /* Tiefe des Drehkeils von der Aussenkante bis zur Spitze — Bezugsmass des Dreh-Chevrons. */
+  --drive-turn-depth: calc(50% - var(--drive-pad-gap) - var(--drive-pad-waist-half) - var(--drive-pad-cut-x));
+}
+.drive-pad.zones-on .drive-key {
   background-image: linear-gradient(var(--zone-axis),
     transparent calc(var(--zone-inner) - 1px), var(--shell-border) calc(var(--zone-inner) - 1px),
     var(--shell-border) calc(var(--zone-inner) + 1px), transparent calc(var(--zone-inner) + 1px),
     transparent calc(var(--zone-outer) - 1px), var(--shell-border) calc(var(--zone-outer) - 1px),
     var(--shell-border) calc(var(--zone-outer) + 1px), transparent calc(var(--zone-outer) + 1px));
 }
-/* Ohne den zweiten Schalter tragen die Drehtasten keine Grenzen — sie haben dann auch keine. */
-.drive-pad.zones-on:not(.zones-turn) .key-left,
-.drive-pad.zones-on:not(.zones-turn) .key-right { background-image: none; }
-
 /* Die Zone, in der gerade gefahren wird. `data-zone` setzt `refreshCursorZoneVisual()` an genau
    der gedrueckten Taste; das Band liegt ueber den Grenzstrichen. */
 .drive-pad.zones-on .drive-key[data-zone] {
@@ -2573,6 +2668,87 @@ body.menu-open .app-frame { visibility: hidden; }
 .drive-key[data-zone="slow"] { --zone-from: 50%; --zone-to: var(--zone-inner); }
 .drive-key[data-zone="normal"] { --zone-from: var(--zone-inner); --zone-to: var(--zone-outer); }
 .drive-key[data-zone="fast"] { --zone-from: var(--zone-outer); --zone-to: 100%; }
+
+/* Links und rechts tragen keine Grenzen, weil sie keine Zonen mehr haben: das Drehen auf der
+   Stelle laeuft mit einer festen Geschwindigkeit. Die `[data-zone]`-Fassungen stehen bewusst
+   mit dabei und die Regel bewusst **nach** dem Band oben — sonst zeichnete ein versehentlich
+   gesetztes Merkmal ein hervorgehobenes Band ohne zugehoerige Grenzstriche. */
+.drive-pad.zones-on .key-left,
+.drive-pad.zones-on .key-right,
+.drive-pad.zones-on .key-left[data-zone],
+.drive-pad.zones-on .key-right[data-zone] { background-image: none; }
+
+/* **Lage und Groesse der Chevrons — ohne eine eigene Zahl.** Die Achse ist dieselbe wie bei den
+   Grenzstrichen: von der Feldmitte (50 %) zur Aussenkante der Taste (100 %), ein Anteil q liegt
+   bei `50% + q/2`. Jeder Chevron sitzt in der Mitte seines Bandes und fuellt es bis auf die Luft.
+   Die Baender sind dabei zur **Taste** hin gekappt, nicht zum Feldrand: innen endet das langsame
+   Band an der Taillenkante (`waist-lift`), aussen das schnelle an der Tastenkante (`gap`).
+   Ohne diese Kappung ragte der schnelle Chevron ueber den Rand der beschnittenen Taste hinaus. */
+.drive-key .chev-slow {
+  --chev-rise: var(--drive-chevron-rise-slow);
+  --chev-a0: calc(50% + var(--drive-pad-waist-lift));
+  --chev-a1: var(--zone-inner);
+  opacity: var(--drive-chevron-dim-slow);
+}
+.drive-key .chev-normal {
+  --chev-rise: var(--drive-chevron-rise-normal);
+  --chev-a0: var(--zone-inner);
+  --chev-a1: var(--zone-outer);
+  opacity: var(--drive-chevron-dim-normal);
+}
+.drive-key .chev-fast {
+  --chev-rise: var(--drive-chevron-rise-fast);
+  --chev-a0: var(--zone-outer);
+  --chev-a1: calc(100% - var(--drive-pad-gap));
+  opacity: var(--drive-chevron-dim-fast);
+}
+/* Der Dreh-Chevron traegt die Deckkraft der normalen Zone: er ist der einzige auf seiner Taste,
+   und die Drehtasten fahren eine feste Geschwindigkeit — es gibt nichts abzustufen. */
+.drive-key .chev-turn {
+  --chev-rise: var(--drive-chevron-rise-turn);
+  opacity: var(--drive-chevron-dim-normal);
+}
+/* Vor/zurueck: die Breite folgt aus der Bandhoehe und dem Anstieg der Zone. Weil der Anstieg nach
+   aussen faellt, waechst die Breite nach aussen — obwohl das Band kuerzer wird. */
+.key-up .drive-chevron,
+.key-down .drive-chevron {
+  --chev-w: calc((var(--chev-a1) - var(--chev-a0)) * (1 - var(--drive-chevron-air))
+    / (var(--chev-rise) + var(--drive-chevron-stroke)));
+  --chev-box-w: var(--chev-w);
+  --chev-box-h: calc(var(--chev-w) * var(--chev-rise));
+  /* Mitte des Bandes. Steht nur hier: die Drehtasten haben kein Band, und eine Rechnung mit
+     undefinierten Grenzen waere dort eine Aussage ueber nichts. */
+  --chev-a: calc((var(--chev-a0) + var(--chev-a1)) / 2);
+  --chev-x: 50%;
+}
+.key-up .drive-chevron { --chev-y: calc(100% - var(--chev-a)); }
+.key-down .drive-chevron { --chev-y: var(--chev-a); }
+/* Links/rechts: ein Chevron in 45-Grad-Form, so gross wie die Keiltiefe ihn mit Luft zulaesst.
+   Die Spitze zeigt nach aussen, die Arme laufen auf die Keilspitze zu. */
+.key-left .drive-chevron,
+.key-right .drive-chevron {
+  --chev-w: calc(var(--drive-turn-depth) * var(--drive-chevron-turn) * (1 - var(--drive-chevron-air))
+    / (var(--chev-rise) + var(--drive-chevron-stroke)));
+  --chev-box-w: calc(var(--chev-w) * var(--chev-rise));
+  --chev-box-h: var(--chev-w);
+  --chev-turn-x: calc(var(--drive-pad-gap) + var(--drive-turn-depth) * var(--drive-chevron-air) / 2
+    + var(--chev-w) * var(--chev-rise) / 2);
+  --chev-y: 50%;
+}
+.key-left .drive-chevron { --chev-x: var(--chev-turn-x); }
+.key-right .drive-chevron { --chev-x: calc(100% - var(--chev-turn-x)); }
+
+/* **Ohne Zonen zeigt jede Taste genau einen Chevron** — den der normalen Zone, an unveraenderter
+   Stelle und in unveraenderter Groesse. Ohne Zonen faehrt `cursorDriveVector()` genau
+   `speeds.normal`, der sichtbare Chevron ist also buchstaeblich der, dessen Geschwindigkeit gilt;
+   beim Einschalten kommen zwei Geschwister dazu, es wandert nichts. Umgeschaltet wird allein
+   ueber die Klasse `zones-on` am Feld, damit der Layout-Test die Frage statisch entscheiden kann.
+   Ausgeblendet ist der Grundzustand, eingeblendet die Ausnahme: eine Regel, die einen Chevron
+   zusaetzlich zeigt, muss `zones-on` nennen. `data-zone` kommt hier bewusst nicht vor. */
+.drive-key .chev-slow,
+.drive-key .chev-fast { display: none; }
+.drive-pad.zones-on .drive-key .chev-slow,
+.drive-pad.zones-on .drive-key .chev-fast { display: block; }
 
 /* Das Erweitern-Werkzeug: im laufenden Vorgang („Fertig“) hervorgehoben, damit erkennbar ist,
    dass die Kontur gerade offen ist. */

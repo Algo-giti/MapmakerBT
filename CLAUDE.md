@@ -325,6 +325,12 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    Moduswechsel) **und** `refreshControlUi()` (Sprachwechsel über `applyLanguage()`); der Text ist
    dynamisch und trägt deshalb kein festes `data-i18n`, wie bei `refreshExportButtons()`.
 
+   **Die Zonen sind seit v63 50/30/20 statt 40/30/30** — und gelten nur noch für vorwärts und
+   rückwärts. Im Trapez läuft die innere Zone zur Taille hin zu, sie braucht deshalb mehr Weg als
+   die beiden äußeren, die über die volle Breite laufen. Wirkung, gemessen über alle 20
+   Auflösungs-/Größenkombinationen: von der langsamen Zone waren früher nur die äußeren **11 %**
+   ein 44-px-Ziel, jetzt sind es **100 %** — genau der Zweck der Änderung.
+
    **`DRIVE_ZONES` ist die einzige Stelle, die die Grenzen nennt.** Das Stylesheet zeichnet die
    Striche aus `--drive-zone-inner` / `--drive-zone-outer`, die `applyDriveZonePreferences()` von
    dort setzt — eine eigene Prozentzahl im CSS wäre eine zweite Behauptung über dieselbe Grenze,
@@ -341,30 +347,129 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    Schreibvorgangs, der 650-ms-Takt trägt den neuen Wert dann nach. Dasselbe Muster nutzt der
    Joystick seit jeher.
 
-   **Zwei Schalter**, beide unter *Einstellungen › Fahrgeschwindigkeit* und nur im Tastenmodus
-   sichtbar: `driveZones` (Vorgabe **an** — die schnellste Zone führt keine Geschwindigkeit ein,
-   die nicht schon freigegeben war) und `driveZonesTurn` (Vorgabe **aus** — genaues Drehen auf der
-   Stelle ist der Grund, überhaupt Tasten statt Joystick zu nehmen; außerdem staucht der Deckel
-   `driveTurnMax` die oberen Zonen: bei den Vorgaben ergäbe die schnellste Zone 1,43 rad/s, die auf
-   1,15 gekappt werden). Die Drehzonen **erben** die Staffel über `cursorDriveVector()` — die
-   Umrechnung cm/s → rad/s über die halbe Spurweite steht weiterhin nur dort.
+   **Ein Schalter**, unter *Einstellungen › Fahrgeschwindigkeit* und nur im Tastenmodus sichtbar:
+   `driveZones` (Vorgabe **an** — die schnellste Zone führt keine Geschwindigkeit ein, die nicht
+   schon freigegeben war). Den früheren zweiten Schalter `driveZonesTurn` gibt es seit v63 nicht
+   mehr; ein gespeicherter Altwert wird beim Laden ignoriert.
 
-   **Diagonaler Schnitt statt Dreierraster.** Auf dem 3×3-Raster belegten die vier Tasten nur die
-   Kantenmitten; Mitte und Ecken lagen brach, und zur Mitte hin verlängern ließ sich dort nichts,
-   weil alle vier dieselbe Mittelzelle beansprucht hätten. Die Flächen liegen jetzt übereinander
-   (`position: absolute; inset: 0`) und werden per `clip-path` in vier Keile getrennt; die
-   Trefferprüfung folgt der Beschneidung. Die Fuge zwischen zwei Keilen wird **senkrecht zur
-   45-Grad-Diagonale** gemessen, der waagerechte Versatz dafür ist `--drive-pad-cut` =
-   `gap / 2 · √2` — ohne diesen Faktor wäre sie schmaler als die Fuge zum Rand. Die Spitzen enden
-   dadurch von selbst kurz vor dem Mittelpunkt; das winzige tote Feld dort trennt die vier
-   Richtungen.
+   **Links und rechts haben keine Zonen.** Der Keil läuft nach innen auf eine Spitze zu, dort wäre
+   die langsame Zone kein Daumenziel mehr. Das Drehen auf der Stelle läuft deshalb mit einer
+   **festen** Geschwindigkeit: der Hälfte von `driveSpeedMax`, bei den Vorgaben 12,5 cm/s. Der
+   halbe Höchstwert bindet das Drehen an eine Zahl, die der Nutzer ohnehin führt, statt eine neue
+   einzuführen. Die Umrechnung cm/s → rad/s über die halbe Spurweite und der Deckel `driveTurnMax`
+   stehen weiterhin nur in `cursorDriveVector()`.
 
-   **Die 44-px-Untergrenze gilt jetzt der Breite, nicht mehr der Tastengröße.** Früher prüfte
-   `(Feld − 2·Lücke) / 3 ≥ 44` Länge und Breite in einem. Der Keil ist im Abstand *d* von der Mitte
-   `2d − 2·cut` breit; an der inneren Zonengrenze (*d* = 0,4·F/2) verlangt das F ≥ 125 px.
-   `--drive-field-min` (140 px) stammt noch aus dem Raster, ist damit aber weiterhin die
-   **schärfere** der beiden Schranken — `tests/layout-test.js` rechnet beides nach, statt es zu
-   unterstellen, und prüft zusätzlich, dass jeder Keil länger ist als die frühere Taste.
+   **Sanduhrform statt X durch die Mitte (Stand v63).** Auf dem alten 3×3-Raster belegten die vier
+   Tasten nur die Kantenmitten; Mitte und Ecken lagen brach. Die Flächen liegen seit v62
+   übereinander (`position: absolute; inset: 0`) und werden per `clip-path` getrennt; die
+   Trefferprüfung ist **die des Browsers** und folgt der Beschneidung von selbst
+   (`event.target.closest('[data-direction]')`, es gibt keinen JS-Treffertest).
+
+   Seit v63 laufen die vier Trennlinien nicht mehr auf den Mittelpunkt, sondern auf die beiden
+   **Taillenpunkte** `50% ± H/2`: vorwärts und rückwärts werden breite **Trapeze**, links und
+   rechts schmale **Keile**. Der Grund ist die Bedienung — bei vor/zurück schiebt der Daumen über
+   die ganze Länge, links/rechts sind Korrekturen auf der Stelle.
+
+   **Die Einschnürung steht als ein Token an einer Stelle:** `--drive-pad-waist: 0.5` (Anteil der
+   halben nutzbaren Ausdehnung `H = 50% − Fuge`, den die halbe Taille misst; 0 wäre das alte X).
+   `--drive-pad-waist-half` rechnet daraus die Länge, keine der vier Formen schreibt eine eigene
+   Zahl.
+
+   **Die Fuge bleibt 4 px, aber es braucht jetzt zwei Faktoren.** Bei 45 Grad genügte der eine
+   Versatz `gap/2·√2`; mit der Einschnürung stehen die Linien schräger, und waagerechter und
+   senkrechter Versatz fallen auseinander:
+   `--drive-pad-cut-x` = `gap/2·√((1−k)²+1)` (Trapez, waagerecht) = `gap · 0,559017` und
+   `--drive-pad-cut-y` = `cut-x/(1−k)` (Keil, senkrecht) = `gap · 1,118034`. Bei k = 0 fallen
+   beide auf das alte 0,7071 zusammen. Die Faktoren sind **ausgerechnet** — **`tests/layout-test.js`
+   rechnet sie aus `--drive-pad-waist` nach und misst die Fuge am ausgewerteten Polygon**, damit
+   sie nicht auseinanderlaufen können.
+
+   **Korrigiert: „CSS hat keine verlässlich verfügbare `sqrt()`-Funktion" war unbelegt.** Belegt
+   ist das Gegenteil: `pow()`, `sqrt()` und `hypot()` sind seit **Chrome und Chrome für Android
+   120** verfügbar (https://developer.chrome.com/blog/chrome-120-beta), und Android/Chrome ist die
+   Zielplattform dieser App. Die Faktoren bleiben trotzdem ausgerechnet, aber aus einem anderen,
+   nachprüfbaren Grund: **der Layout-Test rechnet die vier Formen selbst nach**, indem er die
+   `clip-path`-Ausdrücke auswertet. Ein Ausdruck, den ein Browser nicht unterstützt, macht
+   `clip-path` **still ungültig** — die Taste wäre dann gar nicht beschnitten, ohne Fehlermeldung
+   und ohne dass ein Test es merkte. Ausgerechnete Faktoren sind für Browser und Test gleichermaßen
+   lesbar.
+
+   **Die 44-px-Untergrenze wird je Richtung woanders gemessen** — die alte gemeinsame Formel
+   `2d − 2·cut` galt für das X und gilt für keine der beiden neuen Formen. Nachgerechnet für
+   fünf Auflösungen × vier Größenstufen (schlechtester Fall jeweils F = 140 px):
+
+   | Maß | schlechtester Fall | nötige Feldgröße |
+   |---|---|---|
+   | Außenkante des Keils links/rechts | 123,1 px | F ≥ 60,9 px |
+   | Trapez an der inneren Zonengrenze | 98,5 px | F ≥ 67,3 px |
+   | Trapez an seiner Taille | 63,5 px | F ≥ 100,9 px |
+   | **Inkreis des Drehkeils links/rechts** | **29,0 px** | **F ≥ 203,34 px** |
+
+   `--drive-field-min` (140 px) stammt noch aus dem Dreierraster und bleibt für die ersten drei
+   Maße die **schärfste** Schranke. Der Keil ist **kürzer** als die frühere Rastertaste — das ist
+   gewollt; für vor/zurück gilt die alte Zusicherung „länger als die frühere Taste" unverändert.
+
+   **Die Außenkante war das falsche Maß — nachgemessen und korrigiert.** Hier stand, bei
+   links/rechts werde „ausdrücklich die Außenkante geprüft, nicht mehr die innere Breite". Das
+   beantwortet die 44-px-Frage nicht: ein langer, dünner Keil hat eine hohe Außenkante und trotzdem
+   nirgends Platz für einen Daumen. Das richtige Maß ist der **größte Kreis, der in den Keil
+   passt** — im schlechtesten Fall (F = 140 px) sind das **29,0 px**, und in **12 von 20**
+   Auflösungs-/Größenkombinationen bleibt er unter 44 px. Voll erfüllt ist die Bedingung erst ab
+   **F ≥ 203,34 px** (abgeleitet, nicht gesetzt).
+
+   **Entscheidung: v63 behält die Taille und macht die Folge sichtbar.** Die beiden gerechneten
+   Alternativen kosten mehr, als sie einbringen: eine von der Feldgröße abhängige Taille `k(F)`
+   erkauft den Inkreis, indem sie die Taille bricht (21,4 px bei F = 140) und den Anteil der
+   langsamen Vorwärtszone, der ein 44-px-Ziel ist, von 100 % auf 60 % drückt; `--drive-field-min`
+   auf 203,34 px anzuheben kostet in 12 von 20 Fällen Kartenhöhe, im schlimmsten Fall **63,3 px =
+   11,2 % der Bildschirmhöhe** (320 × 568), lässt auf diesem Gerät alle vier Größenstufen auf
+   denselben Wert zusammenfallen und vergrößerte über dasselbe Token auch den runden Joystick.
+   Statt zu korrigieren wird **benannt**: `turnKeyIncircle()` (`app.js`) ist die einzige Stelle,
+   die den Inkreis beurteilt, und `refreshTurnKeyHint()` zeigt bei zu kleinem Feld die dauerhafte
+   Zeile `#driveTurnSizeHint` bei der Größeneinstellung — Muster wie `#driveZoneOrderHint`, kein
+   Dialog, sperrt nichts, ändert die eingestellte Größe nicht. Nur im Tastenmodus; im
+   Joystick-Modus gibt es keine Drehtasten. Nachgeführt aus `applyDriveControlMode()`
+   (Moduswechsel), `applyDriveZonePreferences()` (Größenstufe), dem `resize`-Ereignis und
+   `refreshControlUi()` (Sprachwechsel). Die drei Formgrößen liest `driveShapeTokens()` über
+   `getComputedStyle` aus `--drive-pad-gap`, `--drive-pad-waist` und `--drive-pad-key-min` — sie
+   stehen im Stylesheet und werden nicht ein zweites Mal in `app.js` geschrieben; sind sie nicht
+   lesbar, bleibt die Zeile weg, statt etwas zu raten. **Nicht ohne Gerät verifizierbar:** ob 29 px
+   breite Drehtasten in der Praxis tatsächlich danebengetroffen werden — belegt ist nur, dass sie
+   das selbstgesetzte 44-px-Maß unterschreiten.
+
+   **Die Fuge zwischen vorwärts und rückwärts gab es bis v63 nicht.** Beide Trapeze schrieben für
+   ihre Taillenkante denselben Ausdruck und berührten sich dort auf voller Länge — Abstand
+   **0,000000 px** über 61,5 px, in allen 20 Fällen, während zu den Keilen und zum Rand 4 px
+   standen; das alte X ließ dort sogar 2 · cut = **5,657 px**. Ein Tipp genau auf der Linie ging an
+   `key-down`, weil es als letztes im Markup steht und damit oben liegt. Behoben über zwei weitere
+   Token: `--drive-pad-waist-lift` (halbe Fuge, senkrecht von der Mitte weg) und
+   `--drive-pad-waist-slide` (`gap/2 · (1−k)`, seitlich nach außen). Der Taillenpunkt wandert damit
+   **auf seiner eigenen Schräge**, die Fuge zu den Keilen bleibt deshalb unverändert exakt 4 px —
+   ein Versatz um `--drive-pad-cut-y` hätte die Kante von ihrer Linie heruntergezogen. Der
+   Layout-Test misst seither **alle sechs Paarungen** Fläche gegen Fläche (mit echter
+   Abstandsrechnung, 0 bei Überschneidung) in allen 20 Fällen, statt nur vorwärts↔links gegen die
+   Gerade durch die Keilkante — genau die eine Paarung, die dabei nie vorkam, war kaputt.
+
+   **Chevrons statt Mini-Pfeile.** Vorwärts und rückwärts tragen je **drei** Chevrons (einen je
+   Zone), die Drehtasten je **einen** — die Anzahl sagt damit dasselbe wie das Fahrverhalten. Bei
+   abgeschalteten Zonen bleibt auf vorwärts und rückwärts nur der Chevron der **normalen** Zone
+   stehen, an unveränderter Stelle und in unveränderter Größe: ohne Zonen fährt
+   `cursorDriveVector()` genau `speeds.normal`, der sichtbare Chevron ist also der, dessen
+   Geschwindigkeit gilt. Umgeschaltet wird allein über die CSS-Klasse `zones-on`, damit der
+   Layout-Test die Frage statisch entscheiden kann. Lage und Größe folgen vollständig aus
+   `--drive-zone-inner`/`--drive-zone-outer` und den Formtoken; `--zone-inner`/`--zone-outer` sind
+   dafür von `.drive-pad.zones-on .drive-key` nach `.drive-key` gewandert, weil der eine Chevron
+   ohne Zonen sie auch dann braucht. **Der Plan „nach außen größer" war so nicht baubar:** die drei
+   Bänder messen längs der Achse 0,25 F / 0,15 F / 0,1 F − Fuge, die äußere Zone hat also den
+   **wenigsten** Weg (bei F = 140 nur 10 px). Ein gleichförmig skalierter Chevron würde nach außen
+   kleiner. Gebaut ist deshalb „nach außen **flacher** und dadurch breiter": der Anstieg je Zone
+   fällt (0,55 / 0,26 / 0,075), die Breite wächst (bei F = 140 auf 41,9 / 49,4 / 51,6 px), Strich
+   und Deckkraft wachsen mit. Die Bänder sind zur **Taste** hin gekappt, nicht zum Feldrand — sonst
+   ragte der schnelle Chevron über die beschnittene Kante hinaus. Die Chevrons sind reine
+   Zeichnung: `pointer-events: none`, jedes SVG `aria-hidden`, der zugängliche Name steht
+   unverändert als `aria-label` am Button. **Die aktive Zone hebt weiterhin allein das Band
+   hervor** — `data-zone` kommt in keiner Chevron-Regel vor, sonst stünden zwei Aussagen über
+   denselben Zustand nebeneinander.
 
    **Der Tastenmodus hat eine eigene Geschwindigkeit** `state.view.cursorSpeedCms` (Startwert
    **15 cm/s**, Untergrenze 2 cm/s, Obergrenze die eingestellte `driveSpeedMax` in cm/s —
@@ -1708,8 +1813,8 @@ Kein Runner, kein `package.json`, keine Abhängigkeiten — reine Node-Skripte.
 | `tests/app-core-test.js` | Geometrie, Kartenmodell, Validierung (unverändert, nur auf `app-harness.js` umgestellt). |
 | `tests/ble-test.js` | Die BLE-Szenarien (28 Fälle), inklusive der Absicherung aller vier umgesetzten App-Fixes. Stacktraces mit `BLE_TEST_STACK=1`. |
 | `tests/sw-test.js` | Prüft die **Auslieferung** (7 Fälle): Cache-Version an genau einer Stelle in `sw.js`, App-Dateien network-first mit `cache: 'no-cache'` und Cache als Rückfallebene, `cache: 'reload'` beim Cache-Aufbau, alle von `index.html` geladenen Dateien im Cache, alte Caches werden entfernt, Neuladen bei `controllerchange` — und dass **keine** Versionsangabe im UI auftaucht. |
-| `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (39 Fälle). `effectiveStyle(element, property)` löst die Kaskade **elementbezogen** auf (jede passende Regel, nach Spezifität) — nötig für Altlastregeln, die `resolve(selector, …)` nicht sieht. `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
-| `tests/ui-test.js` | Die Kartier-Oberfläche (143 Fälle): Bestätigungs- und Meldungsdialog (Titel/Text/Beschriftung, beide Antworten, verdrängte Rückfrage, Einknopf-Meldung, `reportError` protokolliert und zeigt, keine `window.confirm()`/`window.alert()`-Aufrufe mehr), Moduswahl per Dialog, Rückfrage zum Schließen von Konturen, Kartenprüfung mit Konturschluss, Aufnahme/Löschen in allen drei Button-Zuständen, Flächenauswahl, Automatik (Ersetzen des manuellen Knopfs und Intervall), Positions-Glättung, Hell/Dunkel, Akkordeon, Auswahl per Tap, Touch-Zielgröße, Zoom-Grenzen, Tap-vs-Ziehen, Pinch, Halte-Aufnahme, Joystick-Kennlinie, RTK-Badge, Menüseite, gesperrte Karte, `init()`-Startpfad. Stacktraces mit `UI_TEST_STACK=1`. Antworten auf `confirm()` steuert der Test über `sandbox.__confirmAnswer`. `navigator.share`/`canShare` werden je Fall in den Sandkasten gehängt (`stubShare()`), der Sandkasten führt dafür `File`; den normalen Export fängt `captureDownload()` über einen `Blob`-Spion und den erzeugten Anker ab. |
+| `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (45 Fälle). `effectiveStyle(element, property)` löst die Kaskade **elementbezogen** auf (jede passende Regel, nach Spezifität) — nötig für Altlastregeln, die `resolve(selector, …)` nicht sieht. `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
+| `tests/ui-test.js` | Die Kartier-Oberfläche (202 Fälle): Bestätigungs- und Meldungsdialog (Titel/Text/Beschriftung, beide Antworten, verdrängte Rückfrage, Einknopf-Meldung, `reportError` protokolliert und zeigt, keine `window.confirm()`/`window.alert()`-Aufrufe mehr), Moduswahl per Dialog, Rückfrage zum Schließen von Konturen, Kartenprüfung mit Konturschluss, Aufnahme/Löschen in allen drei Button-Zuständen, Flächenauswahl, Automatik (Ersetzen des manuellen Knopfs und Intervall), Positions-Glättung, Hell/Dunkel, Akkordeon, Auswahl per Tap, Touch-Zielgröße, Zoom-Grenzen, Tap-vs-Ziehen, Pinch, Halte-Aufnahme, Joystick-Kennlinie, RTK-Badge, Menüseite, gesperrte Karte, `init()`-Startpfad. Stacktraces mit `UI_TEST_STACK=1`. Antworten auf `confirm()` steuert der Test über `sandbox.__confirmAnswer`. `navigator.share`/`canShare` werden je Fall in den Sandkasten gehängt (`stubShare()`), der Sandkasten führt dafür `File`; den normalen Export fängt `captureDownload()` über einen `Blob`-Spion und den erzeugten Anker ab. |
 
 ### Was `tests/fake-ble.js` simulieren kann
 
@@ -2022,6 +2127,90 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-11: **Fahrtasten als Sanduhr, Drehen mit fester Geschwindigkeit.** Die vier Trennlinien
+  laufen nicht mehr auf den Mittelpunkt, sondern auf zwei Taillenpunkte: vorwärts/rückwärts sind
+  breite Trapeze, links/rechts schmale Keile. Die Einschnürung steht als **ein** Token
+  (`--drive-pad-waist: 0.5`), die beiden Fugenfaktoren als zwei weitere; keine der vier Formen
+  schreibt eine eigene Zahl.
+
+  **ACHTUNG, Fahrverhalten für alle geändert — nicht nur für Zonennutzer:** links und rechts
+  drehen jetzt mit der **Hälfte von `driveSpeedMax`** statt mit der Tastengeschwindigkeit. Bei
+  den Vorgaben sind das **12,5 statt 15 cm/s**. Das gilt auch bei **abgeschalteten** Zonen, weil
+  der frühere Rückfall auf `speeds.normal` mit dem Wegfall der Drehzonen entfallen ist. Wer die
+  Tastengeschwindigkeit hoch- oder heruntersetzt, ändert das Drehen damit nicht mehr; wer
+  `driveSpeedMax` ändert, ändert es mit. Deckel `driveTurnMax` und die Umrechnung cm/s → rad/s
+  über die halbe Spurweite stehen unverändert an ihrer einen Stelle.
+
+  **Nachgetragen für Nutzer mit eingeschalteten Drehzonen:** die oben genannten 12,5 statt
+  15 cm/s gelten für den Normalfall (Drehzonen aus, so die Vorgabe). Wer `driveZonesTurn` selbst
+  eingeschaltet hatte, verliert am oberen Ende deutlich mehr — statt 8 / 15 / **20,1** cm/s dreht
+  es jetzt durchgehend mit 12,5 cm/s. Die 20,1 sind dabei kein Tippfehler: bei den Vorgaben
+  (Mäherbreite 0,35 m, halbe Spurweite 0,175 m, `driveTurnMax` 1,15 rad/s) war die schnelle
+  Drehzone der **einzige** erreichbare Fall, in dem der Deckel überhaupt griff — 25 cm/s wurden
+  dort auf 1,15 rad/s = 20,13 cm/s gekappt. Bei 12,5 cm/s (0,714 rad/s) greift er nicht mehr; er
+  beginnt erst oberhalb von 20,13 cm/s zu wirken.
+
+  **Fuge zwischen vorwärts und rückwärts, Hinweiszeile, Chevrons** — nachgebaut, nachdem die
+  Rückfragen zu v63 drei Lücken sichtbar gemacht haben; Einzelheiten im Sanduhr-Abschnitt oben:
+  (a) die beiden Trapeze berührten sich an der Taille auf 61,5 px Länge **ohne jeden Abstand**
+  (0,000000 px in allen 20 Fällen, das alte X ließ dort 5,657 px). Zwei neue Token rücken jede
+  Taillenkante um die halbe Fuge nach außen und lassen sie dabei auf ihrer Schräge mitwandern, so
+  dass die Fuge zu den Keilen exakt 4 px bleibt. (b) Für links/rechts wurde bisher die
+  **Außenkante** geprüft — das falsche Maß; der größte Kreis im Keil misst im schlechtesten Fall
+  **29,0 px** und bleibt in 12 von 20 Fällen unter 44 px. Korrigiert wird **nichts**: die Größe
+  gehört dem Nutzer, und beide Alternativen kosten mehr, als sie bringen. Stattdessen benennt die
+  neue Zeile `#driveTurnSizeHint` den Fall bei der Größeneinstellung. (c) Die vier Mini-Pfeile sind
+  durch Chevrons ersetzt: drei je Fahrtaste (einer je Zone), einer je Drehtaste, bei
+  abgeschalteten Zonen nur noch der der normalen Zone.
+
+  **Vorab gerechnet und gemeldet statt angenommen** (T1/T2, vor dem Bau): die vollständige Liste
+  aller 20 Fundstellen von `driveZonesTurn` mit Datei:Zeile, dazu die vier Stellen, die ohne den
+  Schalter nicht unverändert stehenbleiben konnten — allen voran genau dieser Rückfall in
+  `cursorDriveVector()`. Die 44-px-Bedingung gilt für links/rechts jetzt nur noch der
+  **Außenkante** des Keils (innen gibt es keine Zone mehr zu treffen): schlechtester der 20 Fälle
+  **123,1 px** gegen 44 px, sie reißt nirgends. Fuge senkrecht gemessen unverändert exakt
+  **4,000000 px**.
+
+  **Zonen 50/30/20 statt 40/30/30**, nur noch für vor/zurück: im Trapez läuft die innere Zone zur
+  Taille hin zu und braucht mehr Weg. Wirkung gemessen: von der langsamen Zone waren früher nur
+  die äußeren **11 %** ein 44-px-Ziel, jetzt **100 %**.
+
+  `driveZonesTurn` ist ersatzlos entfallen (Schalter, Zustand, i18n-Schlüssel, CSS-Klasse
+  `zones-turn`, Tests); ein gespeicherter Altwert wird beim Laden ignoriert. Vier Textstellen
+  nachgezogen, in denen stand, jede Richtungstaste sei dreigeteilt bzw. es gebe einen eigenen
+  Schalter fürs Drehen: `driveZonesNote`, `helpDriveZonesText` (samt Titel), der Markup-Fallback
+  in `index.html` und die README in **beiden** Sprachen. Der Staffel-Hinweis aus v62 bleibt, sagt
+  aber jetzt ausdrücklich „beim Vorwärts- und Rückwärtsfahren" — er betrifft nur noch diese beiden.
+
+  **Der Layout-Test ist neu geschrieben, nicht angepasst:** die alte Keilbreite `2d − 2·cut` gilt
+  für keine der beiden neuen Formen. Er wertet stattdessen die vier `clip-path`-Polygone
+  tatsächlich aus, misst die Fuge **senkrecht zur Trennlinie** nach, rechnet beide Fugenfaktoren
+  aus `--drive-pad-waist` gegen und leitet die drei Schranken für `--drive-field-min` her, statt
+  sie zu unterstellen. Neu: 1 ui-Fall an Stelle des Drehschalter-Falls (201), 2 Bestandsfälle auf
+  die neue Drehgeschwindigkeit umgeschrieben, layout weiter 43 Fälle. Gegen **elf** simulierte
+  Rückfälle geprüft, alle gefangen — darunter der alte 45-Grad-Faktor, ein Faktor für beide
+  Richtungen, eine geänderte Taille ohne nachgezogene Faktoren, eine feste Zahl in einer Form und
+  das Drehen wieder an der Tastengeschwindigkeit. i18n-Parität DE/EN maschinell geprüft (519/519).
+  `APP_VERSION` auf `v63`.
+
+  **Fertigstellung am selben Tag (A–D):** Fuge vorwärts↔rückwärts hergestellt, Hinweiszeile für zu
+  schmale Drehtasten, Chevrons statt Mini-Pfeile, Texte nachgezogen. Neu: 1 ui-Fall (202) und 2
+  layout-Fälle (45) — der Sanduhr-Fall misst jetzt **alle sechs** Paarungen Fläche gegen Fläche in
+  allen 20 Feldgrößen statt einer einzelnen Kante gegen eine Gerade, dazu ein eigener Fall für den
+  Inkreis (gegen die ausgewerteten Polygone, Schwelle abgeleitet, Wächter gegen eine zweite
+  Rechnung) und einer für die Chevrons (Anzahl im Markup, Sichtbarkeit über die aufgelöste Kaskade
+  mit und ohne `data-zone`, Lage aus den Zonenvariablen, Kasten in Band und Polygon).
+  `tests/layout-test.js` kann dafür Merkmale an **Vorfahren** auflösen (`ancestors: ['…',
+  '[data-zone]']`); ohne Eintrag passt eine solche Regel weiterhin nicht, bestehende Fälle bleiben
+  unberührt. `tests/app-harness.js` stubbt `getComputedStyle` über `sandbox.__cssTokens` — ohne
+  Eintrag liefert es nichts, und `refreshTurnKeyHint()` schweigt, statt zu raten. Gegen **zehn**
+  neue simulierte Rückfälle geprüft (Fugenverschiebung entfernt, nur eine Form verschoben, Versatz
+  um `cut-y` statt auf der Schräge, seitliches Mitwandern vergessen, Chevron mit eigener
+  Prozentzahl, schneller Chevron zu hoch für sein Band, Chevron bei abgeschalteten Zonen zusätzlich
+  sichtbar, `data-zone` blendet einen Chevron ein, zweite Inkreisrechnung, Hinweiszeile im
+  Joystick-Modus) **plus die elf aus dem v63-Bau erneut** — alle gefangen. i18n-Parität DE/EN
+  maschinell geprüft (520/520). `APP_VERSION` bleibt `v63`, die Fassung ist noch nicht ausgeliefert.
 
 - 2026-09-11: **Geschwindigkeitszonen auf den Richtungstasten.** Jede Taste ist längs dreigeteilt
   (40/30/30 von der Mitte nach außen), die Zone folgt dem Finger, solange er gedrückt bleibt.
