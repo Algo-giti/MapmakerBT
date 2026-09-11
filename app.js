@@ -3255,8 +3255,14 @@ async function deleteSelectedPoint() {
   const sel = state.selectedPoint;
   if (!target || !sel || !target[sel.index]) return;
   pushUndo();
+  // Eine Ecke zu entfernen oeffnet keinen Ring: das Modell speichert keinen Schlusspunkt, der
+  // Ringschluss ist allein das Kennzeichen. Frueher wurde es hier zurueckgesetzt, und zwar nur
+  // fuer den Perimeter — daran hingen zwei Symptome: das Erweitern-Feld verschwand
+  // dauerhaft (`canStartExtension()` liest dasselbe Feld), und der Umriss ging an der Kante
+  // letzter↔erster Punkt auf, also sichtbar weit weg von der geloeschten Stelle. Ob die Kontur
+  // danach noch als Flaeche taugt, ist eine **andere** Frage; die beantwortet
+  // `hasUsablePolygon()` an ihrer einen Stelle und `checkPerimeterTooFew` meldet sie.
   target.splice(sel.index, 1);
-  if (sel.role === 'perimeter') state.activeMap.perimeterClosed = false;
   state.selectedPoint = null;
   state.validationResult = null;
   await saveActiveMap();
@@ -3411,8 +3417,9 @@ async function undoPoint() {
   const target = getActivePointArray();
   if (!target?.length) return;
   pushUndo();
+  // Denselben Griff gab es hier; dieselbe Begruendung wie in `deleteSelectedPoint()`. Den
+  // letzten Punkt zu entfernen verschiebt nur, wo die Schlusskante ansetzt.
   target.pop();
-  if (state.mode === 'perimeter') state.activeMap.perimeterClosed = false;
   state.selectedPoint = null;
   await saveActiveMap();
   renderMap();

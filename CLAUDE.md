@@ -995,6 +995,44 @@ Durchwinken sähe im Protokoll wie ein bestandener Test aus.
 tatsächlich annimmt — geprüft ist nur, dass `dcc.Upload` (`uploadsunray.py:14`) kein `accept`
 setzt und der Callback (`:32`) den Dateinamen nicht auswertet.
 
+### Ringschluss und Punktlöschen (Stand v59)
+
+**Eine Ecke zu entfernen öffnet keinen Ring.** Das Modell speichert **keinen** Schlusspunkt —
+`closePerimeter()` setzt nur ein Kennzeichen, drei Punkte bleiben drei. `perimeterClosed` sagt
+also „zeichne die Kante letzter↔erster Punkt", nicht „die Punktliste endet dort, wo sie beginnt".
+
+`deleteSelectedPoint()` und `undoPoint()` setzten das Kennzeichen trotzdem zurück, und zwar
+**nur für den Perimeter**, ohne Gegenstück für Ausschlussflächen. Daran hingen zwei gemeldete
+Symptome mit **einer** Wurzel, weil beide dasselbe Feld lesen:
+
+- **Das Erweitern-Feld blieb dauerhaft weg.** `canStartExtension()` verlangt `contour.closed`, und
+  `activeContour()` liest dafür `perimeterClosed`. Punkte auszuwählen half nicht — die Bedingung
+  fragt die Auswahl gar nicht ab.
+- **Der Umriss ging an ganz anderer Stelle auf.** `drawPolyline()` bekommt `close` allein aus dem
+  Kennzeichen und macht aus `polygon` ein `polyline`; die fehlende Kante liegt zwischen letztem
+  und erstem Punkt, im Prüfmuster **13,381 m** vom gelöschten Punkt entfernt.
+
+**Gemessen, in allen drei Herkünften gleich** (Sunray-Import, in der App entstanden,
+CaSSAndRA-Import): vorher `perimeterClosed=false` und `canStartExtension=false` nach dem Löschen,
+jetzt beide `true`, und der gezeichnete Umriss bleibt `polygon`. **Am Import lag es nicht** — der
+setzt nur unbedingt `perimeterClosed = true` (`sunrayAppToMap()`, `geoJsonToMap()`), weshalb
+importierte Karten häufiger in dem Zustand stehen, in dem der Fehler überhaupt sichtbar wird.
+
+**Bewusst nicht durch eine Bedingung ersetzt.** „Ist der Ring geschlossen?" und „taugt die Kontur
+als Fläche?" sind zwei Fragen. Die zweite beantwortet `hasUsablePolygon()` an ihrer einen Stelle;
+eine zu kurze Kontur meldet `checkPerimeterTooFew` und sperrt darüber auch den Export. `drawPolyline()`
+verlangt für ein `polygon` ohnehin eigenständig drei Ecken, ein geschlossen gekennzeichneter
+Zwei-Punkt-Perimeter wird also trotzdem offen gezeichnet.
+
+**`perimeterClosed` darf nur an acht Stellen geschrieben werden**, jede mit eigenem Grund:
+`closePerimeter()` (schließt), `reopenPerimeter()` (öffnet auf Nutzerwunsch), `normalizeMap()`
+(fehlendes Feld gilt als offen), `deleteElement()` (leert den Perimeter **vollständig** — dann gibt
+es keinen Ring), `undoLastAction()` (Schnappschuss), `sunrayAppToMap()` und `geoJsonToMap()`
+(Import) sowie `openContourForExtension()` (trennt die Kante absichtlich auf). Ein ui-Test führt
+diese Liste mit Grund je Eintrag und schlägt sowohl bei einer nicht gelisteten Funktion als auch
+bei einem zusätzlichen Vorkommen in einer gelisteten an — dieselbe Bauart wie der Wächter gegen
+Handzählungen neben `hasUsablePolygon()`.
+
 ### Kartenobergrenze `MAX_MAPS` (Stand v58)
 
 **25 Karten, und die Zahl steht an genau einer Stelle** (`const MAX_MAPS`, app.js). Meldungen und
@@ -1846,6 +1884,28 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-11: **Ringschluss überlebt das Löschen einzelner Punkte.** Zwei gemeldete Symptome, **eine**
+  Wurzel: `deleteSelectedPoint()` setzte `perimeterClosed` zurück, obwohl das Entfernen einer Ecke
+  keinen Ring öffnet — das Modell speichert gar keinen Schlusspunkt. Beide Symptome lesen dasselbe
+  Feld: das Erweitern-Feld verschwand dauerhaft (`canStartExtension()` über `activeContour()`), und
+  der Umriss wurde als `polyline` statt `polygon` gezeichnet, die Lücke also an der Kante
+  letzter↔erster Punkt — im Prüfmuster **13,381 m** vom gelöschten Punkt entfernt, was die
+  Beobachtung „oben gelöscht, unten offen" erklärt. Für Ausschlussflächen gab es den Griff nie,
+  daher trat es dort nicht auf. Derselbe Griff in `undoPoint()` („Letzten Punkt") ist mit
+  gestrichen. **Bewusst ersatzlos, nicht durch eine Bedingung ersetzt:** ob der Ring geschlossen ist
+  und ob die Kontur als Fläche taugt, sind zwei Fragen; die zweite beantwortet `hasUsablePolygon()`
+  an ihrer einen Stelle, gemeldet wird sie als `checkPerimeterTooFew`, und `drawPolyline()` verlangt
+  für ein `polygon` eigenständig drei Ecken. **Am Import lag es nicht** — in allen drei Herkünften
+  (Sunray, App, CaSSAndRA) identisch reproduziert; importierte Karten kommen nur unbedingt
+  geschlossen an und stehen deshalb häufiger in dem Zustand, in dem der Fehler sichtbar wird.
+  `deleteElement()` bleibt unangetastet, dort wird der Perimeter vollständig geleert. Neu: 5
+  ui-Fälle (183), darunter ein Wächter mit der ausgeschriebenen Liste der acht erlaubten
+  Schreibstellen samt Grund. **Kein Bestandstest hatte die falsche Wirkung festgeschrieben** —
+  anders als beim CaSSAndRA-Import geprüft und ausdrücklich verneint. Gegen zwölf simulierte
+  Rückfälle geprüft, darunter der als Bedingung getarnte und die falsche Symmetrie zu den Flächen;
+  zwei Sabotagen zerlegten zunächst nur die Syntax und wurden durch saubere Varianten ersetzt.
+  `APP_VERSION` auf `v59`.
 
 - 2026-09-11: **Kartenobergrenze von 10 auf 25.** Vorab geprüft und gemeldet statt angenommen:
   die Zahl stand an **neun** weiteren Stellen von Hand (beide Sprachen von `mapLimitReached` und

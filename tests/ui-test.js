@@ -3622,6 +3622,168 @@ test('Es gibt keine zweite handgeschriebene Zaehlung der Kartengrenze', () => {
   assert.strictEqual(ersetzungen.length, 1, 'der Platzhalter wird an genau einer Stelle ersetzt');
 });
 
+// --- Ringschluss ueberlebt das Loeschen einzelner Punkte --------------------
+// Gemessen wird durchgaengig die Wirkung: das Kennzeichen, der **gezeichnete** Umriss und die
+// Sichtbarkeit des Erweitern-Feldes. Frueher setzten `deleteSelectedPoint()` und `undoPoint()`
+// `perimeterClosed` zurueck — nur fuer den Perimeter, nicht fuer Flaechen. Daran hingen zwei
+// Symptome: das Erweitern-Feld blieb dauerhaft weg, und der Umriss ging an der Kante
+// letzter↔erster Punkt auf, also sichtbar weit entfernt von der geloeschten Stelle.
+
+/** Der SVG-Tag des gezeichneten Perimeters: `polygon` = geschlossen, `polyline` = offen. */
+function perimeterShapeTag(t, sandbox) {
+  const orig = sandbox.document.createElementNS.bind(sandbox.document);
+  sandbox.document.createElementNS = (ns, name) => { const el = orig(ns, name); el.__tag = name; return el; };
+  t.ui.shapeLayer.innerHTML = '';
+  t.renderMap();
+  sandbox.document.createElementNS = orig;
+  const shape = t.ui.shapeLayer.children.find((c) => (c.attributes?.class || '').includes('perimeter-shape'));
+  return shape ? shape.__tag : null;
+}
+
+test('Einen Perimeterpunkt loeschen laesst den Ring geschlossen', async () => {
+  const { t, sandbox } = setup();
+  seedClosedPerimeter(t);
+  assert.strictEqual(perimeterShapeTag(t, sandbox), 'polygon', 'Ausgangslage: geschlossen gezeichnet');
+  assert.strictEqual(t.ui.extendWrap.hidden, false, 'Ausgangslage: Erweitern steht bereit');
+
+  // Punkt 2 von 4 — bewusst nicht der erste oder letzte, damit die Schlusskante woanders liegt.
+  t.applyPointSelection({ role: 'perimeter', index: 1, exclusionId: null });
+  await t.deleteSelectedPoint();
+  await flush();
+
+  assert.strictEqual(t.state.activeMap.perimeter.length, 3, 'der Punkt ist weg');
+  assert.strictEqual(t.state.activeMap.perimeterClosed, true, 'der Ring bleibt geschlossen');
+  assert.strictEqual(perimeterShapeTag(t, sandbox), 'polygon',
+    'und wird weiterhin als geschlossener Umriss gezeichnet — keine Luecke an der Schlusskante');
+  assert.ok(!t.openContours().some((c) => c.role === 'perimeter'),
+    'die Kartenpruefung meldet den Perimeter nicht als offen');
+
+  // Das Erweitern-Feld bleibt sichtbar, auch ohne und mit Punktauswahl.
+  t.refreshExtendButton();
+  assert.strictEqual(t.canStartExtension(), true, 'Erweitern bleibt moeglich');
+  assert.strictEqual(t.ui.extendWrap.hidden, false, 'und das Feld steht weiter da');
+  t.applyPointSelection({ role: 'perimeter', index: 0, exclusionId: null });
+  t.refreshExtendButton();
+  assert.strictEqual(t.ui.extendWrap.hidden, false, 'auch mit ausgewaehltem Punkt');
+});
+
+test('„Letzten Punkt“ laesst den Ring ebenfalls geschlossen', async () => {
+  const { t, sandbox } = setup();
+  seedClosedPerimeter(t);
+  await t.undoPoint();
+  await flush();
+
+  assert.strictEqual(t.state.activeMap.perimeter.length, 3, 'der letzte Punkt ist weg');
+  assert.strictEqual(t.state.activeMap.perimeterClosed, true, 'der Ring bleibt geschlossen');
+  assert.strictEqual(perimeterShapeTag(t, sandbox), 'polygon', 'und wird geschlossen gezeichnet');
+  t.refreshExtendButton();
+  assert.strictEqual(t.ui.extendWrap.hidden, false, 'das Erweitern-Feld bleibt sichtbar');
+});
+
+test('Unter drei Punkten meldet die Kartenpruefung, und der Export bleibt gesperrt', async () => {
+  const { t, sandbox } = setup();
+  t.state.cassandraReference = { lat: 0, lon: 0 };
+  seedClosedPerimeter(t);
+
+  // Von vier auf zwei Punkte herunterloeschen.
+  t.applyPointSelection({ role: 'perimeter', index: 0, exclusionId: null });
+  await t.deleteSelectedPoint();
+  t.applyPointSelection({ role: 'perimeter', index: 0, exclusionId: null });
+  await t.deleteSelectedPoint();
+  await flush();
+  assert.strictEqual(t.state.activeMap.perimeter.length, 2);
+
+  // Das Kennzeichen wird bewusst **nicht** angefasst — der Fall wird ueber die Tauglichkeit
+  // gemeldet, nicht ueber den Ringschluss. Beides sind verschiedene Fragen.
+  t.validateActiveMap();
+  assert.ok(t.state.validationResult.issues.some((i) => i.key === 'checkPerimeterTooFew'),
+    'die Kartenpruefung meldet die zu kurze Kontur');
+  assert.strictEqual(t.cassandraExportBlockKey(t.state.activeMap), 'checkPerimeterTooFew',
+    'und der CaSSAndRA-Export bleibt mit demselben Grund gesperrt');
+  t.refreshExportButtons();
+  assert.strictEqual(t.ui.exportCassandraBtn.disabled, true, 'der Knopf ist gesperrt');
+
+  // Gezeichnet wird trotzdem offen: drawPolyline() verlangt eigenstaendig drei Ecken.
+  assert.strictEqual(perimeterShapeTag(t, sandbox), 'polyline',
+    'zwei Punkte ergeben keinen Umriss, unabhaengig vom Kennzeichen');
+  assert.strictEqual(t.canStartExtension(), false, 'und erweitern laesst sich das nicht');
+});
+
+test('Ausschlussflaechen verhalten sich beim Loeschen unveraendert', async () => {
+  const { t } = setup();
+  t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }];
+  t.state.activeMap.perimeterClosed = true;
+  t.state.activeMap.exclusions = [{ id: 'ex1', name: 'Ausschluss 1', closed: true,
+    points: [{ x: 2, y: 2 }, { x: 6, y: 2 }, { x: 6, y: 6 }, { x: 4, y: 7 }, { x: 2, y: 6 }] }];
+  t.state.activeExclusionId = 'ex1';
+  t.setMode('exclusion');
+  assert.strictEqual(t.canStartExtension(), true);
+
+  t.applyPointSelection({ role: 'exclusion', index: 2, exclusionId: 'ex1' });
+  await t.deleteSelectedPoint();
+  await flush();
+  const flaeche = t.state.activeMap.exclusions[0];
+  assert.strictEqual(flaeche.points.length, 4, 'der Punkt ist weg');
+  assert.strictEqual(flaeche.closed, true, 'die Flaeche bleibt geschlossen — wie vorher schon');
+  assert.strictEqual(t.canStartExtension(), true, 'und laesst sich weiter erweitern');
+
+  // Und der Perimeter derselben Karte bleibt davon unberuehrt.
+  assert.strictEqual(t.state.activeMap.perimeterClosed, true);
+});
+
+// Die Liste der Stellen, die `perimeterClosed` schreiben duerfen — jede mit Grund. Ein
+// Vorkommen in einer nicht gelisteten Funktion schlaegt an, ein zusaetzliches in einer
+// gelisteten ebenfalls. Gleiche Ueberlegung wie beim Waechter gegen Handzaehlungen: eine reine
+// Textsuche kann die Absicht nicht lesen, die Zuordnung zur Funktion schon.
+const RINGSCHLUSS_SCHREIBER = {
+  closePerimeter: { anzahl: 1, grund: 'schliesst den Ring — der Zweck der Funktion' },
+  reopenPerimeter: { anzahl: 1, grund: 'oeffnet ihn wieder, ausdrueckliche Nutzeraktion' },
+  normalizeMap: { anzahl: 1, grund: 'Normalisierung: fehlendes Feld gilt als offen' },
+  deleteElement: { anzahl: 1, grund: 'leert den Perimeter vollstaendig — dann gibt es keinen Ring' },
+  undoLastAction: { anzahl: 1, grund: 'stellt den Schnappschuss wieder her' },
+  sunrayAppToMap: { anzahl: 1, grund: 'Import: die Vorlage fuehrt geschlossene Konturen' },
+  geoJsonToMap: { anzahl: 1, grund: 'Import: aus geoRingClosed() der Datei' },
+  openContourForExtension: { anzahl: 1, grund: 'trennt die Kante auf — oeffnet den Ring absichtlich' },
+};
+
+test('Kein Loeschweg fasst den Ringschluss an', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  const declaration = /^\s*(?:async\s+)?function\s+([A-Za-z0-9_]+)\s*\(/;
+  const gefunden = new Map();
+  const verstoesse = [];
+  let aktuell = '(Dateiebene)';
+  source.split('\n').forEach((line, index) => {
+    const decl = line.match(declaration);
+    if (decl) aktuell = decl[1];
+    if (line.trim().startsWith('//') || line.trim().startsWith('*')) return;
+    const treffer = line.match(/perimeterClosed\s*=[^=]/g);
+    if (!treffer) return;
+    gefunden.set(aktuell, (gefunden.get(aktuell) || 0) + treffer.length);
+    if (!RINGSCHLUSS_SCHREIBER[aktuell]) {
+      verstoesse.push(`app.js:${index + 1} in ${aktuell}() — ${line.trim()}`);
+    }
+  });
+
+  assert.strictEqual(verstoesse.length, 0,
+    `perimeterClosed wird an einer nicht vorgesehenen Stelle gesetzt:\n     ${verstoesse.join('\n     ')}`);
+
+  for (const [name, { anzahl, grund }] of Object.entries(RINGSCHLUSS_SCHREIBER)) {
+    assert.strictEqual(gefunden.get(name) || 0, anzahl,
+      `${name}() setzt perimeterClosed ${gefunden.get(name) || 0} mal, vorgesehen ist ${anzahl} (${grund})`);
+  }
+
+  // Ausdruecklich fuer die beiden Loeschwege: dort darf gar nichts stehen. Die Zaehlung oben
+  // faengt das schon, aber benannt ist der Rueckfall leichter zu erkennen.
+  for (const fn of ['deleteSelectedPoint', 'undoPoint']) {
+    const start = source.indexOf(`function ${fn}(`);
+    assert.ok(start > 0, `${fn}() existiert`);
+    const koerper = source.slice(start, source.indexOf('\n}', start));
+    const zeilen = koerper.split('\n').filter((l) => !l.trim().startsWith('//'));
+    assert.ok(!zeilen.some((l) => /perimeterClosed\s*=[^=]/.test(l)),
+      `${fn}() fasst den Ringschluss nicht an — eine Ecke zu entfernen oeffnet keinen Ring`);
+  }
+});
+
 (async () => {
   let failed = 0;
   for (const c of cases) {
