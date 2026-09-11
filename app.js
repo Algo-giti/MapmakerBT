@@ -1818,11 +1818,14 @@ function toggleDriveControl() {
 function applyDriveZonePreferences() {
   const scale = JOYSTICK_SCALES.includes(state.view.joystickScale) ? state.view.joystickScale : '1';
   document.documentElement.style.setProperty('--joystick-scale', scale);
-  // Die Zonengrenzen stehen nur in DRIVE_ZONES; das Stylesheet zeichnet die Striche aus diesen
-  // beiden Variablen. Schriebe es eigene Prozentwerte, koennten Strich und Wirkung auseinander
-  // laufen, ohne dass es jemandem auffaellt.
-  document.documentElement.style.setProperty('--drive-zone-inner', `${DRIVE_ZONES[0].until * 100}%`);
-  document.documentElement.style.setProperty('--drive-zone-outer', `${DRIVE_ZONES[1].until * 100}%`);
+  // Die Zonengrenzen stehen nur in DRIVE_ZONES; das Stylesheet zeichnet die Striche und setzt die
+  // Chevrons aus diesen beiden Variablen. Schriebe es eigene Prozentwerte, koennten Strich und
+  // Wirkung auseinander laufen, ohne dass es jemandem auffaellt.
+  // **Als blosser Anteil, nicht als Prozentwert:** das Stylesheet multipliziert ihn mit der
+  // Tastenkante, weil `stroke-width` keine Prozente vertraegt (ein Prozentwert bezieht sich dort
+  // auf die viewBox des SVG). Ein Prozentwert liesse sich nicht mit einer Laenge multiplizieren.
+  document.documentElement.style.setProperty('--drive-zone-inner', `${DRIVE_ZONES[0].until}`);
+  document.documentElement.style.setProperty('--drive-zone-outer', `${DRIVE_ZONES[1].until}`);
   applyHandedness();
   // Die Groessenstufe aendert das Feld und damit die Breite der Drehtasten.
   refreshTurnKeyHint();

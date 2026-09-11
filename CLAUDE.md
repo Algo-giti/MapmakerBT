@@ -471,6 +471,56 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    hervor** — `data-zone` kommt in keiner Chevron-Regel vor, sonst stünden zwei Aussagen über
    denselben Zustand nebeneinander.
 
+   **`stroke-width` verträgt keine Prozente — das hat die Chevrons am Gerät unsichtbar gemacht.**
+   Gemeldet wurde: je Fahrtaste nur ein Chevron als Haarlinie in RGB 18/33/38 auf 13/28/33,
+   nichts auf den Drehtasten. Nachgemessen in Chrome 153 (headless, echtes Rendering): die Kästen
+   stimmten auf 0,01 px mit der Rechnung, aber `stroke-width` kam als **Prozentwert** an
+   (`2.82353%` beim normalen Chevron). Gemeint waren 0,08 × Chevronbreite = **3,95 px** bei
+   F = 140; SVG löst einen Prozentwert dort aber gegen die **eigene viewBox** auf, nicht gegen die
+   Taste. Isoliert gegengeprüft: `stroke-width: 2.82353%` rendert **pixelgleich** mit
+   `stroke-width: 0.04464px` (= 2,82 % der normierten viewBox-Diagonale von `0 0 2 1`), also
+   Faktor 88 zu dünn; `vector-effect: non-scaling-stroke` nimmt diese Zahl danach als CSS-px.
+   Gemessener Kontrast zum Tastengrund vorher **5** von 255 — genau der gemeldete Wert.
+
+   Zwei Nebenbefunde derselben Ursache: ob ein Chevron sichtbar war, hing davon ab, ob sein
+   Ausdruck **zufällig einen px-Anteil** trug (`calc(2.53968% - 0.203175px)` bei langsam, schnell
+   und drehen, weil dort `--drive-pad-waist-lift` bzw. `--drive-pad-gap` mitrechnet) — nur der
+   normale Chevron war ein reiner Prozentwert. Und das Ergebnis hängt am Gerätepixelverhältnis:
+   bei dpr 1 verschwand der normale, bei dpr 2,75 die beiden anderen. Ein Prozentwert ist dort
+   also nicht nur falsch, sondern **unvorhersehbar**.
+
+   **Konsequenz: alle Chevron-Maße stehen in px.** `--key-size: var(--joystick-size)` an
+   `.drive-key` ist die Tastenkante — die vier Tasten liegen `inset: 0` über dem Feld, und die
+   Breitbild-Fassung setzt `--joystick-size` an `.drive-control` selbst neu, das Maß stimmt also
+   in beiden Layouts. `--drive-zone-inner`/`-outer` setzt `applyDriveZonePreferences()` seitdem
+   als **bloßen Anteil** (0,5) statt als Prozentwert: nur eine Zahl lässt sich mit einer Länge
+   multiplizieren, und DRIVE_ZONES bleibt die eine Quelle für Grenzstrich **und** Chevron. Die
+   Strichstärke ist `max(--drive-chevron-stroke-min, --chev-w × --drive-chevron-stroke)`,
+   Untergrenze **2 px**. Gemessen bei F = 140: 3,35 / 3,95 / 4,13 px vor/zurück, 2,27 px an den
+   Drehtasten. Deckkraft von 0,38/0,6/0,9 auf **0,55/0,78/0,95** angehoben, damit auch der
+   blasseste ohne Suchen auffällt; gemessener Kontrast danach 114 (dunkel) bzw. 123 (hell) beim
+   blassesten, 199/213 beim kräftigsten. Die **Kästen sind unverändert** — Lage und Größe der
+   Chevrons haben sich nicht bewegt, nur Strich und Deckkraft.
+
+   **Die Node-Tests konnten das nicht fangen, und warum.** `tests/layout-test.js` bezieht jeden
+   Prozentwert auf die Feldgröße — für Breite, Höhe und Lage ist das richtig, für `stroke-width`
+   falsch; er rechnete brav 3,95 px aus und blieb grün. Der neue Fall „Die Chevrons sind im
+   Browser sichtbar" schließt die Lücke mit Zusicherungen, die eine Zahl allein nicht liefert:
+   der voll eingesetzte Strichausdruck darf **kein `%`** enthalten, der Strich bleibt beim
+   kleinsten Feld über der Untergrenze, `--shell-text` und `--shell-panel` sind in **allen drei**
+   Theme-Fassungen verschieden, der blasseste Chevron trägt mindestens 0,5 Deckkraft, `app.js`
+   schreibt die Zonengrenze ohne `%`, und die px-Fassung der halben Taille
+   (`--drive-pad-waist-half-len`) stimmt in allen 20 Fällen mit der Prozentfassung überein.
+   **Merksatz: in SVG-Geometrieeigenschaften nie ein Prozentwert — sie beziehen sich auf die
+   viewBox, nicht auf das Element.**
+
+   **Offen, bewusst nicht entschieden:** der schnelle Chevron ist mit 51,6 px Breite auf 3,86 px
+   Anstieg (F = 140) so flach, dass er bei 4,13 px Strich als leicht gebogener Balken erscheint
+   statt als Chevron — der Strich ist dort dicker als der Anstieg. Das folgt zwingend aus „nach
+   außen breiter": sein Band misst nur 0,1 F − Fuge = 10 px. Ein erkennbarer Anstieg verlangt eine
+   schmalere Form, damit fielen die Breiten nach außen ab und die Zusicherung „die Chevrons werden
+   nach außen breiter" mit ihnen. Das ist eine Entscheidung des Nutzers, keine des Codes.
+
    **Der Tastenmodus hat eine eigene Geschwindigkeit** `state.view.cursorSpeedCms` (Startwert
    **15 cm/s**, Untergrenze 2 cm/s, Obergrenze die eingestellte `driveSpeedMax` in cm/s —
    Rangieren darf nie schneller werden als der Joystick). Sie gilt für **alle vier** Tasten, das
@@ -1813,7 +1863,7 @@ Kein Runner, kein `package.json`, keine Abhängigkeiten — reine Node-Skripte.
 | `tests/app-core-test.js` | Geometrie, Kartenmodell, Validierung (unverändert, nur auf `app-harness.js` umgestellt). |
 | `tests/ble-test.js` | Die BLE-Szenarien (28 Fälle), inklusive der Absicherung aller vier umgesetzten App-Fixes. Stacktraces mit `BLE_TEST_STACK=1`. |
 | `tests/sw-test.js` | Prüft die **Auslieferung** (7 Fälle): Cache-Version an genau einer Stelle in `sw.js`, App-Dateien network-first mit `cache: 'no-cache'` und Cache als Rückfallebene, `cache: 'reload'` beim Cache-Aufbau, alle von `index.html` geladenen Dateien im Cache, alte Caches werden entfernt, Neuladen bei `controllerchange` — und dass **keine** Versionsangabe im UI auftaucht. |
-| `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (45 Fälle). `effectiveStyle(element, property)` löst die Kaskade **elementbezogen** auf (jede passende Regel, nach Spezifität) — nötig für Altlastregeln, die `resolve(selector, …)` nicht sieht. `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
+| `tests/layout-test.js` | Statische Regressionsprüfung für Menüseite, Kartenknöpfe und Grundaufteilung (46 Fälle). `effectiveStyle(element, property)` löst die Kaskade **elementbezogen** auf (jede passende Regel, nach Spezifität) — nötig für Altlastregeln, die `resolve(selector, …)` nicht sieht. `resolve(selector, property, { media })` löst die Kaskade auf; ohne `media` zählen nur Regeln **außerhalb** von `@media`: löst die Kaskade (inklusive `@media`) auf und prüft die Struktur in `index.html`. Deckt ab: Scrollcontainer intakt (`min-height: 0`, kein zweiter Scrollcontainer), Vollbildebenen in `dvh`, Blocklayout der Abschnittsstapel, kein Clipping aufgeklappter Abschnitte, gemeinsame senkrechte Achse der Kartenknöpfe, umbrechende Beschriftungen, HUD zweizeilig und ohne Überlappung der Knopfspalte. Braucht keinen Browser. |
 | `tests/ui-test.js` | Die Kartier-Oberfläche (202 Fälle): Bestätigungs- und Meldungsdialog (Titel/Text/Beschriftung, beide Antworten, verdrängte Rückfrage, Einknopf-Meldung, `reportError` protokolliert und zeigt, keine `window.confirm()`/`window.alert()`-Aufrufe mehr), Moduswahl per Dialog, Rückfrage zum Schließen von Konturen, Kartenprüfung mit Konturschluss, Aufnahme/Löschen in allen drei Button-Zuständen, Flächenauswahl, Automatik (Ersetzen des manuellen Knopfs und Intervall), Positions-Glättung, Hell/Dunkel, Akkordeon, Auswahl per Tap, Touch-Zielgröße, Zoom-Grenzen, Tap-vs-Ziehen, Pinch, Halte-Aufnahme, Joystick-Kennlinie, RTK-Badge, Menüseite, gesperrte Karte, `init()`-Startpfad. Stacktraces mit `UI_TEST_STACK=1`. Antworten auf `confirm()` steuert der Test über `sandbox.__confirmAnswer`. `navigator.share`/`canShare` werden je Fall in den Sandkasten gehängt (`stubShare()`), der Sandkasten führt dafür `File`; den normalen Export fängt `captureDownload()` über einen `Blob`-Spion und den erzeugten Anker ab. |
 
 ### Was `tests/fake-ble.js` simulieren kann
@@ -2127,6 +2177,35 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-11: **Chevrons waren am Gerät unsichtbar — `stroke-width` in Prozent.** Gemeldet:
+  je Fahrtaste nur ein Chevron als Haarlinie (RGB 18/33/38 auf 13/28/33), nichts auf den
+  Drehtasten. **Im echten Browser nachgemessen**, nicht aus dem Code geschlossen (Chrome 153
+  headless über das DevTools-Protokoll, Wegwerftreiber im Scratchpad, nichts davon im Repo):
+  Anzahl, `display` und alle Kästen waren richtig — `zones-on` greift, die Drehtasten tragen ihren
+  Chevron, die Grenzstriche sind gewollt und stehen nur bei eingeschalteten Zonen. Falsch war
+  allein die Strichstärke: sie kam als **Prozentwert** an, und SVG bezieht den auf die eigene
+  viewBox statt auf die Taste — `2.82353%` rendert pixelgleich mit `0.04464px` statt der
+  gemeinten 3,95 px, also Faktor 88. Sichtbar war ein Chevron nur, wenn sein Ausdruck zufällig
+  einen px-Anteil trug, und welcher das ist, hängt am Gerätepixelverhältnis. Behoben: alle
+  Chevron-Maße in px über `--key-size: var(--joystick-size)`, die Zonengrenze als **bloßer
+  Anteil** statt als Prozentwert (DRIVE_ZONES bleibt die eine Quelle), Strich
+  `max(2px, 0,08 × Breite)`, Deckkraft 0,38/0,6/0,9 → **0,55/0,78/0,95**. Lage und Größe der
+  Chevrons sind **unverändert**. Gemessener Kontrast zum Tastengrund beim blassesten Chevron
+  **5 → 114** (dunkel) bzw. **123** (hell), beim kräftigsten 199/213; Strich bei F = 140
+  3,35 / 3,95 / 4,13 px vor/zurück und 2,27 px drehen. **Die Testlücke benannt und geschlossen:**
+  der Layout-Test bezog jeden Prozentwert auf die Feldgröße und rechnete damit den beabsichtigten
+  Wert aus — er teilte die Annahme des Fehlers und konnte ihn prinzipiell nicht finden. Neu: 1
+  layout-Fall (46), der den voll eingesetzten Strichausdruck auf `%` absucht, den Strich beim
+  kleinsten Feld gegen eine Untergrenze hält, Chevronfarbe gegen Tastenhintergrund in allen drei
+  Theme-Fassungen prüft, die Mindestdeckkraft festhält, `app.js` auf einen prozentfreien Anteil
+  festnagelt und die px- gegen die Prozentfassung der halben Taille rechnet. Gegen **neun** neue
+  simulierte Rückfälle geprüft **plus die 21 aus dem v63-Bau erneut** — alle 30 gefangen; zwei der
+  neun liefen zunächst durch und haben den Test geschärft (die Theme-Prüfung kannte die
+  Media-Query-Fassung der Hell-Palette nicht, und der Prozentwert in `app.js` war unsichtbar, weil
+  der Test seinen eigenen Wert einsetzt). **Gemeldet, nicht entschieden:** der schnelle Chevron
+  ist so flach, dass er als Balken erscheint — das folgt aus „nach außen breiter" und lässt sich
+  nur ändern, indem diese Zusicherung fällt. `APP_VERSION` bleibt `v63`, noch nicht ausgeliefert.
 
 - 2026-09-11: **Fahrtasten als Sanduhr, Drehen mit fester Geschwindigkeit.** Die vier Trennlinien
   laufen nicht mehr auf den Mittelpunkt, sondern auf zwei Taillenpunkte: vorwärts/rückwärts sind

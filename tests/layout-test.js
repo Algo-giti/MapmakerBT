@@ -651,15 +651,20 @@ const drive = (() => {
   const tokens = {};
   for (const name of ['--drive-pad-gap', '--drive-pad-key-min', '--drive-pad-cut-x', '--drive-pad-cut-y',
     '--drive-pad-waist', '--drive-pad-waist-half', '--drive-pad-waist-lift', '--drive-pad-waist-slide',
-    '--drive-chevron-air', '--drive-chevron-stroke', '--drive-chevron-turn',
+    '--drive-chevron-air', '--drive-chevron-stroke', '--drive-chevron-stroke-min', '--drive-chevron-turn',
+    '--drive-chevron-dim-slow', '--drive-chevron-dim-normal', '--drive-chevron-dim-fast',
     '--drive-chevron-rise-slow', '--drive-chevron-rise-normal', '--drive-chevron-rise-fast',
     '--drive-chevron-rise-turn']) tokens[name] = raw(CTL, name);
-  for (const name of ['--zone-inner', '--zone-outer', '--drive-turn-depth']) tokens[name] = raw('.drive-key', name);
+  for (const name of ['--zone-inner', '--zone-outer', '--drive-turn-depth',
+    '--key-size', '--key-half', '--drive-pad-waist-half-len']) tokens[name] = raw('.drive-key', name);
   // Die beiden Zonengrenzen setzt `applyDriveZonePreferences()` aus DRIVE_ZONES. Eingesetzt
   // werden genau diese Werte — das Stylesheet wird damit gegen die **gefahrenen** Grenzen
   // nachgerechnet und nicht gegen seinen eigenen Rueckfallwert.
-  tokens['--drive-zone-inner'] = `${bounds[0] * 100}%`;
-  tokens['--drive-zone-outer'] = `${bounds[1] * 100}%`;
+  // Seit die Chevrons ihre Masse in px brauchen, setzt `applyDriveZonePreferences()` den
+  // **blossen Anteil** (0,5) statt eines Prozentwerts — nur eine Zahl laesst sich mit der
+  // Tastenkante multiplizieren, und `stroke-width` vertraegt keine Prozente.
+  tokens['--drive-zone-inner'] = `${bounds[0]}`;
+  tokens['--drive-zone-outer'] = `${bounds[1]}`;
 
   const substitute = (expr, extra = {}) => {
     const all = { ...tokens, ...extra };
@@ -674,10 +679,16 @@ const drive = (() => {
     return out;
   };
   const toPx = (expr, F, extra = {}) => {
-    let t = substitute(expr, extra).replace(/calc/g, '')
+    // `--joystick-size` **ist** die Feldgroesse: `.drive-control` nimmt daraus Breite und Hoehe,
+    // die vier Tasten liegen `inset: 0` darueber. Deshalb wird sie hier durch F ersetzt statt
+    // ihre clamp()-Kette nachzubilden.
+    let t = substitute(expr, { '--joystick-size': `${F}px`, ...extra })
+      .replace(/\b(max|min)\(/g, 'Math.$1(')
+      .replace(/\bcalc\(/g, '(')
       .replace(/([\d.]+)%/g, (m, n) => `(${F} * ${n} / 100)`)
       .replace(/([\d.]+)px/g, '$1');
-    assert.ok(/^[\d\s().+\-*/]+$/.test(t), `unerwarteter Ausdruck: "${t}"`);
+    const rein = t.replace(/Math\.(max|min)/g, '');
+    assert.ok(/^[\d\s().,+\-*/]+$/.test(rein), `unerwarteter Ausdruck: "${t}"`);
     return Function(`"use strict"; return (${t});`)();
   };
   /** „X Y, X Y, …" in Punkte zerlegen — calc() enthaelt keine Kommas, Klammertiefe genuegt. */
@@ -754,6 +765,14 @@ const drive = (() => {
    * den Pfad hinausstehen, der Kasten ist deshalb um die volle Strichstaerke groesser als das
    * Element — genauso, wie es am Geraet aussieht.
    */
+  /**
+   * Die Strichstaerke, alle Token eingesetzt — die Pruefung auf Prozente braucht den Klartext.
+   * `--joystick-size` steht dabei als blosse Laenge `1px` ein: gefragt ist allein, ob im
+   * Ausdruck ein **Prozentwert** ueberlebt, und die Feldgroesse ist per Bauart eine Laenge
+   * (sie setzt Breite und Hoehe von `.drive-control`). Ein eigener Fall prueft das gesondert.
+   */
+  const chevronStrokeExpr = (dir, cls) =>
+    substitute(raw('.drive-chevron', 'stroke-width'), { '--joystick-size': '1px', ...chevTokens(dir, cls) });
   const chevronBox = (dir, cls, F) => {
     const extra = chevTokens(dir, cls);
     const at = (name) => toPx(extra[name], F, extra);
@@ -792,7 +811,8 @@ const drive = (() => {
   };
 
   return { raw, px, CTL, app, bounds, tokens, toPx, polygonOf, polyDistance, inside,
-    chevronBox, chevronBand, keyMin, padGap, waist, padMin, reserve, field, allFields };
+    chevronBox, chevronBand, chevronStrokeExpr, substitute, toPx, tokens,
+    keyMin, padGap, waist, padMin, reserve, field, allFields };
 })();
 
 test('Die Sanduhrform: Fugen, Breiten und Schranken nachgerechnet', () => {
@@ -1151,6 +1171,96 @@ test('Die Chevrons: Anzahl, Sichtbarkeit und Lage', () => {
         `${label} ${dir}: der Dreh-Chevron ist mit ${box.span.toFixed(1)}px nicht groesser als der fruehere Pfeil`);
     }
     assert.ok(padGap > 0);
+  }
+});
+
+test('Die Chevrons sind im Browser sichtbar: Strich als Laenge, Farbe gegen den Tastenhintergrund', () => {
+  // **Die Luecke, die v63 am Geraet unsichtbar gemacht hat.** Die uebrigen Faelle rechnen das
+  // Stylesheet nach und beziehen dabei jeden Prozentwert auf die Feldgroesse — fuer Breite,
+  // Hoehe und Lage ist das richtig. Fuer `stroke-width` ist es **falsch**: SVG loest einen
+  // Prozentwert dort gegen die eigene viewBox auf, nicht gegen die Taste. Gemessen in
+  // Chrome 153: `stroke-width: 2.82353%` (gemeint waren 3,95 px bei F = 140) kam als
+  // **0,045 px** an, pixelgleich mit `stroke-width: 0.04464px` — Faktor 88 zu duenn. Die
+  // Node-Tests liefen gruen, weil sie 3,95 px ausrechneten. Deshalb hier drei Zusicherungen,
+  // die eine Zahl allein nicht liefern kann.
+  const { chevronStrokeExpr, chevronBox, allFields, tokens, toPx } = drive;
+  const KEYS = [['up', ['chev-slow', 'chev-normal', 'chev-fast']],
+    ['down', ['chev-slow', 'chev-normal', 'chev-fast']],
+    ['left', ['chev-turn']], ['right', ['chev-turn']]];
+
+  // --- 1. Der Strich ist eine Laenge, niemals ein Prozentwert -----------------
+  const feldGroesse = resolve('.drive-zone .drive-control', '--joystick-size').value;
+  assert.ok(feldGroesse && !feldGroesse.includes('%'),
+    `--joystick-size muss eine Laenge sein, damit der Strich eine Laenge werden kann: "${feldGroesse}"`);
+  assert.strictEqual(resolve('.drive-key', '--key-size').value, 'var(--joystick-size)',
+    'die Tastenkante muss die Feldgroesse sein — die Taste liegt inset: 0 darueber');
+  for (const [dir, klassen] of KEYS) {
+    for (const cls of klassen) {
+      const expr = chevronStrokeExpr(dir, cls);
+      assert.ok(!expr.includes('%'),
+        `${dir}/${cls}: stroke-width darf keinen Prozentwert enthalten — SVG bezoege ihn auf die `
+        + `viewBox statt auf die Taste: "${expr}"`);
+    }
+  }
+
+  // --- 2. Und er bleibt beim kleinsten Feld ein sichtbarer Strich -------------
+  const minStrich = parseFloat(tokens['--drive-chevron-stroke-min']);
+  assert.ok(minStrich >= 2, `die Untergrenze des Strichs ist mit ${minStrich}px unter 2px`);
+  const felder = allFields().map(([, F]) => F);
+  const kleinste = Math.min(...felder);
+  for (const [dir, klassen] of KEYS) {
+    for (const cls of klassen) {
+      const strich = chevronBox(dir, cls, kleinste).stroke;
+      assert.ok(strich >= minStrich - 1e-9,
+        `F = ${kleinste}: ${dir}/${cls} zeichnet mit ${strich.toFixed(2)}px, die Untergrenze ist ${minStrich}px`);
+    }
+  }
+
+  // --- 3. Die Farbe ist in beiden Themes eine andere als der Tastenhintergrund -
+  // Der Chevron erbt `currentColor` von der Taste; faerbte ein Theme beide gleich, waere er
+  // vorhanden, gemessen richtig und trotzdem nicht zu sehen.
+  assert.strictEqual(resolve('.drive-key', 'color').value, 'var(--shell-text)',
+    'der Chevron lebt von currentColor der Taste');
+  assert.strictEqual(resolve('.drive-key', 'background').value, 'var(--shell-panel)',
+    'der Tastenhintergrund muss ein Token sein, sonst laesst er sich nicht gegenpruefen');
+  // Beide Hell-Fassungen zaehlen: die Palette steht laut CLAUDE.md zweimal (Attributselektor
+  // und Media-Query) und muss inhaltlich gleich bleiben.
+  const themes = [['dunkel', ':root', {}], ['hell (Einstellung)', ':root[data-theme="light"]', {}],
+    ['hell (Systemvorgabe)', ':root:not([data-theme="dark"])', { media: 'prefers-color-scheme: light' }]];
+  for (const [label, sel, opt] of themes) {
+    const grund = resolve(sel, '--shell-panel', opt).value;
+    const schrift = resolve(sel, '--shell-text', opt).value;
+    assert.ok(grund && schrift, `${label}: --shell-panel/--shell-text fehlen in ${sel}`);
+    assert.notStrictEqual(grund, schrift,
+      `${label}: Chevron und Tastenhintergrund haben dieselbe Farbe ${grund}`);
+  }
+
+  // --- 3b. Und app.js liefert die Grenze als blosse Zahl, nicht als Prozentwert ---
+  // Die uebrigen Faelle setzen den Wert aus DRIVE_ZONES selbst ein und saehen deshalb nicht,
+  // wenn `applyDriveZonePreferences()` wieder `%` anhaengt — dann truege die ganze Kette bis
+  // zur Strichstaerke erneut einen Prozentwert, und der Strich verschwaende wieder.
+  const appSrc = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  for (const name of ['--drive-zone-inner', '--drive-zone-outer']) {
+    const zeile = appSrc.split('\n').find((l) => l.includes(`'${name}'`) && l.includes('setProperty'));
+    assert.ok(zeile, `app.js setzt ${name} nicht`);
+    assert.ok(!zeile.includes('%'),
+      `app.js muss ${name} als blossen Anteil setzen, nicht als Prozentwert: "${zeile.trim()}"`);
+  }
+
+  // --- 4. Auch der blasseste Chevron traegt genug Deckkraft --------------------
+  const blassest = Math.min(...['slow', 'normal', 'fast'].map((z) => parseFloat(tokens[`--drive-chevron-dim-${z}`])));
+  assert.ok(blassest >= 0.5,
+    `der blasseste Chevron traegt nur ${blassest} Deckkraft — er soll sich ohne Suchen abheben`);
+
+  // --- 5. Die beiden Fassungen der halben Taille duerfen nicht auseinanderlaufen
+  // `--drive-pad-waist-half` (Prozent, fuer die clip-path-Formen) und `--drive-pad-waist-half-len`
+  // (px, fuer die Chevrons) sagen dasselbe. Zwei Schreibweisen derselben Groesse sind nur
+  // tragbar, solange sie nachweislich uebereinstimmen.
+  for (const [label, F] of allFields()) {
+    const prozent = toPx('var(--drive-pad-waist-half)', F);
+    const laenge = toPx('var(--drive-pad-waist-half-len)', F);
+    assert.ok(Math.abs(prozent - laenge) < 1e-9,
+      `${label}: die halbe Taille misst ${prozent.toFixed(4)}px in Prozent, aber ${laenge.toFixed(4)}px als Laenge`);
   }
 });
 

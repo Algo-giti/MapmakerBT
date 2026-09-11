@@ -2389,6 +2389,7 @@ body.menu-open .app-frame { visibility: hidden; }
        turn   Anteil der Keiltiefe, den der Chevron der Drehtasten einnimmt (45-Grad-Form). */
   --drive-chevron-air: 0.2;
   --drive-chevron-stroke: 0.08;
+  --drive-chevron-stroke-min: 2px;
   --drive-chevron-rise-slow: 0.55;
   --drive-chevron-rise-normal: 0.26;
   --drive-chevron-rise-fast: 0.075;
@@ -2397,9 +2398,9 @@ body.menu-open .app-frame { visibility: hidden; }
   /* Deckkraft je Zone: innen blass, aussen kraeftig. Die Hervorhebung der aktiven Zone macht
      weiterhin **allein** das Band — `data-zone` veraendert an den Chevrons nichts, sonst saehe
      man zwei Aussagen ueber denselben Zustand. */
-  --drive-chevron-dim-slow: 0.38;
-  --drive-chevron-dim-normal: 0.6;
-  --drive-chevron-dim-fast: 0.9;
+  --drive-chevron-dim-slow: 0.55;
+  --drive-chevron-dim-normal: 0.78;
+  --drive-chevron-dim-fast: 0.95;
   /* Die beiden Versaetze, die die Fuge zwischen zwei Tasten auf ihrer ganzen Laenge genau
      `--drive-pad-gap` breit halten — **senkrecht zur Trennlinie gemessen**, nicht waagerecht.
      Seit der Einschnuerung stehen die Linien nicht mehr im 45-Grad-Winkel, und der eine Faktor
@@ -2581,7 +2582,9 @@ body.menu-open .app-frame { visibility: hidden; }
   overflow: visible;
   fill: none;
   stroke: currentColor;
-  stroke-width: calc(var(--chev-w) * var(--drive-chevron-stroke));
+  /* Absolute Laenge, niemals Prozent — siehe die Begruendung an `.drive-key`. Die Untergrenze
+     haelt den Strich auch dann sichtbar, wenn die Breite einmal klein ausfaellt. */
+  stroke-width: max(var(--drive-chevron-stroke-min), calc(var(--chev-w) * var(--drive-chevron-stroke)));
   stroke-linecap: round;
   stroke-linejoin: round;
   pointer-events: none;
@@ -2641,10 +2644,26 @@ body.menu-open .app-frame { visibility: hidden; }
    derselben Stelle wie der der normalen Zone und braucht sie deshalb auch dann. Sie gehoeren
    zur Taste, nicht zum Schalter, und stehen jetzt hier. */
 .drive-key {
-  --zone-inner: calc(50% + var(--drive-zone-inner, 40%) / 2);
-  --zone-outer: calc(50% + var(--drive-zone-outer, 70%) / 2);
+  /* **Alle Chevron-Masse stehen in px, nicht in Prozent.** Grund ist nachgemessen, nicht
+     vermutet: `stroke-width` loest einen Prozentwert gegen die **viewBox** des SVG auf, nicht
+     gegen die Taste. `2.82353%` (= 0,08 * Chevronbreite, gemeint waren 3,95 px bei F = 140)
+     kam in Chrome 153 als **0,045 px** an — pixelgleich mit `stroke-width: 0.04464px`, also
+     Faktor 88 zu duenn und praktisch unsichtbar. Die Taste liegt `inset: 0` ueber dem Feld,
+     ihr Kasten ist damit genau `--joystick-size`; die Breitbild-Fassung setzt das Token an
+     `.drive-control` neu, es stimmt also in beiden Layouts. */
+  --key-size: var(--joystick-size);
+  --key-half: calc(var(--key-size) / 2);
+  /* Die halbe Taille als Laenge — dieselbe Rechnung wie `--drive-pad-waist-half`, nur in px
+     statt in Prozent. `tests/layout-test.js` rechnet beide Fassungen gegeneinander nach, damit
+     sie nicht auseinanderlaufen koennen. */
+  --drive-pad-waist-half-len: calc((var(--key-half) - var(--drive-pad-gap)) * var(--drive-pad-waist));
+  /* Die Zonengrenzen auf der Achse Mitte -> Aussenkante. `--drive-zone-inner` ist seitdem ein
+     **blosser Anteil** (0,5) statt eines Prozentwerts: derselbe Wert traegt so die Grenzstriche
+     und die Chevrons, und nur als Zahl laesst er sich mit einer Laenge multiplizieren. */
+  --zone-inner: calc(var(--key-half) + var(--drive-zone-inner, 0.5) * var(--key-half));
+  --zone-outer: calc(var(--key-half) + var(--drive-zone-outer, 0.8) * var(--key-half));
   /* Tiefe des Drehkeils von der Aussenkante bis zur Spitze — Bezugsmass des Dreh-Chevrons. */
-  --drive-turn-depth: calc(50% - var(--drive-pad-gap) - var(--drive-pad-waist-half) - var(--drive-pad-cut-x));
+  --drive-turn-depth: calc(var(--key-half) - var(--drive-pad-gap) - var(--drive-pad-waist-half-len) - var(--drive-pad-cut-x));
 }
 .drive-pad.zones-on .drive-key {
   background-image: linear-gradient(var(--zone-axis),
@@ -2686,7 +2705,7 @@ body.menu-open .app-frame { visibility: hidden; }
    Ohne diese Kappung ragte der schnelle Chevron ueber den Rand der beschnittenen Taste hinaus. */
 .drive-key .chev-slow {
   --chev-rise: var(--drive-chevron-rise-slow);
-  --chev-a0: calc(50% + var(--drive-pad-waist-lift));
+  --chev-a0: calc(var(--key-half) + var(--drive-pad-waist-lift));
   --chev-a1: var(--zone-inner);
   opacity: var(--drive-chevron-dim-slow);
 }
@@ -2699,7 +2718,7 @@ body.menu-open .app-frame { visibility: hidden; }
 .drive-key .chev-fast {
   --chev-rise: var(--drive-chevron-rise-fast);
   --chev-a0: var(--zone-outer);
-  --chev-a1: calc(100% - var(--drive-pad-gap));
+  --chev-a1: calc(var(--key-size) - var(--drive-pad-gap));
   opacity: var(--drive-chevron-dim-fast);
 }
 /* Der Dreh-Chevron traegt die Deckkraft der normalen Zone: er ist der einzige auf seiner Taste,
