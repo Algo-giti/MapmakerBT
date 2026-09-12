@@ -61,7 +61,8 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'EXTEND_STEPS', 'extensionStep', 'handleExtensionTap', 'toggleGpsPanel', 'loadViewPreferences',
   'UNDO_STACK_BYTE_BUDGET', 'trimUndoStack', 'mapWithoutUndo', 'geometrySnapshot', 'loadMaps',
   'setActiveMapById', 'deleteActiveMap', 'saveActiveMap', 'duplicateMapById',
-  'captureTarget', 'getActivePointArray', 'geoJsonToMap'];
+  'captureTarget', 'getActivePointArray', 'geoJsonToMap',
+  'playCaptureTone', 'primeCaptureTone'];
 
 /** Minimaler IndexedDB-Ersatz, damit saveActiveMap() im Test durchlaeuft. */
 function fakeDb() {
@@ -5246,6 +5247,203 @@ test('Ueber das Ziel einer Aufnahme entscheidet genau eine Stelle', () => {
   assert.ok(ziel.includes('perimeterClosed') && ziel.includes('exclusion.closed'),
     'captureTarget() beantwortet beide Faelle');
 });
+
+
+// --- v72: Ausloeseton bei der Punktaufnahme -------------------------------------------------
+
+/**
+ * Nachbau des Web-Audio-Teils, den der Ton benutzt. Der Sandkasten kennt kein `AudioContext` —
+ * eingehaengt wird er wie der BLE- und der Dialog-Adapter ueber den Sandkasten selbst, damit
+ * app.js nichts von den Tests weiss. `state` startet wie im Browser auf `suspended`.
+ */
+function fakeAudio(sandbox, { freigegeben = true } = {}) {
+  const rec = { contexts: 0, resumes: 0, starts: [], stops: [], levels: [] };
+  class FakeAudioContext {
+    constructor() {
+      rec.contexts += 1;
+      rec.ctx = this;
+      this.state = 'suspended';
+      this.sampleRate = 48000;
+      this.currentTime = 12.5;
+      this.destination = { name: 'destination', connect() {} };
+    }
+    resume() {
+      rec.resumes += 1;
+      // Ohne Freigabe genau wie im echten Chrome: der Zustand bleibt `suspended`, und das
+      // Versprechen wird weder erfuellt noch abgelehnt.
+      if (!freigegeben) return new Promise(() => {});
+      this.state = 'running';
+      return Promise.resolve();
+    }
+    createBuffer(channels, length, sampleRate) {
+      return { length, sampleRate, getChannelData: () => new Float32Array(length) };
+    }
+    createBufferSource() {
+      return {
+        buffer: null, connect() {},
+        start: (at) => rec.starts.push(at), stop: (at) => rec.stops.push(at),
+      };
+    }
+    createBiquadFilter() {
+      return { type: '', frequency: { value: 0 }, Q: { value: 0 }, connect() {} };
+    }
+    createGain() {
+      return {
+        gain: {
+          setValueAtTime: (v) => rec.levels.push(v),
+          exponentialRampToValueAtTime() {},
+        },
+        connect() {},
+      };
+    }
+  }
+  sandbox.AudioContext = FakeAudioContext;
+  rec.reset = () => { rec.starts.length = 0; rec.levels.length = 0; };
+  return rec;
+}
+
+test('Der Ton kommt genau dann, wenn ein Punkt wirklich aufgezeichnet wurde', async () => {
+  const { t, sandbox } = setup();
+  const audio = fakeAudio(sandbox);
+  assert.strictEqual(t.state.view.captureTone, true, 'Vorgabe ist an');
+
+  // Einzelaufnahme: ein Punkt, ein Ton — und zwar zwei Knacke, wie ein Kameraverschluss.
+  await t.addCurrentPoint();
+  await flush();
+  assert.strictEqual(t.state.activeMap.perimeter.length, 1);
+  assert.strictEqual(audio.starts.length, 2, 'der Ausloeser besteht aus zwei kurzen Knacken');
+  assert.ok(audio.starts[1] > audio.starts[0], 'der zweite folgt dem ersten');
+
+  // Gescheiterte Aufnahme: keine Position, kein Punkt, kein Ton.
+  audio.reset();
+  const receivedAt = t.state.telemetry.receivedAt;
+  t.state.telemetry.receivedAt = 0;
+  assert.strictEqual(await t.appendCurrentPoint(), null, 'ohne frische Telemetrie kein Punkt');
+  assert.strictEqual(audio.starts.length, 0, 'und deshalb auch kein Ton');
+  t.state.telemetry.receivedAt = receivedAt;
+
+  // Gesperrte Kontur: auch das ist eine gescheiterte Aufnahme.
+  audio.reset();
+  seedClosedPerimeter(t);
+  await t.addCurrentPoint();
+  await flush();
+  assert.strictEqual(audio.starts.length, 0, 'eine geschlossene Kontur bleibt still');
+
+  // Automatik: derselbe Weg, also derselbe Ton.
+  audio.reset();
+  t.state.activeMap.perimeterClosed = false;
+  t.state.autoCaptureRunning = true;
+  await t.autoCaptureTick();
+  await flush();
+  assert.strictEqual(audio.starts.length, 2, 'die Automatik klingt wie die Einzelaufnahme');
+  t.stopAutoCapture();
+
+  // Abgeschaltet: der Punkt entsteht weiterhin, nur eben lautlos.
+  audio.reset();
+  t.state.view.captureTone = false;
+  const vorher = t.state.activeMap.perimeter.length;
+  await t.addCurrentPoint();
+  await flush();
+  assert.strictEqual(t.state.activeMap.perimeter.length, vorher + 1, 'der Punkt kommt trotzdem an');
+  assert.strictEqual(audio.starts.length, 0, 'nur der Ton bleibt weg');
+});
+
+test('Der Ton haengt an der einen Stelle, an der ein Punkt in die Liste kommt', () => {
+  // Eine zweite Einhaengestelle koennte Ankuendigung und Wirkung auseinanderlaufen lassen —
+  // etwa einen Ton beim Druck auf den Knopf, obwohl daraus gar kein Punkt wird.
+  const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  // Kommentarzeilen zaehlen nicht mit — der Ton wird an mehreren Stellen erklaert.
+  const code = source.split('\n').filter((l) => !l.trim().startsWith('*') && !l.trim().startsWith('//')).join('\n');
+  const rufer = [...code.matchAll(/playCaptureTone\(\)/g)].length;
+  assert.strictEqual(rufer, 2, 'genau eine Aufrufstelle neben der Definition');
+  const start = source.indexOf('async function appendCurrentPoint(');
+  const ende = source.indexOf('\nfunction stopAutoCapture(', start);
+  assert.ok(start > 0 && ende > start);
+  assert.ok(source.slice(start, ende).includes('playCaptureTone()'),
+    'und die liegt in appendCurrentPoint()');
+  // Der Ton folgt dem Punkt, er geht ihm nicht voraus.
+  const koerper = source.slice(start, ende);
+  assert.ok(koerper.indexOf('target.push(point)') < koerper.indexOf('playCaptureTone()'),
+    'erst der Punkt, dann der Ton');
+
+  // Keine Audiodatei: weder im Code noch im Repo.
+  assert.ok(!/new Audio\(|\.mp3|\.ogg|\.wav|\.m4a/.test(source), 'app.js laedt keine Audiodatei');
+  const wurzel = path.join(__dirname, '..');
+  const dateien = fs.readdirSync(wurzel).filter((f) => /\.(mp3|ogg|wav|m4a|aac|flac)$/i.test(f));
+  assert.deepStrictEqual(dateien, [], 'und im Repo liegt keine');
+});
+
+test('Die Tonfreigabe haengt an den Gesten, die jeder Aufnahme vorausgehen', async () => {
+  // Gemessen in Chrome: ohne Nutzergeste steht der AudioContext auf `suspended`, ein `resume()`
+  // **vor** der ersten Geste bleibt fuer immer offen. Deshalb wird die Freigabe aus den
+  // Gestenpfaden heraus angestossen — und niemals abgewartet.
+  const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  for (const fn of ['beginCaptureHold', 'captureButtonTap', 'toggleAutoCapture']) {
+    const start = source.indexOf(`function ${fn}(`);
+    assert.ok(start > 0, `${fn}() existiert`);
+    const koerper = source.slice(start, source.indexOf('\n}', start));
+    assert.ok(koerper.includes('primeCaptureTone()'), `${fn}() gibt den Ton frei`);
+  }
+  assert.ok(!/await\s+\w*\.?resume\(\)/.test(source) && !/return\s+\w+\.resume\(\)/.test(source),
+    'auf resume() wird nirgends gewartet');
+
+  const { t, sandbox } = setup();
+  const audio = fakeAudio(sandbox);
+  // Der Kontext entsteht einmal und wird danach weiterbenutzt.
+  t.primeCaptureTone();
+  t.primeCaptureTone();
+  assert.strictEqual(audio.contexts, 1, 'nur ein AudioContext');
+  assert.strictEqual(audio.resumes, 1, 'und nur solange er wirklich schlaeft');
+
+  // Auch ein schlafender Kontext wird bespielt: hat die Seite eine Geste gesehen, laeuft er beim
+  // Starten der Quelle von selbst an — ihn zu ueberspringen hiesse, den Ton zu verschlucken.
+  const gesperrt = setup();
+  const schlafend = fakeAudio(gesperrt.sandbox, { freigegeben: false });
+  assert.strictEqual(gesperrt.t.playCaptureTone(), true, 'der Ton wird trotzdem gespielt');
+  assert.strictEqual(schlafend.ctx.state, 'suspended', 'obwohl der Kontext noch schlaeft');
+  assert.strictEqual(schlafend.starts.length, 2);
+
+  // Ob der Ton eingeschaltet ist, beantwortet genau eine Stelle.
+  const prime = source.slice(source.indexOf('function primeCaptureTone('));
+  assert.ok(prime.slice(0, prime.indexOf('\n}')).includes('state.view.captureTone'),
+    'primeCaptureTone() fragt den Schalter ab');
+  const play = source.slice(source.indexOf('function playCaptureTone('));
+  assert.ok(!play.slice(0, play.indexOf('\n}')).includes('state.view.captureTone'),
+    'playCaptureTone() fragt ihn nicht ein zweites Mal');
+
+  // Abgeschaltet wird gar kein Kontext angelegt.
+  const zweiter = setup();
+  const stumm = fakeAudio(zweiter.sandbox);
+  zweiter.t.state.view.captureTone = false;
+  assert.strictEqual(zweiter.t.primeCaptureTone(), null);
+  assert.strictEqual(stumm.contexts, 0, 'ohne Ton kein AudioContext');
+});
+
+test('Der Schalter steht bei den Aufnahme-Einstellungen und ueberlebt den Neustart', () => {
+  const { t, elements } = setup();
+  // Vorgabe an, in beiden Sprachen benannt.
+  assert.strictEqual(t.state.view.captureTone, true);
+  assert.strictEqual(t.I18N.de.captureTone, 'Ton bei der Punktaufnahme');
+  assert.strictEqual(t.I18N.en.captureTone, 'Sound when a point is captured');
+  assert.ok(t.I18N.de.captureToneHint && t.I18N.en.captureToneHint, 'Hinweis in beiden Sprachen');
+
+  // Der Schalter liegt im Markup unter „Aufnahme“, nicht bei den Ansichtseinstellungen.
+  const markup = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const abschnitt = markup.slice(markup.indexOf('data-i18n="captureSettings"'),
+    markup.indexOf('data-i18n="autoCaptureWhereHint"'));
+  assert.ok(abschnitt.includes('id="captureTone"'), 'Schalter im Aufnahme-Abschnitt');
+
+  // Wie jede andere Ansichtseinstellung gespeichert und wieder geladen.
+  elements.get('captureTone').checked = false;
+  t.updateViewPreferencesFromUi();
+  assert.strictEqual(t.state.view.captureTone, false);
+  t.state.view.captureTone = true;
+  t.loadViewPreferences();
+  assert.strictEqual(t.state.view.captureTone, false, 'aus bleibt aus');
+  t.applyViewPreferencesToUi();
+  assert.strictEqual(elements.get('captureTone').checked, false, 'und der Schalter zeigt es');
+});
+
 
 (async () => {
   let failed = 0;

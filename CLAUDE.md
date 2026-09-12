@@ -1283,6 +1283,61 @@ gesperrter Kontur gar nicht erst, und `autoCaptureTick()` beendet einen laufende
 Meldung — dieselbe Überlegung wie bei einer fehlschlagenden Aufnahme: eine still weiterlaufende,
 aber nichts bewirkende Automatik wäre das Schlimmste.
 
+### Auslöseton bei der Punktaufnahme (Stand v72)
+
+**Der Ton hängt an der einen Stelle, an der ein Punkt tatsächlich in eine Liste kommt** —
+`appendCurrentPoint()`, unmittelbar nach `target.push(point)`. Damit klingen Einzelaufnahme und
+Automatik gleich (beide laufen dort durch), und eine **gescheiterte** Aufnahme bleibt still, ohne
+dass es dafür eine eigene Bedingung bräuchte: sie kommt gar nicht erst bis zu dieser Zeile. Der
+Knopfdruck löst bewusst **nichts** aus — zwischen ihm und dem Punkt liegen 550 ms Haltezeit und
+jede Vorbedingung. Ein ui-Test zählt die Aufrufstellen (genau eine neben der Definition).
+
+**Erzeugt wird der Ton in Web Audio, es liegt keine Audiodatei im Repo** — eine Datei wäre in
+einer offline gedachten App genau dann nicht da, wenn sie gebraucht wird. Ein Kameraverschluss ist
+breitbandig, also **gefiltertes Rauschen** (Bandpass, Q 1,4) mit steilem Abfall, zweimal kurz
+hintereinander (`CAPTURE_TONE_BURST_S` 35 ms, `CAPTURE_TONE_GAP_S` 60 ms), nicht ein Oszillator —
+der klänge nach Piepser.
+
+**Die Pegel sind gemessen, nicht geschätzt.** Das schmale Bandfilter nimmt dem Rauschen viel
+Energie: mit den zuerst gewählten 0,28/0,16 lag die Spitze des ausgerenderten Tons bei **0,095**,
+also kaum hörbar. Mit 1,4/0,8 sind es **0,567 und 0,359** bei einem RMS von 0,022 — deutlich
+hörbar und weit unter der Übersteuerung. Gemessen mit einer `OfflineAudioContext` im echten
+Browser über **dieselbe** Funktion, die die App benutzt, samt Hüllkurve (hörbar von 0 bis 71 ms,
+je Knack unter 20 ms Abklingzeit).
+
+**Der Schalter `captureTone` (Vorgabe an)** steht im Menü unter *Einstellungen › Aufnahme* und
+liegt wie jede andere Ansichtseinstellung in `VIEW_PREFS_KEY`. **Genau eine Stelle fragt ihn ab:**
+`primeCaptureTone()`. Ist der Ton aus, entsteht gar kein AudioContext, und `playCaptureTone()`
+bekommt von dort nichts zurück; eine zweite Abfrage dort wäre eine zweite Behauptung über
+denselben Zustand (ein ui-Test verbietet sie).
+
+**Zur Nutzergeste — im echten Browser gemessen, nicht geschlossen.** Chrome 153 headless über das
+DevTools-Protokoll, einmal gegen eine Probeseite und einmal gegen die echte App:
+
+| Politik (`--autoplay-policy=…`) | `audio.play()` ohne Geste | `new AudioContext().state` |
+|---|---|---|
+| `no-user-gesture-required` | geht | `running` |
+| `user-gesture-required` | `NotAllowedError` | `running` |
+| `document-user-activation-required` (Voreinstellung Desktop-Chrome) | `NotAllowedError` | **`suspended`** |
+
+Unter der letzten Politik gilt weiter, gegen die echte App gemessen: ohne Geste bleibt der Kontext
+`suspended`, und `playCaptureTone()` bleibt damit **stumm**; ein `resume()` **vor** der ersten
+Geste wird weder erfüllt noch abgelehnt und wird von einer späteren Geste auch **nicht**
+nachgeholt; ein **frisches** `resume()` nach einer Geste läuft an, bleibt 7 s später (also nach
+Ablauf des transienten Aktivierungsfensters) weiterhin `running`, und ein Ton aus einem
+**Zeitgeber** kommt dann an. Daraus die drei Bauregeln: nie auf `resume()` warten; die Freigabe
+**bei jeder** Geste neu anstoßen statt einmal beim Start; und sie an die Gesten hängen, die einer
+Aufnahme ohnehin vorausgehen — `beginCaptureHold()`, `captureButtonTap()`, `toggleAutoCapture()`
+und den Schalter selbst. **Damit ist die Automatik gedeckt:** sie lässt sich nur per Tipp starten.
+Ein schlafender Kontext wird beim Abspielen bewusst **nicht** übersprungen — hat die Seite eine
+Geste gesehen, läuft er beim Starten der Quelle von selbst an (ebenfalls gemessen).
+
+**Nicht belegt:** dass Chrome **für Android** sich genauso verhält. Dort ist die Voreinstellung für
+Medienelemente `user-gesture-required`, und unter dieser Politik startete der AudioContext im Test
+`running`. Gemessen werden konnte nur der Desktop-Build; gebaut ist deshalb so, als wäre eine Geste
+in jedem Fall nötig — das trägt unter allen drei Politiken. **Nicht ohne Gerät verifizierbar:** ob
+der Ton auf dem Telefon laut genug ist und ob er beim Gehen durch Umgebungsgeräusche durchkommt.
+
 ### Ringschluss und Punktlöschen (Stand v59)
 
 **Eine Ecke zu entfernen öffnet keinen Ring.** Das Modell speichert **keinen** Schlusspunkt —
@@ -2439,6 +2494,30 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-12: **v72 — Auslöseton bei der Punktaufnahme.** Ein kurzer Doppelknack wie bei einem
+  Fotoapparat bestätigt jeden aufgezeichneten Punkt, Einzelaufnahme wie Automatik; Einzelheiten im
+  Abschnitt „Auslöseton bei der Punktaufnahme". Eingehängt ist er an der **einen** Stelle, an der
+  ein Punkt tatsächlich in eine Liste kommt (`appendCurrentPoint()` direkt nach `target.push()`) —
+  damit ist „gescheiterte Aufnahme bleibt still" keine eigene Bedingung, sondern folgt von selbst.
+  Erzeugt in Web Audio, keine Audiodatei im Repo; Schalter `captureTone` (Vorgabe **an**) unter
+  *Einstellungen › Aufnahme*, gespeichert wie die übrigen Ansichtseinstellungen. **Zur Rückfrage
+  nach der Nutzergeste: im echten Browser gemessen statt geschlossen** (Chrome 153 headless über
+  das DevTools-Protokoll, gegen die echte App) — ohne Geste steht der AudioContext auf `suspended`
+  und es kommt kein Ton; ein `resume()` **vor** der ersten Geste bleibt für immer offen und wird
+  auch nicht nachgeholt; ein frisches `resume()` **nach** einer Geste läuft an und trägt danach
+  dauerhaft, auch für Töne aus einem Zeitgeber lange nach Ablauf des Aktivierungsfensters.
+  Freigegeben wird deshalb aus den Gestenpfaden `beginCaptureHold()`, `captureButtonTap()`,
+  `toggleAutoCapture()` und dem Schalter selbst — womit die **Automatik** gedeckt ist, weil sie nur
+  per Tipp startet. **Nicht belegt** ist das Verhalten von Chrome für **Android**: dort ist die
+  Voreinstellung eine andere Politik, unter der der Kontext im Test `running` startete; gebaut ist
+  so, als wäre die Geste in jedem Fall nötig. Die Pegel sind ebenfalls gemessen: mit den zuerst
+  gewählten 0,28/0,16 lag die Spitze bei 0,095, mit 1,4/0,8 bei 0,567/0,359. Neu: 4 ui-Fälle (227).
+  Gegen fünfzehn simulierte Rückfälle geprüft, alle gefangen; einer lief zunächst durch, weil der
+  Schalter an **zwei** Stellen abgefragt wurde und das Entfernen der einen nichts änderte — er
+  steht jetzt nur noch in `primeCaptureTone()`, und ein Test verbietet die zweite Abfrage.
+  i18n-Parität DE/EN maschinell geprüft (538/538). Hilfe, Markup-Fallback und README in beiden
+  Sprachen ergänzt. `APP_VERSION` auf `v72`.
 
 - 2026-09-12: **v71 — „Punkt aufnehmen“ fasst eine geschlossene Kontur nicht mehr an.** Zwei
   gemeldete Fälle, zwei verschiedene Ursachen, eine gemeinsame Lösung; Einzelheiten im Abschnitt

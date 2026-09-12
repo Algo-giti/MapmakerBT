@@ -331,6 +331,7 @@ const I18N = {
     formatsTitle: 'Speichern, JSON & GeoJSON', jsonHelp: 'Empfohlenes vollständiges Backup für MapCreator. Enthält Kartenstruktur, Punkte und zusätzliche Metadaten wie Aufnahme-/Editierinformationen.', geoJsonHelp: 'Für Geometrie-Austausch. Perimeter und Ausschlussflächen werden als Polygone exportiert, Wegpunkte und Dockpfad als LineString.', geoJsonXYWarning: 'Die Ardumower-Koordinaten sind lokale Sunray-X/Y-Werte in Metern. Sie sind keine GPS-Längen-/Breitengrade und werden deshalb im Export ausdrücklich als lokales metrisches Koordinatensystem gekennzeichnet.',
     troubleshootingTitle: 'Fehlerbehebung', faqDeviceTitle: 'Ardumower wird nicht gefunden', faqDeviceText: 'Prüfe Bluetooth am Tablet, aktuelle Chrome-Version, Reichweite und ob der ESP32 BLE sendet. Falls eine andere App bereits verbunden ist, diese Verbindung zuerst trennen. Danach Bluetooth-Gerätesuche erneut öffnen.', faqButtonTitle: 'Aufnahme-Button wird nicht grün', faqButtonText: 'Grün bedeutet echten RTK FIX. Prüfe RTK-Empfang und die Live-Daten. Wenn „Nur bei RTK FIX“ aktiv ist, bleibt die Aufnahme bei FLOAT/INVALID gesperrt.', faqOfflineTitle: 'Die App startet ohne WLAN nicht', faqOfflineText: 'Öffne die GitHub-Pages-Seite mindestens einmal mit Internet und warte, bis der Offline-Cache im Systemcheck als bereit angezeigt wird. Danach am besten als PWA installieren.', faqMapsGoneTitle: 'Meine Karten sind verschwunden', faqMapsGoneText: 'Karten liegen lokal im Browser. Gelöschte Website-Daten, ein anderer Browser oder ein anderes Benutzerprofil haben einen eigenen Speicher. Importiere dein letztes JSON-Backup.', faqIosTitle: 'Warum funktioniert es auf iPhone/iPad nicht?', faqIosText: 'Der MapCreator benötigt Web Bluetooth. Safari und Chrome auf iOS/iPadOS bieten diese Web-API derzeit nicht nativ an; deshalb kann die Webseite den Ardumower dort nicht direkt auswählen und verbinden.',
     privacyTitle: 'Daten & Privatsphäre', privacy1: 'GitHub Pages liefert nur die statische App aus. Deine aufgezeichneten Karten werden nicht automatisch zu GitHub hochgeladen.', privacy2: 'Karten liegen lokal im Browser des verwendeten Geräts.', privacy3: 'Bluetooth-Kommunikation läuft direkt zwischen Browser und Ardumower-ESP32.', privacy4: 'Das Sunray-Passwort wird nicht in den Kartendaten gespeichert.', privacy5: 'Für wichtige Karten regelmäßig ein JSON-Backup auf einem zweiten Speicherort ablegen.',
+    captureTone: 'Ton bei der Punktaufnahme', captureToneHint: 'Kurzer Auslöseton, sobald ein Punkt aufgezeichnet wurde — auch bei der Automatik. Der Browser gibt Ton erst nach der ersten Berührung der App frei.',
     showPointQuality: 'Punktqualität anzeigen', keepAwake: 'Bildschirm beim Mapping wachhalten', wakeLockAuto: 'Wird bei aktiver Aufnahme automatisch verwendet.', wakeLockActive: 'Bildschirm bleibt wach.', wakeLockUnavailable: 'Wake Lock in diesem Browser nicht verfügbar.', wakeLockReleased: 'Wake Lock derzeit nicht aktiv.',
     perimeterNearStart: 'Startpunkt erreicht · Abstand {distance} m', closePerimeter: 'Perimeter schließen', perimeterClosed: 'Perimeter geschlossen · kein doppelter Startpunkt gespeichert.', perimeterAlreadyClosed: 'Perimeter ist bereits geschlossen.',
     perimeterClosedTitle: 'Perimeter geschlossen', perimeterClosedCapture: 'Perimeter ist geschlossen — zum Weiterbauen erst öffnen (Erweitern).', perimeterReopenHint: 'Zum Weiterbauen erst öffnen (Erweitern).',
@@ -347,6 +348,7 @@ const I18N = {
     viewHelpTitle: 'Ansicht & Bedienung',
     helpRtkTitle: 'RTK-Anzeige', helpRtkText: 'Das Abzeichen in der Kopfzeile zeigt Fix, Float oder No Fix und die Satelliten als Mäher/Station. Nur bei einem echten Fix ist die Position zentimetergenau.',
     helpScatterTitle: 'GPS-Details einblenden', helpScatterText: 'Ein Tipp auf das RTK-Feld in der Kopfzeile blendet oben auf der Karte die GPS-Details ein und wieder aus; die Wahl bleibt nach dem Neuladen erhalten. Dort steht der Fix-Status, die vom Mäher gemeldete Genauigkeit und die Streuung: wie weit die Messwerte der letzten zwei Sekunden auseinanderliegen — der größte Abstand zu ihrem Mittelwert in Zentimetern, dahinter der höchste Wert der letzten 30 Sekunden und die Zahl der Messwerte im Fenster. Kleine Zahlen heißen ruhige Position, ein großer 30-Sekunden-Wert verrät einen Ausreißer, der längst vorbei ist. Weniger Messwerte als sonst deuten auf eine Funklücke. Alles davon ist reine Information: es sperrt nichts und ändert weder Aufnahme noch Automatik.',
+    helpCaptureToneTitle: 'Ton bei der Punktaufnahme', helpCaptureToneText: 'Ein kurzer Auslöseton wie bei einem Fotoapparat bestätigt jeden aufgezeichneten Punkt — bei der Einzelaufnahme wie bei der Automatik. Er kommt erst, wenn der Punkt wirklich in der Karte steht: eine gescheiterte Aufnahme, etwa ohne RTK FIX oder bei geschlossener Kontur, bleibt still. So lässt sich beim Abfahren am Ohr verfolgen, ob Punkte entstehen, ohne auf den Bildschirm zu sehen. Abschalten im Menü unter Aufnahme. Der Ton wird im Browser erzeugt, es wird nichts nachgeladen; Browser geben Ton allerdings erst frei, nachdem die App einmal berührt wurde — das ist mit dem Tipp auf den Aufnahme- oder Automatik-Knopf immer schon geschehen.',
     helpFixOnlyTitle: 'Nur bei RTK FIX', helpFixOnlyText: 'Im Menü unter Aufnahme. Ist die Option aktiv, bleibt jede Aufnahme bei Float oder No Fix gesperrt — auch die Automatik.',
     helpThemeTitle: 'Hell & Dunkel', helpThemeText: 'Drei Stufen im Menü unter Ansicht & Maßstab: Hell, Dunkel oder der Vorgabe des Systems folgen.',
     helpHandedTitle: 'Bedienseite', helpHandedText: 'Die Umstellung auf Linkshänder spiegelt die gesamte Bedienung: Werkzeuge und Karteninfo in der Kartenleiste, Aufnahme-Knopf und Fahrtanzeige.',
@@ -589,6 +591,7 @@ const I18N = {
     formatsTitle: 'Saving, JSON & GeoJSON', jsonHelp: 'Recommended complete MapCreator backup. Contains the map structure, points and extra metadata such as capture/edit information.', geoJsonHelp: 'For geometry exchange. Perimeter and exclusion areas are exported as polygons, waypoints and the dock path as LineStrings.', geoJsonXYWarning: 'Ardumower coordinates are local Sunray X/Y values in metres. They are not GPS longitude/latitude values, so the export explicitly marks them as a local metric coordinate system.',
     troubleshootingTitle: 'Troubleshooting', faqDeviceTitle: 'Ardumower is not found', faqDeviceText: 'Check Bluetooth on the tablet, a current Chrome version, range and whether the ESP32 is advertising BLE. If another app is already connected, disconnect it first. Then open Bluetooth device discovery again.', faqButtonTitle: 'Capture button does not turn green', faqButtonText: 'Green means a real RTK FIX. Check RTK reception and the live data. With “RTK FIX only” enabled, capture remains blocked for FLOAT/INVALID.', faqOfflineTitle: 'The app does not start without Wi-Fi', faqOfflineText: 'Open the GitHub Pages site at least once with internet and wait until the system check shows the offline cache as ready. Installing it as a PWA is recommended.', faqMapsGoneTitle: 'My maps are gone', faqMapsGoneText: 'Maps are stored locally in the browser. Cleared site data, a different browser or a different browser profile use separate storage. Import your latest JSON backup.', faqIosTitle: 'Why does it not work on iPhone/iPad?', faqIosText: 'MapCreator requires Web Bluetooth. Safari and Chrome on iOS/iPadOS currently do not provide this Web API natively, so the website cannot directly select and connect to the Ardumower there.',
     privacyTitle: 'Data & privacy', privacy1: 'GitHub Pages only serves the static app. Your recorded maps are not automatically uploaded to GitHub.', privacy2: 'Maps stay in the browser storage of the device being used.', privacy3: 'Bluetooth communication runs directly between the browser and the Ardumower ESP32.', privacy4: 'The Sunray password is not stored in map data.', privacy5: 'For important maps, regularly keep a JSON backup in a second location.',
+    captureTone: 'Sound when a point is captured', captureToneHint: 'A short shutter sound as soon as a point has been recorded — automatic capture included. Browsers only allow sound after the app has been touched once.',
     showPointQuality: 'Show point quality', keepAwake: 'Keep screen awake while mapping', wakeLockAuto: 'Used automatically while an active recording is running.', wakeLockActive: 'Screen will stay awake.', wakeLockUnavailable: 'Wake Lock is not available in this browser.', wakeLockReleased: 'Wake Lock is currently inactive.',
     perimeterNearStart: 'Start point reached · distance {distance} m', closePerimeter: 'Close perimeter', perimeterClosed: 'Perimeter closed · no duplicate start point stored.', perimeterAlreadyClosed: 'Perimeter is already closed.',
     perimeterClosedTitle: 'Perimeter closed', perimeterClosedCapture: 'The perimeter is closed — reopen it first to keep building (Extend).', perimeterReopenHint: 'Reopen it first to keep building (Extend).',
@@ -605,6 +608,7 @@ const I18N = {
     viewHelpTitle: 'View & operation',
     helpRtkTitle: 'RTK display', helpRtkText: 'The badge in the header shows Fix, Float or No Fix and the satellites as mower/station. Only a real fix gives centimetre-accurate positions.',
     helpScatterTitle: 'Showing GPS details', helpScatterText: 'Tapping the RTK field in the header shows and hides the GPS details at the top of the map; the choice survives a reload. It shows the fix status, the accuracy reported by the mower and the scatter: how far the readings of the last two seconds lie apart — the largest distance from their mean in centimetres, followed by the highest value of the last 30 seconds and the number of readings in the window. Small numbers mean a steady position; a large 30-second value reveals an outlier that is long gone. Fewer readings than usual point to a radio gap. All of it is information only: it blocks nothing and changes neither capture nor automatic capture.',
+    helpCaptureToneTitle: 'Sound when a point is captured', helpCaptureToneText: 'A short shutter sound like a camera confirms every recorded point — for single capture as well as automatic capture. It only plays once the point is really in the map: a failed capture, for instance without RTK FIX or on a closed contour, stays silent. That way you can follow along by ear while walking the boundary, without looking at the screen. Turn it off in the menu under Capture. The sound is generated in the browser, nothing is downloaded; browsers do however only allow sound after the app has been touched once — which the tap on the capture or automatic button has always already done.',
     helpFixOnlyTitle: 'Only with RTK FIX', helpFixOnlyText: 'In the menu under Capture. While this option is on, every capture stays blocked on Float or No Fix — automatic capture included.',
     helpThemeTitle: 'Light & dark', helpThemeText: 'Three settings in the menu under View & scale: light, dark, or follow the system setting.',
     helpHandedTitle: 'Operating side', helpHandedText: 'Switching to left-handed mirrors the whole layout: tools and map info in the map bar, capture button and drive status.',
@@ -736,7 +740,7 @@ const ui = {
   fixOnly: $('fixOnly'),
   autoCaptureIntervalInput: $('autoCaptureIntervalInput'), autoCaptureState: $('autoCaptureState'),
   showGrid: $('showGrid'), gridStepSelect: $('gridStepSelect'), showMower: $('showMower'), mowerLengthInput: $('mowerLengthInput'), mowerWidthInput: $('mowerWidthInput'),
-  showTrail: $('showTrail'), clearTrailBtn: $('clearTrailBtn'), showPointQuality: $('showPointQuality'), keepAwake: $('keepAwake'), wakeLockStatus: $('wakeLockStatus'),
+  showTrail: $('showTrail'), clearTrailBtn: $('clearTrailBtn'), showPointQuality: $('showPointQuality'), keepAwake: $('keepAwake'), captureTone: $('captureTone'), wakeLockStatus: $('wakeLockStatus'),
   validateMapBtn: $('validateMapBtn'), validationSummary: $('validationSummary'), validationList: $('validationList'), validationDrawer: $('validationDrawer'),
   updateBar: $('updateBar'),
   clearLogBtn: $('clearLogBtn'), exportLogBtn: $('exportLogBtn'), logJumpBtn: $('logJumpBtn'), debugLog: $('debugLog'),
@@ -840,7 +844,7 @@ const state = {
   view: {
     showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35,
     autoCaptureIntervalS: 5, autoCaptureMode: 'time', autoCaptureDistanceCm: AUTO_CAPTURE_DISTANCE_DEFAULT_CM,
-    showTrail: true, showPointQuality: true, keepAwake: true,
+    showTrail: true, showPointQuality: true, keepAwake: true, captureTone: true,
     driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
     joystickScale: '1', handed: 'right', driveControl: 'joystick', cursorSpeedCms: 15,
     driveZones: true, gpsPanel: false,
@@ -1435,6 +1439,9 @@ function loadViewPreferences() {
     state.view.gpsPanel = saved.gpsPanel === true;
     state.view.showPointQuality = saved.showPointQuality !== false;
     state.view.keepAwake = saved.keepAwake !== false;
+    // Vorgabe **an**: der Ton ist die einzige Rueckmeldung, die beim Abfahren ohne Blick auf den
+    // Bildschirm ankommt. Wie jede andere Ansichtseinstellung liegt er in VIEW_PREFS_KEY.
+    state.view.captureTone = saved.captureTone !== false;
     state.view.driveSpeedMin = clampNumber(saved.driveSpeedMin, 0.02, 0.34, 0.08);
     state.view.driveSpeedMax = clampNumber(saved.driveSpeedMax, 0.03, 0.50, 0.25);
     state.view.driveTurnMax = clampNumber(saved.driveTurnMax, 0.20, 2.00, 1.15);
@@ -1448,7 +1455,7 @@ function loadViewPreferences() {
     // links und rechts drehen mit fester Geschwindigkeit.
     state.view.driveZones = saved.driveZones !== false;
   } catch (_) {
-    state.view = { showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, autoCaptureIntervalS: 5, autoCaptureMode: 'time', autoCaptureDistanceCm: AUTO_CAPTURE_DISTANCE_DEFAULT_CM, showTrail: true, showPointQuality: true, keepAwake: true, gpsPanel: false, driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
+    state.view = { showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, autoCaptureIntervalS: 5, autoCaptureMode: 'time', autoCaptureDistanceCm: AUTO_CAPTURE_DISTANCE_DEFAULT_CM, showTrail: true, showPointQuality: true, keepAwake: true, captureTone: true, gpsPanel: false, driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
       joystickScale: '1', handed: 'right', driveControl: 'joystick', cursorSpeedCms: 15,
       driveZones: true };
   }
@@ -1480,6 +1487,7 @@ function applyViewPreferencesToUi() {
   ui.showTrail.checked = state.view.showTrail;
   ui.showPointQuality.checked = state.view.showPointQuality;
   ui.keepAwake.checked = state.view.keepAwake;
+  ui.captureTone.checked = state.view.captureTone;
   const limits = driveSpeedLimits();
   ui.driveSpeedMinInput.value = limits.min.toFixed(2);
   ui.driveSpeedMaxInput.value = limits.max.toFixed(2);
@@ -1509,6 +1517,10 @@ function updateViewPreferencesFromUi() {
   state.view.showTrail = ui.showTrail.checked;
   state.view.showPointQuality = ui.showPointQuality.checked;
   state.view.keepAwake = ui.keepAwake.checked;
+  state.view.captureTone = ui.captureTone.checked;
+  // Das Umlegen des Schalters ist selbst eine Nutzergeste — die guenstigste Gelegenheit, den Ton
+  // freizugeben, noch bevor der erste Punkt faellt.
+  primeCaptureTone();
   state.view.driveSpeedMin = clampNumber(ui.driveSpeedMinInput.value, 0.02, 0.34, state.view.driveSpeedMin);
   state.view.driveSpeedMax = clampNumber(ui.driveSpeedMaxInput.value, state.view.driveSpeedMin + 0.01, 0.50, state.view.driveSpeedMax);
   state.view.driveTurnMax = clampNumber(ui.driveTurnMaxInput.value, 0.20, 2.00, state.view.driveTurnMax);
@@ -2111,6 +2123,9 @@ function captureButtonMoves() {
 function beginCaptureHold(event) {
   if (ui.addPointBtn.disabled || captureButtonMoves()) return;
   event.preventDefault();
+  // Hier liegt die Nutzergeste, die der Browser fuer den Ton verlangt — der Punkt selbst faellt
+  // erst 550 ms spaeter aus einem Zeitgeber, und der zaehlt nicht als Geste.
+  primeCaptureTone();
   cancelCaptureHold();
   try { ui.addPointBtn.setPointerCapture(event.pointerId); } catch (_) {}
   ui.addPointBtn.classList.add('holding');
@@ -2131,6 +2146,7 @@ function beginCaptureHold(event) {
 /** Verschiebt der Knopf gerade, genuegt ein Tap; zum Aufnehmen wird weiterhin gehalten. */
 function captureButtonTap() {
   if (ui.addPointBtn.disabled || !captureButtonMoves()) return;
+  primeCaptureTone();
   addCurrentPoint().catch((error) => { ui.pointStatus.textContent = error.message; log('CAPTURE', error.message); });
 }
 
@@ -3677,6 +3693,100 @@ async function insertPointAtSelection(offset) {
   return point;
 }
 
+// --- Ausloeseton bei der Punktaufnahme ------------------------------------------------------
+
+/**
+ * Der Ton entsteht in Web Audio; es liegt **keine** Audiodatei im Repo, und nachgeladen wird
+ * nichts — eine Datei waere in einer offline gedachten App genau dann nicht da, wenn sie
+ * gebraucht wird.
+ *
+ * **Browser geben Ton erst nach einer Nutzergeste frei.** Gemessen in Chrome 153 (headless, echtes
+ * Rendering ueber das DevTools-Protokoll) unter der Voreinstellung von Desktop-Chrome
+ * (`--autoplay-policy=document-user-activation-required`): ein ohne Geste erzeugter AudioContext
+ * steht auf `suspended`; ein `resume()` **vor** der ersten Geste bleibt fuer immer offen — es wird
+ * weder erfuellt noch abgelehnt, und die spaetere Geste holt es auch nicht nach; ein **frisches**
+ * `resume()` nach einer Geste laeuft an, und der Ton bleibt danach dauerhaft frei, auch fuer
+ * Toene aus einem Zeitgeber lange nach Ablauf des Aktivierungsfensters.
+ *
+ * Daraus folgen drei Bauregeln: nie auf `resume()` warten; die Freigabe **bei** jeder Geste neu
+ * anstossen statt einmal beim Start; und sie an die Gesten haengen, die einer Aufnahme ohnehin
+ * vorausgehen (`beginCaptureHold()`, `captureButtonTap()`, `toggleAutoCapture()` und der Schalter
+ * selbst). Damit ist auch die **Automatik** gedeckt: sie laesst sich nur per Tipp starten.
+ */
+const CAPTURE_TONE_BURST_S = 0.035;
+const CAPTURE_TONE_GAP_S = 0.06;
+let captureToneContext = null;
+
+/**
+ * Legt den AudioContext an und stoesst die Freigabe an. Aus einem Gestenpfad zu rufen.
+ * Hier steht **die eine** Stelle, die den Schalter abfragt: ist der Ton aus, entsteht gar kein
+ * AudioContext, und `playCaptureTone()` bekommt von hier nichts zurueck. Eine zweite Abfrage
+ * dort waere eine zweite Behauptung ueber denselben Zustand.
+ */
+function primeCaptureTone() {
+  if (!state.view.captureTone) return null;
+  const Ctor = globalThis.AudioContext || globalThis.webkitAudioContext;
+  if (!Ctor) return null;
+  try {
+    if (!captureToneContext) captureToneContext = new Ctor();
+    if (captureToneContext.state === 'suspended') {
+      // Bewusst ohne await: vor der ersten Geste kommt dieses Versprechen nie zurueck.
+      const resumed = captureToneContext.resume();
+      if (resumed && typeof resumed.catch === 'function') resumed.catch(() => {});
+    }
+  } catch (error) {
+    captureToneContext = null;
+    log('TON', error.message);
+  }
+  return captureToneContext;
+}
+
+/** Ein kurzer Knack: schmalbandiges Rauschen mit steilem Abfall. Zwei davon ergeben den Ausloeser. */
+function captureToneBurst(ctx, at, level, frequency) {
+  const length = Math.max(1, Math.round(ctx.sampleRate * CAPTURE_TONE_BURST_S));
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i += 1) data[i] = Math.random() * 2 - 1;
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  // Ein Kameraverschluss ist breitbandig, kein Pfeifton — deshalb Rauschen durch ein Bandfilter
+  // statt eines Oszillators.
+  const band = ctx.createBiquadFilter();
+  band.type = 'bandpass';
+  band.frequency.value = frequency;
+  band.Q.value = 1.4;
+  const envelope = ctx.createGain();
+  envelope.gain.setValueAtTime(level, at);
+  envelope.gain.exponentialRampToValueAtTime(0.0001, at + CAPTURE_TONE_BURST_S);
+  source.connect(band);
+  band.connect(envelope);
+  envelope.connect(ctx.destination);
+  source.start(at);
+  source.stop(at + CAPTURE_TONE_BURST_S);
+}
+
+/**
+ * Spielt den Ausloeseton. Gerufen wird er an genau einer Stelle: dort, wo ein Punkt tatsaechlich
+ * in einer Liste landet. Ein `suspended` Kontext wird dabei **nicht** uebersprungen — hat die
+ * Seite eine Geste gesehen, laeuft er beim Starten der Quelle von selbst an (gemessen).
+ */
+function playCaptureTone() {
+  const ctx = primeCaptureTone();
+  if (!ctx || ctx.state === 'closed') return false;
+  try {
+    const at = ctx.currentTime;
+    // Die Pegel sind **gemessen**, nicht geschaetzt: das schmale Bandfilter nimmt dem Rauschen
+    // viel Energie, mit 0,28 lag die Spitze des ausgerenderten Tons bei nur 0,095. Mit 1,4/0,8
+    // sind es 0,567 und 0,359 — deutlich hoerbar und weit unter der Uebersteuerung.
+    captureToneBurst(ctx, at, 1.4, 2600);
+    captureToneBurst(ctx, at + CAPTURE_TONE_GAP_S, 0.8, 1700);
+  } catch (error) {
+    log('TON', error.message);
+    return false;
+  }
+  return true;
+}
+
 async function appendCurrentPoint({ automatic = false, targetOverride = null, save = true } = {}) {
   if (!ensureMapEditable()) return null;
   // Schnappschuss vor jeder Nebenwirkung: legt der Aufruf noch eine leere Ausschlussflaeche an,
@@ -3707,6 +3817,9 @@ async function appendCurrentPoint({ automatic = false, targetOverride = null, sa
   const point = pointFromTelemetry();
   commitUndo(before);
   target.push(point);
+  // Genau hier ist der Punkt aufgezeichnet — nicht beim Druck auf den Knopf. Einzelaufnahme und
+  // Automatik laufen beide durch diese Zeile, ein Fehlversuch kommt nie so weit und bleibt still.
+  playCaptureTone();
   if (save) await saveActiveMap();
   if (!automatic) {
     ui.pointStatus.textContent = startedArea
@@ -3797,6 +3910,9 @@ async function autoCaptureTick() {
 }
 
 async function toggleAutoCapture() {
+  // Die Automatik setzt ihre Punkte aus einem Zeitgeber; freigegeben wird der Ton deshalb hier,
+  // beim Tipp auf den Knopf. Danach traegt die Freigabe fuer die ganze Sitzung.
+  primeCaptureTone();
   if (state.autoCaptureRunning) { stopAutoCapture(); return; }
   await startAutoCapture();
 }
@@ -6477,7 +6593,7 @@ function bindEvents() {
   });
 
   // Ansicht
-  [ui.showGrid, ui.gridStepSelect, ui.showMower, ui.showTrail, ui.showPointQuality].forEach((input) => input.addEventListener('change', updateViewPreferencesFromUi));
+  [ui.showGrid, ui.gridStepSelect, ui.showMower, ui.showTrail, ui.showPointQuality, ui.captureTone].forEach((input) => input.addEventListener('change', updateViewPreferencesFromUi));
   [ui.mowerLengthInput, ui.mowerWidthInput].forEach((input) => input.addEventListener('change', () => { updateViewPreferencesFromUi(); applyViewPreferencesToUi(); }));
   ui.clearTrailBtn.addEventListener('click', () => { state.trail = []; renderMap(); ui.pointStatus.textContent = tr('trailCleared'); });
   ui.keepAwake.addEventListener('change', () => {

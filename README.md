@@ -130,6 +130,14 @@ das Öffnen eines Bereichs klappt die anderen zu.
    Flächen ist unbegrenzt. Beides gilt für die Einzelaufnahme wie für die Automatik. Besonders
    sichtbar wird das bei **importierten Karten**: dort sind Perimeter und Flächen immer als
    geschlossen gekennzeichnet.
+8. **Ein kurzer Auslöseton** – wie bei einem Fotoapparat – bestätigt jeden aufgezeichneten Punkt,
+   bei der Einzelaufnahme wie bei der Automatik. Er kommt erst, wenn der Punkt wirklich in der
+   Karte steht: eine gescheiterte Aufnahme, etwa ohne RTK FIX oder bei geschlossener Kontur,
+   bleibt still. So lässt sich beim Abfahren am Ohr verfolgen, ob Punkte entstehen, ohne auf den
+   Bildschirm zu sehen. Abschalten im Menü unter *Einstellungen › Aufnahme*; der Ton wird im
+   Browser erzeugt und muss nicht nachgeladen werden. Browser geben Ton erst frei, nachdem die
+   App einmal berührt wurde – das ist mit dem Tipp auf den Aufnahme- oder Automatik-Knopf immer
+   schon geschehen.
 
 Beim Wechsel des Aufnahmemodus fragt die App nach, ob die verlassene Kontur geschlossen werden
 soll – aber nur, wenn sie mindestens drei Punkte hat und noch offen ist. Sagst du Nein, bleibt sie
@@ -597,6 +605,13 @@ one section is open at a time; opening one collapses the others.
    and selection jump to the new one, and the number of areas is unlimited. Both apply to single
    capture and to automatic capture alike. This shows up most often with **imported maps**, where
    perimeter and areas always arrive marked as closed.
+8. **A short shutter sound** – like a camera – confirms every recorded point, for single capture
+   as well as automatic capture. It only plays once the point is really in the map: a failed
+   capture, for instance without RTK FIX or on a closed contour, stays silent. That way you can
+   follow along by ear while walking the boundary, without looking at the screen. Turn it off in
+   the menu under *Settings › Capture*; the sound is generated in the browser and does not have
+   to be downloaded. Browsers only allow sound after the app has been touched once – which the
+   tap on the capture or automatic button has always already done.
 
 When you switch capture mode, the app asks whether the contour you are leaving should be closed –
 but only if it has at least three points and is still open. Say no and it stays open, so you can
