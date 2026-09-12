@@ -36,7 +36,7 @@
 <div class="map-toolbar" id="mapToolbar">
 <div class="toolbar-info" id="toolbarInfo">
 <span class="toolbar-map-name" data-i18n="noMap" id="mapNameLabel">Keine Karte</span>
-<span class="toolbar-map-meta" id="mapMeta"><span class="info-line" id="mapSummary"></span><span class="info-chip" id="contourStatus"></span></span>
+<span class="toolbar-map-meta" id="mapMeta"><span class="info-line" id="mapSummary"></span><span class="info-chip" id="contourStatus"></span><span class="info-chip" id="gpsScatter"></span></span>
 </div>
 <div class="map-tools" id="mapTools">
 <div class="map-tool-slot" id="deleteFabWrap">
@@ -557,6 +557,7 @@
 <h3 data-i18n="viewHelpTitle">Ansicht &amp; Bedienung</h3>
 <div class="help-feature-grid">
 <div><strong data-i18n="helpRtkTitle">RTK-Anzeige</strong><span data-i18n="helpRtkText">Das Abzeichen in der Kopfzeile zeigt Fix, Float oder No Fix und die Satelliten als Mäher/Station. Nur bei einem echten Fix ist die Position zentimetergenau.</span></div>
+<div><strong data-i18n="helpScatterTitle">Streuung der Position</strong><span data-i18n="helpScatterText">In der Kartenleiste steht, wie weit die Messwerte der letzten zwei Sekunden auseinanderliegen — der größte Abstand zu ihrem Mittelwert in Zentimetern, dahinter der höchste Wert der letzten 30 Sekunden und die Zahl der Messwerte im Fenster. Kleine Zahlen heißen ruhige Position, ein großer 30-Sekunden-Wert verrät einen Ausreißer, der längst vorbei ist. Weniger Messwerte als sonst deuten auf eine Funklücke. Die Anzeige ist reine Information: sie sperrt nichts und ändert weder Aufnahme noch Automatik.</span></div>
 <div><strong data-i18n="helpFixOnlyTitle">Nur bei RTK FIX</strong><span data-i18n="helpFixOnlyText">Im Menü unter Aufnahme. Ist die Option aktiv, bleibt jede Aufnahme bei Float oder No Fix gesperrt — auch die Automatik.</span></div>
 <div><strong data-i18n="helpMapInfoTitle">Karteninfo in der Werkzeugleiste</strong><span data-i18n="helpMapInfoText">Die Werkzeugleiste oben trägt zwei Zeilen: den Kartennamen und darunter, kleiner, die Punktzahl und die betroffene Kontur samt Zustand. Die aktuelle Position steht unten auf der Karte, zwischen Rückgängig- und Aufnahme-Knopf. Die Kartenfläche selbst bleibt damit frei von Text. Der Zustand steht immer unmittelbar hinter der Bezeichnung der Kontur, auf die er sich bezieht: „Perimeter · geschlossen“ oder „Ausschluss 2 · offen“, und bei ausgewähltem Punkt an dessen Bezeichnung, also „Ausschluss 1 · Punkt 3 · offen“. So ist auch bei mehreren Ausschlussflächen eindeutig, welche gemeint ist. „Offen“ heißt, dass zwischen letztem und erstem Punkt noch keine Verbindung besteht, „geschlossen“ heißt, dass die Fläche fertig umrundet ist. Wegpunkte und Dockpfad sind immer offene Pfade und zeigen deshalb keinen Zustand.</span></div>
 <div><strong data-i18n="helpZoomTitle">Zoomen &amp; Verschieben</strong><span data-i18n="helpZoomText">Zwei Finger zoomen, ein Finger verschiebt. Sobald du die Ansicht selbst verändert hast, erscheint in der oberen Kartenecke ein Symbol, das sie wieder auf die ganze Karte zurücksetzt.</span></div>

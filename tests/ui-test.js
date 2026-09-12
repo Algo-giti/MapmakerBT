@@ -55,7 +55,9 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'confirmDialogRespond', 'noticeSunrayImport',
   'MIN_USER_ZOOM', 'MAX_USER_ZOOM', 'init',
   'MAX_MAPS', 'createMapFromInput', 'renderMapControls', 'tr',
-  'renderMapGallery', 'formatMapTimestamp'];
+  'renderMapGallery', 'formatMapTimestamp',
+  'fixScatter', 'rememberScatter', 'scatterMaxCm', 'gpsScatterText', 'refreshGpsScatter',
+  'SCATTER_MAX_WINDOW_MS', 'capturePreconditionKey', 'telemetryHasFix'];
 
 /** Minimaler IndexedDB-Ersatz, damit saveActiveMap() im Test durchlaeuft. */
 function fakeDb() {
@@ -385,6 +387,127 @@ test('Positions-Glaettung mittelt die Fixes der letzten zwei Sekunden', () => {
   assert.strictEqual(t.smoothedPosition().samples, 2);
 });
 
+test('Streuung: Radius der Punktwolke im 2-s-Fenster, in cm', () => {
+  const { t, clock } = setup();
+  assert.strictEqual(t.fixScatter().cm, null, 'ohne Fixes gibt es keine Streuung');
+  assert.strictEqual(t.fixScatter().samples, 0);
+
+  // Ein einzelner Fix ergibt noch keinen Radius, wird aber gezaehlt.
+  t.state.fixHistory = [{ x: 0, y: 0, at: clock.now() }];
+  assert.strictEqual(t.fixScatter().cm, null, 'ein Fix spannt keine Wolke auf');
+  assert.strictEqual(t.fixScatter().samples, 1);
+
+  // Vier Fixes auf einem Quadrat der Kantenlaenge 0,06 m: Mittelpunkt in der Mitte,
+  // groesster Abstand ist die halbe Diagonale = 0,03 * sqrt(2) m = 4,2426 cm.
+  t.state.fixHistory = [
+    { x: 0, y: 0, at: clock.now() - 1500 },
+    { x: 0.06, y: 0, at: clock.now() - 1000 },
+    { x: 0.06, y: 0.06, at: clock.now() - 500 },
+    { x: 0, y: 0.06, at: clock.now() },
+  ];
+  const scatter = t.fixScatter();
+  assert.strictEqual(scatter.samples, 4);
+  assert.strictEqual(scatter.cm.toFixed(4), '4.2426', `gemessen: ${scatter.cm}`);
+
+  // **Genau dasselbe Fenster wie die Glaettung** — knapp dahinter geprueft, nicht weit dahinter:
+  // ein zu grosszuegiges Fenster faellt sonst gar nicht auf.
+  t.state.fixHistory[0].at = clock.now() - 2100;
+  assert.strictEqual(t.fixScatter().samples, 3, '2,1 s alt ist draussen');
+  assert.strictEqual(t.smoothedPosition().samples, 3, 'und zwar fuer beide gleich');
+  t.state.fixHistory[0].at = clock.now() - 1900;
+  assert.strictEqual(t.fixScatter().samples, 4, '1,9 s alt zaehlt noch mit');
+  assert.strictEqual(t.smoothedPosition().samples, 4, 'auch hier gleich');
+});
+
+test('Der 30-s-Hoechstwert haelt einen Ausreisser fest und laeuft danach ab', async () => {
+  const { t, clock } = setup();
+  const feed = (dx) => {
+    t.state.fixHistory = [{ x: 0, y: 0, at: clock.now() }, { x: dx, y: 0, at: clock.now() }];
+    t.rememberScatter();
+  };
+  feed(0.02);                                    // ruhig: Radius 1 cm
+  assert.strictEqual(Math.round(t.scatterMaxCm()), 1);
+  await clock.runFor(1000);
+  feed(0.22);                                    // Ausreisser: Radius 11 cm
+  assert.strictEqual(Math.round(t.scatterMaxCm()), 11, 'der Ausreisser steht im Maximum');
+
+  // Er bleibt die vollen 30 s stehen …
+  await clock.runFor(25000);
+  feed(0.02);
+  assert.strictEqual(Math.round(t.scatterMaxCm()), 11, 'nach 25 s noch da');
+  // … und faellt danach heraus.
+  await clock.runFor(6000);
+  feed(0.02);
+  assert.strictEqual(Math.round(t.scatterMaxCm()), 1, 'nach mehr als 30 s wieder ruhig');
+  assert.strictEqual(t.SCATTER_MAX_WINDOW_MS, 30000);
+});
+
+test('Die Streuung steht kompakt in der Karteninfo — DE und EN, mit Zahl der Fixes', () => {
+  const { t, clock } = setup();
+  // Ohne jeden Fix bleibt das Feld leer und verschwindet damit ganz.
+  t.refreshGpsScatter();
+  assert.strictEqual(t.ui.gpsScatter.textContent, '', 'ohne Fix keine Behauptung');
+
+  // Funkluecke: nur ein Fix im Fenster — die Zahl steht trotzdem da.
+  t.state.fixHistory = [{ x: 0, y: 0, at: clock.now() }];
+  t.refreshGpsScatter();
+  assert.ok(/Streuung – · 1 Fixes/.test(t.ui.gpsScatter.textContent), t.ui.gpsScatter.textContent);
+
+  t.state.fixHistory = [{ x: 0, y: 0, at: clock.now() }, { x: 0.06, y: 0, at: clock.now() }];
+  t.rememberScatter();
+  t.refreshGpsScatter();
+  const de = t.ui.gpsScatter.textContent;
+  assert.ok(/Streuung 3 cm/.test(de), de);
+  assert.ok(/max 30 s: 3 cm/.test(de), de);
+  assert.ok(/2 Fixes/.test(de), `die Zahl der Fixes macht Funkluecken erkennbar: ${de}`);
+  assert.ok(!/\{/.test(de), 'kein Platzhalterrest');
+
+  t.toggleLanguage();
+  t.refreshGpsScatter();
+  const en = t.ui.gpsScatter.textContent;
+  assert.ok(/Scatter 3 cm/.test(en), en);
+  assert.ok(/30 s max: 3 cm/.test(en), en);
+  assert.ok(/2 fixes/.test(en), en);
+});
+
+test('Die Streuung ist reine Anzeige: Aufnahme und Automatik bleiben unberuehrt', async () => {
+  const { t, clock } = setup();
+  // Eine absichtlich wilde Wolke — sie darf nichts sperren und nichts verschieben.
+  t.state.telemetry = { x: 5, y: 5, solution: 2, receivedAt: clock.now() };
+  t.state.fixHistory = [
+    { x: 4.0, y: 5, at: clock.now() - 1000 },
+    { x: 6.0, y: 5, at: clock.now() },
+  ];
+  t.rememberScatter();
+  t.refreshGpsScatter();
+  assert.ok(/100 cm/.test(t.ui.gpsScatter.textContent), t.ui.gpsScatter.textContent);
+
+  assert.strictEqual(t.capturePreconditionKey(), null, 'die Vorbedingung kennt die Streuung nicht');
+  const point = await t.appendCurrentPoint();
+  assert.ok(point, 'der Punkt entsteht trotz grosser Streuung');
+  assert.strictEqual(point.x, 5, 'und liegt unveraendert auf dem Mittelwert der Fixes');
+  assert.strictEqual(point.smoothedFrom, 2);
+
+  // Auch die Automatik laeuft weiter.
+  t.setMode('waypoint');
+  await t.startAutoCapture();
+  const count = t.state.activeMap.waypoints.length;
+  t.state.telemetry.receivedAt = clock.now();
+  await clock.runFor(5100);
+  assert.ok(t.state.activeMap.waypoints.length > count, 'die Automatik nimmt weiter auf');
+  t.stopAutoCapture();
+
+  // Und im Quelltext haengt an der Streuung keine Entscheidung: die Rechenfunktionen werden
+  // ausschliesslich von der Anzeige gelesen.
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'app.js'), 'utf8');
+  const callers = [...src.matchAll(/function ([A-Za-z0-9_]+)\([^)]*\)\s*\{([\s\S]*?)\n\}/g)]
+    .filter(([, , body]) => /fixScatter\(|scatterMaxCm\(/.test(body))
+    .map(([, name]) => name)
+    .sort();
+  assert.deepStrictEqual(callers, ['gpsScatterText', 'rememberScatter'],
+    `nur Anzeige und Verlauf lesen die Streuung, gefunden: ${callers.join(', ')}`);
+});
+
 test('Hell/Dunkel: System als Standard, manuelle Wahl gewinnt', () => {
   const { t, sandbox } = setup();
   assert.strictEqual(t.state.view.theme, 'system');
@@ -417,6 +540,92 @@ test('Zoom bleibt zwischen Min und Max, die Karte kann nicht aus dem Bild gescho
   assert.strictEqual(t.ui.fitViewBtn.hidden, true);
 });
 
+test('Die Ansicht bleibt stehen, wenn der Hinweisstreifen die Kartenflaeche verkleinert', () => {
+  // Der gemeldete Fehler: beim Erweitern sprang die Ansicht dreimal zurueck (Punktauswahl,
+  // zweiter Tipp, „Fertig“). Ursache war nicht die Erweiterung, sondern jede Aenderung der
+  // gemessenen SVG-Hoehe — `#extendPanel` ist ein Geschwister der Zeichenflaeche.
+  const { t } = setup();
+  t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }];
+  t.renderMap();
+  t.beginCustomViewport();                       // ab hier hat der Nutzer die Ansicht selbst gesetzt
+  t.state.viewport.zoom = 8; t.state.viewport.dx = -40; t.state.viewport.dy = 25;
+  t.renderMap();
+  const before = t.toScreen({ x: 10, y: 10 }, t.state.currentTransform);
+  const baseBefore = t.state.viewport.base;
+
+  // Der Hinweisstreifen erscheint und nimmt der Karte Hoehe.
+  t.ui.mapSvg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 300, height: 240 });
+  t.renderMap();
+  assert.strictEqual(t.state.viewport.zoom, 8, 'der Zoom bleibt');
+  assert.strictEqual(t.state.viewport.base, baseBefore, 'die eingefrorene Basis ueberlebt');
+  const after = t.toScreen({ x: 10, y: 10 }, t.state.currentTransform);
+  assert.strictEqual(`${after.x},${after.y}`, `${before.x},${before.y}`, 'und der Punkt steht still');
+
+  // Und wieder zurueck, wenn der Streifen verschwindet.
+  t.ui.mapSvg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 300, height: 300 });
+  t.renderMap();
+  const back = t.toScreen({ x: 10, y: 10 }, t.state.currentTransform);
+  assert.strictEqual(`${back.x},${back.y}`, `${before.x},${before.y}`, 'auch beim Ausblenden');
+
+  // Ohne eigene Geste gilt weiter der Auto-Fit — daran aendert sich ausdruecklich nichts.
+  t.resetViewport({ render: false });
+  t.renderMap();
+  const fitted = t.toScreen({ x: 10, y: 10 }, t.state.currentTransform);
+  t.ui.mapSvg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 300, height: 240 });
+  t.renderMap();
+  assert.notStrictEqual(`${t.toScreen({ x: 10, y: 10 }, t.state.currentTransform).y}`, `${fitted.y}`,
+    'der Auto-Fit folgt der Flaeche wie bisher');
+});
+
+test('Der ganze Erweitern-Ablauf laesst Zoom und Ausschnitt unberuehrt', async () => {
+  const { t } = setup();
+  seedClosedPerimeter(t);
+  t.renderMap();
+  t.beginCustomViewport();
+  t.state.viewport.zoom = 6; t.state.viewport.dx = -30; t.state.viewport.dy = 12;
+  t.renderMap();
+  const shot = () => {
+    const p = t.toScreen({ x: 10, y: 10 }, t.state.currentTransform);
+    return `${t.state.viewport.zoom}|${p.x},${p.y}`;
+  };
+  const before = shot();
+  const points = t.state.activeMap.perimeter;
+
+  // Jeder Schritt aendert die Hoehe des Hinweisstreifens — im Test nachgestellt, weil der
+  // Stub keine echte Textumbruchhoehe kennt.
+  const strip = (h) => { t.ui.mapSvg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 300, height: h }); };
+  t.startExtension();  strip(250); t.renderMap();
+  assert.strictEqual(shot(), before, 'Start der Auswahl');
+  tapPoint(t, points, 1);  strip(240); t.renderMap();
+  assert.strictEqual(shot(), before, 'erster Punkt');
+  tapPoint(t, points, 2);  strip(230); t.renderMap();
+  assert.strictEqual(shot(), before, 'zweiter Punkt (Ankuendigung)');
+  tapPoint(t, points, 2);  await flush(); strip(240); t.renderMap();
+  assert.strictEqual(shot(), before, 'Auftrennen');
+  await t.finishExtension();  strip(300); t.renderMap();
+  assert.strictEqual(shot(), before, '„Fertig“ — auch der Abschluss laesst die Ansicht stehen');
+});
+
+test('Die Erweitern-Hinweise sind kurz und nennen von Anfang an das offene Ende', () => {
+  const { t } = setup();
+  for (const lang of ['de', 'en']) {
+    const texts = t.I18N[lang];
+    // Schritt 1 muss die Regel schon tragen, sonst waehlt man den falschen Punkt zuerst.
+    const first = texts.extendPickFirst;
+    assert.ok(/weitergebaut|building continues/.test(first), `${lang}: ${first}`);
+    // Und kurz bleiben: der Streifen sitzt ueber der Karte und nimmt ihr sonst Hoehe.
+    for (const key of ['extendPickFirst', 'extendPickSecond', 'extendConfirmEdge',
+      'extendConfirmCut', 'extendConfirmCutOne', 'extendWrongContour',
+      'extendOpened', 'extendOpenedCut', 'extendOpenedCutOne']) {
+      assert.ok(texts[key].length <= 80, `${lang}/${key} ist ${texts[key].length} Zeichen: ${texts[key]}`);
+    }
+  }
+  // Einzahl und Mehrzahl stehen grammatisch richtig da.
+  assert.strictEqual(t.tr('extendConfirmCutOne', { b: 3 }).includes('ein Punkt wird'), true);
+  assert.ok(!/\{count\}/.test(t.tr('extendConfirmCut', { b: 3, count: 4 })), 'kein Platzhalterrest');
+  assert.ok(t.tr('extendConfirmCut', { b: 3, count: 4 }).includes('4 Punkte'), 'Mehrzahl mit Zahl');
+});
+
 test('Der Zoom reicht deutlich weiter als bis v64 — Minimum und Kennlinie unveraendert', () => {
   const { t } = setup();
   // Gemessen wird die Wirkung, nicht die Konstante: 30-fach war vorher (Grenze 14) nicht
@@ -424,9 +633,9 @@ test('Der Zoom reicht deutlich weiter als bis v64 — Minimum und Kennlinie unve
   t.state.activeMap.perimeter = [{ x: 0, y: 0 }, { x: 5, y: 5 }];
   t.renderMap();
   t.beginCustomViewport();
-  t.state.viewport.zoom = 30; t.clampViewport();
-  assert.strictEqual(t.state.viewport.zoom, 30, 'die 30-fache Vergroesserung bleibt stehen');
-  assert.ok(t.MAX_USER_ZOOM >= 40, `Obergrenze deutlich angehoben: ${t.MAX_USER_ZOOM}`);
+  t.state.viewport.zoom = 120; t.clampViewport();
+  assert.strictEqual(t.state.viewport.zoom, 120, 'die 120-fache Vergroesserung bleibt stehen');
+  assert.ok(t.MAX_USER_ZOOM >= 200, `Obergrenze deutlich angehoben: ${t.MAX_USER_ZOOM}`);
   assert.strictEqual(t.MIN_USER_ZOOM, 0.6, 'das Minimum bleibt unveraendert');
 
   // Bei voller Vergroesserung liegen zwei 20 cm entfernte Punkte wirklich auseinander — genau
@@ -2392,19 +2601,17 @@ test('Der zweite Tipp kuendigt nur an, wie viele Punkte wegfallen — er loescht
   // Gefuehrt wird im Hinweisbereich, nicht in der schmalen Werkzeugleiste.
   assert.strictEqual(t.ui.extendPanel.hidden, false, 'der Hinweisbereich erscheint');
   assert.strictEqual(t.ui.extendWrap.hidden, true, 'der Startknopf tritt dafuer zurueck');
-  assert.ok(t.ui.extendPanelText.textContent.includes('Schritt 1'), t.ui.extendPanelText.textContent);
   assert.strictEqual(t.ui.extendCancelBtn.hidden, false, 'abbrechen geht, solange nichts geaendert ist');
   assert.strictEqual(t.ui.extendDoneBtn.hidden, true);
 
   const points = t.state.activeMap.perimeter;
   tapPoint(t, points, 0);                       // A
   assert.strictEqual(t.state.extension.firstIndex, 0);
-  assert.ok(t.ui.extendPanelText.textContent.includes('Schritt 2'), t.ui.extendPanelText.textContent);
-  assert.ok(/kein Nachbar/.test(t.ui.extendPanelText.textContent), 'die neue Regel steht im Text');
+  assert.ok(/hier wird weitergebaut/.test(t.ui.extendPanelText.textContent), t.ui.extendPanelText.textContent);
 
   tapPoint(t, points, 2);                       // C — zwei Kanten weiter
   assert.strictEqual(t.state.extension.secondIndex, 2, 'der zweite Punkt ist vorgemerkt');
-  assert.ok(/werden 1 Punkte gelöscht/.test(t.ui.extendPanelText.textContent), t.ui.extendPanelText.textContent);
+  assert.ok(/ein Punkt wird gelöscht/.test(t.ui.extendPanelText.textContent), t.ui.extendPanelText.textContent);
   assert.ok(t.ui.extendPanelText.textContent.includes('Punkt 3'), 'und er ist benannt');
   assert.strictEqual(perimeterXY(t), before, 'angekuendigt ist noch nicht geloescht');
   assert.strictEqual(t.state.activeMap.perimeterClosed, true, 'sie bleibt bis dahin geschlossen');
@@ -2423,7 +2630,7 @@ test('Der zweite Tipp kuendigt nur an, wie viele Punkte wegfallen — er loescht
   assert.strictEqual(t.state.extension.phase, 'adding');
   assert.strictEqual(t.state.activeMap.perimeterClosed, false, 'jetzt ist die Kontur offen');
   assert.strictEqual(t.state.activeMap.perimeter.length, 4, 'ein Punkt ist weggefallen');
-  assert.ok(/1 Punkte gelöscht/.test(t.ui.extendPanelText.textContent),
+  assert.ok(/Ein Punkt gelöscht/.test(t.ui.extendPanelText.textContent),
     `die Zahl steht auch hinterher noch da: ${t.ui.extendPanelText.textContent}`);
 });
 
@@ -2632,7 +2839,7 @@ test('Markierung, Hinweiszeile und Vorschau nennen dasselbe Ende wie das Anhaeng
   tapPoint(t, t.state.activeMap.perimeter, 1);                     // B zuerst
   assert.strictEqual(markedIndices(t).join(','), '1', 'schon in der Auswahlphase markiert');
   assert.ok(t.ui.extendPanelText.textContent.includes('Punkt 2'), t.ui.extendPanelText.textContent);
-  assert.ok(/zuerst getippte/.test(t.ui.extendPanelText.textContent), 'die Regel steht im Text');
+  assert.ok(/hier wird weitergebaut/.test(t.ui.extendPanelText.textContent), 'die Regel steht im Text');
   const guide = () => t.ui.robotLayer.children.filter((c) => (c.attributes?.class || '').includes('extend-guide-line'));
   t.renderMap();
   assert.strictEqual(guide().length, 0,

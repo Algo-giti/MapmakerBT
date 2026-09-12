@@ -52,6 +52,11 @@ const LOG_EXPORT_LIMIT = 100;
 const LOG_BOTTOM_TOLERANCE_PX = 24;
 const POSITION_SMOOTHING_WINDOW_MS = 2000;
 const POSITION_SMOOTHING_MAX_SAMPLES = 10;
+// Fenster des Streuungs-Hoechstwerts. Bewusst nur die **Hoechstwerte** ueber 30 s, nicht die
+// Rohfixes: `state.fixHistory` ist auf POSITION_SMOOTHING_MAX_SAMPLES gedeckelt und traegt gar
+// nicht so weit zurueck — und fuer die Frage „war es zwischendurch schlechter?“ genuegt die
+// bereits gerechnete Zahl.
+const SCATTER_MAX_WINDOW_MS = 30000;
 const DRIVE_POINTER_MIN_INTERVAL_MS = 160;
 /**
  * Im Ruhezustand (keine Fahreingabe) geht laufend ein `AT+M,0,0` raus, damit ein **einzelnes
@@ -114,13 +119,17 @@ const I18N = {
     extendExclusion: 'Ausschlussfläche erweitern', extendExclusionShort: 'Erweitern',
     extendCancel: 'Erweitern abbrechen', extendCancelShort: 'Abbrechen',
     extendDone: 'Erweiterung abschließen', extendDoneShort: 'Fertig',
-    extendPickFirst: 'Schritt 1 von 2: Den ersten Punkt antippen, an dem die Kontur geöffnet werden soll.',
-    extendPickSecond: 'Schritt 2 von 2: Punkt {n} ist gewählt und markiert — an ihm wird später weitergebaut, denn der zuerst getippte Punkt wird immer das offene Ende. Jetzt den zweiten Punkt antippen; er muss kein Nachbar sein. Die Punkte dazwischen werden gelöscht, und zwar auf der kürzeren Seite.',
-    extendConfirmEdge: 'Punkt {n} und Punkt {b} liegen nebeneinander — es wird kein Punkt gelöscht. Zum Öffnen Punkt {b} noch einmal antippen.',
-    extendConfirmCut: 'Zwischen Punkt {n} und Punkt {b} werden {count} Punkte gelöscht. Zum Öffnen Punkt {b} noch einmal antippen; ein anderer Punkt ändert die Auswahl.',
-    extendWrongContour: 'Bitte einen Punkt der Kontur antippen, die erweitert werden soll.',
-    extendOpened: 'Kontur geöffnet. Neue Punkte hängen sich an den markierten Punkt {n} an. Jetzt aufnehmen und danach „Fertig“ antippen.',
-    extendOpenedCut: 'Kontur geöffnet, {count} Punkte gelöscht. Neue Punkte hängen sich an den markierten Punkt {n} an. Jetzt aufnehmen und danach „Fertig“ antippen.',
+    gpsScatter: 'Streuung {cm} cm (max 30 s: {maxCm} cm) · {n} Fixes',
+    gpsScatterWaiting: 'Streuung – · {n} Fixes',
+    extendPickFirst: 'Ersten Punkt antippen — an ihm wird danach weitergebaut.',
+    extendPickSecond: 'Punkt {n}: hier wird weitergebaut. Jetzt zweiten Punkt antippen, beliebig.',
+    extendConfirmEdge: 'Punkt {b}: kein Punkt geht verloren. Zum Öffnen erneut antippen.',
+    extendConfirmCutOne: 'Punkt {b}: ein Punkt wird gelöscht. Zum Öffnen erneut antippen.',
+    extendConfirmCut: 'Punkt {b}: {count} Punkte werden gelöscht. Zum Öffnen erneut antippen.',
+    extendWrongContour: 'Bitte einen Punkt dieser Kontur antippen.',
+    extendOpened: 'Offen. Neue Punkte hängen an Punkt {n}. Danach „Fertig“.',
+    extendOpenedCutOne: 'Ein Punkt gelöscht. Neue Punkte hängen an Punkt {n}. Danach „Fertig“.',
+    extendOpenedCut: '{count} Punkte gelöscht. Neue Punkte hängen an Punkt {n}. Danach „Fertig“.',
     extendFinished: 'Erweiterung abgeschlossen, die Kontur ist wieder geschlossen.',
     extendCancelled: 'Erweitern abgebrochen — an der Kontur wurde nichts geändert.',
     undoAction: 'Letzten Bearbeitungsschritt rückgängig machen',
@@ -324,6 +333,7 @@ const I18N = {
     helpLockTitle: 'Kartensperre', helpLockText: 'Fertige Karten lassen sich gegen versehentliche Änderungen sperren.',
     viewHelpTitle: 'Ansicht & Bedienung',
     helpRtkTitle: 'RTK-Anzeige', helpRtkText: 'Das Abzeichen in der Kopfzeile zeigt Fix, Float oder No Fix und die Satelliten als Mäher/Station. Nur bei einem echten Fix ist die Position zentimetergenau.',
+    helpScatterTitle: 'Streuung der Position', helpScatterText: 'In der Kartenleiste steht, wie weit die Messwerte der letzten zwei Sekunden auseinanderliegen — der größte Abstand zu ihrem Mittelwert in Zentimetern, dahinter der höchste Wert der letzten 30 Sekunden und die Zahl der Messwerte im Fenster. Kleine Zahlen heißen ruhige Position, ein großer 30-Sekunden-Wert verrät einen Ausreißer, der längst vorbei ist. Weniger Messwerte als sonst deuten auf eine Funklücke. Die Anzeige ist reine Information: sie sperrt nichts und ändert weder Aufnahme noch Automatik.',
     helpFixOnlyTitle: 'Nur bei RTK FIX', helpFixOnlyText: 'Im Menü unter Aufnahme. Ist die Option aktiv, bleibt jede Aufnahme bei Float oder No Fix gesperrt — auch die Automatik.',
     helpThemeTitle: 'Hell & Dunkel', helpThemeText: 'Drei Stufen im Menü unter Ansicht & Maßstab: Hell, Dunkel oder der Vorgabe des Systems folgen.',
     helpHandedTitle: 'Bedienseite', helpHandedText: 'Die Umstellung auf Linkshänder spiegelt die gesamte Bedienung: Werkzeuge und Karteninfo in der Kartenleiste, Aufnahme-Knopf und Fahrtanzeige.',
@@ -364,13 +374,17 @@ const I18N = {
     extendExclusion: 'Extend exclusion area', extendExclusionShort: 'Extend',
     extendCancel: 'Cancel extending', extendCancelShort: 'Cancel',
     extendDone: 'Finish extending', extendDoneShort: 'Done',
-    extendPickFirst: 'Step 1 of 2: tap the first point where the contour should open.',
-    extendPickSecond: 'Step 2 of 2: point {n} is selected and highlighted — building continues there later, because the point tapped first always becomes the open end. Now tap the second point; it need not be a neighbour. The points in between are deleted, on the shorter side.',
-    extendConfirmEdge: 'Point {n} and point {b} are next to each other — no point will be deleted. Tap point {b} once more to open.',
-    extendConfirmCut: 'Deleting {count} points between point {n} and point {b}. Tap point {b} once more to open; tapping another point changes the selection.',
-    extendWrongContour: 'Please tap a point of the contour you want to extend.',
-    extendOpened: 'Contour opened. New points attach to the highlighted point {n}. Capture them, then tap “Done”.',
-    extendOpenedCut: 'Contour opened, {count} points deleted. New points attach to the highlighted point {n}. Capture them, then tap “Done”.',
+    gpsScatter: 'Scatter {cm} cm (30 s max: {maxCm} cm) · {n} fixes',
+    gpsScatterWaiting: 'Scatter – · {n} fixes',
+    extendPickFirst: 'Tap the first point — building continues there afterwards.',
+    extendPickSecond: 'Point {n}: building continues here. Now tap the second point, any one.',
+    extendConfirmEdge: 'Point {b}: no point is lost. Tap again to open.',
+    extendConfirmCutOne: 'Point {b}: one point will be deleted. Tap again to open.',
+    extendConfirmCut: 'Point {b}: {count} points will be deleted. Tap again to open.',
+    extendWrongContour: 'Please tap a point of this contour.',
+    extendOpened: 'Open. New points attach to point {n}. Then “Done”.',
+    extendOpenedCutOne: 'One point deleted. New points attach to point {n}. Then “Done”.',
+    extendOpenedCut: '{count} points deleted. New points attach to point {n}. Then “Done”.',
     extendFinished: 'Extension finished, the contour is closed again.',
     extendCancelled: 'Extending cancelled — nothing on the contour was changed.',
     undoAction: 'Undo the last editing step',
@@ -574,6 +588,7 @@ const I18N = {
     helpLockTitle: 'Map lock', helpLockText: 'Finished maps can be locked against accidental changes.',
     viewHelpTitle: 'View & operation',
     helpRtkTitle: 'RTK display', helpRtkText: 'The badge in the header shows Fix, Float or No Fix and the satellites as mower/station. Only a real fix gives centimetre-accurate positions.',
+    helpScatterTitle: 'Position scatter', helpScatterText: 'The map bar shows how far the readings of the last two seconds lie apart — the largest distance from their mean in centimetres, followed by the highest value of the last 30 seconds and the number of readings in the window. Small numbers mean a steady position; a large 30-second value reveals an outlier that is long gone. Fewer readings than usual point to a radio gap. The display is information only: it blocks nothing and changes neither capture nor automatic capture.',
     helpFixOnlyTitle: 'Only with RTK FIX', helpFixOnlyText: 'In the menu under Capture. While this option is on, every capture stays blocked on Float or No Fix — automatic capture included.',
     helpThemeTitle: 'Light & dark', helpThemeText: 'Three settings in the menu under View & scale: light, dark, or follow the system setting.',
     helpHandedTitle: 'Operating side', helpHandedText: 'Switching to left-handed mirrors the whole layout: tools and map info in the map bar, capture button and drive status.',
@@ -675,7 +690,7 @@ const ui = {
   moveFabWrap: $('moveFabWrap'), movePointBtn: $('movePointBtn'), moveFabLabel: $('moveFabLabel'),
   captureFabWrap: $('captureFabWrap'), addPointBtn: $('addPointBtn'), captureProgress: $('captureProgress'), captureButtonTitle: $('captureButtonTitle'), captureButtonHint: $('captureButtonHint'),
   mapToolbar: $('mapToolbar'), contourStatus: $('contourStatus'),
-  mapNameLabel: $('mapNameLabel'), mapSummary: $('mapSummary'), mapDistanceInfo: $('mapDistanceInfo'), pointStatus: $('pointStatus'), activeMapName: $('activeMapName'), saveState: $('saveState'),
+  mapNameLabel: $('mapNameLabel'), mapSummary: $('mapSummary'), gpsScatter: $('gpsScatter'), mapDistanceInfo: $('mapDistanceInfo'), pointStatus: $('pointStatus'), activeMapName: $('activeMapName'), saveState: $('saveState'),
   // Fahren
   driveZone: $('driveZone'), driveJoystick: $('driveJoystick'), joystickKnob: $('joystickKnob'), driveState: $('driveState'),
   joystickSizeSelect: $('joystickSizeSelect'), handedSelect: $('handedSelect'),
@@ -763,6 +778,9 @@ const state = {
   selectedPoint: null,
   selectedArea: null,
   fixHistory: [],
+  // Je empfangenem Fix ein Eintrag { at, cm } — die Streuung des 2-s-Fensters zu diesem
+  // Zeitpunkt. Reine Anzeige, geht nirgends in die Aufnahme ein.
+  scatterHistory: [],
   // Nutzer-Zoom/-Verschiebung der Karte; solange custom=false folgt die Ansicht dem Auto-Fit.
   viewport: { zoom: 1, dx: 0, dy: 0, custom: false, base: null },
   gesture: null,
@@ -2218,6 +2236,7 @@ function refreshCaptureState() {
   refreshUndoButton();
   ui.closeAndNewWrap.hidden = !canCloseAndStartNew();
   refreshContourStatus();
+  refreshGpsScatter();
   // In der Leiste steht nur noch die Werkzeuggruppe. Sind alle Werkzeuge ausgeblendet (etwa
   // waehrend der Automatik), bliebe sonst ein leerer Streifen samt Trennlinie stehen und
   // naehme der Karte Hoehe weg.
@@ -2331,6 +2350,7 @@ function handleLine(rawLine) {
     if (Number.isFinite(parsed.x) && Number.isFinite(parsed.y)) {
       state.fixHistory.push({ x: parsed.x, y: parsed.y, at: Date.now() });
       if (state.fixHistory.length > POSITION_SMOOTHING_MAX_SAMPLES) state.fixHistory.shift();
+      rememberScatter();
     }
     state.telemetry = {
       x: parsed.x,
@@ -3316,6 +3336,70 @@ function smoothedPosition() {
   return { x: sum.x / samples.length, y: sum.y / samples.length, samples: samples.length };
 }
 
+/**
+ * **Streuung der GPS-Fixes** im selben 2-s-Fenster, das auch `smoothedPosition()` mittelt:
+ * groesster Abstand eines Fixes zum Mittelwert, in Zentimetern, dazu die Zahl der Fixes im
+ * Fenster. Letztere macht Funkluecken sichtbar — bei 500 ms Abfragetakt sind vier Fixes der
+ * Normalfall, einer bedeutet, dass drei Antworten ausgeblieben sind.
+ *
+ * **Reine Anzeige.** Nichts davon geht in `pointFromTelemetry()`, `capturePreconditionKey()`
+ * oder die Automatik ein; die Aufnahme verhaelt sich unveraendert.
+ */
+function fixScatter() {
+  const cutoff = Date.now() - POSITION_SMOOTHING_WINDOW_MS;
+  const samples = state.fixHistory.filter((f) => f.at >= cutoff);
+  if (samples.length < 2) return { cm: null, samples: samples.length };
+  const mean = samples.reduce((acc, f) => ({ x: acc.x + f.x, y: acc.y + f.y }), { x: 0, y: 0 });
+  mean.x /= samples.length;
+  mean.y /= samples.length;
+  const radius = samples.reduce((max, f) => Math.max(max, Math.hypot(f.x - mean.x, f.y - mean.y)), 0);
+  return { cm: radius * 100, samples: samples.length };
+}
+
+/**
+ * Haelt den Verlauf der Streuung fest — **einmal je empfangenem Fix**, nicht je Neuzeichnen:
+ * ein Eintrag je Zeichenvorgang wuerde denselben Wert mit frischem Zeitstempel nachschieben und
+ * einen laengst abgelaufenen Hoechstwert ueber die 30 s hinaus am Leben halten.
+ */
+function rememberScatter() {
+  const now = Date.now();
+  const scatter = fixScatter();
+  if (scatter.cm !== null) state.scatterHistory.push({ at: now, cm: scatter.cm });
+  const cutoff = now - SCATTER_MAX_WINDOW_MS;
+  while (state.scatterHistory.length && state.scatterHistory[0].at < cutoff) state.scatterHistory.shift();
+}
+
+/** Hoechste Streuung der letzten SCATTER_MAX_WINDOW_MS, oder null, solange nichts vorliegt. */
+function scatterMaxCm() {
+  const cutoff = Date.now() - SCATTER_MAX_WINDOW_MS;
+  const recent = state.scatterHistory.filter((e) => e.at >= cutoff);
+  return recent.length ? recent.reduce((max, e) => Math.max(max, e.cm), 0) : null;
+}
+
+/**
+ * Der kompakte Text fuer das Streuungsfeld. Leer, solange ueberhaupt kein Fix vorliegt — dann
+ * verschwindet das Feld per `.info-chip:empty`, statt eine Null zu behaupten. Ein einzelner Fix
+ * ergibt noch keine Streuung, die **Zahl der Fixes** wird aber trotzdem gezeigt: genau daran ist
+ * eine Funkluecke zu erkennen.
+ */
+function gpsScatterText() {
+  if (!telemetryIsFresh() && !state.fixHistory.length) return '';
+  const scatter = fixScatter();
+  if (!state.fixHistory.length) return '';
+  if (scatter.cm === null) return tr('gpsScatterWaiting', { n: scatter.samples });
+  const max = scatterMaxCm();
+  return tr('gpsScatter', {
+    cm: Math.round(scatter.cm),
+    maxCm: Math.round(max === null ? scatter.cm : Math.max(max, scatter.cm)),
+    n: scatter.samples,
+  });
+}
+
+function refreshGpsScatter() {
+  if (!ui.gpsScatter) return;
+  ui.gpsScatter.textContent = gpsScatterText();
+}
+
 function pointFromTelemetry() {
   const t = state.telemetry;
   const smooth = smoothedPosition();
@@ -3711,7 +3795,8 @@ function refreshToolbarVisibility() {
   // eine davon gefuellt ist, bleibt die Leiste stehen — sonst verschwaende ausgerechnet sie.
   const hasInfo = Boolean((ui.mapNameLabel?.textContent || '').trim())
     || Boolean((ui.mapSummary?.textContent || '').trim())
-    || Boolean((ui.contourStatus?.textContent || '').trim());
+    || Boolean((ui.contourStatus?.textContent || '').trim())
+    || Boolean((ui.gpsScatter?.textContent || '').trim());
   ui.mapToolbar.hidden = !hasInfo && !slots.some((slot) => slot && !slot.hidden);
 }
 
@@ -3807,11 +3892,10 @@ function svgEl(name, attrs = {}) {
 
 const MAP_PADDING = 24; // Rand um die Karte in viewBox-Einheiten (= CSS-Pixel)
 const MIN_USER_ZOOM = 0.6;
-// Obergrenze des Nutzer-Zooms. Von 14 auf 60 angehoben, damit sich einzelne Punkte einer
-// dichten Kontur noch trennen lassen: bei 14 lagen benachbarte Punkte im Abstand von 20 cm auf
-// einem 360-px-Telefon noch uebereinander. Minimum und Schrittweite (Rad 1,15 je Raste,
+// Obergrenze des Nutzer-Zooms: 14 (bis v64) -> 60 (v65) -> 200 (v66), damit sich auch sehr dicht
+// gesetzte Punkte noch einzeln treffen lassen. Minimum und Schrittweite (Rad 1,15 je Raste,
 // Pinch stufenlos) bleiben unveraendert.
-const MAX_USER_ZOOM = 60;
+const MAX_USER_ZOOM = 200;
 
 /**
  * Der viewBox war fest auf 1000x680. Auf einem hochkant gehaltenen Telefon passt dieses
@@ -3826,8 +3910,22 @@ function updateViewBox() {
   if (w === state.viewBox.w && h === state.viewBox.h) return state.viewBox;
   state.viewBox = { w, h };
   ui.mapSvg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-  // Eine eingefrorene Basisansicht passt nicht mehr zur neuen Flaeche.
-  if (state.viewport.custom) state.viewport.base = null;
+  // **Die eingefrorene Basis bleibt stehen.** Frueher wurde sie hier verworfen ("passt nicht mehr
+  // zur neuen Flaeche") — und genau das riss dem Nutzer beim Erweitern dreimal die Ansicht weg:
+  // der Hinweisstreifen `#extendPanel` ist ein Geschwister von `.map-canvas-area` (`flex: 1 1
+  // auto`), also aendert jedes Ein- und Ausblenden **und jede andere Textlaenge darin** die
+  // gemessene Hoehe des SVG. Mit verworfener Basis rechnet `activeTransform()` den Auto-Fit neu
+  // und springt auf die aktuelle Geometrie.
+  //
+  // Behalten wir sie, bleibt der Inhalt an denselben viewBox-Koordinaten stehen: die gewonnene
+  // oder verlorene Hoehe faellt unten an, es bewegt sich nichts.
+  //
+  // **Auch nicht geklemmt**, obwohl das naheliegt: `clampViewport()` haelt die Karte im Bild, und
+  // seine Grenzen haengen an der Flaechenhoehe — bei starker Vergroesserung schiebt schon ein um
+  // 60 px niedrigeres SVG den Ausschnitt messbar zurecht. Das waere wieder genau die Bewegung,
+  // die hier abgestellt werden soll. Der Fall, fuer den das Verwerfen gedacht war (Drehen des
+  // Geraets, Karte danach weit ausserhalb), bleibt erreichbar: jede Zieh- oder Zoomgeste klemmt
+  // ohnehin, und „Ansicht zuruecksetzen“ steht in genau diesem Zustand sichtbar auf der Karte.
   return state.viewBox;
 }
 
@@ -4145,6 +4243,7 @@ function renderMap() {
   }
 
   refreshContourStatus();
+  refreshGpsScatter();
   drawSelectionGuide(transform);
   drawExtensionGuide(transform);
   drawDistanceGuide(transform);
@@ -5627,10 +5726,22 @@ async function openContourForExtension(firstIndex, secondIndex) {
   state.validationResult = null;
   // Wie viele Punkte weggefallen sind, steht auch hinterher noch da — sonst muesste der Nutzer
   // die Zahl aus dem verschwundenen Hinweis im Kopf behalten, um das Undo einordnen zu koennen.
-  setExtensionHint(cut.removed > 0 ? 'extendOpenedCut' : 'extendOpened', { count: cut.removed });
+  setExtensionHint(extendCutHintKey(cut.removed, true), { count: cut.removed });
   await saveActiveMap();
   renderMap();
   refreshCaptureState();
+}
+
+/**
+ * Der Hinweisschluessel zu einer Loeschung — **eine** Stelle fuer die Ankuendigung (`done: false`)
+ * und die Rueckmeldung danach (`done: true`), damit beide nie verschiedene Faelle benennen.
+ * Die Einzahl bekommt einen eigenen Schluessel: „1 Punkte“ stand sichtbar falsch da, seit der
+ * Text kurz genug ist, dass die Zahl darin auffaellt.
+ */
+function extendCutHintKey(removed, done) {
+  if (removed === 0) return done ? 'extendOpened' : 'extendConfirmEdge';
+  const base = done ? 'extendOpened' : 'extendConfirm';
+  return removed === 1 ? `${base}CutOne` : `${base}Cut`;
 }
 
 /**
@@ -5667,8 +5778,7 @@ async function handleExtensionTap(item) {
   if (ext.secondIndex !== item.index) {
     ext.secondIndex = item.index;
     const cut = extensionCut(points, ext.firstIndex, item.index);
-    setExtensionHint(cut.removed > 0 ? 'extendConfirmCut' : 'extendConfirmEdge',
-      { b: item.index + 1, count: cut.removed });
+    setExtensionHint(extendCutHintKey(cut.removed, false), { b: item.index + 1, count: cut.removed });
     renderMap();
     return;
   }

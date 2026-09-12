@@ -74,7 +74,10 @@ Die App besteht aus drei Zonen:
 - **Kopfzeile** – Menü, Verbindungsstatus, Moduswahl, RTK-Status und Akku.
 - **Karte** – nimmt den größten Teil des Bildschirms ein. Ganz oben liegt eine schmale,
   **zweizeilige Werkzeugleiste**: auf der einen Seite in Zeile 1 der Kartenname und darunter,
-  kleiner, die Punktzahl und die betroffene Kontur samt Zustand („Perimeter · geschlossen“); auf
+  kleiner, die Punktzahl, die betroffene Kontur samt Zustand („Perimeter · geschlossen“) und die
+  **Streuung der Position** („Streuung 3 cm (max 30 s: 11 cm) · 4 Fixes“ – größter Abstand der
+  Messwerte der letzten zwei Sekunden zu ihrem Mittelwert, dahinter der höchste Wert der letzten
+  30 Sekunden und die Zahl der Messwerte; reine Anzeige, sie sperrt nichts); auf
   der anderen Seite das Lösch-Werkzeug und, wenn sie gerade zutreffen, „Punkt davor/danach“,
   „Schließen & neu“ und „Erweitern“.
   Darunter die Kartenfläche mit Mäherposition, aufgenommenen Punkten und deren Verbindungslinien.
@@ -525,8 +528,11 @@ The app has three zones:
 
 - **Header** – menu, connection status, mode selection, RTK status and battery.
 - **Map** – takes up most of the screen. A slim, **two-line tool bar** sits at the very top: on one
-  side line 1 holds the map name and, smaller beneath it, the point count and the contour
-  concerned together with its state (“Perimeter · closed”); on the other side the delete tool and,
+  side line 1 holds the map name and, smaller beneath it, the point count, the contour concerned
+  together with its state (“Perimeter · closed”) and the **position scatter** (“Scatter 3 cm
+  (30 s max: 11 cm) · 4 fixes” – the largest distance of the last two seconds’ readings from their
+  mean, followed by the highest value of the last 30 seconds and the number of readings; display
+  only, it blocks nothing); on the other side the delete tool and,
   whenever they apply, “Insert before/after”, “Close & new” and “Extend”. Below it the map itself
   with the mower position, the recorded points and their connecting lines. Only four controls sit
   on the map: the reset-view icon in one top corner, the capture button at the bottom with the

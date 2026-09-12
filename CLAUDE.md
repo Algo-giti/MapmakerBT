@@ -1262,6 +1262,67 @@ diese Liste mit Grund je Eintrag und schlägt sowohl bei einer nicht gelisteten 
 bei einem zusätzlichen Vorkommen in einer gelisteten an — dieselbe Bauart wie der Wächter gegen
 Handzählungen neben `hasUsablePolygon()`.
 
+### Die eigene Ansicht bleibt stehen (Stand v66)
+
+**Sobald der Nutzer selbst gezoomt oder verschoben hat (`state.viewport.custom`), darf sich die
+Ansicht ohne seine Geste nicht mehr bewegen.** Gemeldet wurde das Gegenteil: beim Erweitern sprang
+die Ansicht dreimal zurück — bei der Punktauswahl, beim zweiten Tipp und bei „Fertig“ —, sodass die
+Stelle jedes Mal neu zu suchen war.
+
+**Die Ursache lag nicht in der Erweiterung.** `updateViewBox()` (`app.js`) verwarf die eingefrorene
+Basis (`state.viewport.base = null`), sobald sich die **gemessene Höhe des SVG** änderte;
+`activeTransform()` rechnete daraufhin den Auto-Fit neu. Der Hinweisstreifen `#extendPanel` ist ein
+Geschwister von `.map-canvas-area` (`flex: 1 1 auto`) — also löst jedes Ein- und Ausblenden **und
+jede andere Textlänge darin** genau das aus. Deshalb traf es auch den Abschluss: „Fertig“ blendet
+den Streifen aus.
+
+**Die Basis bleibt jetzt stehen.** Der Inhalt behält damit dieselben viewBox-Koordinaten; die
+gewonnene oder verlorene Höhe fällt unten an, es bewegt sich nichts.
+
+**Bewusst wird auch nicht geklemmt.** `clampViewport()` an dieser Stelle läge nahe (es war der
+Zweck des alten Verwerfens: nach einer stark veränderten Fläche soll die Karte nicht aus dem Bild
+ragen), verschöbe aber bei starker Vergrößerung den Ausschnitt schon bei 60 px weniger Höhe —
+nachgerechnet und per Test festgehalten. Das wäre wieder dieselbe ungefragte Bewegung. Der
+Extremfall bleibt behebbar: jede Zieh- und Zoomgeste klemmt ohnehin, und „Ansicht zurücksetzen“
+steht in genau diesem Zustand sichtbar auf der Karte.
+
+**Der Auto-Fit ist unangetastet.** Solange `custom` false ist, folgt die Ansicht weiterhin der
+Geometrie (jeder aufgenommene Punkt passt sie an) — das ist das gewollte Verhalten und war nie der
+gemeldete Fehler.
+
+**Die übrigen Stellen, die die Ansicht zurücksetzen, bleiben unverändert** (geprüft, alle
+absichtlich): `setActiveMapById()` beim Kartenwechsel, `init()` beim Start und der Knopf
+`#fitViewBtn`, der genau dafür da ist.
+
+### Streuung der GPS-Fixes (Stand v67)
+
+**Reine Anzeige.** In der zweiten Zeile der Werkzeugleiste steht neben Punktzahl und Konturzustand
+ein drittes Feld `#gpsScatter`: „Streuung 3 cm (max 30 s: 11 cm) · 4 Fixes“. Es sperrt nichts,
+warnt nicht und ändert weder Aufnahme noch Automatik — ein ui-Test hält das nicht nur am Verhalten
+fest, sondern auch per Quelltextsuche: `fixScatter()` und `scatterMaxCm()` dürfen **ausschließlich**
+von `gpsScatterText()` und `rememberScatter()` gelesen werden.
+
+**Dasselbe 2-s-Fenster wie die Glättung.** `fixScatter()` filtert `state.fixHistory` mit
+`POSITION_SMOOTHING_WINDOW_MS` — dieselbe Grenze, die `smoothedPosition()` benutzt; der Test prüft
+das knapp an der Kante (1,9 s zählt, 2,1 s nicht), weil ein zu großzügiges Fenster sonst gar nicht
+auffiele. Gemeldet wird der **Radius** der Punktwolke, also der größte Abstand eines Fixes zu ihrem
+Mittelwert, nicht der Durchmesser.
+
+**Der 30-s-Höchstwert führt keine Rohfixes mit.** `state.fixHistory` ist auf
+`POSITION_SMOOTHING_MAX_SAMPLES` (10) gedeckelt und reicht gar nicht so weit zurück. Stattdessen
+legt `rememberScatter()` **je empfangenem Fix** einen fertig gerechneten Wert in
+`state.scatterHistory` ab und wirft ab, was älter als `SCATTER_MAX_WINDOW_MS` (30 s) ist.
+**Je Fix, nicht je Neuzeichnen:** ein Eintrag je Zeichenvorgang schöbe denselben Wert mit frischem
+Zeitstempel nach und hielte einen längst abgelaufenen Höchstwert über die 30 s hinaus am Leben.
+
+**Die Zahl der Fixes steht dabei, weil sie Funklücken sichtbar macht.** Bei 500 ms Abfragetakt sind
+vier Fixes im Fenster der Normalfall; einer heißt, dass drei Antworten ausgeblieben sind. Deshalb
+zeigt `gpsScatterText()` bei **einem** Fix ausdrücklich „Streuung – · 1 Fixes“ statt gar nichts —
+nur ganz ohne Fix bleibt das Feld leer und verschwindet per `.info-chip:empty`.
+
+**Keine neue Einstellung**, kein neuer Schwellwert, keine neue Zahl im Menü: alles ist aus
+`state.fixHistory` und den vorhandenen Konstanten abgeleitet.
+
 ### Erweitern: beliebiger zweiter Punkt (Stand v65)
 
 **Der zweite Punkt muss kein Nachbar mehr sein.** Zwei Punkte teilen eine geschlossene Kontur in
@@ -1481,9 +1542,9 @@ einem `<rect>` mit fester Größe.
 Nutzer-Zoom: `state.viewport = { zoom, dx, dy, custom, base }`. Solange `custom` false ist, folgt
 die Ansicht dem Auto-Fit (`computeTransform`); ab der ersten Geste wird die Basis eingefroren
 (`beginCustomViewport()`) und `activeTransform()` legt Zoom/Verschiebung darüber. `clampViewport()`
-hält Zoom in `MIN_USER_ZOOM`/`MAX_USER_ZOOM` (0,6–60; die Obergrenze ist in v65 von 14 auf 60
-gestiegen, damit sich Punkte einer dichten Kontur noch trennen lassen — Minimum und Schrittweite
-sind unverändert) und verhindert, dass die Karte aus dem Bild
+hält Zoom in `MIN_USER_ZOOM`/`MAX_USER_ZOOM` (0,6–**200**; die Obergrenze ist 14 → 60 (v65) →
+200 (v66) gestiegen, damit sich auch sehr dicht gesetzte Punkte einzeln treffen lassen — Minimum
+und Schrittweite sind unverändert) und verhindert, dass die Karte aus dem Bild
 geschoben wird. Trefferflächen der Punkte: `state.hitRadiusUnits` wird je Render aus
 `svgMetrics()` so gesetzt, dass immer mindestens 44 × 44 px Touch-Ziel entstehen.
 
@@ -2229,6 +2290,42 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-12: **v67 — Streuung der GPS-Fixes sichtbar.** Neues Feld in der zweiten Zeile der
+  Werkzeugleiste: „Streuung 3 cm (max 30 s: 11 cm) · 4 Fixes“. Gerechnet wird aus dem bereits
+  vorhandenen `state.fixHistory` im **selben 2-s-Fenster** wie die Positions-Glättung — Radius der
+  Punktwolke (größter Abstand zum Mittelwert), dazu der Höchstwert der letzten 30 s aus dem neuen
+  Verlauf `state.scatterHistory`, der **je empfangenem Fix** fortgeschrieben wird (je Neuzeichnen
+  hielte er einen abgelaufenen Ausreißer künstlich am Leben). Die Zahl der Fixes steht dabei, weil
+  bei 500 ms Takt vier der Normalfall sind und eine Funklücke sich nur daran zeigt. **Keine neue
+  Einstellung, keine Sperre, kein Hinweis** — Aufnahme, `capturePreconditionKey()` und Automatik
+  sind unberührt; ein Test hält das am Verhalten **und** per Quelltextsuche fest (nur Anzeige und
+  Verlauf dürfen die Rechnung lesen). Einzelheiten im Abschnitt „Streuung der GPS-Fixes". Neu:
+  4 ui-Fälle (212). Gegen acht simulierte Rückfälle geprüft; einer lief zunächst durch — die
+  Zusicherung „dasselbe Fenster wie die Glättung" prüfte mit 9 s Abstand und hätte auch ein 8-s-
+  Fenster durchgewinkt, sie misst jetzt knapp an der 2-s-Kante. i18n-Parität DE/EN maschinell
+  geprüft (528/528). Hilfe (neuer Eintrag „Streuung der Position"), Markup-Fallback und README in
+  beiden Sprachen ergänzt. `APP_VERSION` auf `v67`.
+
+- 2026-09-12: **v66 — die eigene Ansicht bleibt stehen, kürzere Erweitern-Hinweise, Zoom bis 200.**
+  (1) Gemeldet: beim Erweitern sprang die Ansicht dreimal zurück. **Die Ursache lag nicht in der
+  Erweiterung**, sondern in `updateViewBox()`: es verwarf die eingefrorene Basis, sobald sich die
+  gemessene SVG-Höhe änderte — und `#extendPanel` ist ein Geschwister der Zeichenfläche, ändert
+  also mit jedem Ein-/Ausblenden **und jeder anderen Textlänge** genau diese Höhe. Die Basis bleibt
+  jetzt stehen; **bewusst auch ohne `clampViewport()`**, weil dessen Grenzen an der Flächenhöhe
+  hängen und bei starker Vergrößerung dieselbe ungefragte Bewegung erzeugt hätten (per Test
+  festgenagelt). Auto-Fit ohne eigene Geste bleibt unverändert. **Mitgeprüft und ausdrücklich nicht
+  geändert**, weil alle absichtlich: `setActiveMapById()` (Kartenwechsel), `init()` (Start),
+  `#fitViewBtn` (Nutzerknopf). (2) Die Erweitern-Hinweise sind deutlich kürzer, und **Schritt 1
+  nennt schon die Regel** („Ersten Punkt antippen — an ihm wird danach weitergebaut."), damit man
+  gleich den richtigen wählt; die Zahl der wegfallenden Punkte bleibt am zweiten Punkt. Dabei kam
+  je eine **Einzahl-Fassung** dazu (`extendConfirmCutOne`, `extendOpenedCutOne`) — „1 Punkte" stand
+  sichtbar falsch da, sobald der Text kurz genug ist, dass die Zahl auffällt; `extendCutHintKey()`
+  ist die eine Stelle, die Ankündigung und Rückmeldung auswählt. (3) `MAX_USER_ZOOM` von 60 auf
+  **200**. Neu: 3 ui-Fälle, drei Bestandszusicherungen auf den neuen Wortlaut umgestellt. Gegen
+  sechs simulierte Rückfälle geprüft, alle gefangen. i18n-Parität DE/EN geprüft (524/524). Hilfe,
+  Markup-Fallback und README in beiden Sprachen nachgezogen. `APP_VERSION` wäre `v66` — die Fassung
+  ist nicht einzeln ausgeliefert worden, sie geht in `v67` mit.
 
 - 2026-09-12: **v65 — weiterer Zoom, Uhrzeit in der Übersicht, freier zweiter Punkt beim
   Erweitern.** (1) `MAX_USER_ZOOM` von **14 auf 60** (`app.js:3811`); Minimum (0,6) und
