@@ -1404,13 +1404,25 @@ Strecke kosten — und auf einer dichten Kontur trifft man auf dem Telefon leich
 Hinweisstreifen. Bewusst **kein zusätzlicher Knopf**: der Bestätigungstipp landet auf demselben
 Punkt, den man gerade getroffen hat.
 
-**Jeder Schritt ist nummeriert** („Schritt 2 von 4: …“). Die Gesamtzahl kommt aus der Liste
-`EXTEND_STEPS` (`pickFirst`, `pickSecond`, `confirm`, `adding`), die Nummer aus dem **Zustand**
+**Jeder Schritt ist nummeriert** („Schritt 2 von 3: …“). Die Gesamtzahl kommt aus der Liste
+`EXTEND_STEPS` (seit v69 `pickFirst`, `pickSecond`, `adding`), die Nummer aus dem **Zustand**
 (`extensionStepKey()`), nicht aus dem Hinweistext — eine eingetippte „von 3“ liefe beim nächsten
 Umbau auseinander, ohne dass es jemandem auffiele. Der Fehlgriff-Hinweis behält die Nummer des
-laufenden Schrittes, denn er wirft den Ablauf nicht zurück. Die Texte sind so kurz gehalten, dass
-**Nummer plus Text** unter 80 Zeichen bleibt; der Test rechnet die eingesetzte Zeile nach, nicht den
-nackten i18n-Wert.
+laufenden Schrittes, denn er wirft den Ablauf nicht zurück.
+
+**Die Bestätigung ist kein eigener Schritt (Stand v69).** Der zweite Tipp auf denselben Punkt
+führt weiterhin erst aus, was der erste angekündigt hat — die Begründung von v65 gilt unverändert,
+ein Fehlgriff auf einer dichten Kontur kann eine ganze Strecke kosten. Er beantwortet aber
+**dieselbe** Frage wie Schritt 2 („welcher Punkt ist das andere Ende?“), nur bestätigt; ein
+vorgemerkter zweiter Punkt bleibt deshalb in Schritt 2, und die Zahl der wegfallenden Punkte steht
+dort. Nach dem Auftrennen gibt es keine Zahl mehr zu melden: Schritt 3 hat einen **festen
+Wortlaut**, die Zahl stand dort, wo sie gebraucht wurde — vor der Entscheidung. `extendOpenedCut`
+und `extendOpenedCutOne` sind damit entfallen, `extendCutHintKey()` kennt nur noch die
+Ankündigung.
+
+**Die drei Schritttexte sind vom Nutzer wörtlich vorgegeben** und stehen im Test als Wortlaut;
+EN ist sinngemäß übersetzt. Die frühere 80-Zeichen-Grenze gilt für sie **nicht mehr** — sie sind
+länger, und der Hinweisstreifen hat die volle Breite.
 
 **Beide gewählten Punkte sind markiert**, solange die Vorschau steht — sonst wäre bei einer Zahl
 wie „12 Punkte" nicht zu sehen, welche Strecke gemeint ist. `extensionEndIndex()` bleibt trotzdem
@@ -2348,6 +2360,26 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-12: **v69 — der Erweitern-Ablauf hat drei Schritte statt vier.** Die vom Nutzer
+  vorgegebenen Texte stehen jetzt wörtlich in `I18N.de` (EN sinngemäß): Schritt 1 „Punkt wählen von
+  dem aus neue Punkte hinzugefügt werden sollen“, Schritt 2 „Punkt wählen wo das Ende der
+  Konturöffnung sein soll, Punkte dazwischen werden automatisch gelöscht“, Schritt 3 „Kontur
+  geöffnet, bitte neue Punkte aufnehmen und fertig klicken, …“. Die **80-Zeichen-Grenze ist für
+  diese Texte aufgehoben** — der zugehörige Test prüft stattdessen den Wortlaut; die Zusicherung,
+  dass keine Schrittzahl von Hand in einen Text getippt wird, bleibt. **Geprüft und gemeldet:** die
+  zweite Bestätigung (zweiter Tipp auf denselben Punkt) **bleibt** — die Begründung aus v65 gilt
+  unverändert —, sie ist aber kein eigener Schritt mehr: `EXTEND_STEPS` ist `pickFirst`,
+  `pickSecond`, `adding`, und `extensionStepKey()` lässt einen vorgemerkten zweiten Punkt in
+  Schritt 2 stehen. Die Zahl der wegfallenden Punkte steht weiter dort (`extendConfirm*`, Einzahl
+  und Mehrzahl getrennt). Entfallen sind `extendOpenedCut`/`extendOpenedCutOne`: Schritt 3 hat
+  einen festen Wortlaut und wiederholt die Zahl nicht mehr. Mit ihnen ist die Punktnummer `{n}` aus
+  den Erweitern-Texten verschwunden — welcher Punkt das aktive Ende ist, zeigen weiterhin
+  Markierung und Vorschaulinie (`extensionEndIndex()` unverändert die einzige Quelle). ui weiter
+  218 Fälle: der Kurz-Test ist zum Wortlaut-Test geworden, der Nummerierungs-Test hält jetzt fest,
+  dass die Ankündigung **in** Schritt 2 bleibt, drei Bestandsfälle auf den neuen Wortlaut
+  umgestellt. i18n-Parität DE/EN maschinell geprüft (529/529). Hilfe, Markup-Fallback und README in
+  beiden Sprachen nachgezogen. `APP_VERSION` auf `v69`.
 
 - 2026-09-12: **v68 — Schrittnummern beim Erweitern, GPS-Details als Einblendung, dauerhafte
   Undo-Historie.** (1) Jeder Hinweis beim Erweitern trägt „Schritt N von M:"; M kommt aus der Liste

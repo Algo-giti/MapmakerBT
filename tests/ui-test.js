@@ -759,25 +759,22 @@ test('Der ganze Erweitern-Ablauf laesst Zoom und Ausschnitt unberuehrt', async (
   assert.strictEqual(shot(), before, '„Fertig“ — auch der Abschluss laesst die Ansicht stehen');
 });
 
-test('Die Erweitern-Hinweise sind kurz und nennen von Anfang an das offene Ende', () => {
+test('Die drei Erweitern-Schritte tragen den vorgegebenen Wortlaut', () => {
   const { t } = setup();
-  const KEYS = ['extendPickFirst', 'extendPickSecond', 'extendConfirmEdge',
-    'extendConfirmCut', 'extendConfirmCutOne', 'extendWrongContour',
-    'extendOpened', 'extendOpenedCut', 'extendOpenedCutOne'];
-  for (const lang of ['de', 'en']) {
-    const texts = t.I18N[lang];
-    // Schritt 1 muss die Regel schon tragen, sonst waehlt man den falschen Punkt zuerst.
-    const first = texts.extendPickFirst;
-    assert.ok(/weitergebaut|building continues/.test(first), `${lang}: ${first}`);
-    // Kurz bleiben — und zwar **mit** der Schrittnummer davor, so steht es auf dem Schirm.
-    const prefix = texts.extendStep.replace('{step}', '4').replace('{total}', '4');
-    for (const key of KEYS) {
-      const line = `${prefix} ${texts[key].replace('{n}', '12').replace('{b}', '12').replace('{count}', '12')}`;
-      assert.ok(line.length <= 80, `${lang}/${key} ist ${line.length} Zeichen: ${line}`);
-    }
-  }
-  // Einzahl und Mehrzahl stehen grammatisch richtig da.
-  assert.ok(/[Ee]in Punkt/.test(t.tr('extendConfirmCutOne', { b: 3 })), t.tr('extendConfirmCutOne', { b: 3 }));
+  // Die drei Schritttexte sind vom Nutzer woertlich vorgegeben — eine Umformulierung waere
+  // keine Verbesserung, sondern eine Abweichung. Deshalb stehen sie hier als Wortlaut.
+  assert.strictEqual(t.I18N.de.extendPickFirst,
+    'Punkt wählen von dem aus neue Punkte hinzugefügt werden sollen');
+  assert.strictEqual(t.I18N.de.extendPickSecond,
+    'Punkt wählen wo das Ende der Konturöffnung sein soll, Punkte dazwischen werden automatisch gelöscht');
+  assert.strictEqual(t.I18N.de.extendOpened,
+    'Kontur geöffnet, bitte neue Punkte aufnehmen und fertig klicken, Kontur wird dann mit Punkt aus Schritt 2 verbunden und Kontur geschlossen.');
+  // EN sinngemaess: dieselben drei Aussagen, nicht dieselben Zeichen.
+  assert.ok(/from which new points/.test(t.I18N.en.extendPickFirst), t.I18N.en.extendPickFirst);
+  assert.ok(/deleted automatically/.test(t.I18N.en.extendPickSecond), t.I18N.en.extendPickSecond);
+  assert.ok(/step 2/.test(t.I18N.en.extendOpened), t.I18N.en.extendOpened);
+  // Die Zahl der wegfallenden Punkte steht weiter im zweiten Schritt, Einzahl wie Mehrzahl.
+  assert.ok(/[Ee]in Punkt dazwischen/.test(t.tr('extendConfirmCutOne', { b: 3 })), t.tr('extendConfirmCutOne', { b: 3 }));
   assert.ok(!/\{count\}/.test(t.tr('extendConfirmCut', { b: 3, count: 4 })), 'kein Platzhalterrest');
   assert.ok(t.tr('extendConfirmCut', { b: 3, count: 4 }).includes('4 Punkte'), 'Mehrzahl mit Zahl');
 });
@@ -786,7 +783,7 @@ test('Jeder Erweitern-Schritt ist nummeriert, die Gesamtzahl kommt aus dem Ablau
   const { t } = setup();
   seedClosedPerimeter(t);
   const total = t.EXTEND_STEPS.length;
-  assert.ok(total >= 3, `der Ablauf hat ${total} Schritte`);
+  assert.strictEqual(total, 3, `der Ablauf hat ${total} Schritte`);
   const line = () => t.ui.extendPanelText.textContent;
 
   t.startExtension();
@@ -798,14 +795,18 @@ test('Jeder Erweitern-Schritt ist nummeriert, die Gesamtzahl kommt aus dem Ablau
   assert.strictEqual(t.extensionStep(), 2);
   assert.ok(line().startsWith(`Schritt 2 von ${total}:`), line());
 
-  tapPoint(t, points, 3);                        // zweiter Punkt: Ankuendigung
-  assert.strictEqual(t.extensionStep(), 3);
-  assert.ok(line().startsWith(`Schritt 3 von ${total}:`), line());
+  // Die Ankuendigung des zweiten Punktes ist **kein eigener Schritt** — sie beantwortet
+  // dieselbe Frage wie Schritt 2 und bleibt deshalb darin stehen.
+  tapPoint(t, points, 3);
+  assert.strictEqual(t.extensionStep(), 2);
+  assert.ok(line().startsWith(`Schritt 2 von ${total}:`), line());
+  assert.ok(/ein Punkt dazwischen wird gelöscht/.test(line()),
+    `die Ankuendigung der wegfallenden Punkte fehlt: ${line()}`);
 
   tapPoint(t, points, 3);
   await flush();
-  assert.strictEqual(t.extensionStep(), 4);
-  assert.ok(line().startsWith(`Schritt 4 von ${total}:`), line());
+  assert.strictEqual(t.extensionStep(), 3);
+  assert.ok(line().startsWith(`Schritt 3 von ${total}:`), line());
 
   // Auch der Fehlgriff bleibt im laufenden Schritt, statt die Zaehlung zu verlieren.
   const u = setup();
@@ -2811,11 +2812,11 @@ test('Der zweite Tipp kuendigt nur an, wie viele Punkte wegfallen — er loescht
   const points = t.state.activeMap.perimeter;
   tapPoint(t, points, 0);                       // A
   assert.strictEqual(t.state.extension.firstIndex, 0);
-  assert.ok(/bleibt das Ende/.test(t.ui.extendPanelText.textContent), t.ui.extendPanelText.textContent);
+  assert.ok(/Ende der Konturöffnung/.test(t.ui.extendPanelText.textContent), t.ui.extendPanelText.textContent);
 
   tapPoint(t, points, 2);                       // C — zwei Kanten weiter
   assert.strictEqual(t.state.extension.secondIndex, 2, 'der zweite Punkt ist vorgemerkt');
-  assert.ok(/Ein Punkt fällt weg/.test(t.ui.extendPanelText.textContent), t.ui.extendPanelText.textContent);
+  assert.ok(/ein Punkt dazwischen wird gelöscht/.test(t.ui.extendPanelText.textContent), t.ui.extendPanelText.textContent);
   assert.ok(t.ui.extendPanelText.textContent.includes('Punkt 3'), 'und er ist benannt');
   assert.strictEqual(perimeterXY(t), before, 'angekuendigt ist noch nicht geloescht');
   assert.strictEqual(t.state.activeMap.perimeterClosed, true, 'sie bleibt bis dahin geschlossen');
@@ -2834,8 +2835,9 @@ test('Der zweite Tipp kuendigt nur an, wie viele Punkte wegfallen — er loescht
   assert.strictEqual(t.state.extension.phase, 'adding');
   assert.strictEqual(t.state.activeMap.perimeterClosed, false, 'jetzt ist die Kontur offen');
   assert.strictEqual(t.state.activeMap.perimeter.length, 4, 'ein Punkt ist weggefallen');
-  assert.ok(/Ein Punkt weg/.test(t.ui.extendPanelText.textContent),
-    `die Zahl steht auch hinterher noch da: ${t.ui.extendPanelText.textContent}`);
+  // Schritt 3 hat einen festen Wortlaut und wiederholt die Zahl nicht mehr — sie stand dort,
+  // wo sie gebraucht wurde: vor der Entscheidung.
+  assert.ok(/Kontur geöffnet/.test(t.ui.extendPanelText.textContent), t.ui.extendPanelText.textContent);
 });
 
 test('Zwei benachbarte Punkte trennen die Kante auf und ordnen die Folge neu', async () => {
@@ -3036,14 +3038,12 @@ test('Der zuerst getippte Punkt ist das Ende, an dem weitergebaut wird', async (
   assert.notStrictEqual(ab.erwartet, ba.erwartet, 'die Reihenfolge der Tipps entscheidet wirklich');
 });
 
-test('Markierung, Hinweiszeile und Vorschau nennen dasselbe Ende wie das Anhaengen', async () => {
+test('Markierung und Vorschau nennen dasselbe Ende wie das Anhaengen', async () => {
   const { t } = setup();
   seedClosedPerimeter(t);
   t.startExtension();
   tapPoint(t, t.state.activeMap.perimeter, 1);                     // B zuerst
   assert.strictEqual(markedIndices(t).join(','), '1', 'schon in der Auswahlphase markiert');
-  assert.ok(t.ui.extendPanelText.textContent.includes('Punkt 2'), t.ui.extendPanelText.textContent);
-  assert.ok(/bleibt das Ende/.test(t.ui.extendPanelText.textContent), 'die Regel steht im Text');
   const guide = () => t.ui.robotLayer.children.filter((c) => (c.attributes?.class || '').includes('extend-guide-line'));
   t.renderMap();
   assert.strictEqual(guide().length, 0,
@@ -3063,7 +3063,6 @@ test('Markierung, Hinweiszeile und Vorschau nennen dasselbe Ende wie das Anhaeng
   let end = endOf();
   const pts = () => t.state.activeMap.perimeter;
   assert.strictEqual(`${pts()[end].x},${pts()[end].y}`, '10,0', 'markiert ist der zuerst getippte Punkt B');
-  assert.ok(t.ui.extendPanelText.textContent.includes(`Punkt ${end + 1}`), t.ui.extendPanelText.textContent);
   // Die Vorschaulinie haengt am selben Punkt und endet an der Maeherposition.
   assert.strictEqual(guide().length, 1, 'nach dem Auftrennen wird sie gezeichnet');
   const anchor = t.toScreen(pts()[end], t.state.currentTransform);
@@ -3081,8 +3080,6 @@ test('Markierung, Hinweiszeile und Vorschau nennen dasselbe Ende wie das Anhaeng
     'der neue Punkt haengt hinter dem markierten Ende');
   end = endOf();
   assert.strictEqual(end, pts().length - 1, 'markiert ist jetzt der neue Punkt');
-  assert.ok(t.ui.extendPanelText.textContent.includes(`Punkt ${end + 1}`),
-    'und die Hinweiszeile nennt dieselbe Nummer');
 
   // Mit ausgewaehltem Punkt haengt nichts an — dann darf die Vorschau das auch nicht behaupten.
   t.applyPointSelection({ role: 'perimeter', index: 0, exclusionId: null });
@@ -3249,20 +3246,24 @@ test('Eine veraltete Auswahl macht den Hauptknopf nicht zum Verschieben-Knopf', 
 test('Die Texte der Erweiterung tragen in DE und EN dieselben Platzhalter', () => {
   const { t } = setup();
   const placeholders = (text) => [...String(text).matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
-  for (const key of ['extendPickFirst', 'extendPickSecond', 'extendOpened']) {
+  for (const key of ['extendPickFirst', 'extendPickSecond', 'extendOpened',
+    'extendConfirmEdge', 'extendConfirmCutOne', 'extendConfirmCut']) {
     const de = t.I18N.de[key]; const en = t.I18N.en[key];
     assert.ok(de && en, `${key} fehlt in einer Sprache`);
     assert.strictEqual(placeholders(en), placeholders(de), `${key}: unterschiedliche Platzhalter`);
   }
-  // Und die Nummer wird tatsaechlich eingesetzt, nicht als {n} stehengelassen.
+  // Und Punktnummer wie Anzahl werden tatsaechlich eingesetzt, nicht als {b}/{count} gezeigt.
   for (const lang of ['de', 'en']) {
     const u = setup();
     u.t.state.language = lang;
     seedClosedPerimeter(u.t);
     u.t.startExtension();
-    tapPoint(u.t, u.t.state.activeMap.perimeter, 1);
-    assert.ok(!u.t.ui.extendPanelText.textContent.includes('{n}'), `${lang}: Platzhalterrest im Hinweis`);
-    assert.ok(/\b2\b/.test(u.t.ui.extendPanelText.textContent), `${lang}: die Punktnummer fehlt`);
+    const pts = u.t.state.activeMap.perimeter;
+    tapPoint(u.t, pts, 1);
+    tapPoint(u.t, pts, 3);
+    const text = u.t.ui.extendPanelText.textContent;
+    assert.ok(!/\{\w+\}/.test(text), `${lang}: Platzhalterrest im Hinweis: ${text}`);
+    assert.ok(/\b4\b/.test(text), `${lang}: die Punktnummer fehlt: ${text}`);
   }
 });
 

@@ -134,15 +134,13 @@ const I18N = {
     gpsPanelToggle: 'GPS-Details ein- oder ausblenden',
     gpsScatterWaiting: 'Streuung – · {n} Fixes',
     extendStep: 'Schritt {step} von {total}:',
-    extendPickFirst: 'Ersten Punkt antippen — hier wird weitergebaut.',
-    extendPickSecond: 'Punkt {n} bleibt das Ende. Zweiten Punkt antippen.',
-    extendConfirmEdge: 'Nichts geht verloren. Punkt {b} erneut antippen.',
-    extendConfirmCutOne: 'Ein Punkt fällt weg. Punkt {b} erneut antippen.',
-    extendConfirmCut: '{count} Punkte fallen weg. Punkt {b} erneut antippen.',
+    extendPickFirst: 'Punkt wählen von dem aus neue Punkte hinzugefügt werden sollen',
+    extendPickSecond: 'Punkt wählen wo das Ende der Konturöffnung sein soll, Punkte dazwischen werden automatisch gelöscht',
+    extendConfirmEdge: 'Punkt {b} gewählt — es wird kein Punkt gelöscht. Zum Öffnen Punkt {b} erneut antippen.',
+    extendConfirmCutOne: 'Punkt {b} gewählt — ein Punkt dazwischen wird gelöscht. Zum Öffnen Punkt {b} erneut antippen.',
+    extendConfirmCut: 'Punkt {b} gewählt — {count} Punkte dazwischen werden gelöscht. Zum Öffnen Punkt {b} erneut antippen.',
     extendWrongContour: 'Bitte einen Punkt dieser Kontur antippen.',
-    extendOpened: 'Offen. Neue Punkte ab Punkt {n}, dann „Fertig“.',
-    extendOpenedCutOne: 'Ein Punkt weg. Neue Punkte ab Punkt {n}, dann „Fertig“.',
-    extendOpenedCut: '{count} Punkte weg. Neue Punkte ab Punkt {n}, dann „Fertig“.',
+    extendOpened: 'Kontur geöffnet, bitte neue Punkte aufnehmen und fertig klicken, Kontur wird dann mit Punkt aus Schritt 2 verbunden und Kontur geschlossen.',
     extendFinished: 'Erweiterung abgeschlossen, die Kontur ist wieder geschlossen.',
     extendCancelled: 'Erweitern abgebrochen — an der Kontur wurde nichts geändert.',
     undoAction: 'Letzten Bearbeitungsschritt rückgängig machen',
@@ -338,7 +336,7 @@ const I18N = {
     mapOverview: 'Kartenübersicht', lockCurrentMap: 'Karte sperren', unlockCurrentMap: 'Karte entsperren', mapLocked: 'Gesperrt', mapLockedHint: 'Diese Karte ist gesperrt. Zum Bearbeiten zuerst entsperren.', mapCardArea: '{area} m²', mapCardPoints: '{points} Punkte', mapCardChanged: 'Geändert {date}', selectMap: 'Karte auswählen', drive: 'Fahren', stopEverythingDone: 'STOP gesendet · Fahrt 0 · Mähmotor AUS · IDLE',
     manualDrive: 'Manuell fahren', driveSpeed: 'Tempo', reverse: 'Zurück', left: 'Links', stop: 'Stop', driveIdle: 'Fahrt gestoppt', driveNeedConnection: 'Für manuelle Fahrt zuerst per BLE verbinden.',
     helpQualityTitle: 'Punktqualität', helpQualityText: 'Der Rand eines Punktes zeigt, zu welchem Element er gehört, die Füllung die RTK-Qualität bei der Aufnahme.',
-    helpExtendTitle: 'Kontur nachträglich erweitern', helpExtendText: 'Ist ein Perimeter oder eine Ausschlussfläche schon geschlossen, öffnet „Erweitern“ in der Kartenleiste sie wieder. Ein Hinweisstreifen über der Karte führt Schritt für Schritt: zwei Punkte antippen, dann wird die Kontur zwischen ihnen geöffnet. Die beiden müssen keine Nachbarn sein — liegen Punkte dazwischen, werden sie gelöscht, und zwar auf der kürzeren der beiden Seiten. Der Hinweisstreifen nennt die Anzahl vorher; erst ein zweiter Tipp auf denselben Punkt führt es aus. Danach nimmst du wie gewohnt weitere Punkte auf — auch mit Automatik —, sie landen genau zwischen den beiden gewählten. „Fertig“ im Hinweisstreifen schließt die Kontur wieder.',
+    helpExtendTitle: 'Kontur nachträglich erweitern', helpExtendText: 'Ist ein Perimeter oder eine Ausschlussfläche schon geschlossen, öffnet „Erweitern“ in der Kartenleiste sie wieder. Ein Hinweisstreifen über der Karte führt in drei Schritten: erst den Punkt wählen, von dem aus weitergebaut wird, dann den Punkt, an dem die Öffnung endet — die Kontur wird zwischen beiden geöffnet. Die beiden müssen keine Nachbarn sein — liegen Punkte dazwischen, werden sie gelöscht, und zwar auf der kürzeren der beiden Seiten. Der Hinweisstreifen nennt die Anzahl vorher; erst ein zweiter Tipp auf denselben Punkt führt es aus. Danach nimmst du wie gewohnt weitere Punkte auf — auch mit Automatik —, sie landen genau zwischen den beiden gewählten. „Fertig“ im Hinweisstreifen schließt die Kontur wieder.',
     helpMapToolsTitle: 'Karten umbenennen & kopieren', helpMapToolsText: 'In der Kartenübersicht trägt jede Karte zwei kleine Werkzeuge: der Stift benennt sie um (nur der Name ändert sich), das Kopiersymbol legt eine vollständige, unabhängige Kopie an — mit allen Punkten, dem Positionsmodus und dem Ursprung. Die Kopie bekommt automatisch einen freien Namen, die gerade aktive Karte bleibt aktiv.',
     helpDriveZonesTitle: 'Geschwindigkeitszonen beim Vorwärts- und Rückwärtsfahren', helpDriveZonesText: 'Die vier Tasten sind als Sanduhr geschnitten: vorwärts und rückwärts sind breite Trapeze, links und rechts schmale Keile. Der Grund ist die Bedienung — bei vor und zurück schiebt der Daumen über die ganze Länge, links und rechts sind Korrekturen auf der Stelle. Vorwärts und rückwärts sind längs dreigeteilt: innen das Minimum, in der Mitte der eingetragene Tastenwert, außen das Maximum — dieselben drei Werte, die unter Einstellungen › Fahrgeschwindigkeit ohnehin stehen, es kommt keine neue Zahl dazu. Die Zone folgt dem Finger, solange er gedrückt bleibt: weiter nach außen schieben heißt schneller, zurück zur Mitte wieder langsamer. Die Grenzen sind auf der Taste eingezeichnet, die gerade gefahrene Zone ist hervorgehoben. Jede Zone trägt einen Chevron, der nach außen breiter, flacher und kräftiger wird. Sind die Zonen abgeschaltet, steht auf vorwärts und rückwärts nur noch der eine Chevron der mittleren Geschwindigkeit — die Taste zeigt nichts, was sie nicht tut. Loslassen stoppt wie zuvor sofort. Die Einteilung lässt sich abschalten — dann gilt für beide Richtungen der eingetragene Tastenwert. Links und rechts haben keine Zonen: das Drehen auf der Stelle läuft immer mit der Hälfte des eingestellten Höchstwerts, gedeckelt durch die eingestellte Höchst-Drehrate. Die drei Werte sind frei einstellbar und werden nicht sortiert: liegt der mittlere unter dem inneren, wird das Schieben nach außen zwischendurch langsamer. Die Werte gelten dann wie eingetragen, und ein Hinweis bei den Geschwindigkeitsfeldern nennt die Reihenfolge.',
     helpDriveControlTitle: 'Joystick oder Richtungstasten', helpDriveControlText: 'Der kleine Knopf neben dem Fahrfeld schaltet zwischen beidem um; er zeigt das Symbol des Modus, in den er wechselt. Bei Rechtshändern steht er links vom Feld, bei Linkshändern gespiegelt rechts – jeweils direkt über der Fahrtanzeige. Der Joystick fährt wie eine Fernsteuerung: Richtung und Stärke der Auslenkung. Die Richtungstasten kennen nur vorwärts, rückwärts und Drehen auf der Stelle — kein versehentliches Lenken beim Geradeausfahren. Sie fahren mit einer eigenen, langsamen Geschwindigkeit für genaues Rangieren, einstellbar unter Einstellungen › Fahrgeschwindigkeit.',
@@ -392,15 +390,13 @@ const I18N = {
     gpsPanelToggle: 'Show or hide GPS details',
     gpsScatterWaiting: 'Scatter – · {n} fixes',
     extendStep: 'Step {step} of {total}:',
-    extendPickFirst: 'Tap the first point — building continues here.',
-    extendPickSecond: 'Point {n} stays the end. Tap the second point.',
-    extendConfirmEdge: 'Nothing is lost. Tap point {b} again.',
-    extendConfirmCutOne: 'One point falls away. Tap point {b} again.',
-    extendConfirmCut: '{count} points fall away. Tap point {b} again.',
+    extendPickFirst: 'Choose the point from which new points are to be added',
+    extendPickSecond: 'Choose the point where the contour opening should end, points in between are deleted automatically',
+    extendConfirmEdge: 'Point {b} chosen — no point is deleted. Tap point {b} again to open.',
+    extendConfirmCutOne: 'Point {b} chosen — one point in between is deleted. Tap point {b} again to open.',
+    extendConfirmCut: 'Point {b} chosen — {count} points in between are deleted. Tap point {b} again to open.',
     extendWrongContour: 'Please tap a point of this contour.',
-    extendOpened: 'Open. New points from point {n}, then “Done”.',
-    extendOpenedCutOne: 'One point gone. New points from point {n}, then “Done”.',
-    extendOpenedCut: '{count} points gone. New points from point {n}, then “Done”.',
+    extendOpened: 'Contour opened, please capture new points and click Done, the contour is then joined to the point from step 2 and closed.',
     extendFinished: 'Extension finished, the contour is closed again.',
     extendCancelled: 'Extending cancelled — nothing on the contour was changed.',
     undoAction: 'Undo the last editing step',
@@ -596,7 +592,7 @@ const I18N = {
     mapOverview: 'Map overview', lockCurrentMap: 'Lock map', unlockCurrentMap: 'Unlock map', mapLocked: 'Locked', mapLockedHint: 'This map is locked. Unlock it before editing.', mapCardArea: '{area} m²', mapCardPoints: '{points} points', mapCardChanged: 'Changed {date}', selectMap: 'Select map', drive: 'Drive', stopEverythingDone: 'STOP sent · drive 0 · mowing motor OFF · IDLE',
     manualDrive: 'Manual drive', driveSpeed: 'Speed', reverse: 'Reverse', left: 'Left', stop: 'Stop', driveIdle: 'Drive stopped', driveNeedConnection: 'Connect via BLE before using manual drive.',
     helpQualityTitle: 'Point quality', helpQualityText: 'The outline of a point shows which element it belongs to, the fill shows the RTK quality at the time it was captured.',
-    helpExtendTitle: 'Extending a closed contour', helpExtendText: 'If a perimeter or exclusion area is already closed, “Extend” in the map bar reopens it. A hint strip above the map guides you step by step: tap two points and the contour opens between them. They need not be neighbours — any points in between are deleted, on the shorter of the two sides. The hint strip states the number beforehand; only a second tap on the same point carries it out. Then capture further points as usual — automatic capture included — and they land exactly between the two you picked. “Done” in the hint strip closes the contour again.',
+    helpExtendTitle: 'Extending a closed contour', helpExtendText: 'If a perimeter or exclusion area is already closed, “Extend” in the map bar reopens it. A hint strip above the map guides you through three steps: first choose the point building continues from, then the point where the opening ends — the contour opens between them. They need not be neighbours — any points in between are deleted, on the shorter of the two sides. The hint strip states the number beforehand; only a second tap on the same point carries it out. Then capture further points as usual — automatic capture included — and they land exactly between the two you picked. “Done” in the hint strip closes the contour again.',
     helpMapToolsTitle: 'Renaming & copying maps', helpMapToolsText: 'In the map overview every map carries two small tools: the pencil renames it (only the name changes), the copy icon creates a complete, independent copy — with all points, the position mode and the origin. The copy automatically gets a free name, and the map you are working on stays active.',
     helpDriveZonesTitle: 'Speed zones for driving forward and back', helpDriveZonesText: 'The four keys are cut as an hourglass: forward and reverse are wide trapezoids, left and right narrow wedges. The reason is how they are used — for forward and back your thumb slides along the whole length, while left and right are corrections on the spot. Forward and reverse are split lengthwise into three: the minimum on the inside, the key speed you entered in the middle, the maximum on the outside — the same three values already under Settings › Drive speed, no new number is added. The zone follows your finger while it stays down: sliding further out means faster, back towards the centre slower again. The boundaries are drawn on the key and the zone currently in use is highlighted. Each zone carries a chevron that grows wider, flatter and stronger towards the outside. With the zones switched off, forward and reverse show only the single chevron of the middle speed — the key shows nothing it does not do. Releasing stops immediately, as before. The split can be switched off — the key speed then applies to both directions. Left and right have no zones: turning on the spot always runs at half the maximum speed you set, capped by the maximum turn rate. The three values are yours to set and are never sorted: if the middle one is below the inner one, sliding outwards gets slower in between. The values then apply exactly as entered, and a note next to the speed fields spells out the order.',
     helpDriveControlTitle: 'Joystick or direction keys', helpDriveControlText: 'The small button beside the drive field switches between the two; it shows the icon of the mode it switches to. For right-handed use it sits to the left of the field, for left-handed use mirrored to the right, directly above the drive status. The joystick drives like a remote control: direction and amount of deflection. The direction keys only know forward, backward and turning on the spot — no accidental steering while driving straight. They use their own slow speed for precise manoeuvring, adjustable under Settings › Drive speed.',
@@ -5831,7 +5827,6 @@ async function openContourForExtension(firstIndex, secondIndex) {
   const ext = state.extension;
   const points = extensionPoints(ext);
   if (!ext || !points) return;
-  const cut = extensionCut(points, firstIndex, secondIndex);
   pushUndo();
   points.splice(0, points.length, ...reorderForExtension(points, firstIndex, secondIndex));
   if (ext.role === 'perimeter') state.activeMap.perimeterClosed = false;
@@ -5843,9 +5838,7 @@ async function openContourForExtension(firstIndex, secondIndex) {
   ext.firstIndex = null;
   ext.secondIndex = null;
   state.validationResult = null;
-  // Wie viele Punkte weggefallen sind, steht auch hinterher noch da — sonst muesste der Nutzer
-  // die Zahl aus dem verschwundenen Hinweis im Kopf behalten, um das Undo einordnen zu koennen.
-  setExtensionHint(extendCutHintKey(cut.removed, true), { count: cut.removed });
+  setExtensionHint('extendOpened');
   await saveActiveMap();
   renderMap();
   refreshCaptureState();
@@ -5856,14 +5849,21 @@ async function openContourForExtension(firstIndex, secondIndex) {
  * Gesamtzahl im Hinweis. Eine eingetippte „von 3“ im Text liefe beim naechsten Umbau
  * auseinander, ohne dass es jemandem auffiele; hier kann sie das nicht.
  */
-const EXTEND_STEPS = ['pickFirst', 'pickSecond', 'confirm', 'adding'];
+const EXTEND_STEPS = ['pickFirst', 'pickSecond', 'adding'];
 
-/** In welchem Schritt steckt der Ablauf gerade? Abgelesen am Zustand, nicht am Hinweistext. */
+/**
+ * In welchem Schritt steckt der Ablauf gerade? Abgelesen am Zustand, nicht am Hinweistext.
+ *
+ * **Die Bestaetigung ist seit v69 kein eigener Schritt mehr.** Der zweite Tipp auf denselben
+ * Punkt fuehrt weiterhin erst aus, was der erste angekuendigt hat (sonst koennte ein Fehlgriff
+ * auf einer dichten Kontur eine ganze Strecke kosten) — aber er beantwortet dieselbe Frage wie
+ * Schritt 2 („welcher Punkt ist das andere Ende?"), es ist nur die Antwort darauf bestaetigt.
+ * Ein vorgemerkter zweiter Punkt bleibt deshalb in Schritt 2.
+ */
 function extensionStepKey(ext = state.extension) {
   if (!ext) return null;
   if (ext.phase === 'adding') return 'adding';
-  if (ext.firstIndex === null) return 'pickFirst';
-  return ext.secondIndex === null ? 'pickSecond' : 'confirm';
+  return ext.firstIndex === null ? 'pickFirst' : 'pickSecond';
 }
 
 /** 1-basierte Schrittnummer, 0 wenn gerade nicht erweitert wird. */
@@ -5873,15 +5873,15 @@ function extensionStep(ext = state.extension) {
 }
 
 /**
- * Der Hinweisschluessel zu einer Loeschung — **eine** Stelle fuer die Ankuendigung (`done: false`)
- * und die Rueckmeldung danach (`done: true`), damit beide nie verschiedene Faelle benennen.
- * Die Einzahl bekommt einen eigenen Schluessel: „1 Punkte“ stand sichtbar falsch da, seit der
- * Text kurz genug ist, dass die Zahl darin auffaellt.
+ * Der Hinweisschluessel zur **Ankuendigung** einer Loeschung, an einer Stelle. Die Einzahl hat
+ * einen eigenen Schluessel: „1 Punkte“ stand sichtbar falsch da.
+ *
+ * Nach dem Auftrennen gibt es seit v69 keine Zahl mehr zu melden — Schritt 3 hat einen festen
+ * Wortlaut, und die Zahl steht dort, wo sie gebraucht wird: **vor** der Entscheidung.
  */
-function extendCutHintKey(removed, done) {
-  if (removed === 0) return done ? 'extendOpened' : 'extendConfirmEdge';
-  const base = done ? 'extendOpened' : 'extendConfirm';
-  return removed === 1 ? `${base}CutOne` : `${base}Cut`;
+function extendCutHintKey(removed) {
+  if (removed === 0) return 'extendConfirmEdge';
+  return removed === 1 ? 'extendConfirmCutOne' : 'extendConfirmCut';
 }
 
 /**
@@ -5918,7 +5918,7 @@ async function handleExtensionTap(item) {
   if (ext.secondIndex !== item.index) {
     ext.secondIndex = item.index;
     const cut = extensionCut(points, ext.firstIndex, item.index);
-    setExtensionHint(extendCutHintKey(cut.removed, false), { b: item.index + 1, count: cut.removed });
+    setExtensionHint(extendCutHintKey(cut.removed), { b: item.index + 1, count: cut.removed });
     renderMap();
     return;
   }
@@ -5971,12 +5971,7 @@ function refreshExtendPanel() {
   ui.extendPanel.hidden = !ext;
   if (!ext) return;
   const picking = ext.phase === 'picking';
-  // Die Nummer des aktiven Endes wird **hier** geholt statt beim Setzen des Hinweises: sie
-  // aendert sich mit jedem aufgenommenen Punkt, ein einmal mitgegebener Wert waere sofort alt.
-  const end = extensionEndIndex(ext);
-  const vars = { ...(ext.hintVars || {}) };
-  if (end >= 0) vars.n = end + 1;
-  const body = tr(ext.hintKey || (picking ? 'extendPickFirst' : 'extendOpened'), vars);
+  const body = tr(ext.hintKey || (picking ? 'extendPickFirst' : 'extendOpened'), ext.hintVars || {});
   // Die Schrittnummer steht **vor** jedem Hinweis, auch vor dem Fehlgriff-Hinweis: der tritt
   // innerhalb eines Schrittes auf und wirft den Ablauf nicht zurueck.
   const step = extensionStep(ext);

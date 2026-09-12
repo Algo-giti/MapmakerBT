@@ -168,12 +168,13 @@ Ist ein Perimeter oder eine Ausschlussfläche bereits geschlossen, musst du sie 
 aufnehmen, um sie an einer Stelle zu verlängern. In der Kartenleiste erscheint dann
 **„Perimeter erweitern“** bzw. **„Fläche erweitern“**:
 
-1. Knopf antippen. Über der Karte erscheint ein **Hinweisstreifen**, der dich Schritt für Schritt
-   führt und dabei die Karte nicht verdeckt – du kannst also weiter auf Punkte tippen. Er bittet
-   dich, **zwei Punkte** anzutippen. Sie müssen **keine Nachbarn** sein – du kannst auch ein
+1. Knopf antippen. Über der Karte erscheint ein **Hinweisstreifen**, der dich in **drei
+   Schritten** führt („Schritt 1 von 3“ usw.) und dabei die Karte nicht verdeckt – du kannst also
+   weiter auf Punkte tippen. Er bittet dich, **zwei Punkte** anzutippen. Sie müssen **keine Nachbarn** sein – du kannst auch ein
    längeres Stück auswählen, das neu abgefahren werden soll.
 2. Liegen Punkte zwischen den beiden, werden sie **gelöscht**. Der Hinweisstreifen nennt die
-   Anzahl, **bevor** etwas passiert; erst ein zweiter Tipp auf denselben Punkt führt es aus. Ein
+   Anzahl noch in Schritt 2, **bevor** etwas passiert; erst ein zweiter Tipp auf denselben Punkt
+   führt es aus. Ein
    Tipp auf einen anderen Punkt verschiebt nur die Auswahl. Gelöscht wird die **kürzere** der
    beiden Seiten – gemessen an der Weglänge, nicht an der Punktzahl, denn genau diese Strecke
    fährst du danach neu ab. Bei zwei benachbarten Punkten fällt dadurch nie ein Punkt weg.
@@ -622,11 +623,11 @@ contour both wrap around the closing segment from the last point to the first.
 If a perimeter or exclusion area is already closed, you do not have to record it again just to
 extend it in one place. The map bar then offers **“Extend perimeter”** or **“Extend area”**:
 
-1. Tap the button. A **hint strip** appears above the map, guiding you step by step without
-   covering the map – so you can keep tapping points. It asks you to tap **two
-   points**. They need **not** be neighbours – you can also pick a longer stretch to re-record.
-2. Any points between the two are **deleted**. The hint strip states the number **before**
-   anything happens; only a second tap on the same point carries it out. Tapping a different
+1. Tap the button. A **hint strip** appears above the map, guiding you through **three steps**
+   (“Step 1 of 3” and so on) without covering the map – so you can keep tapping points. It asks
+   you to tap **two points**. They need **not** be neighbours – you can also pick a longer stretch to re-record.
+2. Any points between the two are **deleted**. The hint strip states the number while still in
+   step 2, **before** anything happens; only a second tap on the same point carries it out. Tapping a different
    point just moves the selection. The **shorter** of the two sides is deleted – measured by path
    length, not by point count, because that is the stretch you will walk again. For two
    neighbouring points no point is ever lost.
