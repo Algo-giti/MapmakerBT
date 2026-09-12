@@ -174,8 +174,11 @@ aufnehmen, um sie an einer Stelle zu verlängern. In der Kartenleiste erscheint 
    längeres Stück auswählen, das neu abgefahren werden soll.
 2. Liegen Punkte zwischen den beiden, werden sie **gelöscht**. Der Hinweisstreifen nennt die
    Anzahl noch in Schritt 2, **bevor** etwas passiert; erst ein zweiter Tipp auf denselben Punkt
-   führt es aus. Ein
-   Tipp auf einen anderen Punkt verschiebt nur die Auswahl. Gelöscht wird die **kürzere** der
+   führt es aus – und der Text sagt das auch so („erneut antippen oder anderen Punkt wählen“). Ein
+   Tipp auf einen anderen Punkt verschiebt nur die Auswahl. Die beiden Punkte sind dabei
+   **verschieden markiert**: der zuerst gewählte blinkt in eigener Farbe, weil an ihm später
+   weitergebaut wird; der vorgemerkte zweite steht ruhig daneben. Wer Bewegung im System
+   abbestellt hat, sieht nur den Farbunterschied. Gelöscht wird die **kürzere** der
    beiden Seiten – gemessen an der Weglänge, nicht an der Punktzahl, denn genau diese Strecke
    fährst du danach neu ab. Bei zwei benachbarten Punkten fällt dadurch nie ein Punkt weg.
 3. Danach ist die Kontur zwischen den beiden offen. Der **zuerst** angetippte Punkt ist ab jetzt
@@ -627,8 +630,12 @@ extend it in one place. The map bar then offers **“Extend perimeter”** or **
    (“Step 1 of 3” and so on) without covering the map – so you can keep tapping points. It asks
    you to tap **two points**. They need **not** be neighbours – you can also pick a longer stretch to re-record.
 2. Any points between the two are **deleted**. The hint strip states the number while still in
-   step 2, **before** anything happens; only a second tap on the same point carries it out. Tapping a different
-   point just moves the selection. The **shorter** of the two sides is deleted – measured by path
+   step 2, **before** anything happens; only a second tap on the same point carries it out – and the
+   text says so (“tap again to open, or choose a different point”). Tapping a different
+   point just moves the selection. The two points are **marked differently**: the one you chose
+   first blinks in its own colour, because that is where building continues later; the pending
+   second one sits still beside it. If you have asked the system to reduce motion, only the colour
+   difference remains. The **shorter** of the two sides is deleted – measured by path
    length, not by point count, because that is the stretch you will walk again. For two
    neighbouring points no point is ever lost.
 3. The contour is then open between the two. The point you tapped **first** becomes the open end.

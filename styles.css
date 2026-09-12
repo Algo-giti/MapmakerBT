@@ -2916,6 +2916,26 @@ body.menu-open .app-frame { visibility: hidden; }
    Farbe als die Auswahl: es ist keine Auswahl zum Verschieben, sondern eine Kantenwahl. */
 .map-point.extend-pick-point { stroke: var(--shell-warn, #e7ad46); stroke-width: 4; }
 .extend-pick-ring { fill: none; stroke: var(--shell-warn, #e7ad46); stroke-width: 2; stroke-dasharray: 4 3; }
+/* Die beiden gewaehlten Punkte bedeuten Verschiedenes und sehen seit v70 verschieden aus.
+   Der **erste** ist zugleich das aktive Ende, an dem weitergebaut wird: eigene Farbe
+   (var(--shell-info), die Bearbeitungsfarbe der Karte — die Warnfarbe bleibt dem nur
+   vorgemerkten zweiten Punkt) und ein Blinken, das kein anderer Punkt der Karte traegt.
+   Welcher Punkt das ist, entscheidet allein extensionEndIndex() in app.js; hier steht nur,
+   wie er aussieht. Ausdruecklich keine feste Farbe: beide Fassungen kommen aus den Tokens
+   und folgen damit Hell/Dunkel. */
+.map-point.extend-pick-active { stroke: var(--shell-info); }
+.extend-pick-ring.extend-pick-ring-active { stroke: var(--shell-info); }
+.map-point.extend-pick-active, .extend-pick-ring.extend-pick-ring-active {
+  animation: extend-pick-blink 1.1s ease-in-out infinite;
+}
+/* Nur die Deckkraft pulsiert — die Farbe bleibt in jedem Takt dieselbe, damit der Punkt auch
+   im dunkelsten Moment noch als der markierte lesbar ist. */
+@keyframes extend-pick-blink { 0%, 100% { opacity: 1; } 50% { opacity: .28; } }
+/* Wer Bewegung abbestellt hat, bekommt kein Blinken — die Farbe unterscheidet die beiden Punkte
+   weiterhin, sie ist die eigentliche Aussage. */
+@media (prefers-reduced-motion: reduce) {
+  .map-point.extend-pick-active, .extend-pick-ring.extend-pick-ring-active { animation: none; opacity: 1; }
+}
 /* Vorschau vom aktiven Ende zur Maeherposition: bewusst die Warnfarbe der Markierung, damit
    Linie und markiertes Ende als eine Einheit lesbar sind — die beiden anderen Hilfslinien
    (.edit-distance-line, .boundary-distance-line) liegen farblich ohnehin schon dicht beieinander. */

@@ -1426,8 +1426,28 @@ länger, und der Hinweisstreifen hat die volle Breite.
 
 **Beide gewählten Punkte sind markiert**, solange die Vorschau steht — sonst wäre bei einer Zahl
 wie „12 Punkte" nicht zu sehen, welche Strecke gemeint ist. `extensionEndIndex()` bleibt trotzdem
-die einzige Quelle für das **aktive Ende**; `isExtensionPick()` ergänzt nur in der Auswahlphase den
-zweiten Punkt.
+die einzige Quelle für das **aktive Ende**; `extensionPickKind()` ergänzt nur in der Auswahlphase
+den zweiten Punkt.
+
+**Die beiden sehen seit v70 verschieden aus, weil sie Verschiedenes bedeuten.** Am aktiven Ende
+wird weitergebaut; der zweite ist nur vorgemerkt und lässt sich durch einen Tipp auf einen anderen
+Punkt noch wechseln — zwei gleich markierte Punkte ließen genau das nicht erkennen.
+`extensionPickKind()` liefert dafür `'active'` / `'second'` / `null` und ist die einzige Stelle,
+die das entscheidet; welcher der aktive ist, beantwortet darin weiterhin allein
+`extensionEndIndex()`, nicht eine zweite Rechnung über `ext.firstIndex`. `isExtensionPick()`
+delegiert dorthin. Das Aussehen steht vollständig im Stylesheet: das aktive Ende trägt
+`.extend-pick-active` (Farbe `--shell-info`, die Bearbeitungsfarbe der Karte) und **blinkt**, der
+zweite behält mit `.extend-pick-second` die Warnfarbe und blinkt nicht. **Beide Farben kommen aus
+Tokens**, keine feste Farbe — sonst folgte die Markierung Hell/Dunkel nicht. Geblinkt wird
+ausschließlich über die **Deckkraft** (`@keyframes extend-pick-blink`, 1 → 0,28): die Farbe ist die
+eigentliche Aussage und darf in keinem Takt wechseln. Unter `prefers-reduced-motion: reduce` fällt
+das Blinken weg (`animation: none`), **die Farbe bleibt** — ein Layout-Test hält beides fest.
+
+**Schritt 2 sagt seit v70 auch, dass der zweite Punkt noch wechselbar ist** („… Zum Öffnen Punkt 4
+erneut antippen oder anderen Punkt wählen."). Das Verhalten gab es seit v65, es stand nur nirgends;
+der vorgemerkte Punkt sah dadurch endgültiger aus, als er ist. Einzahl und Mehrzahl bleiben
+getrennt (`extendConfirmEdge`/`CutOne`/`Cut`), der Zusatz steht in allen drei Fassungen und in
+beiden Sprachen.
 
 **Ein Undo-Schritt für das Ganze**, auch wenn dabei viele Punkte verschwinden: es ist eine
 Handlung des Nutzers, kein Stapel einzelner Löschungen. Die Zahl steht nach dem Öffnen weiterhin im
@@ -2360,6 +2380,26 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-12: **v70 — die beiden gewählten Punkte beim Erweitern sind unterscheidbar, Schritt 2
+  nennt den Wechsel.** (1) Der zuerst gewählte Punkt — zugleich das aktive Ende, an dem
+  weitergebaut wird — trägt eine **eigene Farbe** (`--shell-info`) und **blinkt**; der nur
+  vorgemerkte zweite behält die Warnfarbe und bleibt ruhig. Vorher sahen beide gleich aus, obwohl
+  sie Verschiedenes bedeuten. Neu ist dafür `extensionPickKind()` als einzige Stelle, die die
+  Markierung eines Punktes entscheidet; **welcher der aktive ist, beantwortet darin weiterhin
+  allein `extensionEndIndex()`** — ein ui-Test prüft das per Quelltextsuche über den
+  Funktionsrumpf und verbietet dort jeden Rückgriff auf `ext.firstIndex`. Beide Farben kommen aus
+  Tokens (keine feste Farbe), geblinkt wird nur über die Deckkraft, und unter
+  `prefers-reduced-motion: reduce` fällt die Bewegung weg, während die Farbe bleibt. (2) Die drei
+  Ankündigungen in Schritt 2 enden jetzt auf „… erneut antippen **oder anderen Punkt wählen**"
+  (EN „… or choose a different point"); Einzahl und Mehrzahl unverändert getrennt. Das Verhalten
+  besteht seit v65, es stand nur nicht im Text. Neu: 1 ui-Fall (219) und 1 layout-Fall (47). Gegen
+  neun simulierte Rückfälle geprüft, alle gefangen (u. a. beide Punkte wieder gleich markiert, die
+  aktive Marke aus `ext.firstIndex` statt aus `extensionEndIndex()` gebildet, feste Farbe statt
+  Token, Blinken auch am zweiten Punkt, Blinken über die Strichfarbe statt die Deckkraft,
+  `prefers-reduced-motion` ohne Wirkung, Zusatz nur in einer der drei Fassungen, EN nicht
+  nachgezogen). i18n-Parität DE/EN maschinell geprüft (529/529). Hilfe, Markup-Fallback und README
+  in beiden Sprachen nachgezogen. `APP_VERSION` auf `v70`.
 
 - 2026-09-12: **v69 — der Erweitern-Ablauf hat drei Schritte statt vier.** Die vom Nutzer
   vorgegebenen Texte stehen jetzt wörtlich in `I18N.de` (EN sinngemäß): Schritt 1 „Punkt wählen von

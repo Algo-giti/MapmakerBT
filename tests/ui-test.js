@@ -777,6 +777,12 @@ test('Die drei Erweitern-Schritte tragen den vorgegebenen Wortlaut', () => {
   assert.ok(/[Ee]in Punkt dazwischen/.test(t.tr('extendConfirmCutOne', { b: 3 })), t.tr('extendConfirmCutOne', { b: 3 }));
   assert.ok(!/\{count\}/.test(t.tr('extendConfirmCut', { b: 3, count: 4 })), 'kein Platzhalterrest');
   assert.ok(t.tr('extendConfirmCut', { b: 3, count: 4 }).includes('4 Punkte'), 'Mehrzahl mit Zahl');
+  // Seit v70 sagt Schritt 2 auch, dass der zweite Punkt noch zu wechseln ist — ohne diesen Satz
+  // sah der vorgemerkte Punkt endgueltig aus, obwohl ein Tipp daneben ihn laengst verschiebt.
+  for (const key of ['extendConfirmEdge', 'extendConfirmCutOne', 'extendConfirmCut']) {
+    assert.ok(/anderen Punkt wählen/.test(t.I18N.de[key]), `${key} (de): ${t.I18N.de[key]}`);
+    assert.ok(/choose a different point/.test(t.I18N.en[key]), `${key} (en): ${t.I18N.en[key]}`);
+  }
 });
 
 test('Jeder Erweitern-Schritt ist nummeriert, die Gesamtzahl kommt aus dem Ablauf', async () => {
@@ -3036,6 +3042,58 @@ test('Der zuerst getippte Punkt ist das Ende, an dem weitergebaut wird', async (
   const ba = await appendAfterTaps(1, 0);
   assert.strictEqual(ba.vorletzter, ba.erwartet, 'erst B getippt: dann haengt er an B');
   assert.notStrictEqual(ab.erwartet, ba.erwartet, 'die Reihenfolge der Tipps entscheidet wirklich');
+});
+
+test('Der erste gewaehlte Punkt ist anders markiert als der vorgemerkte zweite', async () => {
+  const { t } = setup();
+  seedClosedPerimeter(t);
+  const points = t.state.activeMap.perimeter;
+  /** Die Klassen der Markierung je Listenplatz — Punkt und zugehoeriger Ring. */
+  const marks = () => {
+    t.renderMap();
+    const kids = t.ui.shapeLayer.children;
+    const byIndex = {};
+    kids.filter((c) => (c.attributes?.class || '').includes('extend-pick-point'))
+      .forEach((c) => { byIndex[Number(c.attributes['data-point-index'])] = c.attributes.class; });
+    return { byIndex, ringe: kids.filter((c) => (c.attributes?.class || '').includes('extend-pick-ring'))
+      .map((c) => c.attributes.class) };
+  };
+
+  t.startExtension();
+  tapPoint(t, points, 1);
+  let m = marks();
+  assert.ok(/extend-pick-active/.test(m.byIndex[1]), `erster Punkt aktiv markiert: ${m.byIndex[1]}`);
+  assert.strictEqual(m.ringe.length, 1, 'nur ein Ring, solange nur ein Punkt gewaehlt ist');
+  assert.ok(/extend-pick-ring-active/.test(m.ringe[0]), m.ringe[0]);
+
+  // Zweiter Punkt vorgemerkt: beide markiert, aber unterscheidbar.
+  tapPoint(t, points, 3);
+  m = marks();
+  assert.ok(/extend-pick-active/.test(m.byIndex[1]), 'der erste bleibt das aktive Ende');
+  assert.ok(/extend-pick-second/.test(m.byIndex[3]), `der zweite traegt die eigene Marke: ${m.byIndex[3]}`);
+  assert.ok(!/extend-pick-active/.test(m.byIndex[3]), 'und ausdruecklich nicht die des aktiven Endes');
+  assert.ok(!/extend-pick-second/.test(m.byIndex[1]), 'und umgekehrt genauso wenig');
+  assert.strictEqual(m.ringe.filter((c) => /extend-pick-ring-active/.test(c)).length, 1,
+    'genau ein blinkender Ring');
+  assert.strictEqual(m.ringe.filter((c) => /extend-pick-ring-second/.test(c)).length, 1,
+    'und genau ein ruhiger daneben');
+
+  // Nach dem Auftrennen wandert die aktive Marke mit dem offenen Ende weiter; einen zweiten
+  // vorgemerkten Punkt gibt es dann nicht mehr.
+  tapPoint(t, points, 3);
+  await flush();
+  m = marks();
+  assert.strictEqual(Object.keys(m.byIndex).length, 1, 'nur noch das aktive Ende ist markiert');
+  assert.ok(/extend-pick-active/.test(Object.values(m.byIndex)[0]), Object.values(m.byIndex)[0]);
+
+  // Die Frage „welcher ist das aktive Ende?" beantwortet weiterhin nur extensionEndIndex().
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'app.js'), 'utf8');
+  const body = src.slice(src.indexOf('function extensionPickKind'));
+  const kind = body.slice(0, body.indexOf('\n}\n') + 2);
+  assert.ok(kind.includes('extensionEndIndex(ext) === index'),
+    'die Marke des aktiven Endes kommt aus extensionEndIndex()');
+  assert.ok(!/firstIndex/.test(kind),
+    'und ausdruecklich nicht aus einer zweiten Rechnung ueber ext.firstIndex');
 });
 
 test('Markierung und Vorschau nennen dasselbe Ende wie das Anhaengen', async () => {

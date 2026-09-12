@@ -1634,6 +1634,49 @@ test('Die Zeile zur Zonenstaffel steht bei den Geschwindigkeitsfeldern und ist s
   assert.ok(resolve(':root', '--warn').value, '--warn fehlt in der Hell-Palette');
 });
 
+test('Das aktive Ende der Erweiterung blinkt und traegt eine eigene Tokenfarbe', () => {
+  // Farbe: der erste gewaehlte Punkt (das aktive Ende) unterscheidet sich vom nur vorgemerkten
+  // zweiten, der die Warnfarbe behaelt. Beide ausdruecklich aus Tokens — eine feste Farbe
+  // folgte Hell/Dunkel nicht.
+  const aktiv = resolve('.map-point.extend-pick-active', 'stroke');
+  const zweiter = resolve('.map-point.extend-pick-point', 'stroke');
+  assert.ok(aktiv.value, 'das aktive Ende hat keine eigene Farbe');
+  assert.notStrictEqual(aktiv.value, zweiter.value,
+    `beide Markierungen sehen gleich aus (${aktiv.value})`);
+  for (const [was, wert] of [['aktives Ende', aktiv.value], ['zweiter Punkt', zweiter.value]]) {
+    assert.ok(/^var\(--/.test(wert), `${was}: keine Tokenfarbe, sondern "${wert}"`);
+  }
+  assert.ok(!/#/.test(aktiv.value), `das aktive Ende traegt eine feste Farbe: "${aktiv.value}"`);
+  assert.ok(resolve(':root', '--shell-info').value, '--shell-info fehlt in der Grundpalette');
+  assert.ok(resolve(':root[data-theme="light"]', '--shell-info').value, '--shell-info fehlt in der Hell-Palette');
+  // Der Ring gehoert zum Punkt und darf nicht in der anderen Farbe stehenbleiben.
+  const ring = resolve('.extend-pick-ring.extend-pick-ring-active', 'stroke');
+  assert.strictEqual(ring.value, aktiv.value, `der Ring des aktiven Endes ist "${ring.value}"`);
+
+  // Blinken: nur das aktive Ende, und die Bewegung faellt bei prefers-reduced-motion weg.
+  const anim = resolve('.map-point.extend-pick-active', 'animation');
+  assert.ok(/extend-pick-blink/.test(anim.value || ''), `kein Blinken gesetzt: "${anim.value}"`);
+  assert.ok(/extend-pick-blink/.test(resolve('.extend-pick-ring.extend-pick-ring-active', 'animation').value || ''),
+    'der Ring des aktiven Endes blinkt nicht mit');
+  assert.ok(!resolve('.map-point.extend-pick-point', 'animation').value,
+    'der vorgemerkte zweite Punkt darf nicht mitblinken');
+  const css = require('fs').readFileSync(require('path').join(__dirname, '..', 'styles.css'), 'utf8');
+  const frames = css.slice(css.indexOf('@keyframes extend-pick-blink'));
+  const block = frames.slice(0, frames.indexOf('}\n') + 1);
+  assert.ok(/opacity/.test(block), 'das Blinken laeuft nicht ueber die Deckkraft');
+  assert.ok(!/(stroke|fill|color)\s*:/.test(block),
+    'das Blinken darf die Farbe nicht antasten — sie ist die eigentliche Aussage');
+
+  for (const sel of ['.map-point.extend-pick-active', '.extend-pick-ring.extend-pick-ring-active']) {
+    const ruhig = resolve(sel, 'animation', { media: 'prefers-reduced-motion: reduce' });
+    assert.strictEqual(ruhig.value, 'none', `${sel}: Bewegung nicht abbestellbar ("${ruhig.value}")`);
+  }
+  // Die Farbe bleibt dabei: unter reduced motion wird nichts umgefaerbt.
+  assert.ok(!resolve('.map-point.extend-pick-active', 'stroke',
+    { media: 'prefers-reduced-motion: reduce' }).value,
+    'unter prefers-reduced-motion wird die Farbe des aktiven Endes angetastet');
+});
+
 for (const c of cases) {
   try { c.fn(); } catch (error) {
     failed += 1;

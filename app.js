@@ -136,9 +136,9 @@ const I18N = {
     extendStep: 'Schritt {step} von {total}:',
     extendPickFirst: 'Punkt wählen von dem aus neue Punkte hinzugefügt werden sollen',
     extendPickSecond: 'Punkt wählen wo das Ende der Konturöffnung sein soll, Punkte dazwischen werden automatisch gelöscht',
-    extendConfirmEdge: 'Punkt {b} gewählt — es wird kein Punkt gelöscht. Zum Öffnen Punkt {b} erneut antippen.',
-    extendConfirmCutOne: 'Punkt {b} gewählt — ein Punkt dazwischen wird gelöscht. Zum Öffnen Punkt {b} erneut antippen.',
-    extendConfirmCut: 'Punkt {b} gewählt — {count} Punkte dazwischen werden gelöscht. Zum Öffnen Punkt {b} erneut antippen.',
+    extendConfirmEdge: 'Punkt {b} gewählt — es wird kein Punkt gelöscht. Zum Öffnen Punkt {b} erneut antippen oder anderen Punkt wählen.',
+    extendConfirmCutOne: 'Punkt {b} gewählt — ein Punkt dazwischen wird gelöscht. Zum Öffnen Punkt {b} erneut antippen oder anderen Punkt wählen.',
+    extendConfirmCut: 'Punkt {b} gewählt — {count} Punkte dazwischen werden gelöscht. Zum Öffnen Punkt {b} erneut antippen oder anderen Punkt wählen.',
     extendWrongContour: 'Bitte einen Punkt dieser Kontur antippen.',
     extendOpened: 'Kontur geöffnet, bitte neue Punkte aufnehmen und fertig klicken, Kontur wird dann mit Punkt aus Schritt 2 verbunden und Kontur geschlossen.',
     extendFinished: 'Erweiterung abgeschlossen, die Kontur ist wieder geschlossen.',
@@ -336,7 +336,7 @@ const I18N = {
     mapOverview: 'Kartenübersicht', lockCurrentMap: 'Karte sperren', unlockCurrentMap: 'Karte entsperren', mapLocked: 'Gesperrt', mapLockedHint: 'Diese Karte ist gesperrt. Zum Bearbeiten zuerst entsperren.', mapCardArea: '{area} m²', mapCardPoints: '{points} Punkte', mapCardChanged: 'Geändert {date}', selectMap: 'Karte auswählen', drive: 'Fahren', stopEverythingDone: 'STOP gesendet · Fahrt 0 · Mähmotor AUS · IDLE',
     manualDrive: 'Manuell fahren', driveSpeed: 'Tempo', reverse: 'Zurück', left: 'Links', stop: 'Stop', driveIdle: 'Fahrt gestoppt', driveNeedConnection: 'Für manuelle Fahrt zuerst per BLE verbinden.',
     helpQualityTitle: 'Punktqualität', helpQualityText: 'Der Rand eines Punktes zeigt, zu welchem Element er gehört, die Füllung die RTK-Qualität bei der Aufnahme.',
-    helpExtendTitle: 'Kontur nachträglich erweitern', helpExtendText: 'Ist ein Perimeter oder eine Ausschlussfläche schon geschlossen, öffnet „Erweitern“ in der Kartenleiste sie wieder. Ein Hinweisstreifen über der Karte führt in drei Schritten: erst den Punkt wählen, von dem aus weitergebaut wird, dann den Punkt, an dem die Öffnung endet — die Kontur wird zwischen beiden geöffnet. Die beiden müssen keine Nachbarn sein — liegen Punkte dazwischen, werden sie gelöscht, und zwar auf der kürzeren der beiden Seiten. Der Hinweisstreifen nennt die Anzahl vorher; erst ein zweiter Tipp auf denselben Punkt führt es aus. Danach nimmst du wie gewohnt weitere Punkte auf — auch mit Automatik —, sie landen genau zwischen den beiden gewählten. „Fertig“ im Hinweisstreifen schließt die Kontur wieder.',
+    helpExtendTitle: 'Kontur nachträglich erweitern', helpExtendText: 'Ist ein Perimeter oder eine Ausschlussfläche schon geschlossen, öffnet „Erweitern“ in der Kartenleiste sie wieder. Ein Hinweisstreifen über der Karte führt in drei Schritten: erst den Punkt wählen, von dem aus weitergebaut wird, dann den Punkt, an dem die Öffnung endet — die Kontur wird zwischen beiden geöffnet. Die beiden müssen keine Nachbarn sein — liegen Punkte dazwischen, werden sie gelöscht, und zwar auf der kürzeren der beiden Seiten. Der Hinweisstreifen nennt die Anzahl vorher; erst ein zweiter Tipp auf denselben Punkt führt es aus, ein Tipp auf einen anderen Punkt wählt stattdessen diesen. Der zuerst gewählte Punkt blinkt in eigener Farbe, damit er sich vom nur vorgemerkten zweiten unterscheidet. Danach nimmst du wie gewohnt weitere Punkte auf — auch mit Automatik —, sie landen genau zwischen den beiden gewählten. „Fertig“ im Hinweisstreifen schließt die Kontur wieder.',
     helpMapToolsTitle: 'Karten umbenennen & kopieren', helpMapToolsText: 'In der Kartenübersicht trägt jede Karte zwei kleine Werkzeuge: der Stift benennt sie um (nur der Name ändert sich), das Kopiersymbol legt eine vollständige, unabhängige Kopie an — mit allen Punkten, dem Positionsmodus und dem Ursprung. Die Kopie bekommt automatisch einen freien Namen, die gerade aktive Karte bleibt aktiv.',
     helpDriveZonesTitle: 'Geschwindigkeitszonen beim Vorwärts- und Rückwärtsfahren', helpDriveZonesText: 'Die vier Tasten sind als Sanduhr geschnitten: vorwärts und rückwärts sind breite Trapeze, links und rechts schmale Keile. Der Grund ist die Bedienung — bei vor und zurück schiebt der Daumen über die ganze Länge, links und rechts sind Korrekturen auf der Stelle. Vorwärts und rückwärts sind längs dreigeteilt: innen das Minimum, in der Mitte der eingetragene Tastenwert, außen das Maximum — dieselben drei Werte, die unter Einstellungen › Fahrgeschwindigkeit ohnehin stehen, es kommt keine neue Zahl dazu. Die Zone folgt dem Finger, solange er gedrückt bleibt: weiter nach außen schieben heißt schneller, zurück zur Mitte wieder langsamer. Die Grenzen sind auf der Taste eingezeichnet, die gerade gefahrene Zone ist hervorgehoben. Jede Zone trägt einen Chevron, der nach außen breiter, flacher und kräftiger wird. Sind die Zonen abgeschaltet, steht auf vorwärts und rückwärts nur noch der eine Chevron der mittleren Geschwindigkeit — die Taste zeigt nichts, was sie nicht tut. Loslassen stoppt wie zuvor sofort. Die Einteilung lässt sich abschalten — dann gilt für beide Richtungen der eingetragene Tastenwert. Links und rechts haben keine Zonen: das Drehen auf der Stelle läuft immer mit der Hälfte des eingestellten Höchstwerts, gedeckelt durch die eingestellte Höchst-Drehrate. Die drei Werte sind frei einstellbar und werden nicht sortiert: liegt der mittlere unter dem inneren, wird das Schieben nach außen zwischendurch langsamer. Die Werte gelten dann wie eingetragen, und ein Hinweis bei den Geschwindigkeitsfeldern nennt die Reihenfolge.',
     helpDriveControlTitle: 'Joystick oder Richtungstasten', helpDriveControlText: 'Der kleine Knopf neben dem Fahrfeld schaltet zwischen beidem um; er zeigt das Symbol des Modus, in den er wechselt. Bei Rechtshändern steht er links vom Feld, bei Linkshändern gespiegelt rechts – jeweils direkt über der Fahrtanzeige. Der Joystick fährt wie eine Fernsteuerung: Richtung und Stärke der Auslenkung. Die Richtungstasten kennen nur vorwärts, rückwärts und Drehen auf der Stelle — kein versehentliches Lenken beim Geradeausfahren. Sie fahren mit einer eigenen, langsamen Geschwindigkeit für genaues Rangieren, einstellbar unter Einstellungen › Fahrgeschwindigkeit.',
@@ -392,9 +392,9 @@ const I18N = {
     extendStep: 'Step {step} of {total}:',
     extendPickFirst: 'Choose the point from which new points are to be added',
     extendPickSecond: 'Choose the point where the contour opening should end, points in between are deleted automatically',
-    extendConfirmEdge: 'Point {b} chosen — no point is deleted. Tap point {b} again to open.',
-    extendConfirmCutOne: 'Point {b} chosen — one point in between is deleted. Tap point {b} again to open.',
-    extendConfirmCut: 'Point {b} chosen — {count} points in between are deleted. Tap point {b} again to open.',
+    extendConfirmEdge: 'Point {b} chosen — no point is deleted. Tap point {b} again to open, or choose a different point.',
+    extendConfirmCutOne: 'Point {b} chosen — one point in between is deleted. Tap point {b} again to open, or choose a different point.',
+    extendConfirmCut: 'Point {b} chosen — {count} points in between are deleted. Tap point {b} again to open, or choose a different point.',
     extendWrongContour: 'Please tap a point of this contour.',
     extendOpened: 'Contour opened, please capture new points and click Done, the contour is then joined to the point from step 2 and closed.',
     extendFinished: 'Extension finished, the contour is closed again.',
@@ -592,7 +592,7 @@ const I18N = {
     mapOverview: 'Map overview', lockCurrentMap: 'Lock map', unlockCurrentMap: 'Unlock map', mapLocked: 'Locked', mapLockedHint: 'This map is locked. Unlock it before editing.', mapCardArea: '{area} m²', mapCardPoints: '{points} points', mapCardChanged: 'Changed {date}', selectMap: 'Select map', drive: 'Drive', stopEverythingDone: 'STOP sent · drive 0 · mowing motor OFF · IDLE',
     manualDrive: 'Manual drive', driveSpeed: 'Speed', reverse: 'Reverse', left: 'Left', stop: 'Stop', driveIdle: 'Drive stopped', driveNeedConnection: 'Connect via BLE before using manual drive.',
     helpQualityTitle: 'Point quality', helpQualityText: 'The outline of a point shows which element it belongs to, the fill shows the RTK quality at the time it was captured.',
-    helpExtendTitle: 'Extending a closed contour', helpExtendText: 'If a perimeter or exclusion area is already closed, “Extend” in the map bar reopens it. A hint strip above the map guides you through three steps: first choose the point building continues from, then the point where the opening ends — the contour opens between them. They need not be neighbours — any points in between are deleted, on the shorter of the two sides. The hint strip states the number beforehand; only a second tap on the same point carries it out. Then capture further points as usual — automatic capture included — and they land exactly between the two you picked. “Done” in the hint strip closes the contour again.',
+    helpExtendTitle: 'Extending a closed contour', helpExtendText: 'If a perimeter or exclusion area is already closed, “Extend” in the map bar reopens it. A hint strip above the map guides you through three steps: first choose the point building continues from, then the point where the opening ends — the contour opens between them. They need not be neighbours — any points in between are deleted, on the shorter of the two sides. The hint strip states the number beforehand; only a second tap on the same point carries it out, while a tap on a different point picks that one instead. The point you chose first blinks in its own colour so it stands apart from the merely pending second one. Then capture further points as usual — automatic capture included — and they land exactly between the two you picked. “Done” in the hint strip closes the contour again.',
     helpMapToolsTitle: 'Renaming & copying maps', helpMapToolsText: 'In the map overview every map carries two small tools: the pencil renames it (only the name changes), the copy icon creates a complete, independent copy — with all points, the position mode and the origin. The copy automatically gets a free name, and the map you are working on stays active.',
     helpDriveZonesTitle: 'Speed zones for driving forward and back', helpDriveZonesText: 'The four keys are cut as an hourglass: forward and reverse are wide trapezoids, left and right narrow wedges. The reason is how they are used — for forward and back your thumb slides along the whole length, while left and right are corrections on the spot. Forward and reverse are split lengthwise into three: the minimum on the inside, the key speed you entered in the middle, the maximum on the outside — the same three values already under Settings › Drive speed, no new number is added. The zone follows your finger while it stays down: sliding further out means faster, back towards the centre slower again. The boundaries are drawn on the key and the zone currently in use is highlighted. Each zone carries a chevron that grows wider, flatter and stronger towards the outside. With the zones switched off, forward and reverse show only the single chevron of the middle speed — the key shows nothing it does not do. Releasing stops immediately, as before. The split can be switched off — the key speed then applies to both directions. Left and right have no zones: turning on the spot always runs at half the maximum speed you set, capped by the maximum turn rate. The three values are yours to set and are never sorted: if the middle one is below the inner one, sliding outwards gets slower in between. The values then apply exactly as entered, and a note next to the speed fields spells out the order.',
     helpDriveControlTitle: 'Joystick or direction keys', helpDriveControlText: 'The small button beside the drive field switches between the two; it shows the icon of the mode it switches to. For right-handed use it sits to the left of the field, for left-handed use mirrored to the right, directly above the drive status. The joystick drives like a remote control: direction and amount of deflection. The direction keys only know forward, backward and turning on the spot — no accidental steering while driving straight. They use their own slow speed for precise manoeuvring, adjustable under Settings › Drive speed.',
@@ -4130,19 +4130,31 @@ function isSelectedPoint(meta, index) {
 }
 
 /**
- * Die markierten Punkte der Erweiterung. Das **aktive Ende** beantwortet ausschliesslich
- * `extensionEndIndex()` — in der Auswahlphase der zuerst getippte Punkt, danach das offene Ende.
- * In der Auswahlphase kommt der **zweite** gewaehlte Punkt dazu, solange die Rueckschau laeuft:
- * die Hinweiszeile nennt eine Punktzahl, die zwischen beiden verschwindet, und ohne beide
- * Markierungen waere nicht zu sehen, welche Strecke gemeint ist.
+ * Welche Markierung ein Punkt der Erweiterung traegt — `'active'`, `'second'` oder `null`.
+ *
+ * Das **aktive Ende** beantwortet ausschliesslich `extensionEndIndex()`: in der Auswahlphase der
+ * zuerst getippte Punkt, danach das offene Ende. In der Auswahlphase kommt der **zweite**
+ * gewaehlte Punkt dazu, solange die Rueckschau laeuft: die Hinweiszeile nennt eine Punktzahl, die
+ * zwischen beiden verschwindet, und ohne beide Markierungen waere nicht zu sehen, welche Strecke
+ * gemeint ist.
+ *
+ * **Die beiden sehen seit v70 verschieden aus** (eigene Farbe, dazu blinkt das aktive Ende): sie
+ * bedeuten Verschiedenes — am aktiven Ende wird weitergebaut, der zweite ist nur vorgemerkt und
+ * laesst sich durch einen Tipp auf einen anderen Punkt noch wechseln. Zwei gleich markierte Punkte
+ * liessen genau das nicht erkennen. Welcher der aktive ist, entscheidet weiterhin allein
+ * `extensionEndIndex()` — hier steht keine zweite Antwort auf dieselbe Frage.
  */
-function isExtensionPick(meta, index) {
+function extensionPickKind(meta, index) {
   const ext = state.extension;
-  if (!ext) return false;
-  const picked = extensionEndIndex(ext) === index
-    || (ext.phase === 'picking' && ext.secondIndex === index);
-  if (!picked) return false;
-  return meta.role === ext.role && (ext.role !== 'exclusion' || meta.exclusionId === ext.exclusionId);
+  if (!ext) return null;
+  if (meta.role !== ext.role || (ext.role === 'exclusion' && meta.exclusionId !== ext.exclusionId)) return null;
+  if (extensionEndIndex(ext) === index) return 'active';
+  if (ext.phase === 'picking' && ext.secondIndex === index) return 'second';
+  return null;
+}
+
+function isExtensionPick(meta, index) {
+  return extensionPickKind(meta, index) !== null;
 }
 
 function drawPoints(points, tr, className, meta) {
@@ -4165,16 +4177,21 @@ function drawPoints(points, tr, className, meta) {
     hit.appendChild(hitTitle);
     ui.shapeLayer.appendChild(hit);
 
-    const picked = isExtensionPick(meta, index);
+    const pick = extensionPickKind(meta, index);
+    const pickClass = pick ? ` extend-pick-point extend-pick-${pick}` : '';
     const qualityClass = state.view.showPointQuality ? ` quality-${pointQuality(p)}` : '';
     const circle = svgEl('circle', {
       cx: s.x, cy: s.y, r: selected ? 9 : 5,
-      class: `${className} map-point${qualityClass}${selected ? ' selected-map-point' : ''}${picked ? ' extend-pick-point' : ''}`,
+      class: `${className} map-point${qualityClass}${selected ? ' selected-map-point' : ''}${pickClass}`,
       'pointer-events': 'none', role: 'img', ...common,
     });
     ui.shapeLayer.appendChild(circle);
     if (selected) ui.shapeLayer.appendChild(svgEl('circle', { cx: s.x, cy: s.y, r: 15, class: 'edit-selected-ring', 'pointer-events': 'none' }));
-    if (picked) ui.shapeLayer.appendChild(svgEl('circle', { cx: s.x, cy: s.y, r: 15, class: 'extend-pick-ring', 'pointer-events': 'none' }));
+    if (pick) {
+      ui.shapeLayer.appendChild(svgEl('circle', {
+        cx: s.x, cy: s.y, r: 15, class: `extend-pick-ring extend-pick-ring-${pick}`, 'pointer-events': 'none',
+      }));
+    }
   });
 }
 
