@@ -313,8 +313,8 @@ const I18N = {
     offlineWarning: 'Wichtig: Browserdaten/Website-Daten löschen kann sowohl Offline-Cache als auch lokal gespeicherte Karten entfernen. Regelmäßig JSON-Backups erstellen.',
     bluetoothHelpTitle: 'Bluetooth-Verbindung verstehen', bleHelp1: 'MapCreator nutzt Bluetooth Low Energy (BLE) und verbindet sich direkt mit dem Ardumower-ESP32 – nicht über das Internet.', bleHelp2: 'Der bekannte Ardumower-BLE-UART-Service verwendet FFE0/FFE1. Sunray-Kommandos werden über diese Verbindung übertragen.', bleHelp3: 'Die Gerätesuche darf ein Browser nur nach einer Benutzeraktion starten. Deshalb musst du den Verbindungsbutton antippen und den Ardumower auswählen.', bleHelp4: 'Das Sunray-Passwort wird nur für die laufende Sitzung verwendet und nicht mit der Karte gespeichert.', bleHelp5: 'Wenn die BLE-Verbindung durch Standby, Reichweite oder Browser-Neustart abbricht, einfach erneut „Gerät suchen & verbinden“ verwenden.',
     mappingHelpTitle: 'Karten erstellen & korrigieren',
-    helpPerimeterTitle: 'Perimeter', helpPerimeterText: 'Äußere Mähgrenze Punkt für Punkt aufnehmen. Ab drei Punkten schließt ein Tipp auf den ersten Punkt die Kontur.',
-    helpExclusionTitle: 'Ausschlussflächen', helpExclusionText: 'Geschlossene Bereiche innerhalb des Perimeters, die nicht gemäht werden. Eine neue Fläche entsteht von selbst, sobald du im Ausschluss-Modus den ersten Punkt setzt.',
+    helpPerimeterTitle: 'Perimeter', helpPerimeterText: 'Äußere Mähgrenze Punkt für Punkt aufnehmen. Ab drei Punkten schließt ein Tipp auf den ersten Punkt die Kontur. Ist der Perimeter geschlossen, nimmt der Knopf keine Punkte mehr auf — zum Weiterbauen erst über „Erweitern“ öffnen. Je Karte gibt es nur einen Perimeter.',
+    helpExclusionTitle: 'Ausschlussflächen', helpExclusionText: 'Geschlossene Bereiche innerhalb des Perimeters, die nicht gemäht werden. Eine neue Fläche entsteht von selbst, sobald du im Ausschluss-Modus den ersten Punkt setzt. Ist die aktuelle Fläche bereits geschlossen, beginnt der nächste Punkt ebenfalls eine neue — die geschlossene bleibt unangetastet, und Anzeige und Auswahl springen auf die neue. Die Zahl der Ausschlussflächen ist unbegrenzt.',
     helpDockTitle: 'Dockpfad', helpDockText: 'Offenen Punktpfad für den Dockbereich erfassen.',
     helpModeTitle: 'Modus wechseln', helpModeText: 'Der Chip in der Kopfzeile öffnet die Auswahl. Hat die verlassene Kontur mindestens drei Punkte und ist noch offen, fragt die App einmal, ob sie geschlossen werden soll.',
     helpCaptureTitle: 'Punkt aufnehmen', helpCaptureText: 'Den großen Knopf unten rechts kurz gedrückt halten. Das Halten verhindert, dass beim Wischen oder Zoomen versehentlich Punkte entstehen.',
@@ -332,7 +332,9 @@ const I18N = {
     troubleshootingTitle: 'Fehlerbehebung', faqDeviceTitle: 'Ardumower wird nicht gefunden', faqDeviceText: 'Prüfe Bluetooth am Tablet, aktuelle Chrome-Version, Reichweite und ob der ESP32 BLE sendet. Falls eine andere App bereits verbunden ist, diese Verbindung zuerst trennen. Danach Bluetooth-Gerätesuche erneut öffnen.', faqButtonTitle: 'Aufnahme-Button wird nicht grün', faqButtonText: 'Grün bedeutet echten RTK FIX. Prüfe RTK-Empfang und die Live-Daten. Wenn „Nur bei RTK FIX“ aktiv ist, bleibt die Aufnahme bei FLOAT/INVALID gesperrt.', faqOfflineTitle: 'Die App startet ohne WLAN nicht', faqOfflineText: 'Öffne die GitHub-Pages-Seite mindestens einmal mit Internet und warte, bis der Offline-Cache im Systemcheck als bereit angezeigt wird. Danach am besten als PWA installieren.', faqMapsGoneTitle: 'Meine Karten sind verschwunden', faqMapsGoneText: 'Karten liegen lokal im Browser. Gelöschte Website-Daten, ein anderer Browser oder ein anderes Benutzerprofil haben einen eigenen Speicher. Importiere dein letztes JSON-Backup.', faqIosTitle: 'Warum funktioniert es auf iPhone/iPad nicht?', faqIosText: 'Der MapCreator benötigt Web Bluetooth. Safari und Chrome auf iOS/iPadOS bieten diese Web-API derzeit nicht nativ an; deshalb kann die Webseite den Ardumower dort nicht direkt auswählen und verbinden.',
     privacyTitle: 'Daten & Privatsphäre', privacy1: 'GitHub Pages liefert nur die statische App aus. Deine aufgezeichneten Karten werden nicht automatisch zu GitHub hochgeladen.', privacy2: 'Karten liegen lokal im Browser des verwendeten Geräts.', privacy3: 'Bluetooth-Kommunikation läuft direkt zwischen Browser und Ardumower-ESP32.', privacy4: 'Das Sunray-Passwort wird nicht in den Kartendaten gespeichert.', privacy5: 'Für wichtige Karten regelmäßig ein JSON-Backup auf einem zweiten Speicherort ablegen.',
     showPointQuality: 'Punktqualität anzeigen', keepAwake: 'Bildschirm beim Mapping wachhalten', wakeLockAuto: 'Wird bei aktiver Aufnahme automatisch verwendet.', wakeLockActive: 'Bildschirm bleibt wach.', wakeLockUnavailable: 'Wake Lock in diesem Browser nicht verfügbar.', wakeLockReleased: 'Wake Lock derzeit nicht aktiv.',
-    perimeterNearStart: 'Startpunkt erreicht · Abstand {distance} m', closePerimeter: 'Perimeter schließen', perimeterClosed: 'Perimeter geschlossen · kein doppelter Startpunkt gespeichert.', perimeterAlreadyClosed: 'Perimeter ist bereits geschlossen.', reopenPerimeter: 'Perimeter wieder öffnen', checkPerimeterOpen: 'Perimeter ist noch nicht als geschlossen markiert.',
+    perimeterNearStart: 'Startpunkt erreicht · Abstand {distance} m', closePerimeter: 'Perimeter schließen', perimeterClosed: 'Perimeter geschlossen · kein doppelter Startpunkt gespeichert.', perimeterAlreadyClosed: 'Perimeter ist bereits geschlossen.',
+    perimeterClosedTitle: 'Perimeter geschlossen', perimeterClosedCapture: 'Perimeter ist geschlossen — zum Weiterbauen erst öffnen (Erweitern).', perimeterReopenHint: 'Zum Weiterbauen erst öffnen (Erweitern).',
+    captureNewArea: 'Neue Fläche beginnen', captureNewAreaAnyway: 'Neue Fläche trotzdem beginnen', areaStartedNew: '{name} begonnen · erster Punkt gesetzt.', checkPerimeterOpen: 'Perimeter ist noch nicht als geschlossen markiert.',
     mapOverview: 'Kartenübersicht', lockCurrentMap: 'Karte sperren', unlockCurrentMap: 'Karte entsperren', mapLocked: 'Gesperrt', mapLockedHint: 'Diese Karte ist gesperrt. Zum Bearbeiten zuerst entsperren.', mapCardArea: '{area} m²', mapCardPoints: '{points} Punkte', mapCardChanged: 'Geändert {date}', selectMap: 'Karte auswählen', drive: 'Fahren', stopEverythingDone: 'STOP gesendet · Fahrt 0 · Mähmotor AUS · IDLE',
     manualDrive: 'Manuell fahren', driveSpeed: 'Tempo', reverse: 'Zurück', left: 'Links', stop: 'Stop', driveIdle: 'Fahrt gestoppt', driveNeedConnection: 'Für manuelle Fahrt zuerst per BLE verbinden.',
     helpQualityTitle: 'Punktqualität', helpQualityText: 'Der Rand eines Punktes zeigt, zu welchem Element er gehört, die Füllung die RTK-Qualität bei der Aufnahme.',
@@ -569,8 +571,8 @@ const I18N = {
     offlineWarning: 'Important: clearing browser/site data can remove both the offline cache and locally stored maps. Create JSON backups regularly.',
     bluetoothHelpTitle: 'Understanding the Bluetooth connection', bleHelp1: 'MapCreator uses Bluetooth Low Energy (BLE) and connects directly to the Ardumower ESP32 – not through the internet.', bleHelp2: 'The known Ardumower BLE UART service uses FFE0/FFE1. Sunray commands are transported through this connection.', bleHelp3: 'A browser may start device discovery only after a user action. You therefore have to tap the connect button and select the Ardumower.', bleHelp4: 'The Sunray password is used only for the current session and is not stored with the map.', bleHelp5: 'If BLE disconnects because of standby, range or a browser restart, simply use “Find device & connect” again.',
     mappingHelpTitle: 'Creating & correcting maps',
-    helpPerimeterTitle: 'Perimeter', helpPerimeterText: 'Record the outer mowing boundary point by point. From three points on, tapping the first point closes the contour.',
-    helpExclusionTitle: 'Exclusion areas', helpExclusionText: 'Closed areas inside the perimeter that must not be mowed. A new area is created automatically as soon as you place the first point in exclusion mode.',
+    helpPerimeterTitle: 'Perimeter', helpPerimeterText: 'Record the outer mowing boundary point by point. From three points on, tapping the first point closes the contour. Once the perimeter is closed the button no longer captures points — reopen it via “Extend” to keep building. There is only one perimeter per map.',
+    helpExclusionTitle: 'Exclusion areas', helpExclusionText: 'Closed areas inside the perimeter that must not be mowed. A new area is created automatically as soon as you place the first point in exclusion mode. If the current area is already closed, the next point starts another new one — the closed area is left untouched, and the display and selection jump to the new one. The number of exclusion areas is unlimited.',
     helpDockTitle: 'Dock path', helpDockText: 'Record an open point path for the docking area.',
     helpModeTitle: 'Switching mode', helpModeText: 'The chip in the header opens the selection. If the contour you leave has at least three points and is still open, the app asks once whether to close it.',
     helpCaptureTitle: 'Capturing a point', helpCaptureText: 'Press and hold the large button at the bottom right for a moment. Holding prevents points from appearing accidentally while panning or zooming.',
@@ -588,7 +590,9 @@ const I18N = {
     troubleshootingTitle: 'Troubleshooting', faqDeviceTitle: 'Ardumower is not found', faqDeviceText: 'Check Bluetooth on the tablet, a current Chrome version, range and whether the ESP32 is advertising BLE. If another app is already connected, disconnect it first. Then open Bluetooth device discovery again.', faqButtonTitle: 'Capture button does not turn green', faqButtonText: 'Green means a real RTK FIX. Check RTK reception and the live data. With “RTK FIX only” enabled, capture remains blocked for FLOAT/INVALID.', faqOfflineTitle: 'The app does not start without Wi-Fi', faqOfflineText: 'Open the GitHub Pages site at least once with internet and wait until the system check shows the offline cache as ready. Installing it as a PWA is recommended.', faqMapsGoneTitle: 'My maps are gone', faqMapsGoneText: 'Maps are stored locally in the browser. Cleared site data, a different browser or a different browser profile use separate storage. Import your latest JSON backup.', faqIosTitle: 'Why does it not work on iPhone/iPad?', faqIosText: 'MapCreator requires Web Bluetooth. Safari and Chrome on iOS/iPadOS currently do not provide this Web API natively, so the website cannot directly select and connect to the Ardumower there.',
     privacyTitle: 'Data & privacy', privacy1: 'GitHub Pages only serves the static app. Your recorded maps are not automatically uploaded to GitHub.', privacy2: 'Maps stay in the browser storage of the device being used.', privacy3: 'Bluetooth communication runs directly between the browser and the Ardumower ESP32.', privacy4: 'The Sunray password is not stored in map data.', privacy5: 'For important maps, regularly keep a JSON backup in a second location.',
     showPointQuality: 'Show point quality', keepAwake: 'Keep screen awake while mapping', wakeLockAuto: 'Used automatically while an active recording is running.', wakeLockActive: 'Screen will stay awake.', wakeLockUnavailable: 'Wake Lock is not available in this browser.', wakeLockReleased: 'Wake Lock is currently inactive.',
-    perimeterNearStart: 'Start point reached · distance {distance} m', closePerimeter: 'Close perimeter', perimeterClosed: 'Perimeter closed · no duplicate start point stored.', perimeterAlreadyClosed: 'Perimeter is already closed.', reopenPerimeter: 'Reopen perimeter', checkPerimeterOpen: 'Perimeter is not marked as closed yet.',
+    perimeterNearStart: 'Start point reached · distance {distance} m', closePerimeter: 'Close perimeter', perimeterClosed: 'Perimeter closed · no duplicate start point stored.', perimeterAlreadyClosed: 'Perimeter is already closed.',
+    perimeterClosedTitle: 'Perimeter closed', perimeterClosedCapture: 'The perimeter is closed — reopen it first to keep building (Extend).', perimeterReopenHint: 'Reopen it first to keep building (Extend).',
+    captureNewArea: 'Start new area', captureNewAreaAnyway: 'Start new area anyway', areaStartedNew: '{name} started · first point set.', checkPerimeterOpen: 'Perimeter is not marked as closed yet.',
     mapOverview: 'Map overview', lockCurrentMap: 'Lock map', unlockCurrentMap: 'Unlock map', mapLocked: 'Locked', mapLockedHint: 'This map is locked. Unlock it before editing.', mapCardArea: '{area} m²', mapCardPoints: '{points} points', mapCardChanged: 'Changed {date}', selectMap: 'Select map', drive: 'Drive', stopEverythingDone: 'STOP sent · drive 0 · mowing motor OFF · IDLE',
     manualDrive: 'Manual drive', driveSpeed: 'Speed', reverse: 'Reverse', left: 'Left', stop: 'Stop', driveIdle: 'Drive stopped', driveNeedConnection: 'Connect via BLE before using manual drive.',
     helpQualityTitle: 'Point quality', helpQualityText: 'The outline of a point shows which element it belongs to, the fill shows the RTK quality at the time it was captured.',
@@ -1578,15 +1582,6 @@ async function closePerimeter({ automatic = false } = {}) {
   if (automatic) log('MAP', tr('perimeterClosed'));
 }
 
-async function reopenPerimeter() {
-  if (!ensureMapEditable() || !state.activeMap) return;
-  if (!state.activeMap.perimeterClosed) return;
-  pushUndo();
-  state.activeMap.perimeterClosed = false;
-  await saveActiveMap();
-  renderMap();
-}
-
 function normalizeAngleRad(value) {
   let a = value;
   while (a > Math.PI) a -= Math.PI * 2;
@@ -2238,7 +2233,10 @@ function refreshCaptureState() {
     ? tr(auto ? 'autoCaptureDistOn' : 'autoCaptureDist', { distance: state.view.autoCaptureDistanceCm })
     : tr(auto ? 'autoCaptureOn' : 'autoCapture', { seconds: state.view.autoCaptureIntervalS });
   ui.autoCaptureBtn.setAttribute('aria-pressed', String(auto));
-  ui.autoCaptureBtn.disabled = mapLocked || (!auto && !(hasMap && fresh && coords && !blockedByFixRule));
+  // `captureTarget()` ist auch hier die eine Auskunft: was der Aufnahmeweg ablehnt, darf der
+  // Automatik-Knopf nicht anbieten.
+  const captureBlockKey = hasMap ? captureTarget().blockKey : null;
+  ui.autoCaptureBtn.disabled = mapLocked || (!auto && (Boolean(captureBlockKey) || !(hasMap && fresh && coords && !blockedByFixRule)));
   // Mit ausgewaehltem Punkt geht es ums Verschieben, nicht ums Aufnehmen: die Automatik
   // hat in diesem Zustand nichts zu suchen.
   ui.autoFabWrap.hidden = Boolean(selected) || areaSelected;
@@ -2315,18 +2313,17 @@ function refreshCaptureState() {
   }
 
   if (state.mode === 'perimeter' && state.activeMap?.perimeterClosed) {
-    button.disabled = false;
-    // Die **sichtbare** Statuszeile bleibt hier leer: den Zustand sagt bereits das Konturfeld
-    // („Perimeter · geschlossen“), und was ein Tipp bewirkt, steht auf dem Knopf selbst
-    // („Perimeter wieder öffnen“). Vorher stand `perimeterAlreadyClosed` zusaetzlich als
-    // ausgeschriebener Satz daneben — derselbe Sachverhalt zweimal in einer Zeile, die sich
-    // beide Anzeigen gegenseitig den Platz wegnahmen. Als **Vorlesehilfe** (`captureButtonHint`,
-    // `.sr-only`) bleibt der Satz erhalten: dort ist er nicht sichtbar und erklaert dem
-    // Screenreader den Zustand des Knopfes.
-    show('capture-warning', tr('reopenPerimeter'), tr('perimeterAlreadyClosed'), '');
+    button.disabled = true;
+    // Seit v71 oeffnet ein Tipp den Ring **nicht** mehr. Der Knopf ist deshalb gesperrt und
+    // benennt den Hinderungsgrund — dieselbe Bauart wie der Zweig „Kein RTK FIX“ —, waehrend die
+    // Statuszeile den Ausweg nennt. Sie wiederholt dabei bewusst **nicht** das Zustandswort, das
+    // schon im Konturfeld steht (das war der gemeldete Fehler aus v45), sondern sagt nur, was zu
+    // tun ist; die ausgeschriebene Fassung bleibt als Vorlesehilfe am Knopf.
+    show('capture-blocked', tr('perimeterClosedTitle'), tr('perimeterClosedCapture'), tr('perimeterReopenHint'));
     return;
   }
 
+  const startsNewArea = state.mode === 'exclusion' && hasMap && captureTarget().startsNewArea === true;
   const closeCandidate = state.mode === 'perimeter' ? perimeterClosureCandidate() : null;
   if (closeCandidate && !state.autoCaptureRunning) {
     button.disabled = false;
@@ -2345,8 +2342,10 @@ function refreshCaptureState() {
   if (!hasMap) show('capture-idle', tr('noMapActive'), tr('createMapFirst'), tr('pleaseCreateMap'));
   else if (!fresh || !coords) show('capture-idle', tr('waitPosition'), tr('noCurrentXY'), tr('noCurrentPosition'));
   else if (blockedByFixRule) show('capture-blocked', tr('noRtkFix'), tr('captureBlocked', { solution: solution() }), tr('pointBlocked', { solution: solution() }));
-  else if (hasTrueFix) show('capture-fix', tr('capturePoint'), tr('holdToCapture'), tr('readyPoint', { x: t.x.toFixed(2), y: t.y.toFixed(2) }));
-  else show('capture-warning', tr('captureAnyway'), tr('noTrueFix', { solution: solution() }), tr('warningPoint', { solution: solution() }));
+  // Beginnt der naechste Punkt eine neue Ausschlussflaeche, sagt der Knopf das auch — sonst
+  // verspraeche „Punkt aufnehmen“ ein Anhaengen an die geschlossene Flaeche daneben.
+  else if (hasTrueFix) show('capture-fix', tr(startsNewArea ? 'captureNewArea' : 'capturePoint'), tr('holdToCapture'), tr('readyPoint', { x: t.x.toFixed(2), y: t.y.toFixed(2) }));
+  else show('capture-warning', tr(startsNewArea ? 'captureNewAreaAnyway' : 'captureAnyway'), tr('noTrueFix', { solution: solution() }), tr('warningPoint', { solution: solution() }));
 }
 
 function handleLine(rawLine) {
@@ -3322,6 +3321,40 @@ function getActivePointArray() {
 }
 
 /**
+ * Wohin geht ein an der **Live-Position** aufgenommener Punkt? Die einzige Stelle, die das
+ * entscheidet — Einzelaufnahme und Automatik haengen beide ueber `appendCurrentPoint()` daran,
+ * und der Aufnahme-Knopf liest dieselbe Auskunft, damit er nicht etwas ankuendigt, das nicht
+ * geschieht. Drei moegliche Antworten:
+ *
+ *  - `{ blockKey }`          — es wird nichts aufgenommen, der Schluessel nennt den Grund.
+ *  - `{ startsNewArea: true }` — der Punkt beginnt eine **neue** Ausschlussflaeche.
+ *  - `{ points }`            — er haengt an dieser Punktliste an.
+ *
+ * **Eine geschlossene Kontur nimmt keine Punkte mehr an** — genau das bedeutet der Schluss.
+ * Perimeter und Ausschluss gehen dabei bewusst verschieden aus: einen Perimeter gibt es je
+ * Karte nur einmal, ein zweiter waere gar nicht darstellbar, also bleibt nur der Hinweis, ihn
+ * ueber „Erweitern“ zu oeffnen. Ausschlussflaechen sind dagegen unbegrenzt, und wer bei
+ * geschlossener Flaeche aufnimmt, meint erkennbar die naechste — deshalb beginnt dort eine neue.
+ *
+ * `getActivePointArray()` beantwortet weiterhin „welche Punktliste gehoert zum Modus?“ und
+ * kennt den Konturzustand ausdruecklich nicht: sie bedient auch Loeschen und Zaehlen, wo eine
+ * geschlossene Kontur selbstverstaendlich die richtige Liste ist.
+ */
+function captureTarget() {
+  if (!state.activeMap) return { blockKey: 'noMapActive' };
+  if (state.mode === 'perimeter' && state.activeMap.perimeterClosed) {
+    return { blockKey: 'perimeterClosedCapture' };
+  }
+  if (state.mode === 'exclusion') {
+    const exclusion = currentExclusion();
+    if (!exclusion || exclusion.closed) return { startsNewArea: true };
+    return { points: exclusion.points };
+  }
+  const points = getActivePointArray();
+  return points ? { points } : { blockKey: 'noMapActive' };
+}
+
+/**
  * Ein Knopf, drei Aufgaben: ohne Auswahl loescht er den zuletzt aufgenommenen Punkt,
  * bei ausgewaehltem Punkt genau diesen, bei ausgewaehlter Ausschlussflaeche die ganze Flaeche.
  * Waehrend der Automatik-Aufnahme ist er ausgeblendet.
@@ -3650,19 +3683,36 @@ async function appendCurrentPoint({ automatic = false, targetOverride = null, sa
   // nimmt ein Undo beides zusammen zurueck. Abgelegt wird er erst, wenn wirklich ein Punkt
   // entsteht — sonst haette ein Fehlversuch ohne Positionsdaten einen leeren Schritt erzeugt.
   const before = geometrySnapshot();
-  let target = targetOverride || getActivePointArray();
-  if (!targetOverride && state.mode === 'exclusion' && !target) {
-    const nested = state.undoSuspended;
-    state.undoSuspended = true;
-    try { await createExclusion(); } finally { state.undoSuspended = nested; }
-    target = getActivePointArray();
+  let target = targetOverride;
+  let startedArea = null;
+  if (!target) {
+    const decision = captureTarget();
+    // Eine geschlossene Kontur meldet sich hier, statt sich stillschweigend wieder zu oeffnen
+    // oder weiterzuwachsen. Beide Aufnahmewege laufen ueber diese Stelle, Automatik wie Tipp.
+    if (decision.blockKey) { ui.pointStatus.textContent = tr(decision.blockKey); return null; }
+    // Erst pruefen, dann anlegen: sonst bliebe nach einem Fehlversuch ohne Positionsdaten eine
+    // leere neue Ausschlussflaeche stehen, und die Auswahl waere ohne jeden Punkt umgesprungen.
+    if (capturePreconditionKey()) return null;
+    if (decision.startsNewArea) {
+      const nested = state.undoSuspended;
+      state.undoSuspended = true;
+      try { await createExclusion(); } finally { state.undoSuspended = nested; }
+      startedArea = currentExclusion();
+      target = startedArea?.points || null;
+    } else {
+      target = decision.points;
+    }
   }
   if (!target || capturePreconditionKey()) return null;
   const point = pointFromTelemetry();
   commitUndo(before);
   target.push(point);
   if (save) await saveActiveMap();
-  if (!automatic) ui.pointStatus.textContent = tr('pointSaved', { x: point.x.toFixed(2), y: point.y.toFixed(2) });
+  if (!automatic) {
+    ui.pointStatus.textContent = startedArea
+      ? tr('areaStartedNew', { name: localizedExclusionName(startedArea, state.activeMap.exclusions.indexOf(startedArea)) })
+      : tr('pointSaved', { x: point.x.toFixed(2), y: point.y.toFixed(2) });
+  }
   return point;
 }
 
@@ -3680,7 +3730,10 @@ function stopAutoCapture({ render = true } = {}) {
 async function startAutoCapture() {
   if (!ensureMapEditable()) return;
   if (!state.activeMap || !telemetryIsFresh() || (ui.fixOnly.checked && !telemetryHasFix())) return;
-  if (state.mode === 'exclusion' && !getActivePointArray()) await createExclusion();
+  // Dieselbe Auskunft wie beim Einzelpunkt: eine geschlossene Flaeche nimmt nichts mehr an.
+  const startTarget = captureTarget();
+  if (startTarget.blockKey) { ui.pointStatus.textContent = tr(startTarget.blockKey); return; }
+  if (startTarget.startsNewArea) await createExclusion();
   clearPointSelection({ render: false });
   state.autoCaptureRunning = true;
   state.autoCaptureCount = 0;
@@ -3708,6 +3761,15 @@ async function autoCaptureTick() {
   }
   state.autoCaptureBusy = true;
   try {
+    // Eine geschlossene Kontur nimmt nichts mehr an. Eine still weiterlaufende, aber wirkungslose
+    // Automatik waere das Schlimmste — deshalb anhalten und den Grund nennen.
+    const blocked = captureTarget().blockKey;
+    if (blocked) {
+      stopAutoCapture({ render: false });
+      ui.pointStatus.textContent = tr(blocked);
+      renderMap(); refreshCaptureState();
+      return;
+    }
     if (state.mode === 'perimeter' && perimeterClosureCandidate()) {
       await closePerimeter({ automatic: true });
       stopAutoCapture({ render: false });
@@ -3742,7 +3804,8 @@ async function toggleAutoCapture() {
 async function addCurrentPoint() {
   if (state.activeMap?.locked) { ensureMapEditable(); return; }
   if (captureButtonMoves()) { await movePointToMower(); return; }
-  if (state.mode === 'perimeter' && state.activeMap?.perimeterClosed) { await reopenPerimeter(); return; }
+  // Frueher oeffnete ein Tipp hier den geschlossenen Perimeter wieder — eine Nebenwirkung, die
+  // niemand angefordert hat. Der Ring bleibt jetzt zu; `captureTarget()` meldet den Grund.
   if (state.mode === 'perimeter' && perimeterClosureCandidate()) { await closePerimeter(); return; }
   await appendCurrentPoint();
   renderMap();

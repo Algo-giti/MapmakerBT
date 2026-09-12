@@ -148,12 +148,18 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    **Das Konturfeld ist die einzige sichtbare Zustandsanzeige.** Die Statuszeile `#pointStatus`
    daneben darf denselben Sachverhalt nicht wiederholen — genau das war ein gemeldeter Fehler:
    bei geschlossenem Perimeter stand dort zusätzlich der ausgeschriebene Satz
-   `perimeterAlreadyClosed`, direkt neben „Perimeter · geschlossen“. Der vierte Parameter von
-   `show()` ist in diesem Zweig deshalb `''`. **Der Satz selbst bleibt erhalten**, aber
-   ausschließlich als dritter Parameter, also als Vorlesehilfe `#captureButtonHint` — die ist
-   `.sr-only`, steht also nicht sichtbar in der Zeile und erklärt dem Screenreader den Zustand
-   des Aufnahme-Knopfes. Merksatz für neue Zweige: **Zustand ins Konturfeld, Handlung auf den
-   Knopf, Ereignisse in die Statuszeile.**
+   `perimeterAlreadyClosed`, direkt neben „Perimeter · geschlossen“. Merksatz für neue Zweige:
+   **Zustand ins Konturfeld, Handlung auf den Knopf, Ereignisse in die Statuszeile.**
+
+   **Seit v71 steht in diesem Zweig wieder etwas in der Statuszeile — aber nur der Ausweg, nicht
+   der Zustand.** Der Knopf ist dort gesperrt (ein Tipp nimmt nichts mehr auf, siehe „Eine
+   geschlossene Kontur nimmt keine Punkte mehr an"), also kann er keine Handlung mehr tragen; er
+   benennt stattdessen den Hinderungsgrund, wie der Zweig „Kein RTK FIX“ es ohnehin tut. Die
+   Statuszeile sagt „Zum Weiterbauen erst öffnen (Erweitern)." — das ist neue Auskunft und keine
+   Wiederholung des Konturfelds, und ein ui-Test zählt weiterhin nach, dass das Wort
+   „geschlossen“ in den sichtbaren Teilen der Zeile genau **einmal** vorkommt. Die ausgeschriebene
+   Fassung („Perimeter ist geschlossen — zum Weiterbauen erst öffnen (Erweitern).") bleibt die
+   Vorlesehilfe `#captureButtonHint` und ist `.sr-only`.
 
    **Ansicht zurücksetzen `#fitViewBtn`** ist ein **reines Symbol** ohne Knopffläche und Rahmen
    (`border: 0; background: none`), wie in Kartenprogrammen üblich; ein Schlagschatten hält es
@@ -1224,6 +1230,59 @@ Durchwinken sähe im Protokoll wie ein bestandener Test aus.
 tatsächlich annimmt — geprüft ist nur, dass `dcc.Upload` (`uploadsunray.py:14`) kein `accept`
 setzt und der Callback (`:32`) den Dateinamen nicht auswertet.
 
+### Eine geschlossene Kontur nimmt keine Punkte mehr an (Stand v71)
+
+**Genau das bedeutet der Schluss.** Gemeldet wurden zwei Wege, auf denen „Punkt aufnehmen“ die
+geschlossene Kontur trotzdem anfasste, beide mit einer eigenen Ursache:
+
+- **Perimeter:** `addCurrentPoint()` (`app.js:3745` vor der Änderung) hatte als zweite Bedingung
+  `if (state.mode === 'perimeter' && state.activeMap?.perimeterClosed) { await reopenPerimeter(); return; }`
+  — ein Tipp **öffnete den Ring wieder**. Das war nie angefordert; der Knopf dafür heißt
+  „Erweitern“. Der Zweig ist gestrichen, und mit ihm `reopenPerimeter()` selbst: es war der
+  einzige Aufrufer, der Rest wäre toter Code an einer der Schreibstellen von `perimeterClosed`
+  gewesen. Der Übersetzungsschlüssel `reopenPerimeter` ist ebenfalls entfallen.
+- **Ausschlussfläche:** `getActivePointArray()` (`app.js:3312-3322`) liefert `exclusion.points`
+  **ohne** `exclusion.closed` anzusehen — der Punkt landete also in der Fläche, die daneben als
+  „geschlossen“ angezeigt wurde. Dort ist bewusst nichts geändert worden: dieselbe Funktion
+  bedient auch Löschen und Zählen, und dafür ist die Punktliste einer geschlossenen Kontur
+  selbstverständlich die richtige.
+
+**`captureTarget()` ist die eine Stelle, die das Ziel einer Aufnahme bestimmt** und liefert
+genau eine von drei Antworten: `{ blockKey }` (es wird nichts aufgenommen), `{ startsNewArea: true }`
+(der Punkt beginnt eine neue Ausschlussfläche) oder `{ points }`. Vier Leser hängen daran, damit
+Ankündigung und Wirkung nicht auseinanderlaufen können: `appendCurrentPoint()` (der **einzige**
+Weg, auf dem ein Punkt an der Live-Position entsteht — Einzelaufnahme wie Automatik),
+`startAutoCapture()`, `autoCaptureTick()` und `refreshCaptureState()` (Beschriftung und
+Sperrzustand beider Knöpfe). Ein ui-Test prüft per Quelltextsuche, dass `appendCurrentPoint()`
+den Konturzustand nicht ein zweites Mal selbst beurteilt.
+
+**Perimeter und Ausschluss gehen bewusst verschieden aus.** Einen Perimeter gibt es je Karte nur
+einmal — ein zweiter wäre im Modell gar nicht darstellbar —, also bleibt nur der Hinweis:
+Aufnahme-Knopf **gesperrt**, Automatik-Knopf ebenfalls, Statuszeile „Zum Weiterbauen erst öffnen
+(Erweitern)."; der Ring bleibt geschlossen. Ausschlussflächen sind dagegen **unbegrenzt**, und wer
+bei geschlossener Fläche aufnimmt, meint erkennbar die nächste — deshalb legt `createExclusion()`
+eine neue an, der Punkt ist dort der erste, und `state.activeExclusionId` springt mit, wodurch
+Konturfeld und Elementliste ohne Zutun die neue Fläche zeigen. Damit der Knopf nicht etwas anderes
+verspricht, heißt er in diesem Zustand „Neue Fläche beginnen“ statt „Punkt aufnehmen“.
+
+**Die Reihenfolge in `appendCurrentPoint()` hat sich dabei geändert: erst `capturePreconditionKey()`,
+dann anlegen.** Vorher entstand die Ausschlussfläche, bevor geprüft war, ob überhaupt eine Position
+vorliegt. Solange das nur den Fall „noch gar keine Fläche“ betraf, räumte `pruneEmptyExclusions()`
+das wieder weg; mit der neuen Regel hätte dagegen **jeder** Fehlversuch ohne Fix eine leere Fläche
+erzeugt und die Auswahl auf sie umgesprungen.
+
+**Dieselbe Stelle greift bei importierten Karten — dort am häufigsten.** `sunrayAppToMap()` und
+`geoJsonToMap()` setzen Perimeter und Flächen unbedingt als geschlossen, und `state.activeExclusionId`
+zeigt nach dem Laden auf `exclusions[0]`. Genau dort war der gemeldete Fehler am leichtesten
+auszulösen. Ein ui-Test führt den Fall über den echten Importweg und prüft zugleich die Gegenprobe:
+`getActivePointArray()` liefert die Punktliste der geschlossenen Fläche weiterhin, und
+„Letzten Punkt“ arbeitet unverändert auf ihr.
+
+**Die Automatik hält an, statt wirkungslos weiterzulaufen.** `startAutoCapture()` startet bei
+gesperrter Kontur gar nicht erst, und `autoCaptureTick()` beendet einen laufenden Takt mit der
+Meldung — dieselbe Überlegung wie bei einer fehlschlagenden Aufnahme: eine still weiterlaufende,
+aber nichts bewirkende Automatik wäre das Schlimmste.
+
 ### Ringschluss und Punktlöschen (Stand v59)
 
 **Eine Ecke zu entfernen öffnet keinen Ring.** Das Modell speichert **keinen** Schlusspunkt —
@@ -1253,8 +1312,8 @@ eine zu kurze Kontur meldet `checkPerimeterTooFew` und sperrt darüber auch den 
 verlangt für ein `polygon` ohnehin eigenständig drei Ecken, ein geschlossen gekennzeichneter
 Zwei-Punkt-Perimeter wird also trotzdem offen gezeichnet.
 
-**`perimeterClosed` darf nur an acht Stellen geschrieben werden**, jede mit eigenem Grund:
-`closePerimeter()` (schließt), `reopenPerimeter()` (öffnet auf Nutzerwunsch), `normalizeMap()`
+**`perimeterClosed` darf nur an sieben Stellen geschrieben werden**, jede mit eigenem Grund:
+`closePerimeter()` (schließt), `normalizeMap()`
 (fehlendes Feld gilt als offen), `deleteElement()` (leert den Perimeter **vollständig** — dann gibt
 es keinen Ring), `undoLastAction()` (Schnappschuss), `sunrayAppToMap()` und `geoJsonToMap()`
 (Import) sowie `openContourForExtension()` (trennt die Kante absichtlich auf). Ein ui-Test führt
@@ -1517,7 +1576,7 @@ lesen bewusst dieselbe Größe, können sich also nicht überlagern. `movePointT
 `relearnSelectedPoint()` hat genau einen Aufrufer; ein ui-Test hält beides per Quelltextsuche fest.
 
 **Nur in Phase `adding`, bewusst nicht überall.** Außerhalb der Erweiterung tut der Hauptknopf
-ohne Auswahl ohnehin schon Verschiedenes (`Perimeter wieder öffnen`, `Perimeter schließen`),
+ohne Auswahl ohnehin schon Verschiedenes (`Perimeter schließen`, gesperrt bei geschlossenem Ring),
 „hängt immer an" wäre dort keine sinnvolle Regel; und es gibt keine stehende Aufforderung, die
 ihm widerspräche — der Hinweisstreifen existiert nur, solange `state.extension` gesetzt ist.
 
@@ -1767,7 +1826,7 @@ bleibt unverändert, beide sind bewusst nicht zusammengelegt, und die Symbole si
 - **Verdrahtet** (jeweils nach allen frühen Ausstiegen, unmittelbar vor der Mutation):
   `appendCurrentPoint()`, `relearnSelectedPoint()` (Verschieben), `deleteSelectedPoint()`,
   `undoPoint()`, `deleteSelectedArea()`, `deleteElement()`, `createExclusion()`,
-  `closePerimeter()`, `reopenPerimeter()`, `closeContour()`.
+  `closePerimeter()`, `closeContour()`.
 - **Zusammengesetzte Aktionen kosten genau einen Schritt**: `asOneUndoStep(fn)` setzt
   `state.undoSuspended`, damit verschachtelte Aufrufe nichts eigenes ablegen — genutzt von
   `closeAndStartNewExclusion()` und `closeAllOpenContours()`. `appendCurrentPoint()` macht
@@ -2380,6 +2439,31 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-12: **v71 — „Punkt aufnehmen“ fasst eine geschlossene Kontur nicht mehr an.** Zwei
+  gemeldete Fälle, zwei verschiedene Ursachen, eine gemeinsame Lösung; Einzelheiten im Abschnitt
+  „Eine geschlossene Kontur nimmt keine Punkte mehr an". (1) Beim **Perimeter** öffnete der Tipp
+  den Ring wieder — der Zweig `if (… perimeterClosed) { await reopenPerimeter(); return; }` in
+  `addCurrentPoint()` (`app.js:3745`). Er ist gestrichen, `reopenPerimeter()` mit ihm (es war der
+  einzige Aufrufer; die Liste der Schreibstellen von `perimeterClosed` ist damit von acht auf
+  **sieben** geschrumpft), ebenso der Schlüssel `reopenPerimeter`. Stattdessen: Aufnahme- und
+  Automatik-Knopf gesperrt, Knopf benennt den Grund, Statuszeile den Ausweg („Zum Weiterbauen
+  erst öffnen (Erweitern)."). (2) Bei einer geschlossenen **Ausschlussfläche** hängte der Punkt
+  weiter an, weil `getActivePointArray()` (`app.js:3312-3322`) `exclusion.closed` nicht ansieht —
+  dort bewusst unverändert, weil Löschen und Zählen dieselbe Liste brauchen. Stattdessen beginnt
+  der Punkt eine **neue** Fläche (unbegrenzt viele), Anzeige und Auswahl springen mit, und der
+  Knopf heißt in diesem Zustand „Neue Fläche beginnen“. Neu ist `captureTarget()` als **einzige**
+  Stelle, die das Ziel einer Aufnahme bestimmt; Einzelaufnahme und Automatik hängen beide über
+  `appendCurrentPoint()` daran, die beiden Knöpfe lesen dieselbe Auskunft. **Auf Nachfrage
+  geprüft:** dieselbe Stelle greift bei **importierten** Karten am häufigsten, weil
+  `sunrayAppToMap()` und `geoJsonToMap()` Perimeter und Flächen unbedingt als geschlossen setzen
+  und `activeExclusionId` danach auf `exclusions[0]` steht — ein ui-Test führt genau diesen Weg.
+  **Dabei mitgeändert:** `appendCurrentPoint()` prüft die Aufnahmevorbedingung jetzt **vor** dem
+  Anlegen einer Fläche, sonst hätte jeder Fehlversuch ohne Fix eine leere neue Fläche erzeugt.
+  Neu: 4 ui-Fälle (223), zwei Bestandsfälle nachgezogen (der v45-Fall auf den gesperrten Knopf,
+  der Schreibstellen-Wächter auf sieben Einträge). Gegen elf simulierte Rückfälle geprüft, alle
+  gefangen. i18n-Parität DE/EN maschinell geprüft (534/534). Hilfe, Markup-Fallback und README in
+  beiden Sprachen nachgezogen. `APP_VERSION` auf `v71`.
 
 - 2026-09-12: **v70 — die beiden gewählten Punkte beim Erweitern sind unterscheidbar, Schritt 2
   nennt den Wechsel.** (1) Der zuerst gewählte Punkt — zugleich das aktive Ende, an dem

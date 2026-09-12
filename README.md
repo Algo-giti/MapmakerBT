@@ -122,6 +122,14 @@ das Öffnen eines Bereichs klappt die anderen zu.
    im Ausschluss-Modus den ersten Punkt setzt. Für Reihen kleiner Flächen – etwa Bäume – gibt es
    in der Werkzeugleiste **„Schließen & neu“**: ein Tipp schließt die laufende Fläche und beginnt
    sofort die nächste.
+7. **Eine geschlossene Kontur nimmt keine Punkte mehr auf** – das ist der Sinn des Schlusses.
+   Beim **Perimeter** bleibt der Aufnahme-Knopf deshalb gesperrt und nennt den Ausweg: zum
+   Weiterbauen erst über **„Erweitern“** öffnen; je Karte gibt es nur einen Perimeter. Bei einer
+   **Ausschlussfläche** beginnt der nächste Punkt stattdessen eine **neue** Fläche – die
+   geschlossene bleibt unangetastet, Anzeige und Auswahl springen auf die neue, und die Zahl der
+   Flächen ist unbegrenzt. Beides gilt für die Einzelaufnahme wie für die Automatik. Besonders
+   sichtbar wird das bei **importierten Karten**: dort sind Perimeter und Flächen immer als
+   geschlossen gekennzeichnet.
 
 Beim Wechsel des Aufnahmemodus fragt die App nach, ob die verlassene Kontur geschlossen werden
 soll – aber nur, wenn sie mindestens drei Punkte hat und noch offen ist. Sagst du Nein, bleibt sie
@@ -582,6 +590,13 @@ one section is open at a time; opening one collapses the others.
 6. You do not need to create a new **exclusion area**: one appears by itself as soon as you place
    the first point in exclusion mode. For rows of small areas – trees, for instance – the tool bar
    offers **“Close & new”**: one tap closes the current area and immediately starts the next.
+7. **A closed contour no longer accepts points** – that is what closing means. For the
+   **perimeter** the capture button therefore stays disabled and names the way out: reopen it via
+   **“Extend”** to keep building; there is only one perimeter per map. For an **exclusion area**
+   the next point starts a **new** area instead – the closed one is left untouched, the display
+   and selection jump to the new one, and the number of areas is unlimited. Both apply to single
+   capture and to automatic capture alike. This shows up most often with **imported maps**, where
+   perimeter and areas always arrive marked as closed.
 
 When you switch capture mode, the app asks whether the contour you are leaving should be closed –
 but only if it has at least three points and is still open. Say no and it stays open, so you can

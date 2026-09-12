@@ -60,7 +60,8 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'SCATTER_MAX_WINDOW_MS', 'capturePreconditionKey', 'telemetryHasFix',
   'EXTEND_STEPS', 'extensionStep', 'handleExtensionTap', 'toggleGpsPanel', 'loadViewPreferences',
   'UNDO_STACK_BYTE_BUDGET', 'trimUndoStack', 'mapWithoutUndo', 'geometrySnapshot', 'loadMaps',
-  'setActiveMapById', 'deleteActiveMap', 'saveActiveMap', 'duplicateMapById'];
+  'setActiveMapById', 'deleteActiveMap', 'saveActiveMap', 'duplicateMapById',
+  'captureTarget', 'getActivePointArray', 'geoJsonToMap'];
 
 /** Minimaler IndexedDB-Ersatz, damit saveActiveMap() im Test durchlaeuft. */
 function fakeDb() {
@@ -2297,11 +2298,15 @@ test('Der Konturstatus steht genau einmal in der Karteninfo', () => {
     'und zwar in der kompakten Fassung hinter der Konturbezeichnung');
   assert.ok(!/geschlossen/.test(elements.get('pointStatus').textContent || ''),
     'die Statuszeile wiederholt den Zustand nicht mehr');
-  // Als Vorlesehilfe am Aufnahme-Knopf bleibt der ausgeschriebene Satz erhalten — er ist
-  // .sr-only, steht also nicht sichtbar in der Zeile.
-  assert.strictEqual(elements.get('captureButtonHint').textContent, 'Perimeter ist bereits geschlossen.');
-  assert.strictEqual(elements.get('captureButtonTitle').textContent, 'Perimeter wieder öffnen',
-    'was ein Tipp bewirkt, sagt der Knopf selbst');
+  // Als Vorlesehilfe am Aufnahme-Knopf steht der ausgeschriebene Satz — er ist .sr-only,
+  // steht also nicht sichtbar in der Zeile. Seit v71 nennt er auch den Ausweg.
+  assert.strictEqual(elements.get('captureButtonHint').textContent,
+    'Perimeter ist geschlossen — zum Weiterbauen erst öffnen (Erweitern).');
+  assert.strictEqual(elements.get('captureButtonTitle').textContent, 'Perimeter geschlossen',
+    'der gesperrte Knopf benennt den Hinderungsgrund');
+  assert.strictEqual(t.ui.addPointBtn.disabled, true, 'und ist gesperrt, weil es nichts zu tun gibt');
+  assert.strictEqual(elements.get('pointStatus').textContent, 'Zum Weiterbauen erst öffnen (Erweitern).',
+    'die Statuszeile sagt, was zu tun ist — ohne den Zustand zu wiederholen');
   // Gegenprobe Englisch: dieselbe Aufteilung, nicht nur im deutschen Text.
   t.toggleLanguage();
   t.refreshCaptureState();
@@ -5015,7 +5020,6 @@ test('Ausschlussflaechen verhalten sich beim Loeschen unveraendert', async () =>
 // Textsuche kann die Absicht nicht lesen, die Zuordnung zur Funktion schon.
 const RINGSCHLUSS_SCHREIBER = {
   closePerimeter: { anzahl: 1, grund: 'schliesst den Ring — der Zweck der Funktion' },
-  reopenPerimeter: { anzahl: 1, grund: 'oeffnet ihn wieder, ausdrueckliche Nutzeraktion' },
   normalizeMap: { anzahl: 1, grund: 'Normalisierung: fehlendes Feld gilt als offen' },
   deleteElement: { anzahl: 1, grund: 'leert den Perimeter vollstaendig — dann gibt es keinen Ring' },
   undoLastAction: { anzahl: 1, grund: 'stellt den Schnappschuss wieder her' },
@@ -5060,6 +5064,187 @@ test('Kein Loeschweg fasst den Ringschluss an', () => {
     assert.ok(!zeilen.some((l) => /perimeterClosed\s*=[^=]/.test(l)),
       `${fn}() fasst den Ringschluss nicht an — eine Ecke zu entfernen oeffnet keinen Ring`);
   }
+});
+
+
+// --- v71: eine geschlossene Kontur nimmt keine Punkte mehr an -------------------------------
+
+/** Eine Ausschlussflaeche, die als geschlossen gilt — der Zustand nach jedem Import. */
+function seedClosedExclusion(t, { id = 'ex1', points = 4 } = {}) {
+  t.state.activeMap.exclusions = [{
+    id, name: 'Ausschluss 1', closed: true,
+    points: Array.from({ length: points }, (_, n) => ({ x: n, y: n })),
+  }];
+  t.state.activeExclusionId = id;
+  t.setMode('exclusion');
+  t.refreshCaptureState();
+}
+
+test('Ein geschlossener Perimeter nimmt keinen Punkt mehr auf und oeffnet sich nicht', async () => {
+  // Gemeldet: der Tipp auf „Punkt aufnehmen“ oeffnete den geschlossenen Ring wieder — eine
+  // Nebenwirkung, die niemand angefordert hat. Jetzt bleibt er zu, und der Knopf sagt warum.
+  const { t, elements } = setup();
+  seedClosedPerimeter(t);
+  const vorher = perimeterXY(t);
+
+  assert.strictEqual(t.captureTarget().blockKey, 'perimeterClosedCapture',
+    'die Auskunft ueber das Ziel ist eindeutig');
+  assert.ok(!t.captureTarget().points, 'und nennt keine Punktliste');
+  assert.strictEqual(t.ui.addPointBtn.disabled, true, 'der Aufnahme-Knopf ist gesperrt');
+  assert.strictEqual(t.ui.autoCaptureBtn.disabled, true, 'und der Automatik-Knopf ebenso');
+
+  // Der Aufnahmeweg selbst bleibt die Zusicherung, nicht der gesperrte Knopf davor.
+  const punkt = await t.appendCurrentPoint();
+  await flush();
+  assert.strictEqual(punkt, null, 'es entsteht kein Punkt');
+  assert.strictEqual(perimeterXY(t), vorher, 'die Punktfolge ist unveraendert');
+  assert.strictEqual(t.state.activeMap.perimeterClosed, true, 'und der Ring bleibt geschlossen');
+  assert.strictEqual(elements.get('pointStatus').textContent,
+    'Perimeter ist geschlossen — zum Weiterbauen erst öffnen (Erweitern).',
+    'der Versuch wird als Meldung beantwortet');
+
+  // Auch ueber den Knopfweg — er darf den Ring nicht als Nebenwirkung wieder aufmachen.
+  await t.addCurrentPoint();
+  await flush();
+  assert.strictEqual(t.state.activeMap.perimeterClosed, true, 'addCurrentPoint() oeffnet nichts');
+  assert.strictEqual(perimeterXY(t), vorher);
+
+  // Automatik: startet gar nicht erst, und ein erzwungener Takt haelt sie an, statt wirkungslos
+  // weiterzulaufen.
+  await t.startAutoCapture();
+  await flush();
+  assert.strictEqual(t.state.autoCaptureRunning, false, 'die Automatik startet nicht');
+  t.state.autoCaptureRunning = true;
+  await t.autoCaptureTick();
+  await flush();
+  assert.strictEqual(t.state.autoCaptureRunning, false, 'ein laufender Takt haelt an');
+  assert.strictEqual(perimeterXY(t), vorher, 'und hat nichts angehaengt');
+
+  // Gegenprobe: offen ist alles wie bisher.
+  t.state.activeMap.perimeterClosed = false;
+  assert.ok(t.captureTarget().points, 'offen gibt es wieder ein Ziel');
+  assert.ok(await t.appendCurrentPoint(), 'und der Punkt kommt an');
+
+  // Englisch traegt denselben Wortlaut.
+  t.state.activeMap.perimeterClosed = true;
+  t.toggleLanguage();
+  t.refreshCaptureState();
+  assert.strictEqual(elements.get('captureButtonTitle').textContent, 'Perimeter closed');
+  assert.strictEqual(elements.get('pointStatus').textContent,
+    'Reopen it first to keep building (Extend).');
+});
+
+test('Bei geschlossener Ausschlussflaeche beginnt die Aufnahme eine neue', async () => {
+  // Gemeldet: der Punkt landete in der als geschlossen angezeigten Flaeche. Jetzt beginnt er die
+  // naechste — Ausschlussflaechen sind unbegrenzt, anders als der eine Perimeter.
+  const { t, elements } = setup();
+  seedClosedExclusion(t);
+  const altPunkte = t.state.activeMap.exclusions[0].points.length;
+
+  assert.strictEqual(t.captureTarget().startsNewArea, true, 'die Auskunft nennt die neue Flaeche');
+  assert.ok(!t.captureTarget().points, 'und zeigt nicht auf die geschlossene Punktliste');
+  assert.strictEqual(t.ui.captureButtonTitle.textContent, 'Neue Fläche beginnen',
+    'und der Knopf verspricht nichts anderes');
+
+  t.state.telemetry.x = 40; t.state.telemetry.y = 41; t.state.fixHistory = [];
+  await t.addCurrentPoint();
+  await flush();
+
+  const ex = t.state.activeMap.exclusions;
+  assert.strictEqual(ex.length, 2, 'es gibt eine zweite Flaeche');
+  assert.strictEqual(ex[0].points.length, altPunkte, 'die geschlossene ist unveraendert');
+  assert.strictEqual(ex[0].closed, true, 'und bleibt geschlossen');
+  assert.strictEqual(ex[1].closed, false, 'die neue ist offen');
+  assert.strictEqual(ex[1].points.length, 1, 'der Punkt ist ihr erster');
+  assert.strictEqual(`${ex[1].points[0].x},${ex[1].points[0].y}`, '40,41');
+  assert.strictEqual(t.state.activeExclusionId, ex[1].id, 'die Auswahl springt auf die neue');
+  assert.strictEqual(elements.get('contourStatus').textContent, 'Ausschluss 2 · offen',
+    'und die Anzeige oben nennt sie');
+
+  // Unbegrenzt: die neue schliessen, wieder aufnehmen, wieder eine neue.
+  ex[1].closed = true;
+  t.refreshCaptureState();
+  await t.addCurrentPoint();
+  await flush();
+  assert.strictEqual(t.state.activeMap.exclusions.length, 3, 'die naechste entsteht genauso');
+  assert.strictEqual(t.state.activeExclusionId, t.state.activeMap.exclusions[2].id);
+
+  // Automatik geht denselben Weg.
+  t.state.activeMap.exclusions[2].closed = true;
+  await t.startAutoCapture();
+  await flush();
+  assert.strictEqual(t.state.activeMap.exclusions.length, 4, 'auch die Automatik beginnt eine neue');
+  assert.strictEqual(t.state.activeMap.exclusions[3].points.length, 1);
+  assert.strictEqual(t.state.activeMap.exclusions[2].points.length, 1,
+    'ohne die geschlossene davor anzufassen');
+  assert.strictEqual(t.state.activeMap.exclusions[0].points.length, altPunkte,
+    'und auch nicht die erste');
+  t.stopAutoCapture();
+
+  // Ohne Positionsdaten entsteht **keine** leere Flaeche: sonst spraenge die Auswahl bei jedem
+  // Fehlversuch auf eine Flaeche ohne einen einzigen Punkt.
+  const vorherAnzahl = t.state.activeMap.exclusions.length;
+  t.state.activeMap.exclusions[vorherAnzahl - 1].closed = true;
+  t.state.telemetry.receivedAt = 0;
+  assert.strictEqual(await t.appendCurrentPoint(), null, 'ohne Position kein Punkt');
+  await flush();
+  assert.strictEqual(t.state.activeMap.exclusions.length, vorherAnzahl,
+    'und auch keine leere neue Flaeche');
+});
+
+test('Der Konturzustand entscheidet nur ueber das Aufnehmen, nicht ueber die Punktliste', async () => {
+  // Genau dieselbe Stelle greift bei importierten Karten: Import setzt Perimeter und Flaechen
+  // unbedingt auf geschlossen, dort trat der Fehler deshalb am haeufigsten auf. Umgekehrt darf
+  // `getActivePointArray()` den Zustand nicht kennen — Loeschen und Zaehlen brauchen die Liste
+  // einer geschlossenen Kontur genauso.
+  const { t } = setup();
+  const geo = {
+    type: 'FeatureCollection',
+    name: 'Import', properties: { coordinateSystem: 'sunray-local-xy-meters' },
+    features: [{
+      type: 'Feature', properties: { role: 'exclusion', name: 'exclusion', label: 'Ausschluss 1' },
+      geometry: { type: 'Polygon', coordinates: [[[0, 0], [4, 0], [4, 4], [0, 4], [0, 0]]] },
+    }],
+  };
+  const map = t.normalizeMap(t.geoJsonToMap(geo));
+  t.state.activeMap = map;
+  t.state.maps = [map];
+  t.state.activeExclusionId = map.exclusions[0].id;
+  t.setMode('exclusion');
+  assert.strictEqual(map.exclusions[0].closed, true, 'die importierte Flaeche gilt als geschlossen');
+  assert.strictEqual(t.captureTarget().startsNewArea, true,
+    'eine importierte geschlossene Flaeche waechst nicht weiter');
+  assert.strictEqual(t.getActivePointArray().length, 4,
+    'die Punktliste liefert sie trotzdem — Loeschen und Zaehlen brauchen sie');
+
+  // Loeschen arbeitet weiter auf der geschlossenen Flaeche.
+  await t.undoPoint();
+  await flush();
+  assert.strictEqual(map.exclusions[0].points.length, 3, 'der letzte Punkt faellt wie bisher weg');
+  assert.strictEqual(map.exclusions.length, 1, 'ohne dass eine neue Flaeche entstanden waere');
+});
+
+test('Ueber das Ziel einer Aufnahme entscheidet genau eine Stelle', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  const koerper = (name) => {
+    const start = src.indexOf(`function ${name}(`);
+    assert.ok(start > 0, `${name}() existiert`);
+    return src.slice(start, src.indexOf('\n}\n', start) + 2);
+  };
+  const append = koerper('appendCurrentPoint');
+  assert.ok(append.includes('captureTarget()'), 'appendCurrentPoint() fragt captureTarget()');
+  assert.ok(!/perimeterClosed|\.closed/.test(append),
+    'und beurteilt den Konturzustand nicht selbst noch einmal');
+  // Der frueher hier sitzende Griff ist ersatzlos weg — mit ihm sein einziger Aufrufer.
+  assert.ok(!/reopenPerimeter/.test(src),
+    'reopenPerimeter() ist entfallen, der Ring wird nicht mehr nebenbei geoeffnet');
+  const add = koerper('addCurrentPoint');
+  assert.ok(!/perimeterClosed/.test(add), 'addCurrentPoint() liest den Ringschluss nicht mehr');
+  // Wer geschlossene Konturen beurteilt, tut das in captureTarget() — sonst koennten Knopf und
+  // Aufnahmeweg auseinanderlaufen.
+  const ziel = koerper('captureTarget');
+  assert.ok(ziel.includes('perimeterClosed') && ziel.includes('exclusion.closed'),
+    'captureTarget() beantwortet beide Faelle');
 });
 
 (async () => {
