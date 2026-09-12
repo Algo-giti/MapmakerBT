@@ -1,0 +1,26 @@
+NOTICE
+======
+
+MapCreator für Ardumower (MapmakerBT) is licensed under the MIT License; see LICENSE.
+
+Parts of the file format and protocol handling in this project reproduce the behaviour of
+other projects. The code here was written independently — no source files from those projects
+are included — but the formulas, names and wire formats listed below were taken from them.
+
+CaSSAndRA — https://github.com/EinEinfach/CaSSAndRA
+MIT License, Copyright (c) 2023 Alexander Weiss
+
+  * protocol.js — the printable-ASCII wrap used when encrypting Sunray commands
+    (src/backend/comm/connections.py).
+  * tests/app-core-test.js — the two coordinate formulas of coords_abs_to_rel, and a partial
+    behavioural stand-in for import_sunray (src/backend/data/mapdata.py).
+  * app.js — the GeoJSON feature names, their order and field layout as written by CaSSAndRA's
+    own export: "perimeter", "dockpoints", "search wire", "exclusion"
+    (src/backend/data/mapdata.py, export_geojson).
+
+Sunray — https://github.com/Ardumower/Sunray
+
+  * protocol.js — the AT command syntax, the checksum, the key derivation and the
+    printable-ASCII wrap (sunray/comm.cpp).
+  * app.js — the BLE service and characteristic UUIDs FFE0/FFE1 and the command formats
+    AT+V, AT+S, AT+M and AT+C.

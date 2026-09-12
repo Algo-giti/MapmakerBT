@@ -343,10 +343,12 @@ assert.ok(geoWithWaypoints.features.some((f)=>f.properties.role==='waypoints' &&
 //
 // EINSCHRAENKUNG, bewusst benannt: CaSSAndRAs Import ist Python und braucht pandas und shapely;
 // die Testform dieses Repos sind reine Node-Skripte ohne Abhaengigkeiten. Der Rundlauf laeuft
-// deshalb gegen eine ZEILENGETREUE PORTIERUNG von `coords_abs_to_rel` (mapdata.py:704-710) und
-// gegen das gemessene Verhalten von shapely (ein geschlossener Ring kommt unveraendert wieder
-// heraus, es entsteht kein doppelter Punkt). Das Original wurde einmalig ausserhalb des Repos
-// dagegen gerechnet; ein Aufruf des echten Imports ist hier nicht moeglich.
+// deshalb gegen die beiden Rechenzeilen aus `coords_abs_to_rel` (mapdata.py:704-705), die
+// ausdrucksgleich uebernommen sind — der Rest der Funktion (die DataFrame-Bildung :707-710) ist
+// hier eigener Code, und die Reihenfolge der beiden Zeilen ist vertauscht. Dazu das gemessene
+// Verhalten von shapely (ein geschlossener Ring kommt unveraendert wieder heraus, es entsteht
+// kein doppelter Punkt). Das Original wurde einmalig ausserhalb des Repos dagegen gerechnet;
+// ein Aufruf des echten Imports ist hier nicht moeglich. Herkunft siehe NOTICE.
 {
   // mapdata.py:705-706, Zeile fuer Zeile. `math.cos` rechnet im Bogenmass, `rovercfg.lat` steht
   // in Grad — deshalb die Umrechnung, und deshalb ausdruecklich die Breite des BEZUGSPUNKTS,
@@ -962,9 +964,12 @@ assert.ok(geoWithWaypoints.features.some((f)=>f.properties.role==='waypoints' &&
   assert.ok(ausgelassen[0].includes('Zu kurz'), `die Meldung nennt die Flaeche: ${ausgelassen[0]}`);
 
   // -- Was CaSSAndRAs Sunray-Zweig daraus liest ------------------------------
-  // Zeilengetreue Nachbildung von `import_sunray()` (mapdata.py:470-499). Der Zweig rechnet
-  // NICHT um — es geht also um exakte Gleichheit, nicht um eine Toleranz. Einmalig gegen die
-  // echte Python-Funktion gegengerechnet: 0,000000 mm ueber alle 22 Punkte.
+  // Verhaltensnachbildung eines Teilausschnitts von `import_sunray()` (mapdata.py:470-499):
+  // uebernommen sind die Schwelle `len(exclusion_df) > 3`, die Typbezeichner und die Pflicht auf
+  // `delta`/`timestamp`; die pandas-Mechanik, der Mehrkarten-Lauf, dockpoints, der optionale
+  // `sol`-Zweig und der Statuscode fehlen hier. Der Zweig rechnet NICHT um — es geht also um
+  // exakte Gleichheit, nicht um eine Toleranz. Einmalig gegen die echte Python-Funktion
+  // gegengerechnet: 0,000000 mm ueber alle 22 Punkte. Herkunft siehe NOTICE.
   const liesWieCassandra = (dok) => {
     const karte = dok[0];
     // :491 `coords.drop(['delta','timestamp'])` steht NICHT in einem try — fehlt eines der

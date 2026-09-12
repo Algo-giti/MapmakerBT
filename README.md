@@ -21,6 +21,13 @@ Ardumower-ESP32 – ohne Internet, ohne Server, ohne Konto.
 
 Die Oberfläche lässt sich zwischen **Deutsch und Englisch** umschalten; Deutsch ist voreingestellt.
 
+> **⚠️ Wichtiger Hinweis**
+> Die Nutzung erfolgt auf eigene Gefahr; für Schäden wird keine Haftung übernommen. Der Mäher
+> muss über einen funktionierenden Notaus verfügen. Beim Fahren über die App halte Sichtkontakt
+> zum Mäher und schalte ihn bei unerwartetem Verhalten sofort ab. Fehlerhafte Karten können den
+> Mäher in Bereiche fahren lassen, die nicht zur Mähfläche gehören — prüfe Perimeter und
+> Sperrbereiche nach dem Übertragen.
+
 ## Was die App kann
 
 - Ardumower per Bluetooth verbinden
@@ -492,6 +499,8 @@ Thank you for your support!
 
 Siehe [LICENSE](LICENSE).
 
+Urhebernennung für nachgebildete Format- und Protokollteile: siehe [NOTICE](NOTICE).
+
 ---
 
 <a id="english"></a>
@@ -503,6 +512,12 @@ Ardumower/Sunray right there in the garden. It connects to the Ardumower ESP32 d
 **Bluetooth Low Energy** – no internet, no server, no account.
 
 The interface can be switched between **German and English**; German is the default.
+
+> **⚠️ Important notice**
+> Use at your own risk; no liability is accepted for any damage. The mower must have a working
+> emergency stop. When driving through the app, keep the mower in sight and switch it off
+> immediately if it behaves unexpectedly. Faulty maps can send the mower into areas that are not
+> part of the mowing zone — check the perimeter and exclusion areas after transferring a map.
 
 ## What the app can do
 
@@ -954,3 +969,5 @@ Thank you for your support!
 ## License
 
 See [LICENSE](LICENSE).
+
+Attribution for reproduced format and protocol parts: see [NOTICE](NOTICE).

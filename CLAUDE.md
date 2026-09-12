@@ -2481,6 +2481,8 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Halten, damit Karten-Gesten nichts auslösen.
 - `README.md` enthält ausschließlich Projekterklärung und Nutzungsanleitung — keine Versionshistorie,
   kein Deployment-/GitHub-Pages-Setup, keine Entwicklerhinweise (auf Wunsch des Nutzers, 2026-09-04).
+  Der Lizenzabschnitt verweist in beiden Sprachen zusätzlich auf `NOTICE` (Urhebernennung der
+  nachgebildeten Format- und Protokollteile).
   Sie ist **zweisprachig in einer Datei**: Sprachnavigation und Screenshots oben, danach der
   deutsche Abschnitt (`<a id="deutsch">`), dann der englische (`<a id="english">`). Bewusst keine
   zweite Datei — ein Link bleibt ein Link, und beide Fassungen veralten sonst getrennt. **Beide
@@ -2494,6 +2496,30 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-12: **Urhebernennung und Sicherheitshinweis — keine Programmlogik berührt.** Neue Datei
+  `NOTICE` im Wurzelverzeichnis nennt die nachgebildeten Teile samt Herkunft: CaSSAndRA
+  (MIT, Copyright (c) 2023 Alexander Weiss — belegt in `~/projects/MowManager/CaSSAndRA/LICENSE:1-3`;
+  dort gibt es **keine** Lizenzangabe im README und **keine** Copyright-/SPDX-Köpfe in den 87
+  `.py`-Dateien, auch nicht in `mapdata.py`) und Sunray. Genannt sind der ASCII-Wrap in
+  `protocol.js`, die beiden Testhelfer in `tests/app-core-test.js`, die CaSSAndRA-GeoJSON-Feldnamen
+  in `app.js` sowie die BLE-UUIDs und AT-Kommandos. Beide Lizenzabschnitte der README verweisen
+  darauf. **Zwei Selbstbeschreibungen waren überzogen und sind korrigiert:** bei
+  `coords_abs_to_rel` sind nur die beiden Rechenzeilen (mapdata.py:704-705) ausdrucksgleich
+  übernommen, in vertauschter Reihenfolge, der Rest ist eigener Code — „zeilengetreue Portierung"
+  traf das nicht; bei `import_sunray` ist es eine Verhaltensnachbildung eines Teilausschnitts
+  (übernommen: Schwelle `> 3`, Typbezeichner, Pflichtfelder; nicht übernommen: pandas-Mechanik,
+  Mehrkarten-Lauf, dockpoints, `sol`-Zweig, Statuscode). **Gemessen, nicht geschlossen:**
+  `encryptPrintable()` ist **nicht** in allen Fällen ergebnisgleich mit dem Vorbild — es wrappt in
+  einer `while`-Schleife, beide Originale (`connections.py:210`, `comm.cpp:951`) genau einmal; bei
+  hinreichend großem Schlüssel laufen die Ergebnisse auseinander (gemessen bei `key = 200`).
+  **Bereichsvorbehalt, nachgetragen:** Sunray erzwingt den Schlüssel per `comm.cpp:509-517` auf
+  **1..94**, und dort sind beide Fassungen über alle druckbaren Zeichen bitgleich; die Divergenz
+  beginnt erst bei Schlüssel 96 und ist nur bei falschem Passwort, negativer Eingabe oder fremder
+  Firmware erreichbar. Der Kommentar „Match … exactly" trifft damit für den erreichbaren
+  Wertebereich zu — nichts geändert. Dazu ein Warnhinweis (eigene Gefahr, Notaus, Sichtkontakt, Karten nach dem
+  Übertragen prüfen) in beiden Einleitungsblöcken der README. `APP_VERSION` **unverändert**: keine
+  der ausgelieferten App-Dateien hat sich geändert.
 
 - 2026-09-12: **v72 — Auslöseton bei der Punktaufnahme.** Ein kurzer Doppelknack wie bei einem
   Fotoapparat bestätigt jeden aufgezeichneten Punkt, Einzelaufnahme wie Automatik; Einzelheiten im
