@@ -1916,9 +1916,55 @@ auf der Karte („Letzten Punkt“).
 - **Kartengesten**: `svgMetrics`, `pointerToViewBox`, `activeTransform`, `clampViewport`,
   `onMapPointerDown/Move/Up`, `handleMapTap`
 
+### Transportschnittstelle (Stand: Zweig `http-transport`)
+
+**Alles, was Bytes befördert und den Verbindungszustand meldet, liegt hinter einer Schnittstelle;
+alles mit `AT+` liegt darüber.** Handshake, Verschlüsselung, Polling, Ruhe-Stopp, Fahr-Takt und
+der Zeilenparser kennen nur noch `transport.*` und erfahren nie, was darunter liegt. Der ganze
+Web-Bluetooth-Wortschatz der App — Dienst- und Merkmalskennung, Paketgröße, GATT-Aufbau, Schreib-
+und Empfangspfad — steht in **einem** Abschnitt zwischen `// --- Transportschnittstelle ---` und
+`const onNotification = …`; eine Textsuche außerhalb dieses Abschnitts findet keines dieser
+Wörter mehr.
+
+| Operation | Bedeutung |
+|---|---|
+| `isAvailable()` | kann dieser Browser diesen Transport? |
+| `isLinked()` | steht die Verbindung physisch? |
+| `isReady()` | kann gesendet werden? |
+| `hasTarget()` | gibt es ein Ziel für einen erneuten Versuch? |
+| `connect()` / `reconnect()` | verbinden, mit bzw. ohne Zielwahl |
+| `disconnect()` / `dropStale()` | abbauen; `dropStale` liefert `false`, wenn nichts abzubauen war |
+| `write(bytes)` | Rohbytes hinaus, samt transporteigener Stückelung |
+| `describe()` | eine Zeile fürs Diagnoseprotokoll |
+| `clearLink()` / `forgetTarget()` / `release()` | drei Aufräumgrade (siehe unten) |
+
+Ereignisse (Transport → App, beim Erzeugen übergeben): `onData(text)`, `onLinkUp({ name,
+reconnecting })` — **wird abgewartet**, weil der Handshake daran hängt — und `onLinkDown()`.
+
+**Drei Aufräumgrade, weil es drei verschiedene Lagen gibt:** nach einer Trennung bleibt das Ziel
+erhalten, damit der Reconnect es wiederfindet (`clearLink`); ein manuelles Trennen vergisst das
+Ziel, lässt die Ereignisbindung aber stehen (`forgetTarget`); erst das Aufgeben löst alles
+(`release`). Das eine durch das andere zu ersetzen wäre eine Verhaltensänderung.
+
+**Die 15-Byte-Stückelung und der Resync nach einem abgebrochenen Kommando gehören in den
+Transport** — die MTU ist eine Eigenschaft von BLE, kein Sunray-Merkmal. **Pufferdeckel und
+Zeilenzerlegung gehören darüber** (`ingestRx()`): jeder Transport liefert Text, wie er ihn
+bekommt, und weiß nichts von Zeilen.
+
+**`state.device`, `state.server` und `state.characteristic` bleiben Felder im gemeinsamen
+`state`, werden aber ausschließlich vom BLE-Transport geschrieben und gelesen.** Sie in den
+Abschluss zu ziehen wäre sauberer, ginge aber nicht ohne Teständerungen:
+`tests/ble-test.js:111-112,140,339-340,353,358` prüft sie direkt, und
+`tests/ui-test.js:1699-1702` schiebt ein Web-Bluetooth-Characteristic in `state.characteristic`
+und erwartet die Fahrbefehle dort. Aus demselben Grund bleiben die Namen `bleAdapter`,
+`establishGatt`, `onNotification`, `scheduleReconnect`, `connectBluetooth`,
+`disconnectBluetooth` und `onDisconnected` auf Modulebene stehen — `exportNames` löst sie
+namentlich auf. `establishGatt` setzt seit dem Umbau nur noch die **Sitzung** auf (es ist der
+`onLinkUp`-Rückruf) und fasst kein GATT mehr an; der Name ist Altlast.
+
 ### BLE-Ablauf (App-Seite)
 
-0. Aller Zugriff auf Web Bluetooth läuft über `bleAdapter()` (app.js, direkt vor dem `ui`-Objekt).
+0. Web Bluetooth erreicht die App nur über `bleAdapter()` **innerhalb des Transport-Abschnitts**.
    Im Browser liefert die Funktion `navigator.bluetooth`; ist `globalThis.__bleAdapter` gesetzt,
    gewinnt dieser — darüber hängen die Tests den Fake-Stack ein. Sonst gibt es keine direkte
    `navigator.bluetooth`-Verwendung mehr.
@@ -2470,8 +2516,11 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
 - Kein Build-Schritt, keine Abhängigkeiten — die App muss als reine statische Dateisammlung
   von GitHub Pages laufen.
 - Alle Sunray-Protokolldetails gehören in `protocol.js` (ist auch unter Node testbar), nicht in `app.js`.
-- BLE-Zugriff nur über `bleAdapter()` — nie wieder direkt `navigator.bluetooth` benutzen, sonst
-  lässt sich der Fake-Stack nicht mehr einhängen.
+- **Transport nur über `transport.*`.** Kein Aufrufer außerhalb des Transport-Abschnitts fasst
+  `navigator.bluetooth`, GATT, ein Characteristic oder die UUIDs an — sonst lässt sich weder der
+  Fake-Stack einhängen noch später ein zweiter Transport danebenstellen. Wer eine neue
+  Verbindungsfrage braucht, ergänzt eine Operation an der Schnittstelle, statt am Transport
+  vorbeizugreifen.
 - Neue Tests an `tests/app-harness.js` anknüpfen, keine zweite Ladelogik für `app.js` bauen.
 - Deutsch ist die Standardsprache der Oberfläche; neue UI-Strings immer in **beiden** Sprachen ergänzen.
   Gegenprobe: alle `data-i18n`-Schlüssel aus `index.html` und alle `tr('…')`-Schlüssel müssen in
@@ -2496,6 +2545,21 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-12 (Zweig `http-transport`, **nicht** auf `main`): **Umbau auf eine
+  Transportschnittstelle — keine Verhaltensänderung, kein HTTP.** Die 23 Stellen, die direkt auf
+  Web Bluetooth zugriffen, laufen jetzt über `transport.*`; BLE ist die erste und bislang einzige
+  Umsetzung dahinter (`createBleTransport()`). Einzelheiten im Abschnitt
+  „Transportschnittstelle". **Gemessen statt geschlossen:** zwei Szenarien über das Testharness
+  gegen die Fassung davor — (1) Verbinden, Handshake, Polling, Fahrbefehl, Schreibfehler mitten im
+  Kommando samt Resync, Linkverlust, automatischer Reconnect, Aufgeben nach 8 Versuchen,
+  Neuverbinden, manuelles Trennen; (2) Fahrversuch ohne Verbindung, Ruhe-Stopp-Takt,
+  Richtungstaste, dreifacher Pufferüberlauf, Funkstille bis zum RX-Watchdog, Not-Halt. Verglichen
+  wurden Funkverkehr, Rohkommandos, Fake-Statistik, jeder Zustandsschnappschuss und das komplette
+  Diagnoseprotokoll: **zeichengleich in beiden Szenarien.** `node tests/run-all.js` grün ohne
+  jede Testanpassung (41 ble, 227 ui, 47 layout, 9 sw). **Offen:** `APP_VERSION` in `sw.js` ist
+  bewusst **nicht** hochgezählt — der Zweig ist nicht ausgeliefert; beim Merge nach `main` ist das
+  nachzuholen, weil sich `app.js` geändert hat.
 
 - 2026-09-12: **Urhebernennung und Sicherheitshinweis — keine Programmlogik berührt.** Neue Datei
   `NOTICE` im Wurzelverzeichnis nennt die nachgebildeten Teile samt Herkunft: CaSSAndRA

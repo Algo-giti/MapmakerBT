@@ -1,9 +1,5 @@
 'use strict';
 
-const SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
-const CHARACTERISTIC_UUID = '0000ffe1-0000-1000-8000-00805f9b34fb';
-const BLE_CHUNK_SIZE = 15; // Sunray ESP32 BLE_MTU=20; payload <= 15 bytes
-const BLE_INTER_CHUNK_DELAY_MS = 12;
 // ACHTUNG: NICHT als Totmann-Schutz verstehen. Der 1000-ms-Timeout in Sunrays
 // Motor::setLinearAngularSpeed() wird von jedem anderen Motor-Aufrufer zurueckgesetzt und ist
 // fuer die geflashte MRTREE-Firmware ueberhaupt nicht belegt. Siehe CLAUDE.md,
@@ -644,14 +640,6 @@ function solutionNameLocalized(solution) {
   return tr('solutionUnknown');
 }
 
-// Einzige Stelle, an der die App auf die Web-Bluetooth-Implementierung zugreift.
-// Im Browser ist das immer navigator.bluetooth; Tests haengen ueber
-// globalThis.__bleAdapter eine Fake-Implementierung ein (tests/fake-ble.js).
-function bleAdapter() {
-  if (globalThis.__bleAdapter) return globalThis.__bleAdapter;
-  return (typeof navigator === 'undefined' ? null : navigator.bluetooth) || null;
-}
-
 // Fehlt ein Element — etwa weil der Browser eine aeltere index.html aus dem Cache zeigt,
 // waehrend app.js schon neu ist — darf das nicht die ganze App lahmlegen: frueher warf der
 // erste Zugriff in bindEvents(), init() brach ab, und weil die Datenbank danach geoeffnet
@@ -969,7 +957,7 @@ function refreshConnectionUi() {
   ui.connectionDetail.textContent = tr(state.connectionDetailKey, state.connectionVars);
   ui.connectionPill.classList.toggle('online', state.connected);
   ui.connectionPill.classList.toggle('offline', !state.connected);
-  ui.connectBtn.disabled = state.connected || state.demo || !window.isSecureContext || !bleAdapter();
+  ui.connectBtn.disabled = state.connected || state.demo || !window.isSecureContext || !transport.isAvailable();
   ui.disconnectBtn.disabled = !state.connected && !state.demo;
   refreshControlUi();
 }
@@ -983,7 +971,7 @@ function driveSpeedLimits() {
 }
 
 function refreshControlUi() {
-  const available = state.connected && !state.demo && Boolean(state.characteristic);
+  const available = state.connected && !state.demo && transport.isReady();
   if (ui.driveJoystick) ui.driveJoystick.classList.toggle('unavailable', !available);
   const { min, max } = driveSpeedLimits();
   const decimal = (v) => v.toFixed(2).replace('.', state.language === 'de' ? ',' : '.');
@@ -1003,7 +991,7 @@ function refreshControlUi() {
 }
 
 async function sendDriveVector(linear, angular, { force = false } = {}) {
-  if (!state.connected || state.demo || !state.characteristic) return;
+  if (!state.connected || state.demo || !transport.isReady()) return;
   const now = performance.now();
   if (!force && now - state.lastDriveSentAt < DRIVE_POINTER_MIN_INTERVAL_MS) return;
   if (!force && state.sendBusy) return;
@@ -1242,7 +1230,7 @@ function updateJoystickFromPointer(event, { forceSend = false } = {}) {
 
 function beginJoystick(event) {
   event.preventDefault();
-  if (!state.connected || state.demo || !state.characteristic) {
+  if (!state.connected || state.demo || !transport.isReady()) {
     if (ui.driveState) ui.driveState.textContent = tr('driveNeedConnection');
     return;
   }
@@ -1279,7 +1267,7 @@ function stopIdleStopTicker() {
 
 function sendIdleStop() {
   // Nur bei tatsaechlich stehender Verbindung — ins Leere zu senden bringt nichts.
-  if (!state.connected || state.demo || !state.characteristic) return;
+  if (!state.connected || state.demo || !transport.isReady()) return;
   if (driveInputActive()) return;
   sendSunray('AT+M,0,0').then(() => {
     state.idleStopFailing = false;
@@ -1324,7 +1312,7 @@ function refreshCursorZoneVisual() {
 /** Eine der vier Richtungstasten wird gedrueckt: fahren, bis sie losgelassen wird. */
 function beginCursorDrive(direction, event) {
   if (event?.preventDefault) event.preventDefault();
-  if (!state.connected || state.demo || !state.characteristic) {
+  if (!state.connected || state.demo || !transport.isReady()) {
     if (ui.driveState) ui.driveState.textContent = tr('driveNeedConnection');
     return;
   }
@@ -1380,7 +1368,7 @@ function stopDrive({ send = true } = {}) {
   state.driveVector = { linear: 0, angular: 0 };
   resetJoystickVisual();
   if (ui.driveState) ui.driveState.textContent = tr('driveIdle');
-  if (send && state.connected && !state.demo && state.characteristic && wasDriving) {
+  if (send && state.connected && !state.demo && transport.isReady() && wasDriving) {
     // Ein nicht angekommener Stopp ist sicherheitsrelevant: immer sofort melden.
     sendSunray('AT+M,0,0').catch((error) => reportBleError('AT+M,0,0', error, { immediate: true }));
   }
@@ -1389,7 +1377,7 @@ function stopDrive({ send = true } = {}) {
 async function emergencyStop() {
   stopDrive({ send: false });
   refreshControlUi();
-  if (!state.connected || state.demo || !state.characteristic) return;
+  if (!state.connected || state.demo || !transport.isReady()) return;
   try { await sendSunray('AT+M,0,0'); } catch (error) { reportBleError('AT+M,0,0', error, { immediate: true }); }
   try { await sendSunray('AT+C,0,0'); } catch (error) { reportBleError('AT+C,0,0', error, { immediate: true }); }
   if (ui.driveState) ui.driveState.textContent = tr('stopEverythingDone');
@@ -2423,8 +2411,233 @@ function handleLine(rawLine) {
   }
 }
 
-function onNotification(event) {
-  const text = new TextDecoder().decode(event.target.value);
+// --- Transportschnittstelle ------------------------------------------------
+// Ab hier bis zum Ende des Abschnitts steht das gesamte Web-Bluetooth-Wissen der App:
+// Dienst- und Merkmalskennung, Paketgroesse, GATT-Aufbau, Schreib- und Empfangspfad.
+// Ausserhalb kommt keines dieser Woerter mehr vor.
+const SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
+const CHARACTERISTIC_UUID = '0000ffe1-0000-1000-8000-00805f9b34fb';
+const BLE_CHUNK_SIZE = 15; // Sunray ESP32 BLE_MTU=20; payload <= 15 bytes
+const BLE_INTER_CHUNK_DELAY_MS = 12;
+
+// Einzige Stelle, an der die App auf die Web-Bluetooth-Implementierung zugreift.
+// Im Browser ist das immer navigator.bluetooth; Tests haengen ueber
+// globalThis.__bleAdapter eine Fake-Implementierung ein (tests/fake-ble.js).
+function bleAdapter() {
+  if (globalThis.__bleAdapter) return globalThis.__bleAdapter;
+  return (typeof navigator === 'undefined' ? null : navigator.bluetooth) || null;
+}
+
+/**
+ * Alles, was Bytes befoerdert und den Verbindungszustand meldet, liegt hinter dieser
+ * Schnittstelle. **Alles mit "AT+" liegt darueber**: Handshake, Verschluesselung, Polling,
+ * Ruhe-Stopp, Fahr-Takt und der Zeilenparser kennen den Transport nur ueber die unten
+ * aufgezaehlten Operationen und erfahren nie, ob darunter BLE, HTTP oder etwas anderes liegt.
+ *
+ * Operationen:
+ *   isAvailable()   kann dieser Browser diesen Transport ueberhaupt?
+ *   isLinked()      steht die Verbindung physisch?
+ *   isReady()       kann gesendet werden?
+ *   hasTarget()     gibt es ein Ziel, zu dem sich erneut verbinden laesst?
+ *   connect()       Ziel waehlen und verbinden (verlangt eine Nutzergeste)
+ *   reconnect()     erneut verbinden, ohne neu zu waehlen
+ *   disconnect()    Verbindung abbauen
+ *   dropStale()     einen faktisch toten Link verwerfen; true, wenn der Abbau lief
+ *   write(bytes)    Rohbytes hinausschicken, samt transporteigener Stueckelung
+ *   describe()      eine Zeile fuer das Diagnoseprotokoll
+ *   clearLink()     Verbindungsgriffe loslassen, Ziel behalten
+ *   forgetTarget()  Ziel vergessen
+ *   release()       Ziel endgueltig loslassen (Ereignisse ab, alle Griffe weg)
+ *
+ * Ereignisse (Transport -> App, beim Erzeugen uebergeben):
+ *   onData(text)                    empfangener Rohtext
+ *   onLinkUp({ name, reconnecting}) Verbindung steht; der Rueckruf darf asynchron sein und
+ *                                   wird abgewartet, weil der Handshake daran haengt
+ *   onLinkDown()                    Verbindung ist weg
+ *
+ * `isLinked`, `hasTarget`, `clearLink`, `forgetTarget` und `release` stehen ueber den
+ * urspruenglich geplanten Zuschnitt hinaus. Sie bilden Aufraeumschritte ab, die es heute schon
+ * gibt und die verschieden weit gehen: nach einer Trennung bleibt das Ziel erhalten, damit der
+ * Reconnect es wiederfindet, und erst das Aufgeben loest es ganz.
+ */
+
+/**
+ * BLE-Umsetzung der Transportschnittstelle: Web Bluetooth, Ardumower-UART-Dienst FFE0/FFE1.
+ *
+ * Die Griffe `state.device`, `state.server` und `state.characteristic` liegen weiterhin im
+ * gemeinsamen `state`, werden aber **ausschliesslich hier** geschrieben und gelesen. Ein
+ * anderer Transport laesst sie schlicht auf null.
+ */
+function createBleTransport(hooks) {
+  function isAvailable() {
+    return Boolean(bleAdapter());
+  }
+
+  function isLinked() {
+    return Boolean(state.device?.gatt?.connected);
+  }
+
+  function isReady() {
+    return Boolean(state.characteristic);
+  }
+
+  function hasTarget() {
+    return Boolean(state.device);
+  }
+
+  function describe() {
+    const props = state.characteristic?.properties || {};
+    return `GATT ready · write=${Boolean(props.write)} · writeNR=${Boolean(props.writeWithoutResponse)} · mode=${props.write ? 'with-response' : 'without-response'}`;
+  }
+
+  /** Der Notify-Rueckruf. Eine stabile Referenz, damit EventTarget sie deduplizieren kann. */
+  function handleNotification(event) {
+    hooks.onData(new TextDecoder().decode(event.target.value));
+  }
+
+  async function writeChunk(chunk) {
+    // Web Bluetooth + ESP32 is substantially more stable when each GATT write is acknowledged.
+    // The Sunray FFE1 characteristic supports WRITE and WRITE_NR, so prefer WRITE here.
+    if (typeof state.characteristic.writeValueWithResponse === 'function' && state.characteristic.properties.write) {
+      await state.characteristic.writeValueWithResponse(chunk);
+    } else if (typeof state.characteristic.writeValue === 'function' && state.characteristic.properties.write) {
+      await state.characteristic.writeValue(chunk);
+    } else if (typeof state.characteristic.writeValueWithoutResponse === 'function' && state.characteristic.properties.writeWithoutResponse) {
+      await state.characteristic.writeValueWithoutResponse(chunk);
+    } else {
+      throw new Error('BLE characteristic is not writable');
+    }
+  }
+
+  /**
+   * Schliesst ein angefangenes Kommando in der Firmware ab.
+   *
+   * Kommandos gehen in 15-Byte-Chunks raus. Scheitert ein Chunk in der Mitte, stehen die schon
+   * gesendeten Chunks ohne Zeilenende im rxBuf des ESP32 — das naechste, erfolgreiche Kommando
+   * klebt daran fest, und die Firmware sieht eine einzige verstuemmelte Zeile. Beide Kommandos
+   * sind damit verloren, obwohl die Verbindung steht. Ein einzelnes '\n' beendet das Bruchstueck:
+   * die Firmware verwirft es an der Pruefsumme, und das naechste Kommando faengt sauber an.
+   * Best effort — scheitert auch das, bleibt es beim urspruenglichen Fehler.
+   */
+  async function resyncAfterPartialWrite() {
+    try {
+      await writeChunk(new TextEncoder().encode('\n'));
+      log('BLE', tr('bleResyncDone'));
+    } catch (error) {
+      log('BLE', tr('bleResyncFailed', { message: error?.message || String(error) }));
+    }
+  }
+
+  /** Die 15-Byte-Stueckelung ist eine Eigenschaft der BLE-MTU, kein Sunray-Merkmal. */
+  async function write(bytes) {
+    if (!state.characteristic) throw new Error(tr('errorNoCharacteristic'));
+    let written = 0;
+    for (let i = 0; i < bytes.length; i += BLE_CHUNK_SIZE) {
+      const chunk = bytes.slice(i, i + BLE_CHUNK_SIZE);
+      try {
+        await writeChunk(chunk);
+      } catch (error) {
+        // Nur wenn schon etwas rausging, liegt ein Bruchstueck in der Firmware.
+        if (written > 0) await resyncAfterPartialWrite();
+        throw error;
+      }
+      written += 1;
+      if (i + BLE_CHUNK_SIZE < bytes.length) await sleepMs(BLE_INTER_CHUNK_DELAY_MS);
+    }
+  }
+
+  /** GATT oeffnen und die Sitzung darueber melden. Gemeinsamer Teil von connect und reconnect. */
+  async function openLink(device, reconnecting) {
+    state.server = await device.gatt.connect();
+    const service = await state.server.getPrimaryService(SERVICE_UUID);
+    state.characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+    await state.characteristic.startNotifications();
+    state.characteristic.addEventListener('characteristicvaluechanged', handleNotification);
+    await hooks.onLinkUp({ name: device.name || 'Ardumower', reconnecting });
+  }
+
+  async function connect() {
+    const adapter = bleAdapter();
+    if (!adapter) throw new Error(tr('noWebBluetooth'));
+    setConnectionDetail('openingPicker');
+    const device = await adapter.requestDevice({
+      filters: [{ services: [SERVICE_UUID] }],
+      optionalServices: [SERVICE_UUID],
+    });
+    device.addEventListener('gattserverdisconnected', hooks.onLinkDown);
+    state.device = device;
+    setConnectionDetail('connectingDevice', { name: device.name || tr('bleDevice') });
+    await openLink(device, false);
+  }
+
+  async function reconnect() {
+    await openLink(state.device, true);
+  }
+
+  function disconnect() {
+    state.device.gatt.disconnect();
+  }
+
+  /**
+   * Trennt einen Link, der faktisch tot ist. Der Abbau laeuft ueber denselben Pfad wie ein
+   * echter Funkabriss: gatt.disconnect() feuert gattserverdisconnected -> onLinkDown.
+   * Liefert false, wenn gar kein Link mehr haengt — dann meldet der Aufrufer selbst ab.
+   */
+  function dropStale() {
+    const device = state.device;
+    if (!device?.gatt?.connected) return false;
+    try { device.gatt.disconnect(); } catch (error) { log('BLE', error.message); }
+    // Sicherheitsnetz: bleibt gattserverdisconnected wider Erwarten aus, raeumen wir selbst auf.
+    // Die Bedingung schliesst aus, dass ein inzwischen gelungener Reconnect getroffen wird.
+    setTimeout(() => {
+      if (state.connected && state.device === device && !device.gatt?.connected) hooks.onLinkDown();
+    }, 500);
+    return true;
+  }
+
+  function clearLink() {
+    state.characteristic = null;
+    state.server = null;
+  }
+
+  function forgetTarget() {
+    state.device = null;
+  }
+
+  function release() {
+    const device = state.device;
+    if (device?.removeEventListener) {
+      try { device.removeEventListener('gattserverdisconnected', hooks.onLinkDown); } catch (error) { log('BLE', error.message); }
+    }
+    clearLink();
+    forgetTarget();
+  }
+
+  return {
+    isAvailable, isLinked, isReady, hasTarget,
+    connect, reconnect, disconnect, dropStale,
+    write, describe, clearLink, forgetTarget, release,
+    handleNotification,
+  };
+}
+
+const transport = createBleTransport({
+  onData: (text) => ingestRx(text),
+  onLinkUp: (info) => establishGatt(info),
+  onLinkDown: () => onDisconnected(),
+});
+
+// Der Notify-Rueckruf gehoert dem BLE-Transport; dieser Name steht hier, weil
+// tests/ble-test.js ihn in exportNames fuehrt.
+const onNotification = transport.handleNotification;
+
+/**
+ * Nimmt empfangenen Rohtext entgegen — der Ereignis-Rueckruf onData der Transportschnittstelle.
+ * Pufferdeckel und Zeilenzerlegung sind zeilenbasiertes Sunray-Verhalten und gehoeren deshalb
+ * ueber die Schnittstelle, nicht in den Transport: jeder Transport liefert Text, wie er ihn
+ * bekommt, und weiss nichts von Zeilen.
+ */
+function ingestRx(text) {
   state.rxBuffer += text;
   if (state.rxBuffer.length > BLE_RX_BUFFER_LIMIT) {
     // Daten ohne Zeilenende liessen den Puffer frueher unbegrenzt wachsen. Der Rest wird
@@ -2447,58 +2660,8 @@ async function sleepMs(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function writeChunk(chunk) {
-  // Web Bluetooth + ESP32 is substantially more stable when each GATT write is acknowledged.
-  // The Sunray FFE1 characteristic supports WRITE and WRITE_NR, so prefer WRITE here.
-  if (typeof state.characteristic.writeValueWithResponse === 'function' && state.characteristic.properties.write) {
-    await state.characteristic.writeValueWithResponse(chunk);
-  } else if (typeof state.characteristic.writeValue === 'function' && state.characteristic.properties.write) {
-    await state.characteristic.writeValue(chunk);
-  } else if (typeof state.characteristic.writeValueWithoutResponse === 'function' && state.characteristic.properties.writeWithoutResponse) {
-    await state.characteristic.writeValueWithoutResponse(chunk);
-  } else {
-    throw new Error('BLE characteristic is not writable');
-  }
-}
-
-/**
- * Schliesst ein angefangenes Kommando in der Firmware ab.
- *
- * Kommandos gehen in 15-Byte-Chunks raus. Scheitert ein Chunk in der Mitte, stehen die schon
- * gesendeten Chunks ohne Zeilenende im rxBuf des ESP32 — das naechste, erfolgreiche Kommando
- * klebt daran fest, und die Firmware sieht eine einzige verstuemmelte Zeile. Beide Kommandos
- * sind damit verloren, obwohl die Verbindung steht. Ein einzelnes '\n' beendet das Bruchstueck:
- * die Firmware verwirft es an der Pruefsumme, und das naechste Kommando faengt sauber an.
- * Best effort — scheitert auch das, bleibt es beim urspruenglichen Fehler.
- */
-async function resyncAfterPartialWrite() {
-  try {
-    await writeChunk(new TextEncoder().encode('\n'));
-    log('BLE', tr('bleResyncDone'));
-  } catch (error) {
-    log('BLE', tr('bleResyncFailed', { message: error?.message || String(error) }));
-  }
-}
-
-async function writeBytes(bytes) {
-  if (!state.characteristic) throw new Error(tr('errorNoCharacteristic'));
-  let written = 0;
-  for (let i = 0; i < bytes.length; i += BLE_CHUNK_SIZE) {
-    const chunk = bytes.slice(i, i + BLE_CHUNK_SIZE);
-    try {
-      await writeChunk(chunk);
-    } catch (error) {
-      // Nur wenn schon etwas rausging, liegt ein Bruchstueck in der Firmware.
-      if (written > 0) await resyncAfterPartialWrite();
-      throw error;
-    }
-    written += 1;
-    if (i + BLE_CHUNK_SIZE < bytes.length) await sleepMs(BLE_INTER_CHUNK_DELAY_MS);
-  }
-}
-
 async function sendSunray(command, { forcePlain = false, useChecksum = true, skipIfBusy = false } = {}) {
-  if (!state.connected || !state.characteristic) throw new Error(tr('errorNotConnected'));
+  if (!state.connected || !transport.isReady()) throw new Error(tr('errorNotConnected'));
   if (skipIfBusy && state.sendBusy) return false;
   while (state.sendBusy) await sleepMs(8);
   state.sendBusy = true;
@@ -2512,7 +2675,7 @@ async function sendSunray(command, { forcePlain = false, useChecksum = true, ski
       log('TX', payload);
     }
     const bytes = new TextEncoder().encode(`${payload}\n`);
-    await writeBytes(bytes);
+    await transport.write(bytes);
     state.bleTxCommands += 1;
     return true;
   } finally {
@@ -2554,7 +2717,7 @@ async function initializeSunrayHandshake() {
 function startPolling() {
   stopPolling();
   const poll = () => {
-    if (!state.connected || !state.characteristic) return;
+    if (!state.connected || !transport.isReady()) return;
     // Do not queue status requests directly on top of manual-drive traffic.
     if (state.sendBusy || (performance.now() - state.lastDriveSentAt < 220)) return;
     sendSunray('AT+S', { skipIfBusy: true })
@@ -2588,7 +2751,7 @@ function stopRxWatchdog() {
 }
 
 function checkRxWatchdog() {
-  if (!state.connected || state.demo || !state.characteristic) return;
+  if (!state.connected || state.demo || !transport.isReady()) return;
   if (state.pendingStateReplies >= BLE_UNANSWERED_POLL_LIMIT) {
     log('BLE', `${state.pendingStateReplies} status requests unanswered, dropping link`);
     dropStaleLink('bleNoAnswer');
@@ -2601,34 +2764,26 @@ function checkRxWatchdog() {
 }
 
 /**
- * Trennt einen Link, der faktisch tot ist. Der Abbau laeuft ueber denselben Pfad wie ein
- * echter Funkabriss: gatt.disconnect() feuert gattserverdisconnected -> onDisconnected().
- * Nur wenn kein GATT mehr haengt, wird onDisconnected() direkt aufgerufen.
+ * Trennt einen Link, der faktisch tot ist. Wie der Abbau ablaeuft, weiss der Transport; hier
+ * werden nur die Takte gestoppt und der Grund gemerkt. Meldet der Transport, dass nichts mehr
+ * abzubauen war, wird die Trennung direkt gemeldet.
  */
 function dropStaleLink(reasonKey) {
   stopRxWatchdog();
   stopPolling();
   stopIdleStopTicker();
   state.disconnectReasonKey = reasonKey;
-  const device = state.device;
-  if (device?.gatt?.connected) {
-    try { device.gatt.disconnect(); } catch (error) { log('BLE', error.message); }
-    // Sicherheitsnetz: bleibt gattserverdisconnected wider Erwarten aus, raeumen wir selbst auf.
-    // Die Bedingung schliesst aus, dass ein inzwischen gelungener Reconnect getroffen wird.
-    setTimeout(() => {
-      if (state.connected && state.device === device && !device.gatt?.connected) onDisconnected();
-    }, 500);
-    return;
-  }
+  if (transport.dropStale()) return;
   onDisconnected();
 }
 
-async function establishGatt(device, { reconnecting = false } = {}) {
-  state.server = await device.gatt.connect();
-  const service = await state.server.getPrimaryService(SERVICE_UUID);
-  state.characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
-  await state.characteristic.startNotifications();
-  state.characteristic.addEventListener('characteristicvaluechanged', onNotification);
+/**
+ * Setzt die Sitzung auf, sobald der Transport eine stehende Verbindung meldet — der
+ * Ereignis-Rueckruf onLinkUp. Alles hier ist Sunray-Verhalten und gilt fuer jeden Transport;
+ * wie die Verbindung zustande kam, spielt keine Rolle mehr. Der Name bleibt, weil
+ * tests/ble-test.js ihn in exportNames fuehrt.
+ */
+async function establishGatt({ name = 'Ardumower', reconnecting = false } = {}) {
   state.rxBuffer = '';
   state.rxOverflows = 0;
   state.pendingStateReplies = 0;
@@ -2638,9 +2793,8 @@ async function establishGatt(device, { reconnecting = false } = {}) {
   state.bleTxCommands = 0;
   state.bleRxLines = 0;
   state.lastBleRxAt = 0;
-  setConnectionStatus(true, 'bleConnected', 'connectedWith', { name: device.name || 'Ardumower' });
-  const props = state.characteristic.properties;
-  log('BLE', `GATT ready · write=${Boolean(props.write)} · writeNR=${Boolean(props.writeWithoutResponse)} · mode=${props.write ? 'with-response' : 'without-response'}`);
+  setConnectionStatus(true, 'bleConnected', 'connectedWith', { name });
+  log('BLE', transport.describe());
   await initializeSunrayHandshake();
   startPolling();
   startRxWatchdog();
@@ -2650,26 +2804,17 @@ async function establishGatt(device, { reconnecting = false } = {}) {
 }
 
 async function connectBluetooth() {
-  const adapter = bleAdapter();
-  if (!adapter) throw new Error(tr('noWebBluetooth'));
+  if (!transport.isAvailable()) throw new Error(tr('noWebBluetooth'));
   stopDemo();
   state.manualDisconnect = false;
   state.reconnectAttempts = 0;
   if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
-  setConnectionDetail('openingPicker');
-  const device = await adapter.requestDevice({
-    filters: [{ services: [SERVICE_UUID] }],
-    optionalServices: [SERVICE_UUID],
-  });
-  device.addEventListener('gattserverdisconnected', onDisconnected);
-  state.device = device;
-  setConnectionDetail('connectingDevice', { name: device.name || tr('bleDevice') });
-  await establishGatt(device);
+  await transport.connect();
 }
 
-function scheduleReconnect(device) {
-  if (state.manualDisconnect || !device || state.reconnectTimer) return;
-  if (state.reconnectAttempts >= BLE_MAX_RECONNECT_ATTEMPTS) { giveUpReconnect(device); return; }
+function scheduleReconnect() {
+  if (state.manualDisconnect || !transport.hasTarget() || state.reconnectTimer) return;
+  if (state.reconnectAttempts >= BLE_MAX_RECONNECT_ATTEMPTS) { giveUpReconnect(); return; }
   const delays = [1000, 2500, 5000, 10000, 15000];
   const attempt = Math.min(state.reconnectAttempts, delays.length - 1);
   const delay = delays[attempt];
@@ -2679,54 +2824,46 @@ function scheduleReconnect(device) {
     state.reconnectTimer = null;
     if (state.manualDisconnect || state.connected) return;
     try {
-      await establishGatt(device, { reconnecting: true });
+      await transport.reconnect();
     } catch (error) {
       log('BLE reconnect', error.message);
-      scheduleReconnect(device);
+      scheduleReconnect();
     }
   }, delay);
 }
 
 /**
  * Endzustand nach erschoepften Reconnect-Versuchen: alles loesen, klar melden und die
- * Wiederverbindung dem Nutzer ueberlassen. Vorher blieb state.device gesetzt und die
- * Oberflaeche haengte still auf "Bluetooth getrennt".
+ * Wiederverbindung dem Nutzer ueberlassen. Vorher blieb das Ziel des Transports gesetzt und
+ * die Oberflaeche haengte still auf "Bluetooth getrennt".
  */
-function giveUpReconnect(device) {
+function giveUpReconnect() {
   if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
   stopPolling();
   stopRxWatchdog();
   stopIdleStopTicker();
-  const target = device || state.device;
-  if (target?.removeEventListener) {
-    try { target.removeEventListener('gattserverdisconnected', onDisconnected); } catch (error) { log('BLE', error.message); }
-  }
-  state.device = null;
-  state.server = null;
-  state.characteristic = null;
+  transport.release();
   state.reconnectAttempts = 0;
   log('BLE', `giving up after ${BLE_MAX_RECONNECT_ATTEMPTS} reconnect attempts`);
   setConnectionStatus(false, 'notConnected', 'reconnectGaveUp');
 }
 
 function onDisconnected() {
-  const device = state.device;
   const duration = state.bleConnectedAt ? Math.round((Date.now() - state.bleConnectedAt) / 1000) : 0;
   const reasonKey = state.disconnectReasonKey || 'bluetoothDisconnected';
   state.disconnectReasonKey = null;
   stopPolling();
   stopRxWatchdog();
   stopIdleStopTicker();
-  state.characteristic = null;
-  state.server = null;
+  transport.clearLink();
   state.sendBusy = false;
   state.encryptionEnabled = false;
   state.encryptionKey = null;
   stopDrive({ send: false });
   setConnectionStatus(false, 'notConnected', reasonKey);
   log(tr('bleDisconnectedLog'), `after ${duration}s · TX=${state.bleTxCommands} · RX=${state.bleRxLines}`);
-  if (!state.manualDisconnect) scheduleReconnect(device);
-  else state.device = null;
+  if (!state.manualDisconnect) scheduleReconnect();
+  else transport.forgetTarget();
 }
 
 async function disconnectBluetooth() {
@@ -2736,11 +2873,11 @@ async function disconnectBluetooth() {
   }
   state.manualDisconnect = true;
   if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
-  if (state.device?.gatt?.connected) {
+  if (transport.isLinked()) {
     await emergencyStop().catch(() => {});
-    state.device.gatt.disconnect();
+    transport.disconnect();
   } else {
-    state.device = null;
+    transport.forgetTarget();
     onDisconnected();
   }
 }
@@ -6375,7 +6512,7 @@ function setHelpStatus(element, text, stateClass) {
 
 function updateHelpSystemStatus() {
   setHelpStatus(ui.helpSecureStatus, window.isSecureContext ? tr('statusSecure') : tr('statusInsecure'), window.isSecureContext ? 'ok' : 'bad');
-  const bleAvailable = Boolean(bleAdapter());
+  const bleAvailable = transport.isAvailable();
   setHelpStatus(ui.helpBluetoothStatus, bleAvailable ? tr('statusAvailable') : tr('statusUnavailable'), bleAvailable ? 'ok' : 'bad');
   const swSupported = 'serviceWorker' in navigator && window.isSecureContext;
   const offlineText = state.offlineCacheReady ? tr('statusReady') : (swSupported ? tr('statusPreparing') : tr('statusUnavailable'));
@@ -6419,7 +6556,7 @@ function applyUpdate() {
 function browserCheck() {
   state.browserWarningKey = null;
   if (!window.isSecureContext) state.browserWarningKey = 'insecureContext';
-  else if (!bleAdapter()) state.browserWarningKey = 'browserNoBluetooth';
+  else if (!transport.isAvailable()) state.browserWarningKey = 'browserNoBluetooth';
 
   if (state.browserWarningKey) {
     ui.browserWarning.textContent = tr(state.browserWarningKey);
