@@ -1262,6 +1262,55 @@ diese Liste mit Grund je Eintrag und schlägt sowohl bei einer nicht gelisteten 
 bei einem zusätzlichen Vorkommen in einer gelisteten an — dieselbe Bauart wie der Wächter gegen
 Handzählungen neben `hasUsablePolygon()`.
 
+### Erweitern: beliebiger zweiter Punkt (Stand v65)
+
+**Der zweite Punkt muss kein Nachbar mehr sein.** Zwei Punkte teilen eine geschlossene Kontur in
+zwei Seiten; geöffnet wird an der einen, und deren Zwischenpunkte fallen dabei weg. Damit lässt
+sich ein zu grob geratenes Stück in einem Zug neu abfahren, statt es Punkt für Punkt zu löschen.
+
+**`extensionCut(points, a, b)` ist die einzige Stelle, die entscheidet, welche Seite wegfällt**,
+und liefert `{ forward, removed }`. `reorderForExtension()` und die Hinweiszeile lesen beide dort;
+eine zweite Rechnung könnte Ankündigung und Wirkung auseinanderlaufen lassen.
+
+**Gemessen wird die Weglänge der Seite, nicht ihre Punktzahl.** Wer die Lücke danach neu abfährt,
+läuft Meter, keine Punkte: eine dicht gesetzte kurze Strecke ist die bessere Wahl gegenüber einem
+weiten Umweg mit wenigen Ecken — nach Punktzahl wäre es genau umgekehrt. Zwei Eigenschaften folgen
+daraus zwingend, beide erwünscht:
+
+- **Benachbarte Punkte verhalten sich exakt wie vor v65.** Die direkte Kante ist nach der
+  Dreiecksungleichung nie länger als der Weg über alle übrigen Punkte — die leere Seite gewinnt
+  also immer, es fällt kein Punkt weg.
+- **Es bleiben immer mindestens drei Punkte stehen.** Die ganze Gegenseite zu löschen hieße, dass
+  die andere Seite leer ist; das ist der Nachbarfall, und der geht nie so aus.
+
+**Der zweite Tipp kündigt nur an, er löscht nicht.** Er merkt den Punkt vor (`ext.secondIndex`),
+markiert ihn zusätzlich zum ersten und schreibt die Zahl der wegfallenden Punkte in den
+Hinweisstreifen (`extendConfirmCut` bzw. `extendConfirmEdge`); erst ein **zweiter Tipp auf
+denselben Punkt** führt es aus, ein Tipp auf einen anderen verschiebt die Vorschau. Begründung:
+bis v64 war der zweite Tipp folgenlos umkehrbar (reines Umordnen), jetzt kann er eine ganze
+Strecke kosten — und auf einer dichten Kontur trifft man auf dem Telefon leicht daneben. Bewusst
+**kein Dialog**: während der Auswahl muss die Karte antippbar bleiben, dafür gibt es den
+Hinweisstreifen. Bewusst **kein zusätzlicher Knopf**: der Bestätigungstipp landet auf demselben
+Punkt, den man gerade getroffen hat.
+
+**Beide gewählten Punkte sind markiert**, solange die Vorschau steht — sonst wäre bei einer Zahl
+wie „12 Punkte" nicht zu sehen, welche Strecke gemeint ist. `extensionEndIndex()` bleibt trotzdem
+die einzige Quelle für das **aktive Ende**; `isExtensionPick()` ergänzt nur in der Auswahlphase den
+zweiten Punkt.
+
+**Ein Undo-Schritt für das Ganze**, auch wenn dabei viele Punkte verschwinden: es ist eine
+Handlung des Nutzers, kein Stapel einzelner Löschungen. Die Zahl steht nach dem Öffnen weiterhin im
+Hinweisstreifen (`extendOpenedCut`), damit sie sich einordnen lässt, ohne sie im Kopf behalten zu
+müssen.
+
+**Entfallen ist `areNeighbourIndices()`** samt der Fehlermeldung `extendNotAdjacent` — es gibt
+keinen Fehlgriff „nicht benachbart" mehr. Die Warnfarbe des Hinweisstreifens hängt jetzt an
+`extendWrongContour`, dem verbliebenen Missgriff.
+
+**Nicht ohne Gerät verifizierbar:** ob der Bestätigungstipp auf derselben Stelle in der Praxis
+ergonomisch ist, und ob „kürzere Seite" die Erwartung trifft, wenn jemand bewusst ein langes Stück
+neu abfahren will — dafür gibt es keinen Weg, die längere Seite zu wählen.
+
 ### Erweitern: das aktive Ende (Stand v60)
 
 **Der zuerst getippte Punkt wird das Ende, an dem weitergebaut wird.** Das ist keine neue Regel —
@@ -1432,7 +1481,9 @@ einem `<rect>` mit fester Größe.
 Nutzer-Zoom: `state.viewport = { zoom, dx, dy, custom, base }`. Solange `custom` false ist, folgt
 die Ansicht dem Auto-Fit (`computeTransform`); ab der ersten Geste wird die Basis eingefroren
 (`beginCustomViewport()`) und `activeTransform()` legt Zoom/Verschiebung darüber. `clampViewport()`
-hält Zoom in `MIN_USER_ZOOM`/`MAX_USER_ZOOM` (0,6–14) und verhindert, dass die Karte aus dem Bild
+hält Zoom in `MIN_USER_ZOOM`/`MAX_USER_ZOOM` (0,6–60; die Obergrenze ist in v65 von 14 auf 60
+gestiegen, damit sich Punkte einer dichten Kontur noch trennen lassen — Minimum und Schrittweite
+sind unverändert) und verhindert, dass die Karte aus dem Bild
 geschoben wird. Trefferflächen der Punkte: `state.hitRadiusUnits` wird je Render aus
 `svgMetrics()` so gesetzt, dass immer mindestens 44 × 44 px Touch-Ziel entstehen.
 
@@ -1473,7 +1524,7 @@ Breite (in der schmalen Werkzeugleiste wurde sie abgeschnitten) und verdeckt die
 denn während der Auswahl muss weiter auf Punkte getippt werden. Er trägt den Schritttext
 (`aria-live="polite"`), „Abbrechen“ (nur in der Auswahlphase, dort ist noch nichts verändert) und
 „Fertig“ (sobald die Kante offen ist). `state.extension =
-{ role, exclusionId, phase: 'picking' | 'adding', firstIndex, hintKey, hintVars }`;
+{ role, exclusionId, phase: 'picking' | 'adding', firstIndex, secondIndex, hintKey, hintVars }`;
 `setExtensionHint()` merkt sich den Schlüssel, damit `refreshExtendPanel()` den Text jederzeit
 neu zeichnen kann.
 
@@ -1481,16 +1532,17 @@ neu zeichnen kann.
   **keinen** Tipp in die Innenfläche durch — während der Erweiterung geht es ausschließlich um die
   Kante. Der erste gewählte Punkt ist über `isExtensionPick()` als `.extend-pick-point` markiert
   (Warnfarbe, gestrichelter Ring — bewusst *nicht* die Auswahlfarbe, es ist keine Auswahl zum
-  Verschieben). Nicht benachbart → `areNeighbourIndices()` sagt nein, die Auswahl beginnt von
-  vorn, **an der Kontur ändert sich nichts**; der Hinweisstreifen zeigt den Fehler in Warnfarbe
-  (`.map-hint.is-error`) und fordert erneut auf. Bewusst kein Dialog je Fehlgriff: die Auswahl
-  zweier benachbarter Punkte misslingt auf kleinen Bildschirmen leicht, ein Modal je Mistipp wäre
-  eine Zumutung — und ein blockierendes Modal verböte ohnehin das nötige Tippen auf die Karte.
+  Verschieben); seit v65 ist der vorgemerkte **zweite** Punkt genauso markiert. Ein Tipp auf einen
+  Punkt einer **anderen** Kontur zeigt den Hinweis in Warnfarbe (`.map-hint.is-error`) und fordert
+  erneut auf, **an der Kontur ändert sich nichts**. Bewusst kein Dialog je Fehlgriff: ein Mistipp
+  ist auf kleinen Bildschirmen leicht passiert, ein Modal dafür wäre eine Zumutung — und ein
+  blockierendes Modal verböte ohnehin das nötige Tippen auf die Karte. Welcher zweite Punkt
+  zulässig ist und was sein Tipp auslöst, steht unter „Erweitern: beliebiger zweiter Punkt".
 - **Auftrennen** (`openContourForExtension()`, ein Undo-Schritt): `reorderForExtension()` ordnet
-  die Punktfolge so um, dass sie beim **zweiten** gewählten Punkt beginnt, im Ring von der Kante
-  weg läuft und beim **ersten** endet — der erste ist damit das neue offene Ende. Die Laufrichtung
-  ergibt sich daraus, ob der zweite Punkt im Array auf den ersten folgt oder ihm vorangeht; die
-  Schlussstrecke letzter↔erster zählt als Kante. Danach `perimeterClosed = false` bzw.
+  die Punktfolge so um, dass sie beim **zweiten** gewählten Punkt beginnt, im Ring über die
+  **bleibende** Seite läuft und beim **ersten** endet — der erste ist damit das neue offene Ende.
+  Welche Seite bleibt, sagt allein `extensionCut()`; die Punkte der anderen stehen in der Ausgabe
+  nicht mehr. Danach `perimeterClosed = false` bzw.
   `exclusion.closed = false`. Umgeordnet wird **in place** (`points.splice(0, …)`), weil
   `getActivePointArray()` dieselbe Array-Referenz liefert.
 - **Anhängen** braucht keinerlei Sonderweg: `appendCurrentPoint()` hängt hinten an, und hinten
@@ -2177,6 +2229,27 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-12: **v65 — weiterer Zoom, Uhrzeit in der Übersicht, freier zweiter Punkt beim
+  Erweitern.** (1) `MAX_USER_ZOOM` von **14 auf 60** (`app.js:3811`); Minimum (0,6) und
+  Schrittweite (Rad 1,15 je Raste, Pinch stufenlos) unverändert. Der Test misst die Wirkung statt
+  der Konstante: 30-fach wurde vorher stillschweigend gekappt, und bei voller Vergrößerung liegen
+  zwei 20 cm entfernte Punkte jetzt über 44 px auseinander. (2) Die Kartenübersicht nennt
+  **Datum und Uhrzeit** der letzten Änderung (`formatMapTimestamp()`, ohne Sekunden) — bei mehreren
+  Ständen desselben Tages sahen die Karten vorher alle gleich aus. (3) Beim Erweitern ist der
+  zweite Punkt **beliebig**; Einzelheiten im Abschnitt „Erweitern: beliebiger zweiter Punkt".
+  Kurz: `extensionCut()` ist die einzige Stelle, die die wegfallende Seite bestimmt, und misst
+  dafür die **Weglänge**, nicht die Punktzahl — benachbarte Punkte verlieren dadurch nach der
+  Dreiecksungleichung weiterhin nie etwas, und es bleiben immer mindestens drei Punkte stehen.
+  Der zweite Tipp **kündigt nur an**, wie viele Punkte wegfallen, erst ein zweiter Tipp auf
+  denselben Punkt führt es aus; das Ganze ist **ein** Undo-Schritt. `areNeighbourIndices()` und
+  `extendNotAdjacent` sind ersatzlos entfallen. **Dabei am Harness behoben:** `append()` war im
+  Element-Stub ein No-Op, obwohl `appendChild()` die Kinder mitführt — sämtliche Textzeilen der
+  Kartenübersicht waren dadurch gar nicht prüfbar.
+  Neu: 3 ui-Fälle (205), zwei Bestandsfälle umgeschrieben (der Nachbarschafts-Fall prüft jetzt die
+  Seitenwahl, der „nicht benachbart"-Fall die Vorschau). Gegen acht simulierte Rückfälle geprüft,
+  alle gefangen. i18n-Parität DE/EN maschinell geprüft (522/522). Hilfe, Markup-Fallback und README
+  in beiden Sprachen nachgezogen. `APP_VERSION` auf `v65`.
 
 - 2026-09-11: **Chevrons waren am Gerät unsichtbar — `stroke-width` in Prozent.** Gemeldet:
   je Fahrtaste nur ein Chevron als Haarlinie (RGB 18/33/38 auf 13/28/33), nichts auf den

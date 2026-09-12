@@ -165,12 +165,16 @@ aufnehmen, um sie an einer Stelle zu verlängern. In der Kartenleiste erscheint 
 
 1. Knopf antippen. Über der Karte erscheint ein **Hinweisstreifen**, der dich Schritt für Schritt
    führt und dabei die Karte nicht verdeckt – du kannst also weiter auf Punkte tippen. Er bittet
-   dich, **zwei direkt benachbarte Punkte** anzutippen – also zwei Punkte, die durch eine Kante
-   verbunden sind.
-2. Sind die beiden nicht benachbart, sagt der Hinweisstreifen das und die Auswahl beginnt von
-   vorn. An der Kontur ändert sich dabei nichts.
-3. Passt es, wird die Kante zwischen ihnen aufgetrennt und die Kontur gilt wieder als offen. Der
-   **zuerst** angetippte Punkt ist ab jetzt das offene Ende.
+   dich, **zwei Punkte** anzutippen. Sie müssen **keine Nachbarn** sein – du kannst auch ein
+   längeres Stück auswählen, das neu abgefahren werden soll.
+2. Liegen Punkte zwischen den beiden, werden sie **gelöscht**. Der Hinweisstreifen nennt die
+   Anzahl, **bevor** etwas passiert; erst ein zweiter Tipp auf denselben Punkt führt es aus. Ein
+   Tipp auf einen anderen Punkt verschiebt nur die Auswahl. Gelöscht wird die **kürzere** der
+   beiden Seiten – gemessen an der Weglänge, nicht an der Punktzahl, denn genau diese Strecke
+   fährst du danach neu ab. Bei zwei benachbarten Punkten fällt dadurch nie ein Punkt weg.
+3. Danach ist die Kontur zwischen den beiden offen. Der **zuerst** angetippte Punkt ist ab jetzt
+   das offene Ende. Ein einziges Rückgängig nimmt das Öffnen samt aller gelöschten Punkte
+   zurück.
 4. Nimm weitere Punkte auf wie sonst auch – Halte-Knopf, Automatik und Positions-Glättung
    funktionieren unverändert. Die neuen Punkte landen genau zwischen den beiden gewählten.
 5. **„Fertig“** im Hinweisstreifen schließt die Kontur wieder; der zuletzt aufgenommene Punkt verbindet sich mit dem
@@ -604,12 +608,15 @@ If a perimeter or exclusion area is already closed, you do not have to record it
 extend it in one place. The map bar then offers **“Extend perimeter”** or **“Extend area”**:
 
 1. Tap the button. A **hint strip** appears above the map, guiding you step by step without
-   covering the map – so you can keep tapping points. It asks you to tap **two directly
-   neighbouring points** – that is, two points joined by an edge.
-2. If the two are not neighbours, the hint strip says so and the selection starts over. Nothing
-   on the contour is changed.
-3. If they fit, the edge between them is cut and the contour counts as open again. The point you
-   tapped **first** becomes the open end.
+   covering the map – so you can keep tapping points. It asks you to tap **two
+   points**. They need **not** be neighbours – you can also pick a longer stretch to re-record.
+2. Any points between the two are **deleted**. The hint strip states the number **before**
+   anything happens; only a second tap on the same point carries it out. Tapping a different
+   point just moves the selection. The **shorter** of the two sides is deleted – measured by path
+   length, not by point count, because that is the stretch you will walk again. For two
+   neighbouring points no point is ever lost.
+3. The contour is then open between the two. The point you tapped **first** becomes the open end.
+   A single undo takes back the opening together with every deleted point.
 4. Capture further points as usual – the hold button, automatic capture and position smoothing all
    work unchanged. The new points land exactly between the two you picked.
 5. **“Done”** in the hint strip closes the contour again; the last captured point joins up with the second of the two

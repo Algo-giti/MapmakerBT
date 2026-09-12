@@ -13,7 +13,7 @@ function elementStub(id) {
     style: { setProperty() {}, removeProperty() {}, getPropertyValue() { return ''; } },
     classes: new Set(),
     setAttribute() {}, removeAttribute() {}, getAttribute() { return null; },
-    addEventListener() {}, removeEventListener() {}, append() {}, remove() {},
+    addEventListener() {}, removeEventListener() {}, remove() {},
     querySelector() { return null; }, querySelectorAll() { return []; }, closest() { return null; },
     focus() {}, blur() {}, click() {}, getBoundingClientRect() { return { left: 0, top: 0, width: 300, height: 300 }; },
     setPointerCapture() {}, releasePointerCapture() {},
@@ -25,6 +25,9 @@ function elementStub(id) {
     set: (value) => { inner = value; if (value === '') el.children.length = 0; },
   });
   el.appendChild = (child) => { el.children.push(child); return child; };
+  // append() nimmt mehrere Kinder auf einmal und war bisher ein No-Op — damit fielen alle
+  // Textzeilen der Kartenuebersicht unter den Tisch, obwohl der Stub Kinder sonst mitfuehrt.
+  el.append = (...nodes) => { nodes.forEach((n) => el.children.push(n)); };
   // Echte Klassenliste: die UI-Tests pruefen Zustaende ueber CSS-Klassen.
   el.classList = {
     add(...names) { names.forEach((n) => el.classes.add(n)); },
