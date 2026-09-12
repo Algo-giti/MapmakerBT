@@ -1296,8 +1296,15 @@ absichtlich): `setActiveMapById()` beim Kartenwechsel, `init()` beim Start und d
 
 ### Streuung der GPS-Fixes (Stand v67)
 
-**Reine Anzeige.** In der zweiten Zeile der Werkzeugleiste steht neben Punktzahl und Konturzustand
-ein drittes Feld `#gpsScatter`: „Streuung 3 cm (max 30 s: 11 cm) · 4 Fixes“. Es sperrt nichts,
+**Reine Anzeige, seit v68 auf der Karte statt in der Leiste.** Ein Tipp auf das RTK-Abzeichen
+`#rtkBadge` (seit v68 ein `<button>`) blendet `#gpsPanel` oben auf der Karte ein und aus: Fix-Status,
+„Streuung 3 cm (max 30 s: 11 cm) · 4 Fixes“ und „Genauigkeit ±2,1 cm“. Der Zustand liegt als
+`state.view.gpsPanel` in den vorhandenen Ansichtseinstellungen und überlebt damit einen Neustart,
+ohne dass es einen neuen Speicherschlüssel bräuchte. **Warum umgezogen:** in der Werkzeugleiste nahm
+das Feld dauerhaft Breite neben Kartenname und Konturzustand weg, obwohl es nur zeitweise
+interessiert. Die Einblendung sitzt auf der **Gegenseite** des Ansicht-Symbols (Rechtshänder links,
+Linkshänder rechts über `data-handed`) — gleiche Seite hieße Überdeckung, beide stehen oben — und
+ist `pointer-events: none`, darf also keine Kartengeste abfangen. Sie sperrt nichts,
 warnt nicht und ändert weder Aufnahme noch Automatik — ein ui-Test hält das nicht nur am Verhalten
 fest, sondern auch per Quelltextsuche: `fixScatter()` und `scatterMaxCm()` dürfen **ausschließlich**
 von `gpsScatterText()` und `rememberScatter()` gelesen werden.
@@ -1322,6 +1329,49 @@ nur ganz ohne Fix bleibt das Feld leer und verschwindet per `.info-chip:empty`.
 
 **Keine neue Einstellung**, kein neuer Schwellwert, keine neue Zahl im Menü: alles ist aus
 `state.fixHistory` und den vorhandenen Konstanten abgeleitet.
+
+### Undo-Historie gehört der Karte (Stand v68)
+
+**`state.undoStack` ist keine eigene Ablage mehr, sondern eine Sicht auf `state.activeMap.undoStack`**
+(`Object.defineProperty` direkt hinter dem `state`-Literal). Jeder `push`/`pop`/`shift` trifft damit
+unmittelbar den Kartendatensatz, den `saveActiveMap()` ohnehin schreibt, und ein Kartenwechsel bringt
+ohne Zutun die Historie **dieser** Karte mit. **Bewusst eine Sicht statt zweier abgeglichener
+Felder:** eine Spiegelung hätte an jeder der **sechs** Stellen nachgezogen werden müssen, an denen
+`state.activeMap` gesetzt wird — eine vergessene davon hätte den Stapel still auf die falsche Karte
+zeigen lassen. Wer den Stapel leert, leert ihn deshalb **an Ort und Stelle** (`length = 0`).
+
+**Zwei Grenzen, eine Rechnung** (`trimUndoStack()`): höchstens `UNDO_STACK_LIMIT` (20) Schritte
+**und** höchstens `UNDO_STACK_BYTE_BUDGET` (512 KiB) je Karte. Beides steht in **einem** Ausdruck
+(`Math.min(UNDO_STACK_LIMIT, budget / bytes)`) — eine zusätzliche Schleife nur für die 20 wäre eine
+zweite Aussage über dieselbe Grenze und ließe sich ändern, ohne dass ein Test anschlägt (genau so ist
+eine Sabotage zunächst durchgerutscht).
+
+**Warum überhaupt ein Budget — gemessen, nicht geschätzt.** Ein Schnappschuss *ist* die Geometrie:
+bei einer Karte mit 320 Punkten (212 Perimeter + 6 Flächen, jeder Punkt mit vollem `gps`-Objekt)
+misst er **60,8 KiB**, der Kartendatensatz selbst 61,0 KiB. Zwanzig davon wären 1,19 MiB — und weil
+`saveActiveMap()` bei **jedem** aufgenommenen Punkt läuft (in der Automatik alle 500 ms), stiege die
+Schreiblast um den **Faktor 21** (JSON-Serialisierung 0,16 ms → 3,39 ms unter Node). Nicht der Platz
+ist das Problem, die Schreibarbeit ist es. Bei kleinen Karten (40 Punkte: 7,7 KiB je Schritt) greift
+das Budget gar nicht, dort bleiben alle 20 Schritte.
+
+**Die Größe wird am neuesten Schnappschuss gemessen und hochgerechnet**, nicht am ganzen Stapel: alle
+Schnappschüsse einer Karte sind nahezu gleich groß, und ein vollständiges `JSON.stringify` je
+aufgenommenem Punkt wäre genau die Last, die das Budget vermeiden soll.
+
+**Die Historie verlässt die Karte nicht.** `mapWithoutUndo()` ist die einzige Stelle, die sie
+abstreift, und wird von drei Wegen benutzt: **JSON-Backup** (sie wäre das Zwanzigfache der Datei und
+gehört nicht zu dem, was jemand weitergibt), **Duplizieren** (die Kopie bekommt eine neue Kennung, an
+der eine geerbte Historie ohnehin vorbeiliefe — `undoLastAction()` prüft `snapshot.mapId`) und
+**Import** (dieselbe Begründung; eine untergeschobene Historie wird nicht übernommen).
+
+**Beim Löschen einer Karte geht die Historie mit**, ohne eigenen Schritt: sie liegt im selben
+Datensatz, und `store.delete(id)` entfernt ihn. Ein Test hält per Quelltextsuche fest, dass es nur
+**einen** Objektspeicher gibt — eine zweite Ablage könnte sonst zurückbleiben.
+
+**Gemeldet, nicht gebaut:** auf vollen Speicher reagiert weiterhin nichts sinnvoll. `dbRequest()`
+lehnt ab, `saveActiveMap()` fängt nichts, und weil `state.saving = true` vor dem Schreiben gesetzt
+wird, bleibt die Anzeige nach einem abgelehnten Schreibvorgang dauerhaft auf „Speichert …“. Das
+Budget senkt die Wahrscheinlichkeit, ändert aber nichts an diesem Verhalten.
 
 ### Erweitern: beliebiger zweiter Punkt (Stand v65)
 
@@ -1353,6 +1403,14 @@ Strecke kosten — und auf einer dichten Kontur trifft man auf dem Telefon leich
 **kein Dialog**: während der Auswahl muss die Karte antippbar bleiben, dafür gibt es den
 Hinweisstreifen. Bewusst **kein zusätzlicher Knopf**: der Bestätigungstipp landet auf demselben
 Punkt, den man gerade getroffen hat.
+
+**Jeder Schritt ist nummeriert** („Schritt 2 von 4: …“). Die Gesamtzahl kommt aus der Liste
+`EXTEND_STEPS` (`pickFirst`, `pickSecond`, `confirm`, `adding`), die Nummer aus dem **Zustand**
+(`extensionStepKey()`), nicht aus dem Hinweistext — eine eingetippte „von 3“ liefe beim nächsten
+Umbau auseinander, ohne dass es jemandem auffiele. Der Fehlgriff-Hinweis behält die Nummer des
+laufenden Schrittes, denn er wirft den Ablauf nicht zurück. Die Texte sind so kurz gehalten, dass
+**Nummer plus Text** unter 80 Zeichen bleibt; der Test rechnet die eingesetzte Zeile nach, nicht den
+nackten i18n-Wert.
 
 **Beide gewählten Punkte sind markiert**, solange die Vorschau steht — sonst wäre bei einer Zahl
 wie „12 Punkte" nicht zu sehen, welche Strecke gemeint ist. `extensionEndIndex()` bleibt trotzdem
@@ -2290,6 +2348,32 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-12: **v68 — Schrittnummern beim Erweitern, GPS-Details als Einblendung, dauerhafte
+  Undo-Historie.** (1) Jeder Hinweis beim Erweitern trägt „Schritt N von M:"; M kommt aus der Liste
+  `EXTEND_STEPS`, N aus dem Zustand — ein Test verbietet zusätzlich jede von Hand eingetippte
+  Schrittzahl in den `extend*`-Texten. Die Texte sind dafür weiter gekürzt, geprüft wird die
+  **eingesetzte Zeile** (Nummer + Text ≤ 80 Zeichen), nicht der nackte i18n-Wert. (2) Die Streuung
+  steht nicht mehr in der Werkzeugleiste: `#gpsScatter` ist entfernt, ein Tipp auf das RTK-Abzeichen
+  (jetzt ein `<button>`) blendet `#gpsPanel` oben auf der Karte ein — Fix-Status, Streuung samt
+  30-s-Maximum und Fixzahl, dazu die gemeldete Genauigkeit. Der Zustand liegt in den vorhandenen
+  Ansichtseinstellungen (`state.view.gpsPanel`) und überlebt den Neustart, ohne neuen
+  Speicherschlüssel; die Einblendung sitzt auf der Gegenseite des Ansicht-Symbols und ist
+  `pointer-events: none`. Aufnahme und Automatik bleiben unberührt. (3) Die Undo-Historie gehört
+  jetzt der Karte: `state.undoStack` ist eine **Sicht** auf `map.undoStack`, wird mit der Karte
+  gespeichert und geladen, und ein Kartenwechsel bringt die Historie dieser Karte zurück statt sie
+  zu leeren. **Vorab gemessen und gemeldet:** ein Schritt ist so groß wie die Karte selbst
+  (60,8 KiB bei 320 Punkten), zwanzig wären 1,19 MiB und hätten die Schreiblast je aufgenommenem
+  Punkt um den Faktor 21 erhöht — deshalb zusätzlich ein Budget von 512 KiB je Karte, das nur bei
+  sehr großen Karten vor der 20 greift. `mapWithoutUndo()` hält die Historie aus Backup, Kopie und
+  Import heraus; beim Löschen einer Karte verschwindet sie mit dem Datensatz. Einzelheiten in den
+  Abschnitten „Undo-Historie gehört der Karte" und „Streuung der GPS-Fixes". Neu: 6 ui-Fälle (218);
+  die Test-Datenbank legt jetzt **Kopien** statt der lebenden Objekte ab, sonst hätte ein Test
+  „gespeichert" gesehen, wo noch dasselbe Objekt im Speicher stand. Gegen dreizehn simulierte
+  Rückfälle geprüft; einer lief zunächst durch — die 20er-Grenze war doppelt formuliert und ließ
+  sich in einer der beiden Fassungen ändern, ohne dass etwas anschlug; sie steht jetzt an einer
+  Stelle. i18n-Parität DE/EN maschinell geprüft (531/531). Hilfe, Markup-Fallback und README in
+  beiden Sprachen nachgezogen. `APP_VERSION` auf `v68`.
 
 - 2026-09-12: **v67 — Streuung der GPS-Fixes sichtbar.** Neues Feld in der zweiten Zeile der
   Werkzeugleiste: „Streuung 3 cm (max 30 s: 11 cm) · 4 Fixes“. Gerechnet wird aus dem bereits

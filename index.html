@@ -24,9 +24,9 @@
 <button class="mode-chip" id="modeCycleBtn" type="button">
 <span aria-hidden="true" class="mode-dot"></span><span id="modeChipLabel">Perimeter</span>
 </button>
-<div aria-live="polite" class="rtk-chip no-data" id="rtkBadge">
+<button aria-expanded="false" aria-live="polite" class="rtk-chip no-data" data-i18n-aria-label="gpsPanelToggle" id="rtkBadge" type="button" aria-label="GPS-Details ein- oder ausblenden">
 <strong id="rtkText">No Fix</strong><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5.5 12.5 11.5 6.5M8.5 3.5l4 4-5 5-4-4zM15.5 10.5l4 4-5 5-4-4zM14 4a6 6 0 0 1 6 6"/></svg><span id="rtkSats">–/–</span>
-</div>
+</button>
 <div class="battery-chip" id="batteryChip">
 <span aria-hidden="true" class="battery-glyph"><i id="batteryFill"></i></span><span id="batteryValue">–</span>
 </div>
@@ -36,7 +36,7 @@
 <div class="map-toolbar" id="mapToolbar">
 <div class="toolbar-info" id="toolbarInfo">
 <span class="toolbar-map-name" data-i18n="noMap" id="mapNameLabel">Keine Karte</span>
-<span class="toolbar-map-meta" id="mapMeta"><span class="info-line" id="mapSummary"></span><span class="info-chip" id="contourStatus"></span><span class="info-chip" id="gpsScatter"></span></span>
+<span class="toolbar-map-meta" id="mapMeta"><span class="info-line" id="mapSummary"></span><span class="info-chip" id="contourStatus"></span></span>
 </div>
 <div class="map-tools" id="mapTools">
 <div class="map-tool-slot" id="deleteFabWrap">
@@ -66,6 +66,7 @@
 </div>
 
 <div class="map-canvas-area" id="mapCanvasArea">
+<div aria-live="polite" class="map-gps-panel" hidden="" id="gpsPanel" role="status"><span class="gps-panel-line" id="gpsPanelFix"></span><span class="gps-panel-line" id="gpsPanelScatter"></span><span class="gps-panel-line" id="gpsPanelAccuracy"></span></div>
 <svg aria-label="Aufgenommene Mähkarte" data-i18n-aria-label="mapPreviewAria" id="mapSvg" role="img" viewBox="0 0 1000 680">
 <g id="gridLayer"></g>
 <g id="shapeLayer"></g>
@@ -538,7 +539,7 @@
 <div><strong data-i18n="helpInsertTitle">Punkt einfügen</strong><span data-i18n="helpInsertText">Bei ausgewähltem Punkt setzen „Punkt davor“ und „Punkt danach“ einen neuen Punkt genau auf die Mitte der Strecke zum Nachbarpunkt — rein geometrisch, der Mäher muss dafür nirgends hinfahren. Am offenen Ende einer Kontur ist die jeweilige Seite ausgegraut.</span></div>
 <div><strong data-i18n="helpAreaSelectTitle">Fläche auswählen</strong><span data-i18n="helpAreaSelectText">Ein Tipp in eine fertige Ausschlussfläche wählt sie ganz aus, um sie zu löschen. Beim Perimeter gibt es das bewusst nicht — dort würde jeder Tipp das Verschieben der Karte abfangen.</span></div>
 <div><strong data-i18n="helpDeleteToolTitle">Lösch-Werkzeug</strong><span data-i18n="helpDeleteToolText">Ein Werkzeug mit drei Aufgaben: ohne Auswahl entfernt es den zuletzt gesetzten Punkt, bei ausgewähltem Punkt genau diesen, bei ausgewählter Fläche die ganze Fläche (mit Rückfrage).</span></div>
-<div><strong data-i18n="helpUndoTitle">Rückgängig</strong><span data-i18n="helpUndoText">Der runde Knopf in der unteren Kartenecke gegenüber dem Aufnahme-Knopf (bei Rechtshändern links, bei Linkshändern rechts) nimmt die letzten 20 Bearbeitungsschritte einzeln zurück — Aufnehmen, Verschieben, Löschen, Konturschluss. Bei leerem Verlauf ist er ausgegraut.</span></div>
+<div><strong data-i18n="helpUndoTitle">Rückgängig</strong><span data-i18n="helpUndoText">Der runde Knopf in der unteren Kartenecke gegenüber dem Aufnahme-Knopf (bei Rechtshändern links, bei Linkshändern rechts) nimmt die letzten 20 Bearbeitungsschritte einzeln zurück — Aufnehmen, Verschieben, Löschen, Konturschluss. Der Verlauf gehört zur Karte und wird mit ihr gespeichert: du kannst die App schließen, die Karte später wieder öffnen und weiter zurückspringen. Jede Karte hat ihren eigenen Verlauf; bei sehr großen Karten passen weniger als 20 Schritte hinein, damit das Speichern flott bleibt. Beim Löschen einer Karte geht ihr Verlauf mit. Bei leerem Verlauf ist der Knopf ausgegraut.</span></div>
 <div><strong data-i18n="helpCloseNewTitle">Schließen &amp; neu</strong><span data-i18n="helpCloseNewText">Erscheint im Ausschluss-Modus ab drei Punkten: schließt die laufende Fläche und beginnt sofort die nächste. Gedacht für Reihen kleiner Flächen wie Bäume.</span></div>
 <div><strong data-i18n="helpAutoTitle">Automatik-Aufnahme</strong><span data-i18n="helpAutoText">Setzt Punkte selbstständig — wahlweise im Zeittakt oder nach gefahrener Strecke. Die Beschriftung über dem Knopf zeigt den eingestellten Wert, umgestellt wird er im Menü unter Aufnahme.</span></div>
 <div><strong data-i18n="helpQualityTitle">Punktqualität</strong><span data-i18n="helpQualityText">Der Rand eines Punktes zeigt, zu welchem Element er gehört, die Füllung die RTK-Qualität bei der Aufnahme.</span></div>
@@ -557,7 +558,7 @@
 <h3 data-i18n="viewHelpTitle">Ansicht &amp; Bedienung</h3>
 <div class="help-feature-grid">
 <div><strong data-i18n="helpRtkTitle">RTK-Anzeige</strong><span data-i18n="helpRtkText">Das Abzeichen in der Kopfzeile zeigt Fix, Float oder No Fix und die Satelliten als Mäher/Station. Nur bei einem echten Fix ist die Position zentimetergenau.</span></div>
-<div><strong data-i18n="helpScatterTitle">Streuung der Position</strong><span data-i18n="helpScatterText">In der Kartenleiste steht, wie weit die Messwerte der letzten zwei Sekunden auseinanderliegen — der größte Abstand zu ihrem Mittelwert in Zentimetern, dahinter der höchste Wert der letzten 30 Sekunden und die Zahl der Messwerte im Fenster. Kleine Zahlen heißen ruhige Position, ein großer 30-Sekunden-Wert verrät einen Ausreißer, der längst vorbei ist. Weniger Messwerte als sonst deuten auf eine Funklücke. Die Anzeige ist reine Information: sie sperrt nichts und ändert weder Aufnahme noch Automatik.</span></div>
+<div><strong data-i18n="helpScatterTitle">GPS-Details einblenden</strong><span data-i18n="helpScatterText">Ein Tipp auf das RTK-Feld in der Kopfzeile blendet oben auf der Karte die GPS-Details ein und wieder aus; die Wahl bleibt nach dem Neuladen erhalten. Dort steht der Fix-Status, die vom Mäher gemeldete Genauigkeit und die Streuung: wie weit die Messwerte der letzten zwei Sekunden auseinanderliegen — der größte Abstand zu ihrem Mittelwert in Zentimetern, dahinter der höchste Wert der letzten 30 Sekunden und die Zahl der Messwerte im Fenster. Kleine Zahlen heißen ruhige Position, ein großer 30-Sekunden-Wert verrät einen Ausreißer, der längst vorbei ist. Weniger Messwerte als sonst deuten auf eine Funklücke. Alles davon ist reine Information: es sperrt nichts und ändert weder Aufnahme noch Automatik.</span></div>
 <div><strong data-i18n="helpFixOnlyTitle">Nur bei RTK FIX</strong><span data-i18n="helpFixOnlyText">Im Menü unter Aufnahme. Ist die Option aktiv, bleibt jede Aufnahme bei Float oder No Fix gesperrt — auch die Automatik.</span></div>
 <div><strong data-i18n="helpMapInfoTitle">Karteninfo in der Werkzeugleiste</strong><span data-i18n="helpMapInfoText">Die Werkzeugleiste oben trägt zwei Zeilen: den Kartennamen und darunter, kleiner, die Punktzahl und die betroffene Kontur samt Zustand. Die aktuelle Position steht unten auf der Karte, zwischen Rückgängig- und Aufnahme-Knopf. Die Kartenfläche selbst bleibt damit frei von Text. Der Zustand steht immer unmittelbar hinter der Bezeichnung der Kontur, auf die er sich bezieht: „Perimeter · geschlossen“ oder „Ausschluss 2 · offen“, und bei ausgewähltem Punkt an dessen Bezeichnung, also „Ausschluss 1 · Punkt 3 · offen“. So ist auch bei mehreren Ausschlussflächen eindeutig, welche gemeint ist. „Offen“ heißt, dass zwischen letztem und erstem Punkt noch keine Verbindung besteht, „geschlossen“ heißt, dass die Fläche fertig umrundet ist. Wegpunkte und Dockpfad sind immer offene Pfade und zeigen deshalb keinen Zustand.</span></div>
 <div><strong data-i18n="helpZoomTitle">Zoomen &amp; Verschieben</strong><span data-i18n="helpZoomText">Zwei Finger zoomen, ein Finger verschiebt. Sobald du die Ansicht selbst verändert hast, erscheint in der oberen Kartenecke ein Symbol, das sie wieder auf die ganze Karte zurücksetzt.</span></div>

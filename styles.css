@@ -2208,6 +2208,10 @@ body.menu-open .app-frame { visibility: hidden; }
   font-weight: 800;
   white-space: nowrap;
 }
+/* Seit v68 ist das Abzeichen ein Knopf (Tipp blendet die GPS-Einblendung um). Die globale
+   Knopfregel wuerde sonst ihre eigene Mindesthoehe und Schriftfamilie mitbringen. */
+.rtk-chip { min-height: 0; color: var(--shell-text); font-family: inherit; cursor: pointer;
+  -webkit-appearance: none; appearance: none; }
 .rtk-chip strong { font-size: .78rem; }
 .rtk-chip svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; opacity: .85; }
 .rtk-chip.fix { color: var(--shell-ok); border-color: var(--shell-ok-border); background: var(--shell-ok-bg); }
@@ -3271,6 +3275,32 @@ body.menu-open .app-frame { visibility: hidden; }
 }
 .map-view-reset svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .map-view-reset:active { color: var(--shell-info); }
+
+/* --- GPS-Einblendung oben auf der Karte -----------------------------------
+   Sie sitzt auf der **Gegenseite** des Ansicht-Symbols: bei Rechtshaendern links, bei
+   Linkshaendern rechts. Gleiche Seite hiesse Ueberdeckung, denn beide stehen oben.
+   `pointer-events: none` — sie ist Anzeige, kein Ziel, und darf die Karte nicht abfangen. */
+.map-gps-panel {
+  position: absolute;
+  z-index: 2;
+  top: 6px;
+  left: var(--edge-gap);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-width: calc(100% - 2 * var(--edge-gap) - 44px);
+  padding: 5px 8px;
+  border-radius: 10px;
+  background: var(--shell-hud);
+  color: var(--shell-text);
+  font-size: .58rem;
+  font-weight: 700;
+  line-height: 1.35;
+  pointer-events: none;
+}
+:root[data-handed="left"] .map-gps-panel { left: auto; right: var(--edge-gap); }
+.gps-panel-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gps-panel-line:empty { display: none; }
 
 /* --- Rueckgaengig unten an der Kartenecke ---------------------------------
    Spiegelbildlich zum Aufnahme-Cluster: Rechtshaender unten links, Linkshaender unten rechts,

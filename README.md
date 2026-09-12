@@ -71,13 +71,15 @@ Das Passwort bleibt nur für die laufende Sitzung im Speicher und wird nicht mit
 
 Die App besteht aus drei Zonen:
 
-- **Kopfzeile** – Menü, Verbindungsstatus, Moduswahl, RTK-Status und Akku.
+- **Kopfzeile** – Menü, Verbindungsstatus, Moduswahl, RTK-Status und Akku. Ein **Tipp auf das
+  RTK-Feld** blendet oben auf der Karte die GPS-Details ein und wieder aus: Fix-Status, gemeldete
+  Genauigkeit und die Streuung der Messwerte („Streuung 3 cm (max 30 s: 11 cm) · 4 Fixes“ – größter
+  Abstand der letzten zwei Sekunden zu ihrem Mittelwert, dahinter der höchste Wert der letzten
+  30 Sekunden und die Zahl der Messwerte). Die Wahl bleibt nach dem Neuladen erhalten, und die
+  Anzeige sperrt nichts – sie ändert weder Aufnahme noch Automatik.
 - **Karte** – nimmt den größten Teil des Bildschirms ein. Ganz oben liegt eine schmale,
   **zweizeilige Werkzeugleiste**: auf der einen Seite in Zeile 1 der Kartenname und darunter,
-  kleiner, die Punktzahl, die betroffene Kontur samt Zustand („Perimeter · geschlossen“) und die
-  **Streuung der Position** („Streuung 3 cm (max 30 s: 11 cm) · 4 Fixes“ – größter Abstand der
-  Messwerte der letzten zwei Sekunden zu ihrem Mittelwert, dahinter der höchste Wert der letzten
-  30 Sekunden und die Zahl der Messwerte; reine Anzeige, sie sperrt nichts); auf
+  kleiner, die Punktzahl und die betroffene Kontur samt Zustand („Perimeter · geschlossen“); auf
   der anderen Seite das Lösch-Werkzeug und, wenn sie gerade zutreffen, „Punkt davor/danach“,
   „Schließen & neu“ und „Erweitern“.
   Darunter die Kartenfläche mit Mäherposition, aufgenommenen Punkten und deren Verbindungslinien.
@@ -205,7 +207,12 @@ In der unteren Kartenecke gegenüber dem Aufnahme-Knopf steht **Rückgängig** �
 links, bei Linkshändern rechts. Es nimmt die letzten **20 Bearbeitungsschritte** einzeln zurück –
 nicht nur das Aufnehmen, sondern auch Verschieben, Löschen einzelner Punkte, das Löschen ganzer
 Flächen und das Schließen einer Kontur. Jeder Tipp geht einen Schritt zurück; ist der Verlauf
-leer, ist der Knopf ausgegraut. Der Verlauf gilt für die laufende Sitzung und die geöffnete Karte.
+leer, ist der Knopf ausgegraut.
+
+Der Verlauf **gehört zur Karte und wird mit ihr gespeichert**: du kannst die App schließen, die
+Karte später wieder öffnen und weiter zurückspringen. Jede Karte hat ihren eigenen Verlauf, und
+beim Löschen einer Karte geht er mit. Bei sehr großen Karten passen weniger als 20 Schritte
+hinein – ein Schritt ist so groß wie die Karte selbst, und das Speichern soll flott bleiben.
 
 ### Kartenpflege
 
@@ -526,13 +533,15 @@ The password is kept only for the running session and is never stored with the m
 
 The app has three zones:
 
-- **Header** – menu, connection status, mode selection, RTK status and battery.
+- **Header** – menu, connection status, mode selection, RTK status and battery. **Tapping the RTK
+  field** shows and hides the GPS details at the top of the map: fix status, reported accuracy and
+  the scatter of the readings (“Scatter 3 cm (30 s max: 11 cm) · 4 fixes” – the largest distance of
+  the last two seconds from their mean, followed by the highest value of the last 30 seconds and
+  the number of readings). The choice survives a reload, and the display blocks nothing – it
+  changes neither capture nor automatic capture.
 - **Map** – takes up most of the screen. A slim, **two-line tool bar** sits at the very top: on one
-  side line 1 holds the map name and, smaller beneath it, the point count, the contour concerned
-  together with its state (“Perimeter · closed”) and the **position scatter** (“Scatter 3 cm
-  (30 s max: 11 cm) · 4 fixes” – the largest distance of the last two seconds’ readings from their
-  mean, followed by the highest value of the last 30 seconds and the number of readings; display
-  only, it blocks nothing); on the other side the delete tool and,
+  side line 1 holds the map name and, smaller beneath it, the point count and the contour
+  concerned together with its state (“Perimeter · closed”); on the other side the delete tool and,
   whenever they apply, “Insert before/after”, “Close & new” and “Extend”. Below it the map itself
   with the mower position, the recorded points and their connecting lines. Only four controls sit
   on the map: the reset-view icon in one top corner, the capture button at the bottom with the
@@ -650,8 +659,12 @@ In the bottom corner of the map opposite the capture button sits **Undo** – on
 right-handed use, on the right for left-handed. It takes back the last **20 editing steps** one
 at a time – not just
 captures, but also moving points, deleting single points, deleting whole areas and closing a
-contour. Each tap goes one step back; when the history is empty the button is greyed out. The
-history belongs to the running session and the map you have open.
+contour. Each tap goes one step back; when the history is empty the button is greyed out.
+
+The history **belongs to the map and is stored with it**: you can close the app, reopen the map
+later and keep stepping back. Every map has its own history, and deleting a map deletes it too. On
+very large maps fewer than 20 steps fit – one step is as large as the map itself, and saving should
+stay quick.
 
 ### Map maintenance
 

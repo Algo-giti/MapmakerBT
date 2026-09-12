@@ -43,6 +43,16 @@ const AUTO_CAPTURE_MODES = ['time', 'distance'];
 
 /** So viele Bearbeitungsschritte haelt der Rueckgaengig-Stapel vor. */
 const UNDO_STACK_LIMIT = 20;
+/**
+ * Obergrenze der **gespeicherten** Historie je Karte. Ein Schnappschuss ist die vollstaendige
+ * Geometrie, also praktisch so gross wie die Karte selbst — gemessen 60,8 KiB bei einer Karte
+ * mit 320 Punkten, deren Datensatz 61,0 KiB misst. Zwanzig davon waeren 1,19 MiB, und weil
+ * `saveActiveMap()` bei **jedem** aufgenommenen Punkt laeuft (in der Automatik alle 500 ms),
+ * ginge die Schreiblast um den Faktor 21 hoch. Der Platz ist dabei nicht das Problem, die
+ * Schreibarbeit ist es. Bei kleinen Karten (40 Punkte: 7,7 KiB je Schritt) greift das Budget
+ * gar nicht, dort bleiben alle 20 Schritte erhalten.
+ */
+const UNDO_STACK_BYTE_BUDGET = 512 * 1024;
 // Diagnoseprotokoll: gedeckelter Ringpuffer, damit es nicht unbegrenzt waechst (dieselbe
 // Ueberlegung wie beim rxBuffer). Der Export nimmt hoechstens die letzten 100 Zeilen — der
 // Puffer haelt bewusst mehr vor, damit auch nach dem Export noch Vorgeschichte da ist.
@@ -120,16 +130,19 @@ const I18N = {
     extendCancel: 'Erweitern abbrechen', extendCancelShort: 'Abbrechen',
     extendDone: 'Erweiterung abschließen', extendDoneShort: 'Fertig',
     gpsScatter: 'Streuung {cm} cm (max 30 s: {maxCm} cm) · {n} Fixes',
+    gpsAccuracy: 'Genauigkeit ±{cm} cm',
+    gpsPanelToggle: 'GPS-Details ein- oder ausblenden',
     gpsScatterWaiting: 'Streuung – · {n} Fixes',
-    extendPickFirst: 'Ersten Punkt antippen — an ihm wird danach weitergebaut.',
-    extendPickSecond: 'Punkt {n}: hier wird weitergebaut. Jetzt zweiten Punkt antippen, beliebig.',
-    extendConfirmEdge: 'Punkt {b}: kein Punkt geht verloren. Zum Öffnen erneut antippen.',
-    extendConfirmCutOne: 'Punkt {b}: ein Punkt wird gelöscht. Zum Öffnen erneut antippen.',
-    extendConfirmCut: 'Punkt {b}: {count} Punkte werden gelöscht. Zum Öffnen erneut antippen.',
+    extendStep: 'Schritt {step} von {total}:',
+    extendPickFirst: 'Ersten Punkt antippen — hier wird weitergebaut.',
+    extendPickSecond: 'Punkt {n} bleibt das Ende. Zweiten Punkt antippen.',
+    extendConfirmEdge: 'Nichts geht verloren. Punkt {b} erneut antippen.',
+    extendConfirmCutOne: 'Ein Punkt fällt weg. Punkt {b} erneut antippen.',
+    extendConfirmCut: '{count} Punkte fallen weg. Punkt {b} erneut antippen.',
     extendWrongContour: 'Bitte einen Punkt dieser Kontur antippen.',
-    extendOpened: 'Offen. Neue Punkte hängen an Punkt {n}. Danach „Fertig“.',
-    extendOpenedCutOne: 'Ein Punkt gelöscht. Neue Punkte hängen an Punkt {n}. Danach „Fertig“.',
-    extendOpenedCut: '{count} Punkte gelöscht. Neue Punkte hängen an Punkt {n}. Danach „Fertig“.',
+    extendOpened: 'Offen. Neue Punkte ab Punkt {n}, dann „Fertig“.',
+    extendOpenedCutOne: 'Ein Punkt weg. Neue Punkte ab Punkt {n}, dann „Fertig“.',
+    extendOpenedCut: '{count} Punkte weg. Neue Punkte ab Punkt {n}, dann „Fertig“.',
     extendFinished: 'Erweiterung abgeschlossen, die Kontur ist wieder geschlossen.',
     extendCancelled: 'Erweitern abgebrochen — an der Kontur wurde nichts geändert.',
     undoAction: 'Letzten Bearbeitungsschritt rückgängig machen',
@@ -311,7 +324,7 @@ const I18N = {
     helpInsertTitle: 'Punkt einfügen', helpInsertText: 'Bei ausgewähltem Punkt setzen „Punkt davor“ und „Punkt danach“ einen neuen Punkt genau auf die Mitte der Strecke zum Nachbarpunkt — rein geometrisch, der Mäher muss dafür nirgends hinfahren. Am offenen Ende einer Kontur ist die jeweilige Seite ausgegraut.',
     helpAreaSelectTitle: 'Fläche auswählen', helpAreaSelectText: 'Ein Tipp in eine fertige Ausschlussfläche wählt sie ganz aus, um sie zu löschen. Beim Perimeter gibt es das bewusst nicht — dort würde jeder Tipp das Verschieben der Karte abfangen.',
     helpDeleteToolTitle: 'Lösch-Werkzeug', helpDeleteToolText: 'Ein Werkzeug mit drei Aufgaben: ohne Auswahl entfernt es den zuletzt gesetzten Punkt, bei ausgewähltem Punkt genau diesen, bei ausgewählter Fläche die ganze Fläche (mit Rückfrage).',
-    helpUndoTitle: 'Rückgängig', helpUndoText: 'Der runde Knopf in der unteren Kartenecke gegenüber dem Aufnahme-Knopf (bei Rechtshändern links, bei Linkshändern rechts) nimmt die letzten 20 Bearbeitungsschritte einzeln zurück — Aufnehmen, Verschieben, Löschen, Konturschluss. Bei leerem Verlauf ist er ausgegraut.',
+    helpUndoTitle: 'Rückgängig', helpUndoText: 'Der runde Knopf in der unteren Kartenecke gegenüber dem Aufnahme-Knopf (bei Rechtshändern links, bei Linkshändern rechts) nimmt die letzten 20 Bearbeitungsschritte einzeln zurück — Aufnehmen, Verschieben, Löschen, Konturschluss. Der Verlauf gehört zur Karte und wird mit ihr gespeichert: du kannst die App schließen, die Karte später wieder öffnen und weiter zurückspringen. Jede Karte hat ihren eigenen Verlauf; bei sehr großen Karten passen weniger als 20 Schritte hinein, damit das Speichern flott bleibt. Beim Löschen einer Karte geht ihr Verlauf mit. Bei leerem Verlauf ist der Knopf ausgegraut.',
     helpCloseNewTitle: 'Schließen & neu', helpCloseNewText: 'Erscheint im Ausschluss-Modus ab drei Punkten: schließt die laufende Fläche und beginnt sofort die nächste. Gedacht für Reihen kleiner Flächen wie Bäume.',
     helpAutoTitle: 'Automatik-Aufnahme', helpAutoText: 'Setzt Punkte selbstständig — wahlweise im Zeittakt oder nach gefahrener Strecke. Die Beschriftung über dem Knopf zeigt den eingestellten Wert, umgestellt wird er im Menü unter Aufnahme.',
     helpValidationTitle: 'Kartenprüfung', helpValidationText: 'Sucht Selbstüberschneidungen, problematische Abstände, Ausschlüsse außerhalb des Perimeters, offene Konturen und fehlende RTK-FIX-Punkte.',
@@ -333,7 +346,7 @@ const I18N = {
     helpLockTitle: 'Kartensperre', helpLockText: 'Fertige Karten lassen sich gegen versehentliche Änderungen sperren.',
     viewHelpTitle: 'Ansicht & Bedienung',
     helpRtkTitle: 'RTK-Anzeige', helpRtkText: 'Das Abzeichen in der Kopfzeile zeigt Fix, Float oder No Fix und die Satelliten als Mäher/Station. Nur bei einem echten Fix ist die Position zentimetergenau.',
-    helpScatterTitle: 'Streuung der Position', helpScatterText: 'In der Kartenleiste steht, wie weit die Messwerte der letzten zwei Sekunden auseinanderliegen — der größte Abstand zu ihrem Mittelwert in Zentimetern, dahinter der höchste Wert der letzten 30 Sekunden und die Zahl der Messwerte im Fenster. Kleine Zahlen heißen ruhige Position, ein großer 30-Sekunden-Wert verrät einen Ausreißer, der längst vorbei ist. Weniger Messwerte als sonst deuten auf eine Funklücke. Die Anzeige ist reine Information: sie sperrt nichts und ändert weder Aufnahme noch Automatik.',
+    helpScatterTitle: 'GPS-Details einblenden', helpScatterText: 'Ein Tipp auf das RTK-Feld in der Kopfzeile blendet oben auf der Karte die GPS-Details ein und wieder aus; die Wahl bleibt nach dem Neuladen erhalten. Dort steht der Fix-Status, die vom Mäher gemeldete Genauigkeit und die Streuung: wie weit die Messwerte der letzten zwei Sekunden auseinanderliegen — der größte Abstand zu ihrem Mittelwert in Zentimetern, dahinter der höchste Wert der letzten 30 Sekunden und die Zahl der Messwerte im Fenster. Kleine Zahlen heißen ruhige Position, ein großer 30-Sekunden-Wert verrät einen Ausreißer, der längst vorbei ist. Weniger Messwerte als sonst deuten auf eine Funklücke. Alles davon ist reine Information: es sperrt nichts und ändert weder Aufnahme noch Automatik.',
     helpFixOnlyTitle: 'Nur bei RTK FIX', helpFixOnlyText: 'Im Menü unter Aufnahme. Ist die Option aktiv, bleibt jede Aufnahme bei Float oder No Fix gesperrt — auch die Automatik.',
     helpThemeTitle: 'Hell & Dunkel', helpThemeText: 'Drei Stufen im Menü unter Ansicht & Maßstab: Hell, Dunkel oder der Vorgabe des Systems folgen.',
     helpHandedTitle: 'Bedienseite', helpHandedText: 'Die Umstellung auf Linkshänder spiegelt die gesamte Bedienung: Werkzeuge und Karteninfo in der Kartenleiste, Aufnahme-Knopf und Fahrtanzeige.',
@@ -375,16 +388,19 @@ const I18N = {
     extendCancel: 'Cancel extending', extendCancelShort: 'Cancel',
     extendDone: 'Finish extending', extendDoneShort: 'Done',
     gpsScatter: 'Scatter {cm} cm (30 s max: {maxCm} cm) · {n} fixes',
+    gpsAccuracy: 'Accuracy ±{cm} cm',
+    gpsPanelToggle: 'Show or hide GPS details',
     gpsScatterWaiting: 'Scatter – · {n} fixes',
-    extendPickFirst: 'Tap the first point — building continues there afterwards.',
-    extendPickSecond: 'Point {n}: building continues here. Now tap the second point, any one.',
-    extendConfirmEdge: 'Point {b}: no point is lost. Tap again to open.',
-    extendConfirmCutOne: 'Point {b}: one point will be deleted. Tap again to open.',
-    extendConfirmCut: 'Point {b}: {count} points will be deleted. Tap again to open.',
+    extendStep: 'Step {step} of {total}:',
+    extendPickFirst: 'Tap the first point — building continues here.',
+    extendPickSecond: 'Point {n} stays the end. Tap the second point.',
+    extendConfirmEdge: 'Nothing is lost. Tap point {b} again.',
+    extendConfirmCutOne: 'One point falls away. Tap point {b} again.',
+    extendConfirmCut: '{count} points fall away. Tap point {b} again.',
     extendWrongContour: 'Please tap a point of this contour.',
-    extendOpened: 'Open. New points attach to point {n}. Then “Done”.',
-    extendOpenedCutOne: 'One point deleted. New points attach to point {n}. Then “Done”.',
-    extendOpenedCut: '{count} points deleted. New points attach to point {n}. Then “Done”.',
+    extendOpened: 'Open. New points from point {n}, then “Done”.',
+    extendOpenedCutOne: 'One point gone. New points from point {n}, then “Done”.',
+    extendOpenedCut: '{count} points gone. New points from point {n}, then “Done”.',
     extendFinished: 'Extension finished, the contour is closed again.',
     extendCancelled: 'Extending cancelled — nothing on the contour was changed.',
     undoAction: 'Undo the last editing step',
@@ -566,7 +582,7 @@ const I18N = {
     helpInsertTitle: 'Inserting a point', helpInsertText: 'With a point selected, “Point before” and “Point after” place a new point exactly halfway to the neighbouring point — purely geometric, the mower does not have to drive anywhere. At the open end of a contour that side is greyed out.',
     helpAreaSelectTitle: 'Selecting an area', helpAreaSelectText: 'Tapping inside a finished exclusion area selects the whole area so you can delete it. This deliberately does not apply to the perimeter — there every tap would swallow panning the map.',
     helpDeleteToolTitle: 'Delete tool', helpDeleteToolText: 'One tool with three jobs: with nothing selected it removes the last point placed, with a point selected exactly that point, with an area selected the whole area (after a confirmation).',
-    helpUndoTitle: 'Undo', helpUndoText: 'The round button in the bottom corner of the map opposite the capture button (left for right-handed use, right for left-handed) takes back the last 20 editing steps one at a time — capturing, moving, deleting, closing a contour. It is greyed out when the history is empty.',
+    helpUndoTitle: 'Undo', helpUndoText: 'The round button in the bottom corner of the map opposite the capture button (left for right-handed use, right for left-handed) takes back the last 20 editing steps one at a time — capturing, moving, deleting, closing a contour. The history belongs to the map and is stored with it: you can close the app, reopen the map later and keep stepping back. Every map has its own history; on very large maps fewer than 20 steps fit so that saving stays quick. Deleting a map deletes its history with it. The button is greyed out when the history is empty.',
     helpCloseNewTitle: 'Close & new', helpCloseNewText: 'Appears in exclusion mode from three points on: closes the current area and immediately starts the next one. Made for rows of small areas such as trees.',
     helpAutoTitle: 'Automatic capture', helpAutoText: 'Places points on its own — either on a time interval or by distance travelled. The label above the button shows the configured value; you switch modes in the menu under Capture.',
     helpValidationTitle: 'Map check', helpValidationText: 'Finds self-intersections, problematic spacing, exclusions outside the perimeter, open contours and points captured without RTK FIX.',
@@ -588,7 +604,7 @@ const I18N = {
     helpLockTitle: 'Map lock', helpLockText: 'Finished maps can be locked against accidental changes.',
     viewHelpTitle: 'View & operation',
     helpRtkTitle: 'RTK display', helpRtkText: 'The badge in the header shows Fix, Float or No Fix and the satellites as mower/station. Only a real fix gives centimetre-accurate positions.',
-    helpScatterTitle: 'Position scatter', helpScatterText: 'The map bar shows how far the readings of the last two seconds lie apart — the largest distance from their mean in centimetres, followed by the highest value of the last 30 seconds and the number of readings in the window. Small numbers mean a steady position; a large 30-second value reveals an outlier that is long gone. Fewer readings than usual point to a radio gap. The display is information only: it blocks nothing and changes neither capture nor automatic capture.',
+    helpScatterTitle: 'Showing GPS details', helpScatterText: 'Tapping the RTK field in the header shows and hides the GPS details at the top of the map; the choice survives a reload. It shows the fix status, the accuracy reported by the mower and the scatter: how far the readings of the last two seconds lie apart — the largest distance from their mean in centimetres, followed by the highest value of the last 30 seconds and the number of readings in the window. Small numbers mean a steady position; a large 30-second value reveals an outlier that is long gone. Fewer readings than usual point to a radio gap. All of it is information only: it blocks nothing and changes neither capture nor automatic capture.',
     helpFixOnlyTitle: 'Only with RTK FIX', helpFixOnlyText: 'In the menu under Capture. While this option is on, every capture stays blocked on Float or No Fix — automatic capture included.',
     helpThemeTitle: 'Light & dark', helpThemeText: 'Three settings in the menu under View & scale: light, dark, or follow the system setting.',
     helpHandedTitle: 'Operating side', helpHandedText: 'Switching to left-handed mirrors the whole layout: tools and map info in the map bar, capture button and drive status.',
@@ -690,7 +706,9 @@ const ui = {
   moveFabWrap: $('moveFabWrap'), movePointBtn: $('movePointBtn'), moveFabLabel: $('moveFabLabel'),
   captureFabWrap: $('captureFabWrap'), addPointBtn: $('addPointBtn'), captureProgress: $('captureProgress'), captureButtonTitle: $('captureButtonTitle'), captureButtonHint: $('captureButtonHint'),
   mapToolbar: $('mapToolbar'), contourStatus: $('contourStatus'),
-  mapNameLabel: $('mapNameLabel'), mapSummary: $('mapSummary'), gpsScatter: $('gpsScatter'), mapDistanceInfo: $('mapDistanceInfo'), pointStatus: $('pointStatus'), activeMapName: $('activeMapName'), saveState: $('saveState'),
+  mapNameLabel: $('mapNameLabel'), mapSummary: $('mapSummary'),
+  gpsPanel: $('gpsPanel'), gpsPanelFix: $('gpsPanelFix'), gpsPanelScatter: $('gpsPanelScatter'),
+  gpsPanelAccuracy: $('gpsPanelAccuracy'), mapDistanceInfo: $('mapDistanceInfo'), pointStatus: $('pointStatus'), activeMapName: $('activeMapName'), saveState: $('saveState'),
   // Fahren
   driveZone: $('driveZone'), driveJoystick: $('driveJoystick'), joystickKnob: $('joystickKnob'), driveState: $('driveState'),
   joystickSizeSelect: $('joystickSizeSelect'), handedSelect: $('handedSelect'),
@@ -790,7 +808,9 @@ const state = {
   captureHold: null,
   // Allgemeiner Rueckgaengig-Stapel (nur im Speicher, nichts davon wird in der Karte
   // gespeichert — die frueher persistierte Versionsverwaltung ist bewusst entfallen).
-  undoStack: [],
+  // `undoStack` ist **keine** eigene Ablage, sondern eine Sicht auf `state.activeMap.undoStack`
+  // — siehe die Eigenschaftsdefinition direkt hinter dem state-Literal.
+
   undoSuspended: false,
   autoCaptureRunning: false,
   autoCaptureTimer: null,
@@ -823,7 +843,7 @@ const state = {
     showTrail: true, showPointQuality: true, keepAwake: true,
     driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
     joystickScale: '1', handed: 'right', driveControl: 'joystick', cursorSpeedCms: 15,
-    driveZones: true,
+    driveZones: true, gpsPanel: false,
   },
   telemetry: {
     x: null, y: null, delta: null, solution: null, age: null, accuracy: null,
@@ -831,6 +851,26 @@ const state = {
   },
   pendingVersion: null,
 };
+
+/**
+ * **Die Undo-Historie gehoert der Karte, nicht der Sitzung** (seit v68). `state.undoStack` ist
+ * deshalb keine eigene Ablage, sondern eine Sicht auf `state.activeMap.undoStack`: jeder
+ * `push`/`pop`/`shift` trifft unmittelbar den Kartendatensatz, den `saveActiveMap()` ohnehin
+ * schreibt, und ein Kartenwechsel bringt ohne Zutun die Historie **dieser** Karte mit.
+ *
+ * Bewusst eine Sicht statt zweier abgeglichener Felder: eine Spiegelung haette an jeder der
+ * sechs Stellen nachgezogen werden muessen, an denen `state.activeMap` gesetzt wird — eine
+ * vergessene davon haette den Stapel still auf die falsche Karte zeigen lassen.
+ */
+Object.defineProperty(state, 'undoStack', {
+  enumerable: true,
+  get() {
+    const map = state.activeMap;
+    if (!map) return [];   // ohne Karte gibt es nichts zurueckzunehmen; Schreibzugriffe verfallen
+    if (!Array.isArray(map.undoStack)) map.undoStack = [];
+    return map.undoStack;
+  },
+});
 
 /**
  * Das Protokoll liegt seit v50 in `state.logEntries` und nicht mehr nur im DOM. Zwei Gruende:
@@ -1390,6 +1430,9 @@ function loadViewPreferences() {
       AUTO_CAPTURE_DISTANCE_MIN_CM, AUTO_CAPTURE_DISTANCE_MAX_CM, AUTO_CAPTURE_DISTANCE_DEFAULT_CM));
     state.view.theme = THEMES.includes(saved.theme) ? saved.theme : 'system';
     state.view.showTrail = saved.showTrail !== false;
+    // Die GPS-Einblendung ist standardmaessig **aus** — sie liegt auf der Karte und soll nur da
+    // sein, wenn jemand sie angefordert hat.
+    state.view.gpsPanel = saved.gpsPanel === true;
     state.view.showPointQuality = saved.showPointQuality !== false;
     state.view.keepAwake = saved.keepAwake !== false;
     state.view.driveSpeedMin = clampNumber(saved.driveSpeedMin, 0.02, 0.34, 0.08);
@@ -1405,7 +1448,7 @@ function loadViewPreferences() {
     // links und rechts drehen mit fester Geschwindigkeit.
     state.view.driveZones = saved.driveZones !== false;
   } catch (_) {
-    state.view = { showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, autoCaptureIntervalS: 5, autoCaptureMode: 'time', autoCaptureDistanceCm: AUTO_CAPTURE_DISTANCE_DEFAULT_CM, showTrail: true, showPointQuality: true, keepAwake: true, driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
+    state.view = { showGrid: true, gridStep: 0.5, showMower: true, mowerLength: 0.60, mowerWidth: 0.35, autoCaptureIntervalS: 5, autoCaptureMode: 'time', autoCaptureDistanceCm: AUTO_CAPTURE_DISTANCE_DEFAULT_CM, showTrail: true, showPointQuality: true, keepAwake: true, gpsPanel: false, driveSpeedMin: 0.08, driveSpeedMax: 0.25, driveTurnMax: 1.15, theme: 'system',
       joystickScale: '1', handed: 'right', driveControl: 'joystick', cursorSpeedCms: 15,
       driveZones: true };
   }
@@ -2863,6 +2906,11 @@ function normalizeMap(map) {
   // Bestandskarten kennen den Positionsmodus nicht: sie sind relativ, wie sie aufgenommen wurden.
   map.positionMode = map.positionMode === 'absolute' ? 'absolute' : 'relative';
   map.origin = normalizeOrigin(map.origin);
+  // Die Undo-Historie reist seit v68 mit der Karte. Bestandskarten und importierte Dateien
+  // bringen keine mit; ein Datensatz mit zu vielen Schritten wird hier auf das Mass gebracht.
+  if (!Array.isArray(map.undoStack)) map.undoStack = [];
+  map.undoStack = map.undoStack.filter((entry) => entry && Array.isArray(entry.perimeter));
+  trimUndoStack(map.undoStack);
   return map;
 }
 
@@ -3036,9 +3084,11 @@ function setActiveMapById(mapId) {
   const next = state.maps.find((m) => m.id === mapId);
   if (!next) return;
   stopAutoCapture();
-  clearUndoStack();
   state.extension = null;
   state.activeMap = normalizeMap(next);
+  // Seit v68 wird der Stapel nicht mehr geleert: `state.undoStack` zeigt auf `map.undoStack`,
+  // mit der neuen Karte steht also deren eigene Historie bereit.
+  refreshUndoButton();
   state.activeExclusionId = state.activeMap.exclusions?.[0]?.id || null;
   state.selectedPoint = null;
   state.validationResult = null;
@@ -3224,7 +3274,7 @@ async function duplicateMapById(mapId) {
     await showNotice({ title: tr('duplicateMap'), message: tr('mapLimitReached'), tone: 'danger' });
     return;
   }
-  const copy = normalizeMap(JSON.parse(JSON.stringify(source)));
+  const copy = normalizeMap(JSON.parse(JSON.stringify(mapWithoutUndo(source))));
   copy.id = newId();
   copy.exclusions.forEach((exclusion) => { exclusion.id = newId(); });
   copy.name = uniqueCopyName(localizedMapName(source));
@@ -3395,9 +3445,44 @@ function gpsScatterText() {
   });
 }
 
+/** Der Fix-Zustand als Wort — dieselben Schluessel, die auch das Abzeichen in der Kopfzeile nutzt. */
+function fixStatusText() {
+  if (!telemetryIsFresh()) return tr('rtkNoData');
+  if (state.telemetry.solution === 2) return tr('rtkFix');
+  if (state.telemetry.solution === 1) return tr('rtkFloat');
+  return tr('rtkNone');
+}
+
+/** Die vom Mäher gemeldete Genauigkeit (`AT+S`-Feld 12, in Metern) als Zentimeterangabe. */
+function gpsAccuracyText() {
+  const accuracy = Number(state.telemetry.accuracy);
+  if (!telemetryIsFresh() || !Number.isFinite(accuracy)) return '';
+  return tr('gpsAccuracy', { cm: (accuracy * 100).toFixed(1) });
+}
+
+/**
+ * Die GPS-Einblendung oben auf der Karte. Seit v68 steht die Streuung **nicht mehr** in der
+ * Werkzeugleiste: dort nahm sie dauerhaft Platz neben Kartenname und Konturzustand weg, obwohl
+ * sie nur zeitweise interessiert. Ein Tipp auf das Abzeichen in der Kopfzeile blendet sie um,
+ * die Wahl ueberlebt einen Neustart (`state.view.gpsPanel`).
+ *
+ * **Weiterhin reine Anzeige** — nichts davon beruehrt Aufnahme oder Automatik.
+ */
 function refreshGpsScatter() {
-  if (!ui.gpsScatter) return;
-  ui.gpsScatter.textContent = gpsScatterText();
+  if (!ui.gpsPanel) return;
+  ui.gpsPanel.hidden = !state.view.gpsPanel;
+  if (ui.rtkBadge?.setAttribute) ui.rtkBadge.setAttribute('aria-expanded', state.view.gpsPanel ? 'true' : 'false');
+  if (!state.view.gpsPanel) return;
+  ui.gpsPanelFix.textContent = fixStatusText();
+  ui.gpsPanelScatter.textContent = gpsScatterText();
+  ui.gpsPanelAccuracy.textContent = gpsAccuracyText();
+}
+
+/** Der Tipp auf das Abzeichen. Merkt die Wahl ueber die vorhandenen Ansichtseinstellungen. */
+function toggleGpsPanel() {
+  state.view.gpsPanel = !state.view.gpsPanel;
+  saveViewPreferences();
+  refreshGpsScatter();
 }
 
 function pointFromTelemetry() {
@@ -3718,7 +3803,7 @@ function geometrySnapshot() {
 function commitUndo(snapshot) {
   if (!snapshot || state.undoSuspended) return;
   state.undoStack.push(snapshot);
-  while (state.undoStack.length > UNDO_STACK_LIMIT) state.undoStack.shift();
+  trimUndoStack(state.undoStack);
   refreshUndoButton();
 }
 
@@ -3740,8 +3825,26 @@ async function asOneUndoStep(fn) {
 }
 
 function clearUndoStack() {
-  state.undoStack = [];
+  // An Ort und Stelle leeren, nicht neu zuweisen: `state.undoStack` **ist** `map.undoStack`.
+  state.undoStack.length = 0;
   refreshUndoButton();
+}
+
+/**
+ * Haelt den Stapel innerhalb beider Grenzen: hoechstens `UNDO_STACK_LIMIT` Schritte **und**
+ * hoechstens `UNDO_STACK_BYTE_BUDGET`. Die Groesse wird am **neuesten** Schnappschuss gemessen
+ * und hochgerechnet, statt den ganzen Stapel zu serialisieren: alle Schnappschuesse einer Karte
+ * sind nahezu gleich gross, und ein vollstaendiges `JSON.stringify` je aufgenommenem Punkt waere
+ * genau die Last, die das Budget vermeiden soll.
+ */
+function trimUndoStack(stack) {
+  if (!stack.length) return;
+  const bytes = JSON.stringify(stack[stack.length - 1]).length;
+  // **Eine** Rechnung fuer beide Grenzen: die Stueckzahl ist die Obergrenze des Erlaubten, das
+  // Budget kann sie weiter druecken. Eine zusaetzliche Schleife nur fuer die 20 waere eine zweite
+  // Aussage ueber dieselbe Grenze — und liesse sich aendern, ohne dass etwas anschlaegt.
+  const allowed = Math.max(1, Math.min(UNDO_STACK_LIMIT, Math.floor(UNDO_STACK_BYTE_BUDGET / Math.max(1, bytes))));
+  while (stack.length > allowed) stack.shift();
 }
 
 /** Aktiviert/deaktiviert den Rueckgaengig-Knopf anhand des Stapels. */
@@ -3795,8 +3898,7 @@ function refreshToolbarVisibility() {
   // eine davon gefuellt ist, bleibt die Leiste stehen — sonst verschwaende ausgerechnet sie.
   const hasInfo = Boolean((ui.mapNameLabel?.textContent || '').trim())
     || Boolean((ui.mapSummary?.textContent || '').trim())
-    || Boolean((ui.contourStatus?.textContent || '').trim())
-    || Boolean((ui.gpsScatter?.textContent || '').trim());
+    || Boolean((ui.contourStatus?.textContent || '').trim());
   ui.mapToolbar.hidden = !hasInfo && !slots.some((slot) => slot && !slot.hidden);
 }
 
@@ -4362,6 +4464,17 @@ function mapToSunrayApp(map) {
   }];
 }
 
+/**
+ * Die Karte ohne ihre Undo-Historie — fuer alles, was die Karte **verlaesst** oder neu entsteht:
+ * das JSON-Backup, eine Kopie, eine importierte Datei. Die Historie ist an die Kennung der Karte
+ * gebunden (`snapshot.mapId`), in einer Kopie also ohnehin wertlos, und im Backup nur Ballast.
+ */
+function mapWithoutUndo(map) {
+  if (!map) return map;
+  const { undoStack, ...rest } = map;
+  return rest;
+}
+
 const MAP_EXPORT_FORMATS = {
   // Endung und MIME aus der Vorlage `sunrayapp_map.json` abgeleitet: gewoehnliches JSON.
   // **Kein `blockKey`** — dieses Format fuehrt lokale Meter und braucht keinen Bezugspunkt.
@@ -4373,7 +4486,10 @@ const MAP_EXPORT_FORMATS = {
   json: {
     extension: '.mapcreator-ardumower.json',
     mimeType: 'application/json',
-    build: (map) => JSON.stringify(map, null, 2),
+    // **Ohne die Undo-Historie.** Sie gehoert zur laufenden Bearbeitung, nicht zur Karte, die
+    // jemand weitergibt — und sie waere das Zwanzigfache der Datei. `mapWithoutUndo()` ist die
+    // einzige Stelle, die sie abstreift.
+    build: (map) => JSON.stringify(mapWithoutUndo(map), null, 2),
   },
   geojson: {
     extension: '.geojson',
@@ -5340,6 +5456,9 @@ async function importMapFile(file) {
   } else {
     map = data?.type === 'FeatureCollection' ? geoJsonToMap(data) : validateImportedMap(data);
   }
+  // Eine importierte Datei bringt keine Undo-Historie mit: die Karte bekommt hier eine neue
+  // Kennung, an der eine mitgelieferte Historie ohnehin vorbeiliefe.
+  map = normalizeMap(mapWithoutUndo(map));
   await dbRequest('readwrite', (store) => store.put(map));
   state.maps.push(map);
   state.maps.sort((a, b) => a.name.localeCompare(b.name, state.language === 'en' ? 'en' : 'de'));
@@ -5733,6 +5852,27 @@ async function openContourForExtension(firstIndex, secondIndex) {
 }
 
 /**
+ * **Die Schritte des Erweitern-Ablaufs in einer Liste** — daraus kommt die Nummer *und* die
+ * Gesamtzahl im Hinweis. Eine eingetippte „von 3“ im Text liefe beim naechsten Umbau
+ * auseinander, ohne dass es jemandem auffiele; hier kann sie das nicht.
+ */
+const EXTEND_STEPS = ['pickFirst', 'pickSecond', 'confirm', 'adding'];
+
+/** In welchem Schritt steckt der Ablauf gerade? Abgelesen am Zustand, nicht am Hinweistext. */
+function extensionStepKey(ext = state.extension) {
+  if (!ext) return null;
+  if (ext.phase === 'adding') return 'adding';
+  if (ext.firstIndex === null) return 'pickFirst';
+  return ext.secondIndex === null ? 'pickSecond' : 'confirm';
+}
+
+/** 1-basierte Schrittnummer, 0 wenn gerade nicht erweitert wird. */
+function extensionStep(ext = state.extension) {
+  const key = extensionStepKey(ext);
+  return key ? EXTEND_STEPS.indexOf(key) + 1 : 0;
+}
+
+/**
  * Der Hinweisschluessel zu einer Loeschung — **eine** Stelle fuer die Ankuendigung (`done: false`)
  * und die Rueckmeldung danach (`done: true`), damit beide nie verschiedene Faelle benennen.
  * Die Einzahl bekommt einen eigenen Schluessel: „1 Punkte“ stand sichtbar falsch da, seit der
@@ -5836,7 +5976,13 @@ function refreshExtendPanel() {
   const end = extensionEndIndex(ext);
   const vars = { ...(ext.hintVars || {}) };
   if (end >= 0) vars.n = end + 1;
-  ui.extendPanelText.textContent = tr(ext.hintKey || (picking ? 'extendPickFirst' : 'extendOpened'), vars);
+  const body = tr(ext.hintKey || (picking ? 'extendPickFirst' : 'extendOpened'), vars);
+  // Die Schrittnummer steht **vor** jedem Hinweis, auch vor dem Fehlgriff-Hinweis: der tritt
+  // innerhalb eines Schrittes auf und wirft den Ablauf nicht zurueck.
+  const step = extensionStep(ext);
+  ui.extendPanelText.textContent = step
+    ? `${tr('extendStep', { step, total: EXTEND_STEPS.length })} ${body}`
+    : body;
   ui.extendPanel.classList.toggle('is-error', ext.hintKey === 'extendWrongContour');
   // Abbrechen gibt es nur, solange nichts veraendert wurde; danach fuehrt „Fertig“ heraus.
   ui.extendCancelBtn.hidden = !picking;
@@ -6205,6 +6351,8 @@ function bindEvents() {
   ui.newMapName.addEventListener('keydown', (e) => { if (e.key === 'Enter') createMapFromInput().catch(reportError); });
   ui.deleteMapBtn.addEventListener('click', () => deleteActiveMap().catch(reportError));
   ui.mapSelect.addEventListener('change', () => setActiveMapById(ui.mapSelect.value));
+  // Ein Tipp auf das RTK-Abzeichen blendet die GPS-Einblendung auf der Karte um.
+  ui.rtkBadge.addEventListener('click', () => toggleGpsPanel());
   ui.mapGallery.addEventListener('click', (event) => {
     const rename = event.target.closest('[data-map-rename-id]');
     if (rename) { renameMapById(rename.dataset.mapRenameId).catch(reportError); return; }

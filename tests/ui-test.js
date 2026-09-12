@@ -57,18 +57,24 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'MAX_MAPS', 'createMapFromInput', 'renderMapControls', 'tr',
   'renderMapGallery', 'formatMapTimestamp',
   'fixScatter', 'rememberScatter', 'scatterMaxCm', 'gpsScatterText', 'refreshGpsScatter',
-  'SCATTER_MAX_WINDOW_MS', 'capturePreconditionKey', 'telemetryHasFix'];
+  'SCATTER_MAX_WINDOW_MS', 'capturePreconditionKey', 'telemetryHasFix',
+  'EXTEND_STEPS', 'extensionStep', 'handleExtensionTap', 'toggleGpsPanel', 'loadViewPreferences',
+  'UNDO_STACK_BYTE_BUDGET', 'trimUndoStack', 'mapWithoutUndo', 'geometrySnapshot', 'loadMaps',
+  'setActiveMapById', 'deleteActiveMap', 'saveActiveMap', 'duplicateMapById'];
 
 /** Minimaler IndexedDB-Ersatz, damit saveActiveMap() im Test durchlaeuft. */
 function fakeDb() {
   const rows = new Map();
   const request = (result) => { const r = { result }; queueMicrotask(() => r.onsuccess && r.onsuccess()); return r; };
+  // Wie IndexedDB **Kopien** ablegen, nicht die lebenden Objekte: sonst sieht ein Test einen
+  // Datensatz, der in Wahrheit noch dasselbe Objekt im Speicher ist.
+  const clone = (v) => JSON.parse(JSON.stringify(v));
   const store = {
-    put(value) { rows.set(value.id, value); return request(value); },
+    put(value) { rows.set(value.id, clone(value)); return request(value); },
     delete(id) { rows.delete(id); return request(undefined); },
-    getAll() { return request([...rows.values()]); },
+    getAll() { return request([...rows.values()].map(clone)); },
   };
-  return { transaction: () => ({ objectStore: () => store }) };
+  return { transaction: () => ({ objectStore: () => store }), rows };
 }
 
 function setup({ missingIds = [] } = {}) {
@@ -442,32 +448,56 @@ test('Der 30-s-Hoechstwert haelt einen Ausreisser fest und laeuft danach ab', as
   assert.strictEqual(t.SCATTER_MAX_WINDOW_MS, 30000);
 });
 
-test('Die Streuung steht kompakt in der Karteninfo — DE und EN, mit Zahl der Fixes', () => {
-  const { t, clock } = setup();
-  // Ohne jeden Fix bleibt das Feld leer und verschwindet damit ganz.
-  t.refreshGpsScatter();
-  assert.strictEqual(t.ui.gpsScatter.textContent, '', 'ohne Fix keine Behauptung');
-
-  // Funkluecke: nur ein Fix im Fenster — die Zahl steht trotzdem da.
-  t.state.fixHistory = [{ x: 0, y: 0, at: clock.now() }];
-  t.refreshGpsScatter();
-  assert.ok(/Streuung – · 1 Fixes/.test(t.ui.gpsScatter.textContent), t.ui.gpsScatter.textContent);
-
+test('Das GPS-Abzeichen schaltet die Einblendung, die Wahl ueberlebt den Neustart', () => {
+  const { t, clock, sandbox } = setup();
+  t.state.telemetry = { x: 1, y: 2, solution: 2, accuracy: 0.021, receivedAt: clock.now() };
   t.state.fixHistory = [{ x: 0, y: 0, at: clock.now() }, { x: 0.06, y: 0, at: clock.now() }];
   t.rememberScatter();
+
+  // Aus: die Einblendung liegt nicht auf der Karte.
   t.refreshGpsScatter();
-  const de = t.ui.gpsScatter.textContent;
+  assert.strictEqual(t.ui.gpsPanel.hidden, true, 'standardmaessig aus');
+
+  // Ein Tipp auf das Abzeichen blendet sie ein — mit allen fuenf Angaben.
+  t.toggleGpsPanel();
+  assert.strictEqual(t.ui.gpsPanel.hidden, false);
+  assert.strictEqual(t.ui.gpsPanelFix.textContent, t.tr('rtkFix'), 'Fix-Status, wie im Abzeichen');
+  const de = t.ui.gpsPanelScatter.textContent;
   assert.ok(/Streuung 3 cm/.test(de), de);
   assert.ok(/max 30 s: 3 cm/.test(de), de);
   assert.ok(/2 Fixes/.test(de), `die Zahl der Fixes macht Funkluecken erkennbar: ${de}`);
-  assert.ok(!/\{/.test(de), 'kein Platzhalterrest');
+  assert.ok(/±2\.1 cm/.test(t.ui.gpsPanelAccuracy.textContent), t.ui.gpsPanelAccuracy.textContent);
+  assert.ok(!/\{/.test(de + t.ui.gpsPanelAccuracy.textContent), 'kein Platzhalterrest');
 
+  // In der Werkzeugleiste steht sie dafuer nicht mehr.
+  assert.strictEqual(t.ui.gpsScatter, undefined, 'kein Feld mehr in der Leiste');
+  const markup = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
+  assert.ok(!markup.includes('id="gpsScatter"'), 'auch nicht im Markup');
+
+  // Englisch.
   t.toggleLanguage();
   t.refreshGpsScatter();
-  const en = t.ui.gpsScatter.textContent;
-  assert.ok(/Scatter 3 cm/.test(en), en);
-  assert.ok(/30 s max: 3 cm/.test(en), en);
-  assert.ok(/2 fixes/.test(en), en);
+  assert.ok(/Scatter 3 cm/.test(t.ui.gpsPanelScatter.textContent), t.ui.gpsPanelScatter.textContent);
+  assert.ok(/2 fixes/.test(t.ui.gpsPanelScatter.textContent));
+  assert.ok(/Accuracy/.test(t.ui.gpsPanelAccuracy.textContent), t.ui.gpsPanelAccuracy.textContent);
+
+  // Funkluecke: nur ein Fix — die Zahl steht trotzdem da.
+  t.toggleLanguage();
+  t.state.fixHistory = [{ x: 0, y: 0, at: clock.now() }];
+  t.refreshGpsScatter();
+  assert.ok(/Streuung – · 1 Fixes/.test(t.ui.gpsPanelScatter.textContent), t.ui.gpsPanelScatter.textContent);
+
+  // Gemerkt: der gespeicherte Zustand kommt beim naechsten Laden zurueck.
+  assert.ok(JSON.parse(sandbox.localStorage.getItem('mapcreator-ardumower-view-prefs-v1')).gpsPanel,
+    'die Wahl liegt in den Ansichtseinstellungen');
+  t.state.view.gpsPanel = false;
+  t.loadViewPreferences();
+  assert.strictEqual(t.state.view.gpsPanel, true, 'und wird beim Laden wiederhergestellt');
+
+  // Und wieder aus.
+  t.toggleGpsPanel();
+  assert.strictEqual(t.ui.gpsPanel.hidden, true);
+  assert.strictEqual(JSON.parse(sandbox.localStorage.getItem('mapcreator-ardumower-view-prefs-v1')).gpsPanel, false);
 });
 
 test('Die Streuung ist reine Anzeige: Aufnahme und Automatik bleiben unberuehrt', async () => {
@@ -479,8 +509,9 @@ test('Die Streuung ist reine Anzeige: Aufnahme und Automatik bleiben unberuehrt'
     { x: 6.0, y: 5, at: clock.now() },
   ];
   t.rememberScatter();
+  t.state.view.gpsPanel = true;
   t.refreshGpsScatter();
-  assert.ok(/100 cm/.test(t.ui.gpsScatter.textContent), t.ui.gpsScatter.textContent);
+  assert.ok(/100 cm/.test(t.ui.gpsPanelScatter.textContent), t.ui.gpsPanelScatter.textContent);
 
   assert.strictEqual(t.capturePreconditionKey(), null, 'die Vorbedingung kennt die Streuung nicht');
   const point = await t.appendCurrentPoint();
@@ -506,6 +537,128 @@ test('Die Streuung ist reine Anzeige: Aufnahme und Automatik bleiben unberuehrt'
     .sort();
   assert.deepStrictEqual(callers, ['gpsScatterText', 'rememberScatter'],
     `nur Anzeige und Verlauf lesen die Streuung, gefunden: ${callers.join(', ')}`);
+});
+
+test('Die Undo-Historie gehoert der Karte und ueberlebt den Kartenwechsel', async () => {
+  const { t } = setup();
+  const a = t.state.activeMap;
+  a.perimeter = [];
+  t.pushUndo();                                  // Stand: leer
+  a.perimeter.push({ x: 0, y: 0 });
+  t.pushUndo();                                  // Stand: ein Punkt
+  a.perimeter.push({ x: 1, y: 0 });
+  assert.strictEqual(t.state.undoStack.length, 2);
+  // Der Stapel ist **dieselbe** Instanz wie das Feld der Karte, nicht eine Kopie daneben.
+  assert.strictEqual(t.state.undoStack, a.undoStack, 'eine Ablage, keine Spiegelung');
+
+  // Zweite Karte: eigene, leere Historie.
+  const b = t.normalizeMap(t.makeMap('Zweite'));
+  t.state.maps.push(b);
+  t.setActiveMapById(b.id);
+  assert.strictEqual(t.state.undoStack.length, 0, 'die neue Karte beginnt ohne Historie');
+  b.perimeter = [{ x: 5, y: 5 }];
+  t.pushUndo();
+  assert.strictEqual(t.state.undoStack.length, 1);
+
+  // Zurueck zur ersten: ihre beiden Schritte stehen wieder bereit.
+  t.setActiveMapById(a.id);
+  assert.strictEqual(t.state.undoStack.length, 2, 'die Historie der ersten Karte ist wieder da');
+  assert.strictEqual(t.ui.undoBtn.disabled, false, 'und der Knopf ist bedienbar');
+
+  // Und ein Undo greift wirklich auf den gespeicherten Stand zurueck.
+  await t.undoLastAction();
+  assert.strictEqual(t.state.activeMap.perimeter.length, 1, 'der zweite Punkt ist weg');
+});
+
+test('Die Historie wird mit der Karte gespeichert und wieder geladen', async () => {
+  const { t } = setup();
+  const map = t.state.activeMap;
+  map.perimeter = [{ x: 0, y: 0 }];
+  t.pushUndo();
+  map.perimeter.push({ x: 2, y: 2 });
+  await t.saveActiveMap();
+
+  // Das, was in der Datenbank steht, traegt die Historie mit.
+  const stored = t.state.db.rows.get(map.id);
+  assert.strictEqual(stored.undoStack.length, 1, 'die Historie liegt im Datensatz');
+  assert.strictEqual(stored.undoStack[0].perimeter.length, 1, 'mit dem Stand von vorher');
+
+  // Neu geladen — wie nach dem Schliessen und Wiederoeffnen der App.
+  t.state.activeMap = null;
+  await t.loadMaps();
+  assert.strictEqual(t.state.undoStack.length, 1, 'nach dem Laden steht sie wieder bereit');
+  await t.undoLastAction();
+  assert.strictEqual(t.state.activeMap.perimeter.length, 1, 'und der Rueckschritt greift');
+});
+
+test('Je Karte hoechstens 20 Schritte — und hoechstens das Groessenbudget', () => {
+  const { t } = setup();
+  const map = t.state.activeMap;
+  for (let i = 0; i < 26; i += 1) {
+    map.perimeter.push({ x: i, y: 0 });
+    t.pushUndo();
+  }
+  assert.strictEqual(t.state.undoStack.length, 20, 'aeltere Schritte fallen vorn weg');
+  assert.strictEqual(map.undoStack.length, 20, 'und zwar im Datensatz selbst');
+
+  // Grosse Karte: das Budget greift vor der Stueckzahl. Gemessen wird am neuesten Schnappschuss.
+  const fat = (i) => ({
+    x: i, y: i, smoothedFrom: 4, capturedAt: '2026-09-12T10:00:00.000Z',
+    gps: { solution: 2, delta: 1.2345, age: 0.12, accuracy: 0.021, visibleSatellites: 28, visibleSatellitesDgps: 24 },
+  });
+  map.perimeter = Array.from({ length: 320 }, (_, i) => fat(i));
+  const bytes = JSON.stringify(t.geometrySnapshot()).length;
+  assert.ok(bytes > 40000, `ein Schritt dieser Karte misst ${(bytes / 1024).toFixed(1)} KiB`);
+  for (let i = 0; i < 20; i += 1) { map.perimeter.push(fat(1000 + i)); t.pushUndo(); }
+  const erwartet = Math.max(1, Math.min(20, Math.floor(t.UNDO_STACK_BYTE_BUDGET / bytes)));
+  assert.ok(erwartet < 20, 'bei dieser Groesse greift das Budget vor der 20');
+  assert.strictEqual(t.state.undoStack.length, erwartet,
+    `${erwartet} Schritte passen ins Budget von ${(t.UNDO_STACK_BYTE_BUDGET / 1024).toFixed(0)} KiB`);
+});
+
+test('Export, Kopie und Import tragen keine fremde Historie mit', async () => {
+  const { t } = setup();
+  const map = t.state.activeMap;
+  map.perimeter = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }];
+  t.pushUndo();
+  assert.strictEqual(t.state.undoStack.length, 1);
+
+  // JSON-Backup: die Historie waere das Zwanzigfache der Datei und gehoert nicht dazu.
+  const file = t.mapExportFile('json');
+  const parsed = JSON.parse(file.text);
+  assert.strictEqual(parsed.undoStack, undefined, 'kein undoStack in der Datei');
+  assert.strictEqual(parsed.perimeter.length, 3, 'die Geometrie ist vollstaendig da');
+  assert.strictEqual(map.undoStack.length, 1, 'und die Karte selbst behaelt ihre Historie');
+
+  // Kopie: eigene Kennung, also waere eine geerbte Historie ohnehin wertlos.
+  await t.duplicateMapById(map.id);
+  const copy = t.state.maps.find((m) => m.id !== map.id);
+  assert.strictEqual(copy.undoStack.length, 0, 'die Kopie beginnt ohne Historie');
+  assert.strictEqual(copy.perimeter.length, 3, 'aber mit der Geometrie');
+
+  // Import: eine untergeschobene Historie wird nicht uebernommen.
+  const smuggled = JSON.stringify({ ...parsed, id: undefined, name: 'Geschmuggelt',
+    undoStack: [{ mapId: 'fremd', perimeter: [], perimeterClosed: false, exclusions: [], waypoints: [], dockPoints: [] }] });
+  await t.importMapFile({ name: 'x.json', text: async () => smuggled });
+  assert.strictEqual(t.state.activeMap.undoStack.length, 0, 'importiert wird ohne Historie');
+});
+
+test('Mit der Karte verschwindet auch ihre Historie', async () => {
+  const { t, sandbox } = setup();
+  sandbox.__confirmAnswer = true;
+  const map = t.state.activeMap;
+  map.perimeter = [{ x: 0, y: 0 }];
+  t.pushUndo();
+  const id = map.id;
+  await t.saveActiveMap();
+  assert.strictEqual(t.state.db.rows.get(id).undoStack.length, 1, 'die Historie liegt im Datensatz');
+
+  await t.deleteActiveMap();
+  assert.strictEqual(t.state.db.rows.get(id), undefined,
+    'der Datensatz ist weg — und mit ihm die Historie, sie liegt nirgends sonst');
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'app.js'), 'utf8');
+  assert.strictEqual((src.match(/createObjectStore/g) || []).length, 1,
+    'es gibt nur einen Speicher, also keine zweite Ablage, die zurueckbliebe');
 });
 
 test('Hell/Dunkel: System als Standard, manuelle Wahl gewinnt', () => {
@@ -608,22 +761,73 @@ test('Der ganze Erweitern-Ablauf laesst Zoom und Ausschnitt unberuehrt', async (
 
 test('Die Erweitern-Hinweise sind kurz und nennen von Anfang an das offene Ende', () => {
   const { t } = setup();
+  const KEYS = ['extendPickFirst', 'extendPickSecond', 'extendConfirmEdge',
+    'extendConfirmCut', 'extendConfirmCutOne', 'extendWrongContour',
+    'extendOpened', 'extendOpenedCut', 'extendOpenedCutOne'];
   for (const lang of ['de', 'en']) {
     const texts = t.I18N[lang];
     // Schritt 1 muss die Regel schon tragen, sonst waehlt man den falschen Punkt zuerst.
     const first = texts.extendPickFirst;
     assert.ok(/weitergebaut|building continues/.test(first), `${lang}: ${first}`);
-    // Und kurz bleiben: der Streifen sitzt ueber der Karte und nimmt ihr sonst Hoehe.
-    for (const key of ['extendPickFirst', 'extendPickSecond', 'extendConfirmEdge',
-      'extendConfirmCut', 'extendConfirmCutOne', 'extendWrongContour',
-      'extendOpened', 'extendOpenedCut', 'extendOpenedCutOne']) {
-      assert.ok(texts[key].length <= 80, `${lang}/${key} ist ${texts[key].length} Zeichen: ${texts[key]}`);
+    // Kurz bleiben — und zwar **mit** der Schrittnummer davor, so steht es auf dem Schirm.
+    const prefix = texts.extendStep.replace('{step}', '4').replace('{total}', '4');
+    for (const key of KEYS) {
+      const line = `${prefix} ${texts[key].replace('{n}', '12').replace('{b}', '12').replace('{count}', '12')}`;
+      assert.ok(line.length <= 80, `${lang}/${key} ist ${line.length} Zeichen: ${line}`);
     }
   }
   // Einzahl und Mehrzahl stehen grammatisch richtig da.
-  assert.strictEqual(t.tr('extendConfirmCutOne', { b: 3 }).includes('ein Punkt wird'), true);
+  assert.ok(/[Ee]in Punkt/.test(t.tr('extendConfirmCutOne', { b: 3 })), t.tr('extendConfirmCutOne', { b: 3 }));
   assert.ok(!/\{count\}/.test(t.tr('extendConfirmCut', { b: 3, count: 4 })), 'kein Platzhalterrest');
   assert.ok(t.tr('extendConfirmCut', { b: 3, count: 4 }).includes('4 Punkte'), 'Mehrzahl mit Zahl');
+});
+
+test('Jeder Erweitern-Schritt ist nummeriert, die Gesamtzahl kommt aus dem Ablauf', async () => {
+  const { t } = setup();
+  seedClosedPerimeter(t);
+  const total = t.EXTEND_STEPS.length;
+  assert.ok(total >= 3, `der Ablauf hat ${total} Schritte`);
+  const line = () => t.ui.extendPanelText.textContent;
+
+  t.startExtension();
+  assert.strictEqual(t.extensionStep(), 1);
+  assert.ok(line().startsWith(`Schritt 1 von ${total}:`), line());
+
+  const points = t.state.activeMap.perimeter;
+  tapPoint(t, points, 1);
+  assert.strictEqual(t.extensionStep(), 2);
+  assert.ok(line().startsWith(`Schritt 2 von ${total}:`), line());
+
+  tapPoint(t, points, 3);                        // zweiter Punkt: Ankuendigung
+  assert.strictEqual(t.extensionStep(), 3);
+  assert.ok(line().startsWith(`Schritt 3 von ${total}:`), line());
+
+  tapPoint(t, points, 3);
+  await flush();
+  assert.strictEqual(t.extensionStep(), 4);
+  assert.ok(line().startsWith(`Schritt 4 von ${total}:`), line());
+
+  // Auch der Fehlgriff bleibt im laufenden Schritt, statt die Zaehlung zu verlieren.
+  const u = setup();
+  seedClosedPerimeter(u.t);
+  u.t.startExtension();
+  await u.t.handleExtensionTap({ role: 'waypoint', index: 0, exclusionId: null });
+  assert.ok(u.t.ui.extendPanelText.textContent.startsWith(`Schritt 1 von ${total}:`),
+    u.t.ui.extendPanelText.textContent);
+
+  // Die Gesamtzahl wird nirgends von Hand in einen Text geschrieben.
+  for (const lang of ['de', 'en']) {
+    for (const [key, value] of Object.entries(t.I18N[lang])) {
+      if (!key.startsWith('extend')) continue;
+      assert.ok(!/\b(von|of)\s+\d/.test(value), `${lang}/${key} tippt die Schrittzahl ein: ${value}`);
+    }
+  }
+  const v = setup();
+  seedClosedPerimeter(v.t);
+  v.t.toggleLanguage();
+  v.t.startExtension();
+  assert.ok(v.t.ui.extendPanelText.textContent.startsWith(`Step 1 of ${total}:`),
+    v.t.ui.extendPanelText.textContent);
 });
 
 test('Der Zoom reicht deutlich weiter als bis v64 — Minimum und Kennlinie unveraendert', () => {
@@ -2607,11 +2811,11 @@ test('Der zweite Tipp kuendigt nur an, wie viele Punkte wegfallen — er loescht
   const points = t.state.activeMap.perimeter;
   tapPoint(t, points, 0);                       // A
   assert.strictEqual(t.state.extension.firstIndex, 0);
-  assert.ok(/hier wird weitergebaut/.test(t.ui.extendPanelText.textContent), t.ui.extendPanelText.textContent);
+  assert.ok(/bleibt das Ende/.test(t.ui.extendPanelText.textContent), t.ui.extendPanelText.textContent);
 
   tapPoint(t, points, 2);                       // C — zwei Kanten weiter
   assert.strictEqual(t.state.extension.secondIndex, 2, 'der zweite Punkt ist vorgemerkt');
-  assert.ok(/ein Punkt wird gelöscht/.test(t.ui.extendPanelText.textContent), t.ui.extendPanelText.textContent);
+  assert.ok(/Ein Punkt fällt weg/.test(t.ui.extendPanelText.textContent), t.ui.extendPanelText.textContent);
   assert.ok(t.ui.extendPanelText.textContent.includes('Punkt 3'), 'und er ist benannt');
   assert.strictEqual(perimeterXY(t), before, 'angekuendigt ist noch nicht geloescht');
   assert.strictEqual(t.state.activeMap.perimeterClosed, true, 'sie bleibt bis dahin geschlossen');
@@ -2630,7 +2834,7 @@ test('Der zweite Tipp kuendigt nur an, wie viele Punkte wegfallen — er loescht
   assert.strictEqual(t.state.extension.phase, 'adding');
   assert.strictEqual(t.state.activeMap.perimeterClosed, false, 'jetzt ist die Kontur offen');
   assert.strictEqual(t.state.activeMap.perimeter.length, 4, 'ein Punkt ist weggefallen');
-  assert.ok(/Ein Punkt gelöscht/.test(t.ui.extendPanelText.textContent),
+  assert.ok(/Ein Punkt weg/.test(t.ui.extendPanelText.textContent),
     `die Zahl steht auch hinterher noch da: ${t.ui.extendPanelText.textContent}`);
 });
 
@@ -2839,7 +3043,7 @@ test('Markierung, Hinweiszeile und Vorschau nennen dasselbe Ende wie das Anhaeng
   tapPoint(t, t.state.activeMap.perimeter, 1);                     // B zuerst
   assert.strictEqual(markedIndices(t).join(','), '1', 'schon in der Auswahlphase markiert');
   assert.ok(t.ui.extendPanelText.textContent.includes('Punkt 2'), t.ui.extendPanelText.textContent);
-  assert.ok(/hier wird weitergebaut/.test(t.ui.extendPanelText.textContent), 'die Regel steht im Text');
+  assert.ok(/bleibt das Ende/.test(t.ui.extendPanelText.textContent), 'die Regel steht im Text');
   const guide = () => t.ui.robotLayer.children.filter((c) => (c.attributes?.class || '').includes('extend-guide-line'));
   t.renderMap();
   assert.strictEqual(guide().length, 0,
