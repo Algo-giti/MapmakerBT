@@ -429,6 +429,7 @@ test('Streuung: Radius der Punktwolke im 2-s-Fenster, in cm', () => {
 
 test('Der 30-s-Hoechstwert haelt einen Ausreisser fest und laeuft danach ab', async () => {
   const { t, clock } = setup();
+  t.state.view.gpsPanel = true;                  // gesammelt wird nur bei sichtbarer Einblendung
   const feed = (dx) => {
     t.state.fixHistory = [{ x: 0, y: 0, at: clock.now() }, { x: dx, y: 0, at: clock.now() }];
     t.rememberScatter();
@@ -450,19 +451,22 @@ test('Der 30-s-Hoechstwert haelt einen Ausreisser fest und laeuft danach ab', as
   assert.strictEqual(t.SCATTER_MAX_WINDOW_MS, 30000);
 });
 
-test('Das GPS-Abzeichen schaltet die Einblendung, die Wahl ueberlebt den Neustart', () => {
+test('Das GPS-Abzeichen schaltet die Einblendung, die Wahl ueberlebt den Neustart', async () => {
   const { t, clock, sandbox } = setup();
   t.state.telemetry = { x: 1, y: 2, solution: 2, accuracy: 0.021, receivedAt: clock.now() };
-  t.state.fixHistory = [{ x: 0, y: 0, at: clock.now() }, { x: 0.06, y: 0, at: clock.now() }];
-  t.rememberScatter();
 
   // Aus: die Einblendung liegt nicht auf der Karte.
   t.refreshGpsScatter();
   assert.strictEqual(t.ui.gpsPanel.hidden, true, 'standardmaessig aus');
 
-  // Ein Tipp auf das Abzeichen blendet sie ein — mit allen fuenf Angaben.
+  // Ein Tipp auf das Abzeichen blendet sie ein — gemessen wird ab diesem Tipp, die Fixes
+  // kommen also danach herein.
   t.toggleGpsPanel();
   assert.strictEqual(t.ui.gpsPanel.hidden, false);
+  await clock.runFor(100);
+  t.state.fixHistory = [{ x: 0, y: 0, at: clock.now() }, { x: 0.06, y: 0, at: clock.now() }];
+  t.rememberScatter();
+  t.refreshGpsScatter();
   assert.strictEqual(t.ui.gpsPanelFix.textContent, t.tr('rtkFix'), 'Fix-Status, wie im Abzeichen');
   const de = t.ui.gpsPanelScatter.textContent;
   assert.ok(/Streuung 3 cm/.test(de), de);
@@ -500,6 +504,60 @@ test('Das GPS-Abzeichen schaltet die Einblendung, die Wahl ueberlebt den Neustar
   t.toggleGpsPanel();
   assert.strictEqual(t.ui.gpsPanel.hidden, true);
   assert.strictEqual(JSON.parse(sandbox.localStorage.getItem('mapcreator-ardumower-view-prefs-v1')).gpsPanel, false);
+});
+
+test('Ausschalten verwirft das Gesammelte, Einschalten faengt bei null an', async () => {
+  const { t, clock } = setup();
+  const feed = (dx) => {
+    t.state.fixHistory = [{ x: 0, y: 0, at: clock.now() }, { x: dx, y: 0, at: clock.now() }];
+    t.rememberScatter();
+  };
+
+  // Eingeschaltet, ein Ausreisser sammelt sich an: Radius 11 cm steht im 30-s-Hoechstwert.
+  t.toggleGpsPanel();
+  assert.strictEqual(t.state.view.gpsPanel, true);
+  await clock.runFor(100);
+  feed(0.22);
+  assert.strictEqual(Math.round(t.scatterMaxCm()), 11, 'der Ausreisser ist da');
+  t.refreshGpsScatter();
+  assert.ok(/max 30 s: 11 cm/.test(t.ui.gpsPanelScatter.textContent), t.ui.gpsPanelScatter.textContent);
+  assert.strictEqual(t.fixScatter().samples, 2, 'zwei Fixes im Fenster');
+
+  // Ausschalten verwirft Maximum und Verlauf auf der Stelle.
+  t.toggleGpsPanel();
+  assert.strictEqual(t.state.view.gpsPanel, false);
+  assert.strictEqual(t.state.scatterHistory.length, 0, 'der Verlauf ist leer');
+  assert.strictEqual(t.scatterMaxCm(), null, 'es gibt kein Maximum mehr');
+  assert.strictEqual(t.state.gpsPanelSinceAt, 0);
+
+  // Waehrend sie aus ist, wird nichts nachgesammelt — sonst stuende beim Einschalten sofort
+  // wieder ein Wert da, den niemand gesehen hat.
+  await clock.runFor(500);
+  feed(0.22);
+  await clock.runFor(500);
+  feed(0.22);
+  assert.strictEqual(t.state.scatterHistory.length, 0, 'im ausgeschalteten Zustand wird nichts gesammelt');
+
+  // Einschalten: Maximum, Fenster und Zaehler stehen bei null — obwohl die eben gefuetterten
+  // Fixes juenger als das 2-s-Fenster sind.
+  t.toggleGpsPanel();
+  assert.strictEqual(t.scatterMaxCm(), null, 'das Maximum ist zurueckgesetzt');
+  const fresh = t.fixScatter();
+  assert.strictEqual(fresh.samples, 0, 'der Zaehler faengt bei null an');
+  assert.strictEqual(fresh.cm, null, 'und es gibt noch keine Streuung');
+  assert.ok(/Streuung – · 0 Fixes/.test(t.ui.gpsPanelScatter.textContent), t.ui.gpsPanelScatter.textContent);
+
+  // Der geteilte Puffer ist dabei unangetastet geblieben: die Aufnahme mittelt weiter ueber
+  // dieselben Fixes wie vorher. Ihn zu leeren waere eine Aenderung an der Aufnahme.
+  assert.strictEqual(t.state.fixHistory.length, 2, 'state.fixHistory wurde nicht geleert');
+  assert.strictEqual(t.smoothedPosition().samples, 2, 'und die Glaettung sieht sie weiterhin');
+
+  // Ab jetzt wird neu gemessen — der alte Ausreisser kommt nicht zurueck.
+  await clock.runFor(200);
+  feed(0.02);
+  assert.strictEqual(Math.round(t.scatterMaxCm()), 1, 'nur noch der neue, kleine Wert');
+  t.refreshGpsScatter();
+  assert.ok(/max 30 s: 1 cm/.test(t.ui.gpsPanelScatter.textContent), t.ui.gpsPanelScatter.textContent);
 });
 
 test('Die Streuung ist reine Anzeige: Aufnahme und Automatik bleiben unberuehrt', async () => {

@@ -1444,6 +1444,31 @@ nur ganz ohne Fix bleibt das Feld leer und verschwindet per `.info-chip:empty`.
 **Keine neue Einstellung**, kein neuer Schwellwert, keine neue Zahl im Menü: alles ist aus
 `state.fixHistory` und den vorhandenen Konstanten abgeleitet.
 
+**Ausschalten verwirft das Gesammelte, Einschalten fängt bei null an (Stand v73).** Solange die
+Einblendung aus ist, gibt es nichts zu zeigen — und was in dieser Zeit aufliefe, hat niemand
+gesehen. `toggleGpsPanel()` ist die **einzige** Stelle, die das entscheidet, und tut beim Umschalten
+zweierlei: `state.scatterHistory.length = 0` leert den 30-s-Verlauf, und `state.gpsPanelSinceAt`
+trägt den Einschaltzeitpunkt (beim Ausschalten 0). Dazu sammelt `rememberScatter()` gar nicht erst,
+solange das Feld aus ist — ohne diese Sperre stünde beim nächsten Einschalten sofort wieder ein
+Höchstwert aus der unbeobachteten Zeit da, obwohl beim Ausschalten geleert wurde.
+
+**`state.fixHistory` wird dabei ausdrücklich nicht geleert.** Das 2-s-Fenster und die Fixzahl
+kommen aus demselben Puffer, den `smoothedPosition()` für `pointFromTelemetry()` benutzt — ihn zu
+leeren hieße, dass die Einblendung die **Punktaufnahme** verändert, und genau das darf sie nicht
+(siehe den Absatz oben und den ui-Test „Die Streuung ist reine Anzeige"). Stattdessen filtert
+`fixScatter()` zusätzlich auf `f.at > state.gpsPanelSinceAt`. Beobachtbar ist das dasselbe: nach dem
+Einschalten steht „Streuung – · 0 Fixes“, bis der erste neue Fix eintrifft.
+
+**Der Vergleich ist bewusst echt größer**, während die Fenstergrenze `>=` bleibt. Ein Fix, der schon
+im Puffer lag, als getippt wurde, war **vor** dem Einschalten da und zählt nicht mehr mit; die
+Fenstergrenze dagegen soll den 1,9 s alten Fix einschließen (eigener Bestandstest). Zwei
+verschiedene Fragen, deshalb zwei Vergleiche in einem Ausdruck statt eines gemeinsamen `cutoff`.
+
+**Im Startfall wird nichts gesetzt.** `loadViewPreferences()` stellt `state.view.gpsPanel` wieder
+her, `gpsPanelSinceAt` bleibt 0 — beide Puffer sind zu diesem Zeitpunkt leer, es gäbe nichts zu
+verwerfen. Eine Zeitmarke dort wäre eine zweite Behauptung über denselben Zustand ohne jede
+Wirkung.
+
 ### Undo-Historie gehört der Karte (Stand v68)
 
 **`state.undoStack` ist keine eigene Ablage mehr, sondern eine Sicht auf `state.activeMap.undoStack`**
@@ -2496,6 +2521,25 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-19: **v73 — die GPS-Einblendung verwirft ihre Werte beim Ausschalten.** Ein Tipp auf das
+  RTK-Abzeichen leert jetzt den 30-s-Höchstwert und setzt Fenster und Fixzähler zurück; beim
+  nächsten Einschalten fängt die Messung bei null an. Drei Bausteine, Einzelheiten im Abschnitt
+  „Streuung der GPS-Fixes": `toggleGpsPanel()` leert `state.scatterHistory` und setzt
+  `state.gpsPanelSinceAt`, `rememberScatter()` sammelt nur noch bei sichtbarer Einblendung, und
+  `fixScatter()` zählt nur Fixes **nach** dem Einschaltzeitpunkt. **Vorab gemeldet statt
+  stillschweigend umgesetzt:** der wörtlich verlangte „Fensterpuffer" ist `state.fixHistory`, und
+  den teilt sich die Anzeige mit `smoothedPosition()` → `pointFromTelemetry()`, also mit der
+  echten Punktaufnahme; ihn zu leeren hätte die Anzeige zur Aufnahmeänderung gemacht, was der
+  Bestandstest „Die Streuung ist reine Anzeige" ausdrücklich verbietet. Deshalb dort eine
+  Zeitmarke statt eines Eingriffs — beobachtbar dasselbe, die Aufnahme unberührt (der neue Test
+  prüft ausdrücklich nach, dass `state.fixHistory` und `smoothedPosition()` unverändert sind).
+  Neu: 1 ui-Fall (228). **Zwei Bestandsfälle nachgezogen**, beide aus demselben Grund: sie
+  fütterten Fixes, **bevor** die Einblendung an war, was jetzt nicht mehr zählt — die Fixes kommen
+  dort nun nach dem Einschalten herein. Gegen sechs simulierte Rückfälle geprüft, alle gefangen
+  (Verlauf nicht geleert, Zeitmarke weggelassen, im ausgeschalteten Zustand weitergesammelt,
+  Zeitmarke ignoriert, nur beim Einschalten geleert, und die verbotene Abkürzung über
+  `state.fixHistory.length = 0`). `APP_VERSION` auf `v73`.
 
 - 2026-09-12: **Urhebernennung und Sicherheitshinweis — keine Programmlogik berührt.** Neue Datei
   `NOTICE` im Wurzelverzeichnis nennt die nachgebildeten Teile samt Herkunft: CaSSAndRA

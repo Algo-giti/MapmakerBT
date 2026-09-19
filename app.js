@@ -347,7 +347,7 @@ const I18N = {
     helpLockTitle: 'Kartensperre', helpLockText: 'Fertige Karten lassen sich gegen versehentliche Änderungen sperren.',
     viewHelpTitle: 'Ansicht & Bedienung',
     helpRtkTitle: 'RTK-Anzeige', helpRtkText: 'Das Abzeichen in der Kopfzeile zeigt Fix, Float oder No Fix und die Satelliten als Mäher/Station. Nur bei einem echten Fix ist die Position zentimetergenau.',
-    helpScatterTitle: 'GPS-Details einblenden', helpScatterText: 'Ein Tipp auf das RTK-Feld in der Kopfzeile blendet oben auf der Karte die GPS-Details ein und wieder aus; die Wahl bleibt nach dem Neuladen erhalten. Dort steht der Fix-Status, die vom Mäher gemeldete Genauigkeit und die Streuung: wie weit die Messwerte der letzten zwei Sekunden auseinanderliegen — der größte Abstand zu ihrem Mittelwert in Zentimetern, dahinter der höchste Wert der letzten 30 Sekunden und die Zahl der Messwerte im Fenster. Kleine Zahlen heißen ruhige Position, ein großer 30-Sekunden-Wert verrät einen Ausreißer, der längst vorbei ist. Weniger Messwerte als sonst deuten auf eine Funklücke. Alles davon ist reine Information: es sperrt nichts und ändert weder Aufnahme noch Automatik.',
+    helpScatterTitle: 'GPS-Details einblenden', helpScatterText: 'Ein Tipp auf das RTK-Feld in der Kopfzeile blendet oben auf der Karte die GPS-Details ein und wieder aus; die Wahl bleibt nach dem Neuladen erhalten. Dort steht der Fix-Status, die vom Mäher gemeldete Genauigkeit und die Streuung: wie weit die Messwerte der letzten zwei Sekunden auseinanderliegen — der größte Abstand zu ihrem Mittelwert in Zentimetern, dahinter der höchste Wert der letzten 30 Sekunden und die Zahl der Messwerte im Fenster. Kleine Zahlen heißen ruhige Position, ein großer 30-Sekunden-Wert verrät einen Ausreißer, der längst vorbei ist. Weniger Messwerte als sonst deuten auf eine Funklücke. Beim Ausblenden werden die gesammelten Werte verworfen: nach dem nächsten Einblenden beginnt die Messung wieder bei null, der 30-Sekunden-Wert zeigt also nur, was seither passiert ist. Alles davon ist reine Information: es sperrt nichts und ändert weder Aufnahme noch Automatik.',
     helpCaptureToneTitle: 'Ton bei der Punktaufnahme', helpCaptureToneText: 'Ein kurzer Auslöseton wie bei einem Fotoapparat bestätigt jeden aufgezeichneten Punkt — bei der Einzelaufnahme wie bei der Automatik. Er kommt erst, wenn der Punkt wirklich in der Karte steht: eine gescheiterte Aufnahme, etwa ohne RTK FIX oder bei geschlossener Kontur, bleibt still. So lässt sich beim Abfahren am Ohr verfolgen, ob Punkte entstehen, ohne auf den Bildschirm zu sehen. Abschalten im Menü unter Aufnahme. Der Ton wird im Browser erzeugt, es wird nichts nachgeladen; Browser geben Ton allerdings erst frei, nachdem die App einmal berührt wurde — das ist mit dem Tipp auf den Aufnahme- oder Automatik-Knopf immer schon geschehen.',
     helpFixOnlyTitle: 'Nur bei RTK FIX', helpFixOnlyText: 'Im Menü unter Aufnahme. Ist die Option aktiv, bleibt jede Aufnahme bei Float oder No Fix gesperrt — auch die Automatik.',
     helpThemeTitle: 'Hell & Dunkel', helpThemeText: 'Drei Stufen im Menü unter Ansicht & Maßstab: Hell, Dunkel oder der Vorgabe des Systems folgen.',
@@ -607,7 +607,7 @@ const I18N = {
     helpLockTitle: 'Map lock', helpLockText: 'Finished maps can be locked against accidental changes.',
     viewHelpTitle: 'View & operation',
     helpRtkTitle: 'RTK display', helpRtkText: 'The badge in the header shows Fix, Float or No Fix and the satellites as mower/station. Only a real fix gives centimetre-accurate positions.',
-    helpScatterTitle: 'Showing GPS details', helpScatterText: 'Tapping the RTK field in the header shows and hides the GPS details at the top of the map; the choice survives a reload. It shows the fix status, the accuracy reported by the mower and the scatter: how far the readings of the last two seconds lie apart — the largest distance from their mean in centimetres, followed by the highest value of the last 30 seconds and the number of readings in the window. Small numbers mean a steady position; a large 30-second value reveals an outlier that is long gone. Fewer readings than usual point to a radio gap. All of it is information only: it blocks nothing and changes neither capture nor automatic capture.',
+    helpScatterTitle: 'Showing GPS details', helpScatterText: 'Tapping the RTK field in the header shows and hides the GPS details at the top of the map; the choice survives a reload. It shows the fix status, the accuracy reported by the mower and the scatter: how far the readings of the last two seconds lie apart — the largest distance from their mean in centimetres, followed by the highest value of the last 30 seconds and the number of readings in the window. Small numbers mean a steady position; a large 30-second value reveals an outlier that is long gone. Fewer readings than usual point to a radio gap. Hiding the details discards what was collected: after showing them again the measurement starts from zero, so the 30-second value only covers what has happened since. All of it is information only: it blocks nothing and changes neither capture nor automatic capture.',
     helpCaptureToneTitle: 'Sound when a point is captured', helpCaptureToneText: 'A short shutter sound like a camera confirms every recorded point — for single capture as well as automatic capture. It only plays once the point is really in the map: a failed capture, for instance without RTK FIX or on a closed contour, stays silent. That way you can follow along by ear while walking the boundary, without looking at the screen. Turn it off in the menu under Capture. The sound is generated in the browser, nothing is downloaded; browsers do however only allow sound after the app has been touched once — which the tap on the capture or automatic button has always already done.',
     helpFixOnlyTitle: 'Only with RTK FIX', helpFixOnlyText: 'In the menu under Capture. While this option is on, every capture stays blocked on Float or No Fix — automatic capture included.',
     helpThemeTitle: 'Light & dark', helpThemeText: 'Three settings in the menu under View & scale: light, dark, or follow the system setting.',
@@ -803,6 +803,9 @@ const state = {
   // Je empfangenem Fix ein Eintrag { at, cm } — die Streuung des 2-s-Fensters zu diesem
   // Zeitpunkt. Reine Anzeige, geht nirgends in die Aufnahme ein.
   scatterHistory: [],
+  // Der Zeitpunkt, zu dem die GPS-Einblendung eingeschaltet wurde (0 = aus). Vor ihm liegende
+  // Fixes zaehlen fuer die Anzeige nicht mehr mit — siehe toggleGpsPanel().
+  gpsPanelSinceAt: 0,
   // Nutzer-Zoom/-Verschiebung der Karte; solange custom=false folgt die Ansicht dem Auto-Fit.
   viewport: { zoom: 1, dx: 0, dy: 0, custom: false, base: null },
   gesture: null,
@@ -3441,8 +3444,13 @@ function smoothedPosition() {
  * oder die Automatik ein; die Aufnahme verhaelt sich unveraendert.
  */
 function fixScatter() {
+  // Zwei Bedingungen: im 2-s-Fenster **und** nach dem Einschalten der Einblendung empfangen.
+  // Die zweite ist bewusst echt groesser — ein Fix, der im Puffer lag, als getippt wurde, war
+  // vor dem Einschalten da und zaehlt nicht mehr mit; dort faengt die Messung bei null an.
+  // Gefiltert wird nur hier in der Anzeige: `state.fixHistory` selbst bleibt unangetastet,
+  // weil `smoothedPosition()` denselben Puffer fuer die Punktaufnahme braucht.
   const cutoff = Date.now() - POSITION_SMOOTHING_WINDOW_MS;
-  const samples = state.fixHistory.filter((f) => f.at >= cutoff);
+  const samples = state.fixHistory.filter((f) => f.at >= cutoff && f.at > state.gpsPanelSinceAt);
   if (samples.length < 2) return { cm: null, samples: samples.length };
   const mean = samples.reduce((acc, f) => ({ x: acc.x + f.x, y: acc.y + f.y }), { x: 0, y: 0 });
   mean.x /= samples.length;
@@ -3457,6 +3465,9 @@ function fixScatter() {
  * einen laengst abgelaufenen Hoechstwert ueber die 30 s hinaus am Leben halten.
  */
 function rememberScatter() {
+  // Bei ausgeblendetem Feld wird gar nicht erst gesammelt — sonst stuende beim naechsten
+  // Einschalten sofort wieder ein Hoechstwert aus der Zeit da, in der niemand hingesehen hat.
+  if (!state.view.gpsPanel) return;
   const now = Date.now();
   const scatter = fixScatter();
   if (scatter.cm !== null) state.scatterHistory.push({ at: now, cm: scatter.cm });
@@ -3523,9 +3534,20 @@ function refreshGpsScatter() {
   ui.gpsPanelAccuracy.textContent = gpsAccuracyText();
 }
 
-/** Der Tipp auf das Abzeichen. Merkt die Wahl ueber die vorhandenen Ansichtseinstellungen. */
+/**
+ * Der Tipp auf das Abzeichen. Merkt die Wahl ueber die vorhandenen Ansichtseinstellungen.
+ *
+ * **Ausschalten verwirft das Gesammelte**, Einschalten faengt bei null an: der 30-s-Verlauf
+ * wird geleert, und `gpsPanelSinceAt` schneidet das 2-s-Fenster samt Fixzahl am Einschaltpunkt
+ * ab. Der Verlauf ist eine eigene Ablage und wird deshalb wirklich geleert; das 2-s-Fenster
+ * `state.fixHistory` teilt sich die Anzeige dagegen mit `smoothedPosition()` und damit mit der
+ * Punktaufnahme — es zu leeren wuerde die Aufnahme veraendern, was die Einblendung
+ * ausdruecklich nicht darf. Deshalb dort eine Zeitmarke statt eines Eingriffs.
+ */
 function toggleGpsPanel() {
   state.view.gpsPanel = !state.view.gpsPanel;
+  state.scatterHistory.length = 0;
+  state.gpsPanelSinceAt = state.view.gpsPanel ? Date.now() : 0;
   saveViewPreferences();
   refreshGpsScatter();
 }

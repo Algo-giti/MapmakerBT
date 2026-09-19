@@ -82,8 +82,9 @@ Die App besteht aus drei Zonen:
   RTK-Feld** blendet oben auf der Karte die GPS-Details ein und wieder aus: Fix-Status, gemeldete
   Genauigkeit und die Streuung der Messwerte („Streuung 3 cm (max 30 s: 11 cm) · 4 Fixes“ – größter
   Abstand der letzten zwei Sekunden zu ihrem Mittelwert, dahinter der höchste Wert der letzten
-  30 Sekunden und die Zahl der Messwerte). Die Wahl bleibt nach dem Neuladen erhalten, und die
-  Anzeige sperrt nichts – sie ändert weder Aufnahme noch Automatik.
+  30 Sekunden und die Zahl der Messwerte). Die Wahl bleibt nach dem Neuladen erhalten. Beim
+  Ausblenden werden die gesammelten Werte verworfen – nach dem nächsten Einblenden beginnt die
+  Messung wieder bei null. Die Anzeige sperrt nichts; sie ändert weder Aufnahme noch Automatik.
 - **Karte** – nimmt den größten Teil des Bildschirms ein. Ganz oben liegt eine schmale,
   **zweizeilige Werkzeugleiste**: auf der einen Seite in Zeile 1 der Kartenname und darunter,
   kleiner, die Punktzahl und die betroffene Kontur samt Zustand („Perimeter · geschlossen“); auf
@@ -572,8 +573,9 @@ The app has three zones:
   field** shows and hides the GPS details at the top of the map: fix status, reported accuracy and
   the scatter of the readings (“Scatter 3 cm (30 s max: 11 cm) · 4 fixes” – the largest distance of
   the last two seconds from their mean, followed by the highest value of the last 30 seconds and
-  the number of readings). The choice survives a reload, and the display blocks nothing – it
-  changes neither capture nor automatic capture.
+  the number of readings). The choice survives a reload. Hiding the details discards what was
+  collected – after showing them again the measurement starts from zero. The display blocks
+  nothing; it changes neither capture nor automatic capture.
 - **Map** – takes up most of the screen. A slim, **two-line tool bar** sits at the very top: on one
   side line 1 holds the map name and, smaller beneath it, the point count and the contour
   concerned together with its state (“Perimeter · closed”); on the other side the delete tool and,
