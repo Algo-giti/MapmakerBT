@@ -129,10 +129,13 @@ const I18N = {
     extendExclusion: 'Ausschlussfläche erweitern', extendExclusionShort: 'Erweitern',
     extendCancel: 'Erweitern abbrechen', extendCancelShort: 'Abbrechen',
     extendDone: 'Erweiterung abschließen', extendDoneShort: 'Fertig',
-    gpsScatter: 'Streuung {cm} cm (max 30 s: {maxCm} cm) · {n} Fixes',
+    gpsScatter: 'Streuung {cm} cm aus {n} Fixes',
+    gpsScatterMax: 'Max 30 s: {maxCm} cm',
+    gpsScatterMaxFilling: 'Max 30 s: {maxCm} cm · vorläufig ({s} s)',
     gpsAccuracy: 'Genauigkeit ±{cm} cm',
     gpsPanelToggle: 'GPS-Details ein- oder ausblenden',
-    gpsScatterWaiting: 'Streuung – · {n} Fixes',
+    gpsScatterWaiting: 'Streuung – aus {n} Fixes',
+    gpsScatterWaitingOne: 'Streuung – aus 1 Fix',
     extendStep: 'Schritt {step} von {total}:',
     extendPickFirst: 'Punkt wählen von dem aus neue Punkte hinzugefügt werden sollen',
     extendPickSecond: 'Punkt wählen wo das Ende der Konturöffnung sein soll, Punkte dazwischen werden automatisch gelöscht',
@@ -348,7 +351,7 @@ const I18N = {
     helpLockTitle: 'Kartensperre', helpLockText: 'Fertige Karten lassen sich gegen versehentliche Änderungen sperren.',
     viewHelpTitle: 'Ansicht & Bedienung',
     helpRtkTitle: 'RTK-Anzeige', helpRtkText: 'Das Abzeichen in der Kopfzeile zeigt Fix, Float oder No Fix und die Satelliten als Mäher/Station. Nur bei einem echten Fix ist die Position zentimetergenau.',
-    helpScatterTitle: 'GPS-Details einblenden', helpScatterText: 'Ein Tipp auf das RTK-Feld in der Kopfzeile blendet oben auf der Karte die GPS-Details ein und wieder aus; die Wahl bleibt nach dem Neuladen erhalten. Dort steht der Fix-Status, die vom Mäher gemeldete Genauigkeit und die Streuung: wie weit die Messwerte der letzten zwei Sekunden auseinanderliegen — der größte Abstand zu ihrem Mittelwert in Zentimetern, dahinter der höchste Wert der letzten 30 Sekunden und die Zahl der Messwerte im Fenster. Kleine Zahlen heißen ruhige Position, ein großer 30-Sekunden-Wert verrät einen Ausreißer, der längst vorbei ist. Weniger Messwerte als sonst deuten auf eine Funklücke. Beim Ausblenden werden die gesammelten Werte verworfen: nach dem nächsten Einblenden beginnt die Messung wieder bei null, der 30-Sekunden-Wert zeigt also nur, was seither passiert ist. Alles davon ist reine Information: es sperrt nichts und ändert weder Aufnahme noch Automatik.',
+    helpScatterTitle: 'GPS-Details einblenden', helpScatterText: 'Ein Tipp auf das RTK-Feld in der Kopfzeile blendet oben auf der Karte die GPS-Details ein und wieder aus; die Wahl bleibt nach dem Neuladen erhalten. Dort steht der Fix-Status, die vom Mäher gemeldete Genauigkeit und die Streuung: wie weit die Messwerte der letzten zwei Sekunden auseinanderliegen — der größte Abstand zu ihrem Mittelwert in Zentimetern, zusammen mit der Zahl der Messwerte in diesen zwei Sekunden. Darunter steht der höchste Wert der letzten 30 Sekunden; solange noch keine 30 Sekunden Messwerte gesammelt sind, trägt er den Zusatz „vorläufig“ mit den bisherigen Sekunden. Kleine Zahlen heißen ruhige Position, ein großer 30-Sekunden-Wert verrät einen Ausreißer, der längst vorbei ist. Weniger Messwerte als sonst deuten auf eine Funklücke. Beim Ausblenden werden die gesammelten Werte verworfen: nach dem nächsten Einblenden beginnt die Messung wieder bei null, der 30-Sekunden-Wert zeigt also nur, was seither passiert ist, und ist zunächst wieder vorläufig. Alles davon ist reine Information: es sperrt nichts und ändert weder Aufnahme noch Automatik.',
     helpCaptureToneTitle: 'Ton bei der Punktaufnahme', helpCaptureToneText: 'Ein kurzer Auslöseton wie bei einem Fotoapparat bestätigt jeden aufgezeichneten Punkt — bei der Einzelaufnahme wie bei der Automatik. Er kommt erst, wenn der Punkt wirklich in der Karte steht: eine gescheiterte Aufnahme, etwa ohne RTK FIX oder bei geschlossener Kontur, bleibt still. So lässt sich beim Abfahren am Ohr verfolgen, ob Punkte entstehen, ohne auf den Bildschirm zu sehen. Abschalten im Menü unter Aufnahme. Der Ton wird im Browser erzeugt, es wird nichts nachgeladen; Browser geben Ton allerdings erst frei, nachdem die App einmal berührt wurde — das ist mit dem Tipp auf den Aufnahme- oder Automatik-Knopf immer schon geschehen.',
     helpFixOnlyTitle: 'Nur bei RTK FIX', helpFixOnlyText: 'Im Menü unter Aufnahme. Ist die Option aktiv, bleibt jede Aufnahme bei Float oder No Fix gesperrt — auch die Automatik.',
     helpThemeTitle: 'Hell & Dunkel', helpThemeText: 'Drei Stufen im Menü unter Ansicht & Maßstab: Hell, Dunkel oder der Vorgabe des Systems folgen.',
@@ -390,10 +393,13 @@ const I18N = {
     extendExclusion: 'Extend exclusion area', extendExclusionShort: 'Extend',
     extendCancel: 'Cancel extending', extendCancelShort: 'Cancel',
     extendDone: 'Finish extending', extendDoneShort: 'Done',
-    gpsScatter: 'Scatter {cm} cm (30 s max: {maxCm} cm) · {n} fixes',
+    gpsScatter: 'Scatter {cm} cm from {n} fixes',
+    gpsScatterMax: '30 s max: {maxCm} cm',
+    gpsScatterMaxFilling: '30 s max: {maxCm} cm · provisional ({s} s)',
     gpsAccuracy: 'Accuracy ±{cm} cm',
     gpsPanelToggle: 'Show or hide GPS details',
-    gpsScatterWaiting: 'Scatter – · {n} fixes',
+    gpsScatterWaiting: 'Scatter – from {n} fixes',
+    gpsScatterWaitingOne: 'Scatter – from 1 fix',
     extendStep: 'Step {step} of {total}:',
     extendPickFirst: 'Choose the point from which new points are to be added',
     extendPickSecond: 'Choose the point where the contour opening should end, points in between are deleted automatically',
@@ -609,7 +615,7 @@ const I18N = {
     helpLockTitle: 'Map lock', helpLockText: 'Finished maps can be locked against accidental changes.',
     viewHelpTitle: 'View & operation',
     helpRtkTitle: 'RTK display', helpRtkText: 'The badge in the header shows Fix, Float or No Fix and the satellites as mower/station. Only a real fix gives centimetre-accurate positions.',
-    helpScatterTitle: 'Showing GPS details', helpScatterText: 'Tapping the RTK field in the header shows and hides the GPS details at the top of the map; the choice survives a reload. It shows the fix status, the accuracy reported by the mower and the scatter: how far the readings of the last two seconds lie apart — the largest distance from their mean in centimetres, followed by the highest value of the last 30 seconds and the number of readings in the window. Small numbers mean a steady position; a large 30-second value reveals an outlier that is long gone. Fewer readings than usual point to a radio gap. Hiding the details discards what was collected: after showing them again the measurement starts from zero, so the 30-second value only covers what has happened since. All of it is information only: it blocks nothing and changes neither capture nor automatic capture.',
+    helpScatterTitle: 'Showing GPS details', helpScatterText: 'Tapping the RTK field in the header shows and hides the GPS details at the top of the map; the choice survives a reload. It shows the fix status, the accuracy reported by the mower and the scatter: how far the readings of the last two seconds lie apart — the largest distance from their mean in centimetres, together with the number of readings in those two seconds. Below it is the highest value of the last 30 seconds; until 30 seconds of readings have been collected it is marked “provisional” with the seconds so far. Small numbers mean a steady position; a large 30-second value reveals an outlier that is long gone. Fewer readings than usual point to a radio gap. Hiding the details discards what was collected: after showing them again the measurement starts from zero, so the 30-second value only covers what has happened since and is provisional again at first. All of it is information only: it blocks nothing and changes neither capture nor automatic capture.',
     helpCaptureToneTitle: 'Sound when a point is captured', helpCaptureToneText: 'A short shutter sound like a camera confirms every recorded point — for single capture as well as automatic capture. It only plays once the point is really in the map: a failed capture, for instance without RTK FIX or on a closed contour, stays silent. That way you can follow along by ear while walking the boundary, without looking at the screen. Turn it off in the menu under Capture. The sound is generated in the browser, nothing is downloaded; browsers do however only allow sound after the app has been touched once — which the tap on the capture or automatic button has always already done.',
     helpFixOnlyTitle: 'Only with RTK FIX', helpFixOnlyText: 'In the menu under Capture. While this option is on, every capture stays blocked on Float or No Fix — automatic capture included.',
     helpThemeTitle: 'Light & dark', helpThemeText: 'Three settings in the menu under View & scale: light, dark, or follow the system setting.',
@@ -714,6 +720,7 @@ const ui = {
   mapToolbar: $('mapToolbar'), contourStatus: $('contourStatus'),
   mapNameLabel: $('mapNameLabel'), mapSummary: $('mapSummary'),
   gpsPanel: $('gpsPanel'), gpsPanelFix: $('gpsPanelFix'), gpsPanelScatter: $('gpsPanelScatter'),
+  gpsPanelScatterMax: $('gpsPanelScatterMax'),
   gpsPanelAccuracy: $('gpsPanelAccuracy'), mapDistanceInfo: $('mapDistanceInfo'), pointStatus: $('pointStatus'), activeMapName: $('activeMapName'), saveState: $('saveState'),
   // Fahren
   driveZone: $('driveZone'), driveJoystick: $('driveJoystick'), joystickKnob: $('joystickKnob'), driveState: $('driveState'),
@@ -808,6 +815,9 @@ const state = {
   // Je empfangenem Fix ein Eintrag { at, cm } — die Streuung des 2-s-Fensters zu diesem
   // Zeitpunkt. Reine Anzeige, geht nirgends in die Aufnahme ein.
   scatterHistory: [],
+  // Seit wann der 30-s-Verlauf fuellt: gesetzt vom ersten Eintrag, der in einen leeren Verlauf
+  // faellt (null = noch keiner). Nur fuer die Kennzeichnung „vorlaeufig“, siehe rememberScatter().
+  scatterFillSince: null,
   // Der Zeitpunkt, zu dem die GPS-Einblendung eingeschaltet wurde (0 = aus). Vor ihm liegende
   // Fixes zaehlen fuer die Anzeige nicht mehr mit — siehe toggleGpsPanel().
   gpsPanelSinceAt: 0,
@@ -3693,6 +3703,13 @@ function rememberScatter() {
   if (!state.view.gpsPanel) return;
   const now = Date.now();
   const scatter = fixScatter();
+  // Faellt der Eintrag in einen leeren 30-s-Verlauf, beginnt das Fenster hier neu zu fuellen —
+  // nach dem Einschalten, nach dem Neuladen, nach einem Start ohne Verbindung und nach einer
+  // Funkluecke ueber 30 s gleichermassen. „Leer“ heisst: kein Eintrag im Fenster, dieselbe
+  // Grenze wie in scatterMaxCm(); veraltete Eintraege liegen bis zum Aufraeumen unten noch da.
+  if (scatter.cm !== null && !state.scatterHistory.some((e) => e.at >= now - SCATTER_MAX_WINDOW_MS)) {
+    state.scatterFillSince = now;
+  }
   if (scatter.cm !== null) state.scatterHistory.push({ at: now, cm: scatter.cm });
   const cutoff = now - SCATTER_MAX_WINDOW_MS;
   while (state.scatterHistory.length && state.scatterHistory[0].at < cutoff) state.scatterHistory.shift();
@@ -3706,22 +3723,42 @@ function scatterMaxCm() {
 }
 
 /**
- * Der kompakte Text fuer das Streuungsfeld. Leer, solange ueberhaupt kein Fix vorliegt — dann
- * verschwindet das Feld per `.info-chip:empty`, statt eine Null zu behaupten. Ein einzelner Fix
- * ergibt noch keine Streuung, die **Zahl der Fixes** wird aber trotzdem gezeigt: genau daran ist
- * eine Funkluecke zu erkennen.
+ * Sekunden, seit der 30-s-Verlauf fuellt, solange er noch nicht voll ist — sonst null. Die
+ * einzige Stelle, die entscheidet, ob das Maximum als vorlaeufig gilt. Noch kein Fuellbeginn
+ * (`scatterFillSince` null) heisst: es liegt nichts im Verlauf, also ist das Fenster nicht voll.
+ */
+function scatterFillSeconds() {
+  if (state.scatterFillSince === null) return 0;
+  const elapsed = Date.now() - state.scatterFillSince;
+  return elapsed < SCATTER_MAX_WINDOW_MS ? Math.floor(elapsed / 1000) : null;
+}
+
+/**
+ * Die beiden Streuungszeilen der Einblendung: `scatter` traegt den aktuellen 2-s-Wert **samt**
+ * der Fixzahl dieses Fensters, `max` den 30-s-Hoechstwert allein. Getrennt, weil die Fixzahl
+ * hinter dem Hoechstwert wie dessen Anzahl gelesen wurde — sie zaehlt aber das 2-s-Fenster.
+ * Solange der Verlauf noch fuellt, steht am Hoechstwert „vorlaeufig“ mit den bisherigen Sekunden.
+ *
+ * Leer, solange ueberhaupt kein Fix vorliegt — dann verschwinden die Zeilen per
+ * `.gps-panel-line:empty`, statt eine Null zu behaupten. Ein einzelner Fix ergibt noch keine
+ * Streuung, die **Zahl der Fixes** wird aber trotzdem gezeigt: genau daran ist eine Funkluecke
+ * zu erkennen. Einen Hoechstwert gibt es in diesem Zustand nicht, wie bisher.
  */
 function gpsScatterText() {
-  if (!telemetryIsFresh() && !state.fixHistory.length) return '';
+  const none = { scatter: '', max: '' };
+  if (!telemetryIsFresh() && !state.fixHistory.length) return none;
   const scatter = fixScatter();
-  if (!state.fixHistory.length) return '';
-  if (scatter.cm === null) return tr('gpsScatterWaiting', { n: scatter.samples });
+  if (!state.fixHistory.length) return none;
+  if (scatter.cm === null) {
+    return { scatter: tr(scatter.samples === 1 ? 'gpsScatterWaitingOne' : 'gpsScatterWaiting', { n: scatter.samples }), max: '' };
+  }
   const max = scatterMaxCm();
-  return tr('gpsScatter', {
-    cm: Math.round(scatter.cm),
-    maxCm: Math.round(max === null ? scatter.cm : Math.max(max, scatter.cm)),
-    n: scatter.samples,
-  });
+  const maxCm = Math.round(max === null ? scatter.cm : Math.max(max, scatter.cm));
+  const filling = scatterFillSeconds();
+  return {
+    scatter: tr('gpsScatter', { cm: Math.round(scatter.cm), n: scatter.samples }),
+    max: filling === null ? tr('gpsScatterMax', { maxCm }) : tr('gpsScatterMaxFilling', { maxCm, s: filling }),
+  };
 }
 
 /** Der Fix-Zustand als Wort — dieselben Schluessel, die auch das Abzeichen in der Kopfzeile nutzt. */
@@ -3736,7 +3773,8 @@ function fixStatusText() {
 function gpsAccuracyText() {
   const accuracy = Number(state.telemetry.accuracy);
   if (!telemetryIsFresh() || !Number.isFinite(accuracy)) return '';
-  return tr('gpsAccuracy', { cm: (accuracy * 100).toFixed(1) });
+  // Dezimalkomma im Deutschen, nach demselben Muster wie refreshControlUi().
+  return tr('gpsAccuracy', { cm: (accuracy * 100).toFixed(1).replace('.', state.language === 'de' ? ',' : '.') });
 }
 
 /**
@@ -3753,7 +3791,9 @@ function refreshGpsScatter() {
   if (ui.rtkBadge?.setAttribute) ui.rtkBadge.setAttribute('aria-expanded', state.view.gpsPanel ? 'true' : 'false');
   if (!state.view.gpsPanel) return;
   ui.gpsPanelFix.textContent = fixStatusText();
-  ui.gpsPanelScatter.textContent = gpsScatterText();
+  const lines = gpsScatterText();
+  ui.gpsPanelScatter.textContent = lines.scatter;
+  ui.gpsPanelScatterMax.textContent = lines.max;
   ui.gpsPanelAccuracy.textContent = gpsAccuracyText();
 }
 

@@ -472,9 +472,9 @@ test('Das GPS-Abzeichen schaltet die Einblendung, die Wahl ueberlebt den Neustar
   assert.strictEqual(t.ui.gpsPanelFix.textContent, t.tr('rtkFix'), 'Fix-Status, wie im Abzeichen');
   const de = t.ui.gpsPanelScatter.textContent;
   assert.ok(/Streuung 3 cm/.test(de), de);
-  assert.ok(/max 30 s: 3 cm/.test(de), de);
-  assert.ok(/2 Fixes/.test(de), `die Zahl der Fixes macht Funkluecken erkennbar: ${de}`);
-  assert.ok(/±2\.1 cm/.test(t.ui.gpsPanelAccuracy.textContent), t.ui.gpsPanelAccuracy.textContent);
+  assert.ok(/Max 30 s: 3 cm/.test(t.ui.gpsPanelScatterMax.textContent), t.ui.gpsPanelScatterMax.textContent);
+  assert.ok(/aus 2 Fixes/.test(de), `die Zahl der Fixes macht Funkluecken erkennbar: ${de}`);
+  assert.ok(/±2,1 cm/.test(t.ui.gpsPanelAccuracy.textContent), t.ui.gpsPanelAccuracy.textContent);
   assert.ok(!/\{/.test(de + t.ui.gpsPanelAccuracy.textContent), 'kein Platzhalterrest');
 
   // In der Werkzeugleiste steht sie dafuer nicht mehr.
@@ -486,14 +486,15 @@ test('Das GPS-Abzeichen schaltet die Einblendung, die Wahl ueberlebt den Neustar
   t.toggleLanguage();
   t.refreshGpsScatter();
   assert.ok(/Scatter 3 cm/.test(t.ui.gpsPanelScatter.textContent), t.ui.gpsPanelScatter.textContent);
-  assert.ok(/2 fixes/.test(t.ui.gpsPanelScatter.textContent));
+  assert.ok(/from 2 fixes/.test(t.ui.gpsPanelScatter.textContent));
   assert.ok(/Accuracy/.test(t.ui.gpsPanelAccuracy.textContent), t.ui.gpsPanelAccuracy.textContent);
+  assert.ok(/±2\.1 cm/.test(t.ui.gpsPanelAccuracy.textContent), `Englisch behaelt den Dezimalpunkt: ${t.ui.gpsPanelAccuracy.textContent}`);
 
   // Funkluecke: nur ein Fix — die Zahl steht trotzdem da.
   t.toggleLanguage();
   t.state.fixHistory = [{ x: 0, y: 0, at: clock.now() }];
   t.refreshGpsScatter();
-  assert.ok(/Streuung – · 1 Fixes/.test(t.ui.gpsPanelScatter.textContent), t.ui.gpsPanelScatter.textContent);
+  assert.ok(/Streuung – aus 1 Fix$/.test(t.ui.gpsPanelScatter.textContent), t.ui.gpsPanelScatter.textContent);
 
   // Gemerkt: der gespeicherte Zustand kommt beim naechsten Laden zurueck.
   assert.ok(JSON.parse(sandbox.localStorage.getItem('mapcreator-ardumower-view-prefs-v1')).gpsPanel,
@@ -522,7 +523,7 @@ test('Ausschalten verwirft das Gesammelte, Einschalten faengt bei null an', asyn
   feed(0.22);
   assert.strictEqual(Math.round(t.scatterMaxCm()), 11, 'der Ausreisser ist da');
   t.refreshGpsScatter();
-  assert.ok(/max 30 s: 11 cm/.test(t.ui.gpsPanelScatter.textContent), t.ui.gpsPanelScatter.textContent);
+  assert.ok(/Max 30 s: 11 cm/.test(t.ui.gpsPanelScatterMax.textContent), t.ui.gpsPanelScatterMax.textContent);
   assert.strictEqual(t.fixScatter().samples, 2, 'zwei Fixes im Fenster');
 
   // Ausschalten verwirft Maximum und Verlauf auf der Stelle.
@@ -547,7 +548,7 @@ test('Ausschalten verwirft das Gesammelte, Einschalten faengt bei null an', asyn
   const fresh = t.fixScatter();
   assert.strictEqual(fresh.samples, 0, 'der Zaehler faengt bei null an');
   assert.strictEqual(fresh.cm, null, 'und es gibt noch keine Streuung');
-  assert.ok(/Streuung – · 0 Fixes/.test(t.ui.gpsPanelScatter.textContent), t.ui.gpsPanelScatter.textContent);
+  assert.ok(/Streuung – aus 0 Fixes/.test(t.ui.gpsPanelScatter.textContent), t.ui.gpsPanelScatter.textContent);
 
   // Der geteilte Puffer ist dabei unangetastet geblieben: die Aufnahme mittelt weiter ueber
   // dieselben Fixes wie vorher. Ihn zu leeren waere eine Aenderung an der Aufnahme.
@@ -559,7 +560,144 @@ test('Ausschalten verwirft das Gesammelte, Einschalten faengt bei null an', asyn
   feed(0.02);
   assert.strictEqual(Math.round(t.scatterMaxCm()), 1, 'nur noch der neue, kleine Wert');
   t.refreshGpsScatter();
-  assert.ok(/max 30 s: 1 cm/.test(t.ui.gpsPanelScatter.textContent), t.ui.gpsPanelScatter.textContent);
+  assert.ok(/Max 30 s: 1 cm/.test(t.ui.gpsPanelScatterMax.textContent), t.ui.gpsPanelScatterMax.textContent);
+});
+
+// S-Zeile wie vom Maeher, ueber den echten Empfangsweg handleLine(): x, y = 3, FIX, 2 cm Genauigkeit.
+const scatterLine = (x) => `S,27.5,${x},3,0,2,0,0,0.1,0,0,0,0.02,31,0,29,0`;
+
+test('Streuung in zwei Zeilen: Fixzahl beim 2-s-Wert, Hoechstwert bis zum vollen Fenster vorlaeufig', async () => {
+  const { t, clock } = setup();
+  let k = 0;
+  // Abwechselnd 2 cm auseinander: Radius 1 cm in jedem Fenster ab zwei Fixes.
+  const fix = () => t.handleLine(scatterLine(k++ % 2 ? 2.02 : 2));
+  const current = () => t.ui.gpsPanelScatter.textContent;
+  const max = () => t.ui.gpsPanelScatterMax.textContent;
+  const until = async (ms, since) => { while (clock.now() - since < ms) { await clock.runFor(500); fix(); } };
+
+  t.toggleGpsPanel();
+  await clock.runFor(100);
+  fix();
+  assert.strictEqual(max(), '', 'ein Fix: noch kein Wert, also auch keine zweite Zeile');
+  await clock.runFor(500);
+  fix();                                         // erster Eintrag im leeren Verlauf
+  const since = clock.now();
+  assert.strictEqual(current(), 'Streuung 1 cm aus 2 Fixes');
+  assert.strictEqual(max(), 'Max 30 s: 1 cm · vorläufig (0 s)');
+
+  // Die Fixzahl gehoert allein zum 2-s-Wert: sie steht in Zeile 1, der Hoechstwert traegt keine.
+  assert.ok(!/Fix/.test(max()), `keine Fixzahl am Hoechstwert: ${max()}`);
+  assert.ok(!/Max|30 s/.test(current()), `kein Hoechstwert in der Zeile des 2-s-Werts: ${current()}`);
+
+  // Waehrend das Fenster fuellt, laufen die Sekunden mit.
+  await until(12000, since);
+  assert.strictEqual(max(), 'Max 30 s: 1 cm · vorläufig (12 s)');
+  t.toggleLanguage();
+  t.refreshGpsScatter();
+  assert.strictEqual(max(), '30 s max: 1 cm · provisional (12 s)');
+  t.toggleLanguage();
+  t.refreshGpsScatter();
+
+  // Bis knapp vor 30 s vorlaeufig, ab genau 30 s voll.
+  await until(29500, since);
+  assert.strictEqual(max(), 'Max 30 s: 1 cm · vorläufig (29 s)');
+  await until(30000, since);
+  assert.strictEqual(max(), 'Max 30 s: 1 cm', 'nach 30 s ist das Fenster voll');
+  assert.strictEqual(current(), 'Streuung 1 cm aus 5 Fixes');
+
+  t.toggleLanguage();
+  t.refreshGpsScatter();
+  assert.strictEqual(current(), 'Scatter 1 cm from 5 fixes');
+  assert.strictEqual(max(), '30 s max: 1 cm');
+  const all = current() + max() + t.ui.gpsPanelAccuracy.textContent;
+  assert.ok(!/\{/.test(all), `kein Platzhalterrest: ${all}`);
+});
+
+test('Der 30-s-Verlauf fuellt ab dem ersten Eintrag in einen leeren Verlauf, nicht ab dem Einschalten', async () => {
+  const { t, clock } = setup();
+  const fix = () => t.handleLine(scatterLine(2));
+  const max = () => t.ui.gpsPanelScatterMax.textContent;
+  const twoFixes = async () => { fix(); await clock.runFor(500); fix(); };
+  const run = async (ms) => { const end = clock.now() + ms; while (clock.now() < end) { await clock.runFor(500); fix(); } };
+
+  // Eingeschaltet ohne Verbindung: 40 s lang kommt nichts. Das Einschalten liegt laenger als
+  // 30 s zurueck, der Verlauf ist trotzdem leer — der erste Wert ist vorlaeufig.
+  t.toggleGpsPanel();
+  await clock.runFor(40000);
+  await twoFixes();
+  assert.strictEqual(max(), 'Max 30 s: 0 cm · vorläufig (0 s)', 'ohne Verbindung eingeschaltet');
+  await run(30000);
+  assert.strictEqual(max(), 'Max 30 s: 0 cm', 'nach 30 s mit Daten voll');
+
+  // Funkluecke unter 30 s: im Fenster liegt noch etwas, das Fenster bleibt voll.
+  await clock.runFor(20000);
+  await twoFixes();
+  assert.strictEqual(max(), 'Max 30 s: 0 cm', 'eine kurze Luecke setzt nichts zurueck');
+
+  // Funkluecke ueber 30 s: alles ist aus dem Fenster gefallen, es fuellt neu.
+  await clock.runFor(31000);
+  await twoFixes();
+  assert.strictEqual(max(), 'Max 30 s: 0 cm · vorläufig (0 s)', 'nach einer Luecke ueber 30 s');
+
+  // Aus- und wieder einschalten verwirft den Verlauf: vorlaeufig.
+  await run(30000);
+  assert.strictEqual(max(), 'Max 30 s: 0 cm');
+  t.toggleGpsPanel();
+  t.toggleGpsPanel();
+  await clock.runFor(100);
+  await twoFixes();
+  assert.strictEqual(max(), 'Max 30 s: 0 cm · vorläufig (0 s)', 'nach Aus- und Einschalten');
+
+  // Neuladen mit eingeblendetem Feld: loadViewPreferences() stellt nur gpsPanel her, die
+  // Einschaltmarke bleibt 0. Ab dem Einschalten gemessen stuende der Wert sofort als voll da.
+  const reload = setup();
+  reload.sandbox.localStorage.setItem('mapcreator-ardumower-view-prefs-v1', JSON.stringify({ gpsPanel: true }));
+  reload.t.loadViewPreferences();
+  assert.strictEqual(reload.t.state.view.gpsPanel, true);
+  assert.strictEqual(reload.t.state.gpsPanelSinceAt, 0, 'der Start setzt keine Einschaltmarke');
+  await reload.clock.runFor(40000);
+  reload.t.handleLine(scatterLine(2));
+  await reload.clock.runFor(500);
+  reload.t.handleLine(scatterLine(2));
+  assert.strictEqual(reload.t.ui.gpsPanelScatterMax.textContent, 'Max 30 s: 0 cm · vorläufig (0 s)', 'nach dem Neuladen');
+});
+
+test('Einzahl „1 Fix“ nur in der Wartezeile, Mehrzahl sonst', async () => {
+  const { t, clock } = setup();
+  const current = () => t.ui.gpsPanelScatter.textContent;
+  // Ein Fix vor dem Einschalten liegt im Puffer, zaehlt fuer die Anzeige aber nicht: null Fixes.
+  t.handleLine(scatterLine(2));
+  await clock.runFor(100);
+  t.toggleGpsPanel();
+  assert.strictEqual(current(), 'Streuung – aus 0 Fixes');
+  await clock.runFor(100);
+  t.handleLine(scatterLine(2));
+  assert.strictEqual(current(), 'Streuung – aus 1 Fix');
+  t.toggleLanguage();
+  t.refreshGpsScatter();
+  assert.strictEqual(current(), 'Scatter – from 1 fix');
+  t.toggleLanguage();
+  await clock.runFor(500);
+  t.handleLine(scatterLine(2));
+  assert.strictEqual(current(), 'Streuung 0 cm aus 2 Fixes', 'ab zwei Fixes gibt es einen Wert, und die Mehrzahl');
+
+  // Die Einzahl gibt es nur fuer die Wartezeile: mit Wert stehen immer mindestens zwei Fixes da.
+  for (const lang of ['de', 'en']) {
+    assert.deepStrictEqual(Object.keys(t.I18N[lang]).filter((key) => /^gpsScatter/.test(key) && /One$/.test(key)),
+      ['gpsScatterWaitingOne'], `${lang}: nur die Wartezeile hat eine Einzahlform`);
+  }
+});
+
+test('Die Kennzeichnung „vorlaeufig“ aendert keine Rechnung und hat je eine Schreib- und Lesestelle', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'app.js'), 'utf8');
+  const fns = [...src.matchAll(/function ([A-Za-z0-9_]+)\([^)]*\)\s*\{([\s\S]*?)\n\}/g)];
+  const using = (re) => fns.filter(([, , body]) => re.test(body)).map(([, name]) => name).sort();
+  assert.deepStrictEqual(using(/state\.scatterFillSince\s*=[^=]/), ['rememberScatter'],
+    'der Fuellbeginn wird allein beim Eintrag in den Verlauf gesetzt');
+  assert.deepStrictEqual(using(/scatterFillSince/), ['rememberScatter', 'scatterFillSeconds'],
+    'gelesen wird er nur fuer die Kennzeichnung');
+  assert.deepStrictEqual(using(/scatterFillSeconds\(/), ['gpsScatterText'],
+    'nur die Anzeige fragt, ob das Fenster noch fuellt');
 });
 
 test('Die Streuung ist reine Anzeige: Aufnahme und Automatik bleiben unberuehrt', async () => {

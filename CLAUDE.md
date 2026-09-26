@@ -1514,6 +1514,19 @@ her, `gpsPanelSinceAt` bleibt 0 — beide Puffer sind zu diesem Zeitpunkt leer, 
 verwerfen. Eine Zeitmarke dort wäre eine zweite Behauptung über denselben Zustand ohne jede
 Wirkung.
 
+**Zwei Zeilen seit v77, weil die Fixzahl dem 30-s-Wert zugeordnet wurde.** Zeile 1 `#gpsPanelScatter`
+„Streuung 3 cm aus 4 Fixes“ (2-s-Wert **samt** Fixzahl dieses Fensters), Zeile 2
+`#gpsPanelScatterMax` „Max 30 s: 11 cm“ bzw. „… · vorläufig (12 s)“. `gpsScatterText()` liefert
+`{ scatter, max }` und bleibt der einzige Leser von `fixScatter()`/`scatterMaxCm()`. Einzahl
+„1 Fix“ (`gpsScatterWaitingOne`) gibt es nur in der Wartezeile — mit Wert stehen immer ≥ 2 Fixes da.
+**Vorläufig** entscheidet allein `scatterFillSeconds()` aus `state.scatterFillSince`, und den setzt
+allein `rememberScatter()`: beim ersten Eintrag, der in einen **leeren** 30-s-Verlauf fällt (vom
+Nutzer so entschieden, **nicht** ab dem Einschalten). Nur so greift es auch nach dem Neuladen
+(`gpsPanelSinceAt` bleibt dort 0), beim Einschalten ohne Verbindung und nach einer Funklücke über
+30 s. Lücken unter 30 s setzen nichts zurück. Die Rechnung ist unverändert; ein ui-Test hält die
+eine Schreib- und die eine Lesestelle fest. Breiten im echten Chrome belegt: 320/360/411 px,
+DE/EN, drei- und vierstellige cm-Werte, 10 Fixes — nichts gekürzt (Feld höchstens 171 von 236 px).
+
 ### Undo-Historie gehört der Karte (Stand v68)
 
 **`state.undoStack` ist keine eigene Ablage mehr, sondern eine Sicht auf `state.activeMap.undoStack`**
@@ -2623,6 +2636,20 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-26: **v77 — Streuungsanzeige in zwei Zeilen, 30-s-Wert bis zum vollen Fenster
+  „vorläufig“.** Gemeldet: „max 30 s“ stand sofort da, und die Fixzahl hinter der Klammer wirkte
+  wie die Anzahl zum 30-s-Wert, zählte aber das 2-s-Fenster. Aus drei vorgelegten Varianten hat der
+  Nutzer V3 gewählt (Einzelheiten im Abschnitt „Streuung der GPS-Fixes“). Sieben
+  Bestandszusicherungen mit Freigabe auf den neuen Wortlaut umgestellt, Logik unverändert; neu
+  4 ui-Fälle (251). Gegen 12 simulierte Rückfälle geprüft, alle gefangen. Hilfe, Markup-Fallback
+  und README in beiden Sprachen nachgezogen, i18n-Parität 544/544. **Dezimalkomma** in
+  „Genauigkeit ±2,1 cm“ nach dem Muster aus `refreshControlUi()`, Englisch bleibt beim Punkt. Das
+  brach eine achte Zusicherung (`tests/ui-test.js:477`, prüfte `±2\.1 cm` für DE), die in der
+  ersten Zählung fehlte; erst nach Rückfrage umgestellt, dazu eine neue Zusicherung für den
+  englischen Punkt. Gegen drei weitere Rückfälle geprüft (kein Komma, Komma in beiden Sprachen,
+  Sprachen vertauscht), alle gefangen. Die Statuszeile („Bereit: X 2.00 m“, `formatNumber()`)
+  trägt weiterhin den Punkt — bewusst nicht angefasst. `APP_VERSION` auf `v77`.
 
 - 2026-09-26: **v76 — Demo-Modus: selbst gesteuerter Mäher statt Bahnfahrt.** Einzelheiten im
   Abschnitt „Demo-Modus: selbst gesteuerter Mäher“. **Drei Punkte vorab gemeldet und vom Nutzer
