@@ -1880,14 +1880,14 @@ function pressKey(t, direction, share, pointerId = 1) {
 
 /** Auslieferungswerte der Staffel: 8 / 15 / 25 cm/s, ohne eine einzige neue Zahl. */
 function zonedSetup() {
-  const { t, clock } = setup();
+  const { t, clock, sandbox } = setup();
   const tx = readyToDrive(t);
   t.state.view.driveSpeedMin = 0.08;
   t.state.view.driveSpeedMax = 0.25;
   t.state.view.cursorSpeedCms = 15;
   t.state.view.driveZones = true;
   t.toggleDriveControl();
-  return { t, clock, tx };
+  return { t, clock, tx, sandbox };
 }
 
 test('Die Zone haengt an der Fingerposition, nicht an der Taste allein', async () => {
@@ -1901,10 +1901,11 @@ test('Die Zone haengt an der Fingerposition, nicht an der Taste allein', async (
     t.stopDrive();
     await clock.runFor(50);
   }
-  // Die Grenzen selbst gehoeren zur jeweils aeusseren Zone.
+  // Die Grenzen selbst gehoeren zur jeweils langsameren Nachbarzone — bei aufsteigender Staffel
+  // die innere. (Die Strichflaeche drumherum pruefen die Faelle zu den Zonenstrichen.)
   const [inner, outer] = t.DRIVE_ZONES.map((zone) => zone.until);
-  assert.strictEqual(t.cursorZoneFromPointer('up', padPoint(t, 'up', inner)), 'normal');
-  assert.strictEqual(t.cursorZoneFromPointer('up', padPoint(t, 'up', outer)), 'fast');
+  assert.strictEqual(t.cursorZoneFromPointer('up', padPoint(t, 'up', inner)), 'slow');
+  assert.strictEqual(t.cursorZoneFromPointer('up', padPoint(t, 'up', outer)), 'normal');
   // Und wer ueber die Kante hinausschiebt, bleibt in der schnellsten Zone statt herauszufallen.
   assert.strictEqual(t.cursorZoneFromPointer('up', padPoint(t, 'up', 3)), 'fast');
 });
@@ -2061,13 +2062,386 @@ test('Der Schiebe-Pfad ist verdrahtet, und alle sechs Stoppwege stehen weiterhin
   // **Die harte Auflage aus dem Bericht, strukturell festgehalten:** der Schiebe-Pfad darf
   // nichts starten und nichts am Leben halten. Ein Aufruf von beginCursorDrive(),
   // startDriveHeartbeat() oder ein eigener Zeitgeber waere genau das.
-  const start = src.indexOf('function updateCursorDriveFromPointer');
-  assert.ok(start > 0, 'der Schiebe-Pfad muss eine eigene Funktion sein');
-  const body = src.slice(start, src.indexOf('\n}', start));
-  for (const verboten of ['beginCursorDrive', 'startDriveHeartbeat', 'setInterval', 'setTimeout', 'driveTimer']) {
-    assert.ok(!body.includes(verboten),
-      `der Schiebe-Pfad darf ${verboten} nicht anfassen — er veraendert eine Fahrt, er fuehrt sie nicht`);
+  // Seit dem Richtungswechsel ohne Absetzen gehoeren der Tastenwechsel und die Tastenerkennung
+  // mit zum Schiebe-Pfad — fuer sie gilt dieselbe Auflage.
+  for (const name of ['updateCursorDriveFromPointer', 'switchCursorKey', 'cursorKeyUnderPointer']) {
+    const start = src.indexOf(`function ${name}(`);
+    assert.ok(start > 0, `${name} muss eine eigene Funktion sein`);
+    const body = src.slice(start, src.indexOf('\n}', start));
+    for (const verboten of ['beginCursorDrive', 'startDriveHeartbeat', 'setInterval', 'setTimeout', 'driveTimer']) {
+      assert.ok(!body.includes(verboten),
+        `${name} darf ${verboten} nicht anfassen — der Schiebe-Pfad veraendert eine Beruehrung, er beginnt sie nicht`);
+    }
   }
+  // Die Beruehrungsmarke setzt nur das Aufsetzen, loeschen darf sie nur stopDrive().
+  const setters = [...src.matchAll(/state\.cursorTouch = (true|false)/g)].map((m) => {
+    const before = src.slice(0, m.index);
+    return `${before.slice(before.lastIndexOf('\nfunction ') + 10).split('(')[0]}:${m[1]}`;
+  });
+  assert.deepStrictEqual(setters.sort(), ['beginCursorDrive:true', 'stopDrive:false'],
+    `state.cursorTouch darf nur beginCursorDrive() setzen und nur stopDrive() loeschen, gefunden: ${setters}`);
+});
+
+/**
+ * Stellvertreter fuer die Trefferpruefung des Browsers (`document.elementFromPoint`). Er bildet
+ * **nicht** die Sanduhrform nach — die gibt im Browser allein clip-path vor, und `app.js` rechnet
+ * sie bewusst nicht nach. Er teilt das Feld nur grob so auf, dass die Bahnen dieser Tests
+ * eindeutig sind: Fugen von 4 px Breite auf beiden Diagonalen und damit auch um die Mitte, ein
+ * 4-px-Rahmen ohne Taste am Feldrand, sonst die Taste der ueberwiegenden Achse. Gemessen im
+ * echten Chrome: dort trifft elementFromPoint in der Taillenfuge und im Rahmen ebenfalls keine
+ * Taste, nur das Tastenkreuz selbst.
+ */
+function stubHitTest(t, sandbox) {
+  sandbox.__cssTokens = {
+    '--drive-pad-gap': '4px', '--drive-pad-waist': '0.5', '--drive-pad-key-min': '44px', '--drive-zone-line': '1px',
+  };
+  const keys = {};
+  for (const direction of ['up', 'down', 'left', 'right']) {
+    const key = { dataset: { direction } };
+    key.closest = () => key;
+    keys[direction] = key;
+  }
+  const pad = { closest: () => null };
+  sandbox.document.elementFromPoint = (x, y) => {
+    const rect = t.ui.driveButtons.getBoundingClientRect();
+    const dx = x - (rect.left + rect.width / 2);
+    const dy = y - (rect.top + rect.height / 2);
+    if (Math.max(Math.abs(dx), Math.abs(dy)) > rect.width / 2) return null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) > rect.width / 2 - 4) return pad;
+    if (Math.abs(Math.abs(dx) - Math.abs(dy)) < 2) return pad;
+    if (Math.abs(dy) > Math.abs(dx)) return dy < 0 ? keys.up : keys.down;
+    return dx < 0 ? keys.left : keys.right;
+  };
+  return keys;
+}
+
+const driveParts = (cmd) => cmd.split(',').slice(1, 3).map(Number);
+const isStop = (cmd) => driveParts(cmd).every((v) => v === 0);
+
+/**
+ * Kein Sprung: zwischen zwei Befehlen **verschiedener Richtung** muss ein Stopp liegen. Eine
+ * andere Zone derselben Richtung ist kein Richtungswechsel.
+ */
+function assertNoJump(commands) {
+  let previous = null;
+  for (const cmd of commands) {
+    if (isStop(cmd)) { previous = null; continue; }
+    const heading = driveParts(cmd).map(Math.sign).join('/');
+    assert.ok(previous === null || previous === heading,
+      `Sprung ohne Stopp dazwischen: ${previous} -> ${heading} (${commands.join(' | ')})`);
+    previous = heading;
+  }
+}
+
+test('Vorwaerts nach rueckwaerts in einer durchgehenden Beruehrung, mit Stopp in der Fuge', async () => {
+  const { t, clock, tx, sandbox } = zonedSetup();
+  const keys = stubHitTest(t, sandbox);
+  const upKey = pressKey(t, 'up', 0.60);
+  await clock.runFor(50);
+  const [startLinear] = driveParts(tx.last());
+  assert.ok(startLinear > 0, `Start vorwaerts, gesendet: ${tx.last()}`);
+  const heartbeat = t.state.driveTimer;
+  const before = tx.drives().length;
+
+  // Eine Bahn in 1-px-Schritten, je Schritt ein Bild (16 ms), durch die Taillenfuge hindurch.
+  // Zwischen den Schritten wird **nicht** abgesetzt: kein stopDrive(), kein beginCursorDrive().
+  const half = t.ui.driveButtons.getBoundingClientRect().height / 2;
+  let jointSteps = 0;
+  for (let share = 0.60; share >= -0.60 - 1e-9; share -= 1 / half) {
+    const point = share >= 0 ? padPoint(t, 'up', share) : padPoint(t, 'down', -share);
+    t.updateCursorDriveFromPointer({ pointerId: 1, ...point });
+    if (t.state.driveDirection === null) {
+      jointSteps += 1;
+      assert.ok(t.state.driveVector.linear === 0 && t.state.driveVector.angular === 0,
+        'in der Fuge gilt Stopp');
+    }
+    await clock.runFor(16);
+    assert.strictEqual(t.state.cursorTouch, true, 'die Beruehrung laeuft ohne Unterbrechung weiter');
+    assert.strictEqual(t.state.driveTimer, heartbeat, 'derselbe Takt wie beim Aufsetzen — es wurde nicht neu aufgesetzt');
+  }
+  assert.ok(jointSteps > 0, 'die Bahn muss die Fuge tatsaechlich treffen, sonst prueft der Fall nichts');
+
+  // Die Wirkung: der Maeher faehrt jetzt rueckwaerts — mit der Geschwindigkeit der Zone.
+  assert.strictEqual(t.state.driveDirection, 'down');
+  const sent = tx.drives().slice(before);
+  assert.ok(sent.some(isStop), `in der Fuge muss ein Stopp rausgegangen sein: ${sent.join(' | ')}`);
+  assert.ok(sent.some((cmd) => driveParts(cmd)[0] < 0), `ein Rueckwaertsbefehl muss rausgegangen sein: ${sent.join(' | ')}`);
+  // Die Zone folgt wie bisher; den letzten Zonenwechsel traegt spaetestens der Takt nach.
+  assert.strictEqual(t.state.driveVector.linear, -0.15, 'rueckwaerts in der mittleren Zone');
+  await clock.runFor(700);
+  assert.ok(tx.last().startsWith('AT+M,-0.15,0.00'), `spaetestens der Takt traegt es, gesendet: ${tx.last()}`);
+  assertNoJump(tx.drives());
+
+  // Die Zonenmarkierung ist mitgewandert, die alte Taste traegt keine mehr.
+  assert.strictEqual(upKey.dataset.zone, undefined, 'die verlassene Taste ist nicht mehr markiert');
+  assert.strictEqual(keys.down.dataset.zone, 'normal', 'die neue Taste zeigt ihre Zone');
+
+  // Der Takt traegt die neue Richtung weiter, solange gehalten wird.
+  const running = tx.drives().length;
+  await clock.runFor(1400);
+  assert.ok(tx.drives().length > running && driveParts(tx.last())[0] < 0, 'der Takt schickt weiter rueckwaerts');
+
+  // Absetzen stoppt wie immer.
+  t.stopDrive();
+  await clock.runFor(50);
+  assert.ok(tx.last().startsWith('AT+M,0,0'), `Loslassen stoppt, gesendet: ${tx.last()}`);
+  assert.strictEqual(t.state.cursorTouch, false);
+});
+
+test('Auch ein Wisch ohne Ereignis in der Fuge geht ueber einen Stopp', async () => {
+  const { t, clock, tx, sandbox } = zonedSetup();
+  stubHitTest(t, sandbox);
+  pressKey(t, 'up', 0.60);
+  await clock.runFor(50);
+  const before = tx.drives().length;
+
+  // Zwei Ereignisse, beide schon in der Rueckwaertstaste: das erste in der langsamen Zone, das
+  // zweite — noch bevor der Stopp geschrieben ist — in der schnellen.
+  t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, 'down', 0.30) });
+  t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, 'down', 0.90) });
+  assert.strictEqual(t.state.driveDirection, 'down');
+  assert.ok(t.state.driveVector.linear === 0 && t.state.driveVector.angular === 0,
+    'solange der Stopp unterwegs ist, bleibt der Vektor Stopp — auch fuer den Takt');
+
+  await clock.runFor(50);
+  const sent = tx.drives().slice(before);
+  assert.ok(sent.length >= 2 && isStop(sent[0]), `zuerst der Stopp: ${sent.join(' | ')}`);
+  assert.ok(tx.last().startsWith('AT+M,-0.25,0.00'),
+    `danach rueckwaerts in der Zone, in der der Finger jetzt liegt, gesendet: ${tx.last()}`);
+  assertNoJump(tx.drives());
+  t.stopDrive();
+});
+
+test('Zwei Tastenwechsel kurz hintereinander: es faehrt die zuletzt beruehrte Taste', async () => {
+  const { t, clock, tx, sandbox } = zonedSetup();
+  stubHitTest(t, sandbox);
+  pressKey(t, 'up', 0.60);
+  await clock.runFor(50);
+  const before = tx.drives().length;
+  // In die Fuge und gleich weiter in die Rueckwaertstaste — der erste Stopp ist dabei noch
+  // unterwegs, der zweite wartet. Der Abschluss des ersten darf nicht fuer den zweiten anfahren.
+  t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, 'up', 0) });
+  t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, 'down', 0.60) });
+  await clock.runFor(50);
+  const sent = tx.drives().slice(before);
+  assert.ok(tx.last().startsWith('AT+M,-0.15,0.00'), `zuletzt rueckwaerts: ${sent.join(' | ')}`);
+  assert.ok(isStop(sent[sent.length - 2]), `unmittelbar davor der Stopp: ${sent.join(' | ')}`);
+  assert.strictEqual(sent.filter((cmd) => !isStop(cmd)).length, 1, `genau ein Anfahren: ${sent.join(' | ')}`);
+  assertNoJump(tx.drives());
+  t.stopDrive();
+});
+
+/**
+ * Ein Punkt `px` Pixel von einer Zonengrenze entfernt, positiv nach aussen — direkt in Pixeln
+ * gerechnet, damit die Strichkante bei genau 1 px ohne Rundungsfehler getroffen wird.
+ */
+function zoneLinePoint(t, direction, until, px) {
+  const rect = t.ui.driveButtons.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const away = until * rect.height / 2 + px;
+  return direction === 'up' ? { clientX: cx, clientY: cy - away } : { clientX: cx, clientY: cy + away };
+}
+
+test('Aufsetzen auf einem Zonenstrich faehrt mit der langsameren Nachbarzone, nie mit Stopp', async () => {
+  const { t, clock, tx, sandbox } = zonedSetup();
+  stubHitTest(t, sandbox);
+  const [inner, outer] = t.DRIVE_ZONES.map((zone) => zone.until);
+  // Staffel 8 / 15 / 25 cm/s: am inneren Strich ist langsam die langsamere, am aeusseren normal.
+  // Die Strichflaeche ist --drive-zone-line = 1 px zu jeder Seite; 1,5 px liegt schon daneben.
+  // Die Kante selbst (genau 1 px) gehoert noch zum Strich.
+  const faelle = [
+    [inner, -1, 8], [inner, -0.9, 8], [inner, 0, 8], [inner, 0.9, 8], [inner, 1, 8], [inner, 1.5, 15], [inner, -1.5, 8],
+    [outer, -1, 15], [outer, -0.9, 15], [outer, 0, 15], [outer, 0.9, 15], [outer, 1, 15], [outer, 1.5, 25], [outer, -1.5, 15],
+  ];
+  for (const direction of ['up', 'down']) {
+    for (const [until, px, cms] of faelle) {
+      const key = { dataset: { direction }, closest: () => key };
+      t.beginCursorDrive(direction, {
+        pointerId: 1, target: key, currentTarget: t.ui.driveButtons, preventDefault() {},
+        ...zoneLinePoint(t, direction, until, px),
+      });
+      await clock.runFor(50);
+      const expected = (direction === 'up' ? 1 : -1) * cms / 100;
+      assert.ok(!isStop(tx.last()) && driveParts(tx.last())[0] === expected,
+        `${direction} bei Grenze ${until} ${px >= 0 ? '+' : ''}${px} px: erwartet ${expected}, gesendet ${tx.last()}`);
+      t.stopDrive();
+      await clock.runFor(50);
+    }
+  }
+
+  // "Langsamer" heisst nach Wert: bei absteigender Staffel 30 / 5 / 45 cm/s ist am inneren Strich
+  // die aeussere Zone die langsamere. Bei gleichen Werten bleibt es die innere.
+  t.state.view.driveSpeedMin = 0.30;
+  t.state.view.driveSpeedMax = 0.45;
+  t.state.view.cursorSpeedCms = 5;
+  assert.strictEqual(t.cursorZoneFromPointer('up', zoneLinePoint(t, 'up', inner, 0.5)), 'normal');
+  assert.strictEqual(t.cursorZoneFromPointer('up', zoneLinePoint(t, 'up', inner, -1.5)), 'slow',
+    'neben dem Strich gilt weiter die Lage');
+  t.state.view.driveSpeedMin = 0.15;
+  t.state.view.cursorSpeedCms = 15;
+  assert.strictEqual(t.cursorZoneFromPointer('up', zoneLinePoint(t, 'up', inner, 0.5)), 'slow');
+
+  // Ohne lesbares Token gehoert nur der genaue Grenzpunkt zum Strich.
+  sandbox.__cssTokens = {};
+  t.state.view.driveSpeedMin = 0.08;
+  t.state.view.driveSpeedMax = 0.25;
+  assert.strictEqual(t.cursorZoneFromPointer('up', zoneLinePoint(t, 'up', inner, 0)), 'slow');
+  assert.strictEqual(t.cursorZoneFromPointer('up', zoneLinePoint(t, 'up', inner, 0.5)), 'normal');
+});
+
+test('Durchgehend von langsam nach schnell: kein Stoppbefehl dazwischen', async () => {
+  const { t, clock, tx, sandbox } = zonedSetup();
+  stubHitTest(t, sandbox);
+  const half = t.ui.driveButtons.getBoundingClientRect().height / 2;
+  const [inner, outer] = t.DRIVE_ZONES.map((zone) => zone.until);
+  for (const direction of ['up', 'down']) {
+    const sign = direction === 'up' ? 1 : -1;
+    pressKey(t, direction, 0.30);
+    await clock.runFor(50);
+    const before = tx.drives().length;
+    // Halbe-Pixel-Schritte, damit mehrere Ereignisse auf jedem Strich landen.
+    for (let share = 0.30; share <= 0.95 + 1e-9; share += 0.5 / half) {
+      t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, direction, share) });
+      const onLine = [inner, outer].find((until) => Math.abs(share - until) * half <= 1);
+      if (onLine !== undefined) {
+        const expected = sign * (onLine === inner ? 0.08 : 0.15);
+        assert.strictEqual(t.state.driveVector.linear, expected,
+          `${direction} auf dem Strich ${onLine} (${share.toFixed(4)}): die langsamere Zone, nicht Stopp`);
+      }
+      assert.ok(t.state.driveVector.linear !== 0, `${direction} bei ${share.toFixed(4)}: nie Stopp`);
+      assert.strictEqual(t.state.driveDirection, direction, 'dieselbe Taste, kein Tastenwechsel');
+      await clock.runFor(16);
+    }
+    await clock.runFor(700);
+    const sent = tx.drives().slice(before);
+    assert.ok(!sent.some(isStop), `${direction}: kein Stoppbefehl zwischen den Zonen: ${sent.join(' | ')}`);
+    const speeds = [...new Set(sent.map((cmd) => driveParts(cmd)[0]))];
+    assert.ok(speeds.includes(sign * 0.15) && speeds.includes(sign * 0.25),
+      `${direction}: die Zonenwechsel gehen raus: ${sent.join(' | ')}`);
+    assert.ok(tx.last().startsWith(`AT+M,${(sign * 0.25).toFixed(2)},0.00`), `${direction}: zuletzt schnell, gesendet ${tx.last()}`);
+    t.stopDrive();
+    await clock.runFor(50);
+  }
+});
+
+test('Vorzeichenwechsel und Wechsel zum Drehen gehen weiter ueber Stopp — auch vom Zonenstrich aus', async () => {
+  const { t, clock, tx, sandbox } = zonedSetup();
+  stubHitTest(t, sandbox);
+  t.state.view.mowerWidth = 0.50;
+  t.state.view.driveTurnMax = 2.00;
+  const [inner] = t.DRIVE_ZONES.map((zone) => zone.until);
+
+  // (a) Vom inneren Strich vorwaerts in einem Schritt auf den inneren Strich rueckwaerts.
+  const key = { dataset: { direction: 'up' }, closest: () => key };
+  t.beginCursorDrive('up', {
+    pointerId: 1, target: key, currentTarget: t.ui.driveButtons, preventDefault() {}, ...zoneLinePoint(t, 'up', inner, 0),
+  });
+  await clock.runFor(50);
+  assert.ok(tx.last().startsWith('AT+M,0.08,0.00'), `Start auf dem Strich mit der langsamen Zone: ${tx.last()}`);
+  let before = tx.drives().length;
+  t.updateCursorDriveFromPointer({ pointerId: 1, ...zoneLinePoint(t, 'down', inner, 0) });
+  await clock.runFor(50);
+  let sent = tx.drives().slice(before);
+  assert.ok(sent.length >= 2 && isStop(sent[0]), `zuerst der Stopp: ${sent.join(' | ')}`);
+  assert.ok(tx.last().startsWith('AT+M,-0.08,0.00'), `dann rueckwaerts langsam: ${tx.last()}`);
+
+  // (b) Von dort auf den Links-Keil: vom Fahren zum Drehen, ebenfalls ueber Stopp.
+  before = tx.drives().length;
+  t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, 'left', 0.80) });
+  await clock.runFor(50);
+  sent = tx.drives().slice(before);
+  assert.ok(sent.length >= 2 && isStop(sent[0]), `Fahren -> Drehen ueber Stopp: ${sent.join(' | ')}`);
+  assert.ok(tx.last().startsWith('AT+M,0.00,0.50'), `dann Drehen: ${tx.last()}`);
+  assertNoJump(tx.drives());
+
+  // (c) Loslassen stoppt wie bisher.
+  t.stopDrive();
+  await clock.runFor(50);
+  assert.ok(tx.last().startsWith('AT+M,0,0'), `Loslassen stoppt: ${tx.last()}`);
+});
+
+test('Seitlich in einen Drehkeil: Stopp in der Fuge, dann Drehen', async () => {
+  const { t, clock, tx, sandbox } = zonedSetup();
+  stubHitTest(t, sandbox);
+  t.state.view.mowerWidth = 0.50;
+  t.state.view.driveTurnMax = 2.00;
+  const start = padPoint(t, 'up', 0.60);
+  pressKey(t, 'up', 0.60);
+  await clock.runFor(50);
+  // Waagerecht nach links, auf gleicher Hoehe, bis in den Links-Keil.
+  for (let x = start.clientX; x >= start.clientX - 130; x -= 1) {
+    t.updateCursorDriveFromPointer({ pointerId: 1, clientX: x, clientY: start.clientY });
+    await clock.runFor(16);
+  }
+  assert.strictEqual(t.state.driveDirection, 'left');
+  assert.ok(tx.last().startsWith('AT+M,0.00,0.50'), `dreht links wie beim Aufsetzen dort, gesendet: ${tx.last()}`);
+  assertNoJump(tx.drives());
+  t.stopDrive();
+});
+
+test('Ueber die Aussenkante hinaus bleibt es beim letzten Zustand', async () => {
+  const { t, clock, tx, sandbox } = zonedSetup();
+  stubHitTest(t, sandbox);
+  const rect = t.ui.driveButtons.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+
+  // (a) Aus der schnellen Zone ueber den Rahmen (4 px) und aus dem Feld hinaus: kein Stopp.
+  pressKey(t, 'up', 0.90);
+  await clock.runFor(50);
+  const before = tx.drives().length;
+  for (const y of [rect.top + 10, rect.top + 3, rect.top + 1, rect.top - 20]) {
+    t.updateCursorDriveFromPointer({ pointerId: 1, clientX: cx, clientY: y });
+    await clock.runFor(16);
+    assert.strictEqual(t.state.driveDirection, 'up', `bei y=${y} faehrt es weiter vorwaerts`);
+    assert.strictEqual(t.state.driveVector.linear, 0.25, `bei y=${y} bleibt die schnelle Zone`);
+  }
+  assert.ok(!tx.drives().slice(before).some(isStop), 'der Rahmen ist keine Fuge');
+  t.stopDrive();
+  await clock.runFor(50);
+
+  // (b) Aus einer Fuge heraus ueber den Rand: es bleibt beim Stopp.
+  pressKey(t, 'up', 0.60);
+  await clock.runFor(50);
+  for (let d = 50; d <= 160; d += 2) {
+    t.updateCursorDriveFromPointer({ pointerId: 1, clientX: cx - d, clientY: rect.top + rect.height / 2 - d });
+    await clock.runFor(16);
+  }
+  assert.strictEqual(t.state.driveDirection, null, 'ausserhalb des Feldes bleibt der Fugenstopp stehen');
+  assert.ok(isStop(tx.last()), `zuletzt ging ein Stopp raus: ${tx.last()}`);
+  // Auch wer im Fugenstopp absetzt, schickt sofort den Stopp des Loslassens.
+  const beforeLift = tx.drives().length;
+  t.stopDrive();
+  await clock.runFor(50);
+  assert.strictEqual(tx.drives().length, beforeLift + 1, 'Loslassen in der Fuge sendet sofort');
+  assert.ok(tx.last().startsWith('AT+M,0,0'), `Loslassen stoppt, gesendet: ${tx.last()}`);
+});
+
+test('Scheitert der Stopp beim Tastenwechsel, faehrt die neue Taste nicht an', async () => {
+  const { t, clock, tx, sandbox } = zonedSetup();
+  stubHitTest(t, sandbox);
+  pressKey(t, 'up', 0.60);
+  await clock.runFor(50);
+  const write = t.state.characteristic.writeValueWithResponse;
+  let failures = 1;
+  t.state.characteristic.writeValueWithResponse = async (chunk) => {
+    if (failures > 0) { failures -= 1; throw new Error('GATT Error Unknown'); }
+    return write(chunk);
+  };
+  const before = tx.drives().length;
+  t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, 'down', 0.60) });
+  await clock.runFor(1500);
+  const sent = tx.drives().slice(before);
+  assert.ok(sent.length > 0 && sent.every(isStop),
+    `ohne angekommenen Stopp kein Rueckwaertsbefehl, der Takt schickt Stopp: ${sent.join(' | ')}`);
+  assert.ok(String(sandbox.__lastConfirm).includes('AT+M,0,0'), 'der gescheiterte Stopp wird sofort gemeldet');
+
+  // Der naechste Tastenwechsel versucht es von vorn und faehrt dann an.
+  t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, 'up', 0.60) });
+  await clock.runFor(50);
+  assert.ok(tx.last().startsWith('AT+M,0.15,0.00'), `danach geht es normal weiter, gesendet: ${tx.last()}`);
+  assertNoJump(tx.drives());
+  t.stopDrive();
 });
 
 test('Eine absteigende Staffel wird benannt, nicht stillschweigend korrigiert', async () => {

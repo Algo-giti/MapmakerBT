@@ -2359,6 +2359,9 @@ body.menu-open .app-frame { visibility: hidden; }
      das Feld hoechstens werden darf, ohne dass das Tastenkreuz unten herauslaeuft. */
   --drive-pad-key-min: 44px;
   --drive-pad-gap: 4px;
+  /* Halbe Breite der Zonenstriche auf vorwaerts/rueckwaerts. Sie zeichnet die Striche **und**
+     sagt `app.js`, welche Flaeche zum Strich gehoert: dort gilt die langsamere Nachbarzone. */
+  --drive-zone-line: 1px;
   /* **Die Einschnuerung der Sanduhr — an genau einer Stelle.** 0 waere das alte X durch die
      Mitte, 1 ein Kreuz aus vier Rechtecken. Der Wert ist der Anteil der halben nutzbaren
      Ausdehnung `H = 50% - Fuge`, den die halbe Taille misst: bei 0,5 laufen die vier
@@ -2671,10 +2674,10 @@ body.menu-open .app-frame { visibility: hidden; }
 }
 .drive-pad.zones-on .drive-key {
   background-image: linear-gradient(var(--zone-axis),
-    transparent calc(var(--zone-inner) - 1px), var(--shell-border) calc(var(--zone-inner) - 1px),
-    var(--shell-border) calc(var(--zone-inner) + 1px), transparent calc(var(--zone-inner) + 1px),
-    transparent calc(var(--zone-outer) - 1px), var(--shell-border) calc(var(--zone-outer) - 1px),
-    var(--shell-border) calc(var(--zone-outer) + 1px), transparent calc(var(--zone-outer) + 1px));
+    transparent calc(var(--zone-inner) - var(--drive-zone-line)), var(--shell-border) calc(var(--zone-inner) - var(--drive-zone-line)),
+    var(--shell-border) calc(var(--zone-inner) + var(--drive-zone-line)), transparent calc(var(--zone-inner) + var(--drive-zone-line)),
+    transparent calc(var(--zone-outer) - var(--drive-zone-line)), var(--shell-border) calc(var(--zone-outer) - var(--drive-zone-line)),
+    var(--shell-border) calc(var(--zone-outer) + var(--drive-zone-line)), transparent calc(var(--zone-outer) + var(--drive-zone-line)));
 }
 /* Die Zone, in der gerade gefahren wird. `data-zone` setzt `refreshCursorZoneVisual()` an genau
    der gedrueckten Taste; das Band liegt ueber den Grenzstrichen. */
@@ -2683,10 +2686,10 @@ body.menu-open .app-frame { visibility: hidden; }
     transparent var(--zone-from), var(--accent-soft) var(--zone-from),
     var(--accent-soft) var(--zone-to), transparent var(--zone-to)),
     linear-gradient(var(--zone-axis),
-    transparent calc(var(--zone-inner) - 1px), var(--shell-border) calc(var(--zone-inner) - 1px),
-    var(--shell-border) calc(var(--zone-inner) + 1px), transparent calc(var(--zone-inner) + 1px),
-    transparent calc(var(--zone-outer) - 1px), var(--shell-border) calc(var(--zone-outer) - 1px),
-    var(--shell-border) calc(var(--zone-outer) + 1px), transparent calc(var(--zone-outer) + 1px));
+    transparent calc(var(--zone-inner) - var(--drive-zone-line)), var(--shell-border) calc(var(--zone-inner) - var(--drive-zone-line)),
+    var(--shell-border) calc(var(--zone-inner) + var(--drive-zone-line)), transparent calc(var(--zone-inner) + var(--drive-zone-line)),
+    transparent calc(var(--zone-outer) - var(--drive-zone-line)), var(--shell-border) calc(var(--zone-outer) - var(--drive-zone-line)),
+    var(--shell-border) calc(var(--zone-outer) + var(--drive-zone-line)), transparent calc(var(--zone-outer) + var(--drive-zone-line)));
 }
 .drive-key[data-zone="slow"] { --zone-from: 50%; --zone-to: var(--zone-inner); }
 .drive-key[data-zone="normal"] { --zone-from: var(--zone-inner); --zone-to: var(--zone-outer); }

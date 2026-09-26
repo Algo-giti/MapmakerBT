@@ -339,15 +339,59 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
 
    **`DRIVE_ZONES` ist die einzige Stelle, die die Grenzen nennt.** Das Stylesheet zeichnet die
    Striche aus `--drive-zone-inner` / `--drive-zone-outer`, die `applyDriveZonePreferences()` von
-   dort setzt — eine eigene Prozentzahl im CSS wäre eine zweite Behauptung über dieselbe Grenze,
-   und Strich und gefahrene Geschwindigkeit könnten auseinanderlaufen, ohne dass es auffällt.
+   dort setzt, in der Breite `--drive-zone-line` (1 px je Seite) — eine eigene Zahl im CSS wäre
+   eine zweite Behauptung über dieselbe Grenze, und Strich und gefahrene Geschwindigkeit könnten
+   auseinanderlaufen, ohne dass es auffällt. **Die Zonenstriche sind Trennlinien, keine Fugen
+   (Stand v75):** wer auf der Strichfläche liegt, aufgesetzt oder durchgeschoben, fährt mit der
+   **nach Wert langsameren** Nachbarzone, nie mit Stopp — die Reihenfolge beurteilt
+   `cursorZoneLadder()`, bei absteigender Staffel ist das die äußere, bei gleichen Werten die
+   innere. `cursorZoneFromPointer()` liest die Strichbreite aus demselben Token und vergleicht in
+   Pixeln, damit die Kante bei genau 1 px noch zum Strich gehört.
    Gemessen wird der Anteil der Strecke **Mitte → Außenkante**, nicht der sichtbaren Tastenlänge.
 
-   **Der Schiebe-Pfad `updateCursorDriveFromPointer()` verändert nur, er startet nie.** Ohne
-   gedrückte Richtungstaste (`state.driveDirection` ist `null` oder `'joystick'`) kehrt er ohne
-   jede Wirkung zurück; er ruft weder `beginCursorDrive()` noch `startDriveHeartbeat()` und fasst
-   keinen Zeitgeber an, kann eine beendete Fahrt also auch nicht am Leben halten. Ein ui-Test hält
-   beides fest: das Verhalten und — per Quelltextsuche über den Funktionsrumpf — die Struktur.
+   **Der Schiebe-Pfad `updateCursorDriveFromPointer()` beginnt nie eine Berührung und hält keine
+   beendete am Leben** (seit v74 so eingeengt, vom Nutzer entschieden — vorher hieß es „startet
+   nie“). Ohne laufende Berührung (`state.cursorTouch`, gesetzt **nur** von `beginCursorDrive()`,
+   gelöscht **nur** von `stopDrive()`) kehrt er ohne jede Wirkung zurück, auch während der
+   Joystick fährt. Er ruft weder `beginCursorDrive()` noch `startDriveHeartbeat()` und fasst keinen
+   Zeitgeber an. **Innerhalb** einer laufenden Berührung darf er den Mäher nach einem Fugenstopp
+   wieder anfahren lassen — das ist der Richtungswechsel ohne Absetzen (nächster Absatz). Ein
+   ui-Test hält das Verhalten fest und per Quelltextsuche die Struktur, für
+   `updateCursorDriveFromPointer()`, `switchCursorKey()` und `cursorKeyUnderPointer()`, dazu die
+   beiden einzigen Schreibstellen von `state.cursorTouch`.
+
+   **Richtungswechsel ohne Absetzen (Stand v74).** Wie beim Joystick bestimmt die Position die
+   Richtung: gleitet der Finger auf eine andere Taste, fährt der Mäher dorthin weiter — für alle
+   vier Tasten, auch seitlich in einen Drehkeil. Vorher war die Richtung beim Aufsetzen fest
+   (`state.driveDirection` nur in `beginCursorDrive()`), und `cursorZoneFromPointer()` klemmte die
+   Gegenhälfte auf die langsame Zone: wer von vorwärts nach hinten wischte, fuhr **langsam weiter
+   vorwärts** (im echten Chrome gemessen: `AT+M,0.08` bis zum Absetzen).
+   - **Welche Taste unter dem Finger liegt, sagt der Browser**: `cursorKeyUnderPointer()` fragt
+     `document.elementFromPoint()`, das der `clip-path`-Form samt Fugen folgt (gemessen: Taillenfuge
+     und Rahmen treffen keine Taste). `event.target` taugt dafür nicht — die Zeigererfassung liegt
+     auf `#driveButtons`, jedes `pointermove` zielt dorthin (gemessen). Keine Formrechnung in JS.
+   - **Tastenfuge → Stopp**, wie beim Aufsetzen — gemeint sind die ausgeschnittenen Fugen
+     **zwischen** zwei Tasten (Taille, Diagonalen), nicht die Zonenstriche innerhalb einer Taste.
+     `driveDirection` ist dort `null`, der Fahr-Takt schweigt, der Ruhe-Stopp-Takt wiederholt den
+     Stopp. Loslassen in der Fuge sendet trotzdem sofort (`wasDriving` zählt `cursorTouch` mit).
+   - **Jeder Tastenwechsel geht über einen Stopp** (`switchCursorKey()`) — also jeder
+     Vorzeichenwechsel und jeder Wechsel zwischen Fahren und Drehen —, auch ohne Ereignis in der
+     Fuge: sie ist 4 px breit, und Chrome liefert `pointermove` höchstens einmal je Bild. Ein
+     **Zonenwechsel derselben Taste** geht dagegen ohne Stopp und ungezwungen raus (die
+     160-ms-Drossel darf ihn verwerfen, spätestens der Takt trägt ihn nach). Stopp und
+     neues Anfahren gehen **erzwungen** raus; bis der Stopp geschrieben ist, bleibt
+     `state.driveVector` Stopp (Marke `state.cursorSwitch`), damit auch der Takt die neue Richtung
+     nicht vorzieht. Nur der jüngste Wechsel fährt an. **Scheitert der Stopp, fährt die neue Taste
+     nicht an** — der Takt schickt weiter Stopp, bis die Taste wechselt oder abgesetzt wird.
+     Keine Mindesthaltezeit: ob der Mäher dabei physisch zum Stehen kommt, hängt an der Firmware
+     und ist **nicht belegt**.
+   - **Außerhalb** des Feldes **und im 4-px-Rahmen** (`--drive-pad-gap`, gelesen über
+     `driveShapeTokens()`) gilt der letzte Zustand: über die Außenkante bleibt die schnellste Zone,
+     aus einer Fuge heraus bleibt der Stopp. Der Rahmen ist keine Fuge zwischen zwei Tasten; ohne
+     diese Regel hätte ein Ereignis im Rahmen die Fahrt beim Überschieben zufällig gestoppt. Ist
+     die Rahmenbreite nicht lesbar, zählt er als Fuge (im Zweifel Stopp).
+   **Nicht ohne Gerät verifizierbar:** ob der Wechsel auf dem Telefon flüssig wirkt und ob die
+   kurzen Stopps beim schnellen Umwischen als Ruckeln stören.
    **Zuerst `state.driveVector`, dann senden:** `sendDriveVector()` verwirft eine ungezwungene
    Sendung innerhalb von `DRIVE_POINTER_MIN_INTERVAL_MS` (160 ms) oder während eines laufenden
    Schreibvorgangs, der 650-ms-Takt trägt den neuen Wert dann nach. Dasselbe Muster nutzt der
@@ -369,7 +413,8 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    Tasten nur die Kantenmitten; Mitte und Ecken lagen brach. Die Flächen liegen seit v62
    übereinander (`position: absolute; inset: 0`) und werden per `clip-path` getrennt; die
    Trefferprüfung ist **die des Browsers** und folgt der Beschneidung von selbst
-   (`event.target.closest('[data-direction]')`, es gibt keinen JS-Treffertest).
+   (`event.target.closest('[data-direction]')` beim Aufsetzen, `document.elementFromPoint()`
+   während der Berührung — es gibt keinen JS-Treffertest).
 
    Seit v63 laufen die vier Trennlinien nicht mehr auf den Mittelpunkt, sondern auf die beiden
    **Taillenpunkte** `50% ± H/2`: vorwärts und rückwärts werden breite **Trapeze**, links und
@@ -2521,6 +2566,42 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-26: **v75 — Zonenstriche gehören zur langsameren Nachbarzone.** Vorab gemessen und
+  gemeldet: schon v74 erzeugte an den Zonenstrichen **keinen** Stopp — die Striche sind
+  Hintergrundverläufe auf der Taste, keine `clip-path`-Fugen; im echten Chrome 20× auf die Striche
+  aufgesetzt und je Richtung einmal durchgeschoben, nie ein Stopp. Geändert hat sich deshalb allein
+  die Zuordnung der Strichfläche: bisher innere Hälfte → innere Zone, Grenze und äußere Hälfte →
+  äußere Zone; jetzt die ganze Fläche → die nach Wert langsamere Nachbarzone (vom Nutzer so
+  entschieden, ebenso: Zonenwechsel bleiben gedrosselt, Strichbreite als Token
+  `--drive-zone-line`). Darstellung pixelgleich. Der Bestandstest „Grenzen gehören zur äußeren
+  Zone" ist mit Freigabe umgestellt; einen Bestandsfall, der einen Zonenstopp festschrieb, gab es
+  nicht. Neu: 3 ui-Fälle (237), 1 layout-Fall (48). Gegen 11 neue simulierte Rückfälle und die 13
+  aus v74 geprüft, alle gefangen. Im echten Chrome nachgemessen: jeder Aufsetzpunkt auf einem Strich
+  (±0,9 px) ergibt die langsamere Zone. `APP_VERSION` auf `v75`.
+
+- 2026-09-26: **v74 — Richtungswechsel auf den Richtungstasten ohne Absetzen.** Gemeldet: wer
+  vorwärts fuhr und nach hinten wischte, musste absetzen. Ursache belegt und im echten Chrome
+  gemessen: die Richtung stand ab dem Aufsetzen fest (`beginCursorDrive()`), der Schiebe-Pfad las
+  sie nur aus `state`, stieg ohne Zonen ganz aus, und `cursorZoneFromPointer()` klemmte die
+  Gegenhälfte auf „langsam“ — gesendet wurde bis zum Absetzen `AT+M,0.08` (vorwärts). Jetzt
+  bestimmt `cursorKeyUnderPointer()` über `document.elementFromPoint()` die Taste unter dem Finger;
+  Einzelheiten im Absatz „Richtungswechsel ohne Absetzen“. **Vier Punkte vorab gemeldet und vom
+  Nutzer entschieden:** die Regel „Schiebe-Pfad startet nie“ ist auf „beginnt nie eine Berührung“
+  eingeengt; alle vier Tasten werden mitgeführt, womit die frühere Regel „der Finger darf die
+  Taste seitlich verlassen, die Fahrt hält“ entfällt; jeder Tastenwechsel geht über einen Stopp,
+  auch wenn kein Ereignis in der 4-px-Fuge lag; außerhalb des Feldes gilt der letzte Zustand.
+  **Beim Bauen aufgefallen:** der 4-px-Rahmen am Feldrand trifft ebenfalls keine Taste (gemessen)
+  und hätte als Fuge das Überschieben der Außenkante zufällig gestoppt — er zählt deshalb als
+  „außerhalb“, wie die Entscheidung es beschreibt. Zonen, Geschwindigkeiten und Fugen unverändert.
+  Neu: 6 ui-Fälle (234), der Strukturwächter prüft jetzt auch `switchCursorKey()` und
+  `cursorKeyUnderPointer()` sowie die Schreibstellen von `state.cursorTouch`. Gegen 13 simulierte
+  Rückfälle geprüft, alle gefangen; zwei liefen zunächst durch und haben den Test geschärft (der
+  Stellvertreter für die Trefferprüfung kannte den Rahmen nicht; ein veralteter Wechsel, der den
+  jüngeren überschreibt, war ohne Fall). Im echten Chrome (Touch-Emulation) gegen die geänderte App
+  gemessen: langsam `0.15 → 0.08 → 0.00 → −0.08 → −0.15`, schneller Wisch in einem Ereignis
+  `0.15 → 0.00 → −0.15`, seitlich `0.15 → 0.00 → Drehen 0.71`, Außenkante bleibt `0.25`. Hilfe,
+  Markup-Fallback und README in beiden Sprachen ergänzt. `APP_VERSION` auf `v74`.
 
 - 2026-09-19: **v73 — die GPS-Einblendung verwirft ihre Werte beim Ausschalten.** Ein Tipp auf das
   RTK-Abzeichen leert jetzt den 30-s-Höchstwert und setzt Fenster und Fixzähler zurück; beim

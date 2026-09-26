@@ -341,7 +341,7 @@ const I18N = {
     helpQualityTitle: 'Punktqualität', helpQualityText: 'Der Rand eines Punktes zeigt, zu welchem Element er gehört, die Füllung die RTK-Qualität bei der Aufnahme.',
     helpExtendTitle: 'Kontur nachträglich erweitern', helpExtendText: 'Ist ein Perimeter oder eine Ausschlussfläche schon geschlossen, öffnet „Erweitern“ in der Kartenleiste sie wieder. Ein Hinweisstreifen über der Karte führt in drei Schritten: erst den Punkt wählen, von dem aus weitergebaut wird, dann den Punkt, an dem die Öffnung endet — die Kontur wird zwischen beiden geöffnet. Die beiden müssen keine Nachbarn sein — liegen Punkte dazwischen, werden sie gelöscht, und zwar auf der kürzeren der beiden Seiten. Der Hinweisstreifen nennt die Anzahl vorher; erst ein zweiter Tipp auf denselben Punkt führt es aus, ein Tipp auf einen anderen Punkt wählt stattdessen diesen. Der zuerst gewählte Punkt blinkt in eigener Farbe, damit er sich vom nur vorgemerkten zweiten unterscheidet. Danach nimmst du wie gewohnt weitere Punkte auf — auch mit Automatik —, sie landen genau zwischen den beiden gewählten. „Fertig“ im Hinweisstreifen schließt die Kontur wieder.',
     helpMapToolsTitle: 'Karten umbenennen & kopieren', helpMapToolsText: 'In der Kartenübersicht trägt jede Karte zwei kleine Werkzeuge: der Stift benennt sie um (nur der Name ändert sich), das Kopiersymbol legt eine vollständige, unabhängige Kopie an — mit allen Punkten, dem Positionsmodus und dem Ursprung. Die Kopie bekommt automatisch einen freien Namen, die gerade aktive Karte bleibt aktiv.',
-    helpDriveZonesTitle: 'Geschwindigkeitszonen beim Vorwärts- und Rückwärtsfahren', helpDriveZonesText: 'Die vier Tasten sind als Sanduhr geschnitten: vorwärts und rückwärts sind breite Trapeze, links und rechts schmale Keile. Der Grund ist die Bedienung — bei vor und zurück schiebt der Daumen über die ganze Länge, links und rechts sind Korrekturen auf der Stelle. Vorwärts und rückwärts sind längs dreigeteilt: innen das Minimum, in der Mitte der eingetragene Tastenwert, außen das Maximum — dieselben drei Werte, die unter Einstellungen › Fahrgeschwindigkeit ohnehin stehen, es kommt keine neue Zahl dazu. Die Zone folgt dem Finger, solange er gedrückt bleibt: weiter nach außen schieben heißt schneller, zurück zur Mitte wieder langsamer. Die Grenzen sind auf der Taste eingezeichnet, die gerade gefahrene Zone ist hervorgehoben. Jede Zone trägt einen Chevron, der nach außen breiter, flacher und kräftiger wird. Sind die Zonen abgeschaltet, steht auf vorwärts und rückwärts nur noch der eine Chevron der mittleren Geschwindigkeit — die Taste zeigt nichts, was sie nicht tut. Loslassen stoppt wie zuvor sofort. Die Einteilung lässt sich abschalten — dann gilt für beide Richtungen der eingetragene Tastenwert. Links und rechts haben keine Zonen: das Drehen auf der Stelle läuft immer mit der Hälfte des eingestellten Höchstwerts, gedeckelt durch die eingestellte Höchst-Drehrate. Die drei Werte sind frei einstellbar und werden nicht sortiert: liegt der mittlere unter dem inneren, wird das Schieben nach außen zwischendurch langsamer. Die Werte gelten dann wie eingetragen, und ein Hinweis bei den Geschwindigkeitsfeldern nennt die Reihenfolge.',
+    helpDriveZonesTitle: 'Geschwindigkeitszonen beim Vorwärts- und Rückwärtsfahren', helpDriveZonesText: 'Die vier Tasten sind als Sanduhr geschnitten: vorwärts und rückwärts sind breite Trapeze, links und rechts schmale Keile. Der Grund ist die Bedienung — bei vor und zurück schiebt der Daumen über die ganze Länge, links und rechts sind Korrekturen auf der Stelle. Vorwärts und rückwärts sind längs dreigeteilt: innen das Minimum, in der Mitte der eingetragene Tastenwert, außen das Maximum — dieselben drei Werte, die unter Einstellungen › Fahrgeschwindigkeit ohnehin stehen, es kommt keine neue Zahl dazu. Die Zone folgt dem Finger, solange er gedrückt bleibt: weiter nach außen schieben heißt schneller, zurück zur Mitte wieder langsamer. Die Grenzen sind auf der Taste eingezeichnet, die gerade gefahrene Zone ist hervorgehoben; wer genau auf einer Grenze liegt, fährt mit der langsameren der beiden Zonen — angehalten wird dort nicht. Jede Zone trägt einen Chevron, der nach außen breiter, flacher und kräftiger wird. Sind die Zonen abgeschaltet, steht auf vorwärts und rückwärts nur noch der eine Chevron der mittleren Geschwindigkeit — die Taste zeigt nichts, was sie nicht tut. Loslassen stoppt wie zuvor sofort. Die Richtung folgt dem Finger ebenso, wie beim Joystick: wer ohne abzusetzen auf eine andere Taste gleitet, fährt in deren Richtung weiter. In der Fuge zwischen zwei Tasten hält der Mäher an, und auch ein schneller Wisch über die Fuge hinweg geht über diesen Stopp. Wer über die Außenkante hinausschiebt, bleibt in Taste und Zone. Die Einteilung lässt sich abschalten — dann gilt für beide Richtungen der eingetragene Tastenwert. Links und rechts haben keine Zonen: das Drehen auf der Stelle läuft immer mit der Hälfte des eingestellten Höchstwerts, gedeckelt durch die eingestellte Höchst-Drehrate. Die drei Werte sind frei einstellbar und werden nicht sortiert: liegt der mittlere unter dem inneren, wird das Schieben nach außen zwischendurch langsamer. Die Werte gelten dann wie eingetragen, und ein Hinweis bei den Geschwindigkeitsfeldern nennt die Reihenfolge.',
     helpDriveControlTitle: 'Joystick oder Richtungstasten', helpDriveControlText: 'Der kleine Knopf neben dem Fahrfeld schaltet zwischen beidem um; er zeigt das Symbol des Modus, in den er wechselt. Bei Rechtshändern steht er links vom Feld, bei Linkshändern gespiegelt rechts – jeweils direkt über der Fahrtanzeige. Der Joystick fährt wie eine Fernsteuerung: Richtung und Stärke der Auslenkung. Die Richtungstasten kennen nur vorwärts, rückwärts und Drehen auf der Stelle — kein versehentliches Lenken beim Geradeausfahren. Sie fahren mit einer eigenen, langsamen Geschwindigkeit für genaues Rangieren, einstellbar unter Einstellungen › Fahrgeschwindigkeit.',
     helpPositionModeTitle: 'Positionsmodus', helpPositionModeText: 'Jede Karte rechnet standardmäßig in lokalen Metern („Relativ“) — dafür ist keine Eingabe nötig. In der Voreinstellung zählt Sunray diese Meter relativ zur RTK-Basisstation, nicht zu einem Punkt im Garten. „Absolut“ brauchst du nur, wenn du die Karte mit Programmen austauschen willst, die echte Weltkoordinaten erwarten: dort trägst du im Menü unter Karten einmalig die GPS-Position ein, die dem Nullpunkt entsprechen soll. Welcher Punkt das ist, legst du selbst fest — der Mäher hat von sich aus keinen. Nur wenn im Mäher über AT+P ein Bezugspunkt gesetzt wurde, rechnet er selbst gegen diesen; dann ist es genau dieser Wert. Der Ursprung gehört zur jeweiligen Karte, weil verschiedene Karten meist an verschiedenen Orten liegen. Fehlt ein gültiger Ursprung, bleibt der Export bei lokalen Metern — falsch machen kannst du dabei nichts.',
     helpLockTitle: 'Kartensperre', helpLockText: 'Fertige Karten lassen sich gegen versehentliche Änderungen sperren.',
@@ -601,7 +601,7 @@ const I18N = {
     helpQualityTitle: 'Point quality', helpQualityText: 'The outline of a point shows which element it belongs to, the fill shows the RTK quality at the time it was captured.',
     helpExtendTitle: 'Extending a closed contour', helpExtendText: 'If a perimeter or exclusion area is already closed, “Extend” in the map bar reopens it. A hint strip above the map guides you through three steps: first choose the point building continues from, then the point where the opening ends — the contour opens between them. They need not be neighbours — any points in between are deleted, on the shorter of the two sides. The hint strip states the number beforehand; only a second tap on the same point carries it out, while a tap on a different point picks that one instead. The point you chose first blinks in its own colour so it stands apart from the merely pending second one. Then capture further points as usual — automatic capture included — and they land exactly between the two you picked. “Done” in the hint strip closes the contour again.',
     helpMapToolsTitle: 'Renaming & copying maps', helpMapToolsText: 'In the map overview every map carries two small tools: the pencil renames it (only the name changes), the copy icon creates a complete, independent copy — with all points, the position mode and the origin. The copy automatically gets a free name, and the map you are working on stays active.',
-    helpDriveZonesTitle: 'Speed zones for driving forward and back', helpDriveZonesText: 'The four keys are cut as an hourglass: forward and reverse are wide trapezoids, left and right narrow wedges. The reason is how they are used — for forward and back your thumb slides along the whole length, while left and right are corrections on the spot. Forward and reverse are split lengthwise into three: the minimum on the inside, the key speed you entered in the middle, the maximum on the outside — the same three values already under Settings › Drive speed, no new number is added. The zone follows your finger while it stays down: sliding further out means faster, back towards the centre slower again. The boundaries are drawn on the key and the zone currently in use is highlighted. Each zone carries a chevron that grows wider, flatter and stronger towards the outside. With the zones switched off, forward and reverse show only the single chevron of the middle speed — the key shows nothing it does not do. Releasing stops immediately, as before. The split can be switched off — the key speed then applies to both directions. Left and right have no zones: turning on the spot always runs at half the maximum speed you set, capped by the maximum turn rate. The three values are yours to set and are never sorted: if the middle one is below the inner one, sliding outwards gets slower in between. The values then apply exactly as entered, and a note next to the speed fields spells out the order.',
+    helpDriveZonesTitle: 'Speed zones for driving forward and back', helpDriveZonesText: 'The four keys are cut as an hourglass: forward and reverse are wide trapezoids, left and right narrow wedges. The reason is how they are used — for forward and back your thumb slides along the whole length, while left and right are corrections on the spot. Forward and reverse are split lengthwise into three: the minimum on the inside, the key speed you entered in the middle, the maximum on the outside — the same three values already under Settings › Drive speed, no new number is added. The zone follows your finger while it stays down: sliding further out means faster, back towards the centre slower again. The boundaries are drawn on the key and the zone currently in use is highlighted; a finger right on a boundary drives at the slower of the two zones — it does not stop there. Each zone carries a chevron that grows wider, flatter and stronger towards the outside. With the zones switched off, forward and reverse show only the single chevron of the middle speed — the key shows nothing it does not do. Releasing stops immediately, as before. The direction follows your finger too, just like the joystick: slide onto another key without lifting and the mower continues in that direction. In the gap between two keys the mower stops, and even a fast swipe across the gap passes through this stop. Sliding past the outer edge keeps the current key and zone. The split can be switched off — the key speed then applies to both directions. Left and right have no zones: turning on the spot always runs at half the maximum speed you set, capped by the maximum turn rate. The three values are yours to set and are never sorted: if the middle one is below the inner one, sliding outwards gets slower in between. The values then apply exactly as entered, and a note next to the speed fields spells out the order.',
     helpDriveControlTitle: 'Joystick or direction keys', helpDriveControlText: 'The small button beside the drive field switches between the two; it shows the icon of the mode it switches to. For right-handed use it sits to the left of the field, for left-handed use mirrored to the right, directly above the drive status. The joystick drives like a remote control: direction and amount of deflection. The direction keys only know forward, backward and turning on the spot — no accidental steering while driving straight. They use their own slow speed for precise manoeuvring, adjustable under Settings › Drive speed.',
     helpPositionModeTitle: 'Position mode', helpPositionModeText: 'Every map works in local metres by default (“Relative”) — no input needed. By default Sunray counts those metres relative to the RTK base station, not to a point in the garden. You only need “Absolute” if you want to exchange the map with programs that expect real world coordinates: there you enter, once, in the menu under Maps, the GPS position the zero point should correspond to. Which point that is, is your choice — the mower has none of its own. Only if a reference point was set in the mower via AT+P does it compute against that one; then it is exactly that value. The origin belongs to the individual map, because different maps usually sit in different places. Without a valid origin the export stays in local metres — you cannot get this wrong.',
     helpLockTitle: 'Map lock', helpLockText: 'Finished maps can be locked against accidental changes.',
@@ -834,6 +834,11 @@ const state = {
   cursorPointerId: null,
   cursorZone: null,
   cursorKey: null,
+  // Laeuft eine Beruehrung des Tastenkreuzes? Setzt nur beginCursorDrive(), loescht nur
+  // stopDrive(). In einer Fuge ist driveDirection null, die Beruehrung laeuft trotzdem weiter.
+  cursorTouch: false,
+  // Marke des Tastenwechsels, dessen Stopp noch unterwegs ist (sonst null).
+  cursorSwitch: null,
   idleStopTimer: null,
   idleStopFailing: false,
   lastDriveSentAt: 0,
@@ -1038,8 +1043,6 @@ function cursorSpeedLimits() {
   return { min: CURSOR_SPEED_MIN_CMS, max, value };
 }
 
-const CURSOR_DIRECTIONS = ['up', 'down', 'left', 'right'];
-
 /**
  * Die drei Geschwindigkeitszonen, von der Mitte nach aussen. **Die einzige Stelle, die die
  * Grenzen nennt** — das Stylesheet bekommt sie ueber die beiden CSS-Variablen, die
@@ -1153,9 +1156,15 @@ function driveShapeTokens() {
 
 /**
  * Welche Zone liegt unter dem Finger? Gemessen als Anteil der Strecke von der Mitte des
- * Tastenkreuzes zur Aussenkante, **laengs** der gedrueckten Richtung. Quer dazu wird nichts
- * geprueft: der Finger darf die Taste seitlich verlassen, die Zeigererfassung haelt die Fahrt,
- * und der Zonenwechsel soll allein vom Schieben nach aussen kommen.
+ * Tastenkreuzes zur Aussenkante, **laengs** der gedrueckten Richtung. Quer dazu wird hier nichts
+ * geprueft: welche Taste ueberhaupt gilt, entscheidet `cursorKeyUnderPointer()`, und der
+ * Zonenwechsel soll allein vom Schieben nach aussen kommen.
+ *
+ * **Die Zonenstriche sind reine Trennlinien, keine Fugen.** Wer auf einem Strich liegt —
+ * aufgesetzt oder durchgeschoben —, faehrt mit der **langsameren** der beiden Nachbarzonen, nie
+ * mit Stopp. Langsamer heisst nach Wert, nicht nach Lage: bei absteigender Staffel ist das die
+ * aeussere Zone; das entscheidet `cursorZoneLadder()`, die einzige Stelle fuer die Reihenfolge.
+ * Zum Strich gehoert die Flaeche, die das Stylesheet zeichnet (`driveZoneLineHalf()`).
  *
  * Ohne messbares Feld (vor dem ersten Zeichnen) gilt die **mittlere** Zone — also genau das
  * Verhalten ohne Zoneneinteilung, statt einer geratenen Geschwindigkeit.
@@ -1172,7 +1181,59 @@ function cursorZoneFromPointer(direction, event) {
       : direction === 'left' ? cx - event.clientX
         : event.clientX - cx;
   const share = Math.min(1, Math.max(0, outward / half));
+  // In Pixeln verglichen, nicht im Anteil: 0,51 - 0,5 ist in Gleitkomma knapp groesser als 0,01,
+  // die Strichkante bei genau 1 px fiele sonst aus dem Strich heraus.
+  const line = driveZoneLineHalf();
+  const distance = Math.min(half, Math.max(0, outward));
+  const boundary = DRIVE_ZONES.findIndex((zone, index) => index < DRIVE_ZONES.length - 1
+    && Math.abs(distance - zone.until * half) <= line);
+  if (boundary >= 0) {
+    const { cms } = cursorZoneLadder();
+    return (cms[boundary + 1] < cms[boundary] ? DRIVE_ZONES[boundary + 1] : DRIVE_ZONES[boundary]).key;
+  }
   return (DRIVE_ZONES.find((zone) => share < zone.until) || DRIVE_ZONES[DRIVE_ZONES.length - 1]).key;
+}
+
+/**
+ * Halbe Breite der gezeichneten Zonenstriche in px, gelesen aus `--drive-zone-line` — derselben
+ * Zahl, mit der das Stylesheet die Striche zeichnet, damit gezeichnete und gefahrene Strichflaeche
+ * nicht auseinanderlaufen. Nicht lesbar: 0, dann gehoert nur der genaue Grenzpunkt zum Strich.
+ */
+function driveZoneLineHalf() {
+  const read = globalThis.getComputedStyle;
+  if (typeof read !== 'function') return 0;
+  const value = parseFloat(read(ui.driveButtons)?.getPropertyValue?.('--drive-zone-line'));
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+/**
+ * Welche Taste liegt gerade unter dem Finger? **Die Antwort gibt der Browser** — dieselbe
+ * Trefferpruefung, die beim Aufsetzen `event.target` liefert. Sie folgt der clip-path-Form samt
+ * Fugen von selbst; eine zweite Formrechnung in JS gibt es nicht. `event.target` taugt waehrend
+ * der Beruehrung nicht: die Zeigererfassung liegt auf dem ganzen Tastenkreuz, jedes `pointermove`
+ * zielt deshalb auf `#driveButtons` (im echten Chrome gemessen).
+ *
+ * Drei Antworten:
+ * - die Taste,
+ * - `null` fuer eine **Fuge** zwischen zwei Tasten — dort gilt Stopp, wie beim Aufsetzen,
+ * - `undefined` **ausserhalb** des Tastenkreuzes. Dazu zaehlt der Rahmen von `--drive-pad-gap`
+ *   am Feldrand: er ist keine Fuge zwischen zwei Tasten, sondern die Aussenkante, und wer ueber
+ *   sie hinausschiebt, bleibt in der bisherigen Taste und Zone. Ohne Trefferpruefung (kein
+ *   Browser) gibt es ebenfalls `undefined` — dann gilt der letzte Zustand weiter.
+ *
+ * Ist die Rahmenbreite nicht lesbar, zaehlt der Rahmen als Fuge: im Zweifel Stopp.
+ */
+function cursorKeyUnderPointer(event) {
+  if (typeof document.elementFromPoint !== 'function') return undefined;
+  const x = event?.clientX;
+  const y = event?.clientY;
+  const rect = ui.driveButtons.getBoundingClientRect?.();
+  if (!rect || !Number.isFinite(x) || !Number.isFinite(y)) return undefined;
+  const frame = driveShapeTokens()?.gap ?? 0;
+  const inside = x > rect.left + frame && x < rect.left + rect.width - frame
+    && y > rect.top + frame && y < rect.top + rect.height - frame;
+  if (!inside) return undefined;
+  return document.elementFromPoint(x, y)?.closest?.('[data-direction]') || null;
 }
 
 /**
@@ -1332,6 +1393,7 @@ function beginCursorDrive(direction, event) {
     return;
   }
   stopDrive({ send: false });
+  state.cursorTouch = true;
   state.driveDirection = direction;
   state.cursorPointerId = event?.pointerId ?? null;
   state.cursorKey = event?.target?.closest?.('[data-direction]') || null;
@@ -1345,38 +1407,96 @@ function beginCursorDrive(direction, event) {
 }
 
 /**
- * Der Finger wird auf der gedrueckten Taste verschoben: die Zone folgt ihm. **Diese Funktion
- * veraendert eine laufende Fahrt und startet nie eine.** Ohne gedrueckte Richtungstaste — also
- * `state.driveDirection` gleich `null` oder `'joystick'` — kehrt sie ohne jede Wirkung zurueck;
- * sie ruft weder `beginCursorDrive()` noch `startDriveHeartbeat()` und ruehrt keinen Zeitgeber
- * an, kann eine bereits beendete Fahrt also auch nicht am Leben halten.
+ * Der Finger wird verschoben, ohne abzusetzen. **Wie beim Joystick bestimmt die Position die
+ * Richtung**: gleitet er auf eine andere Taste, faehrt der Maeher in deren Richtung weiter; in
+ * einer Fuge haelt er an. Auf derselben Taste folgt die Zone dem Finger.
  *
- * Zuerst wird `state.driveVector` gesetzt, erst danach gesendet: `sendDriveVector()` verwirft
- * eine ungezwungene Sendung innerhalb von DRIVE_POINTER_MIN_INTERVAL_MS oder waehrend eines
- * laufenden Schreibvorgangs — der 650-ms-Takt traegt den neuen Wert dann nach. Genau dieses
- * Muster nutzt der Joystick in `updateJoystickFromPointer()` bereits.
+ * **Diese Funktion beginnt nie eine Beruehrung und haelt keine beendete am Leben.** Ohne
+ * laufende Beruehrung des Tastenkreuzes (`state.cursorTouch`, gesetzt nur von
+ * `beginCursorDrive()`, geloescht nur von `stopDrive()`) kehrt sie ohne jede Wirkung zurueck —
+ * auch waehrend der Joystick faehrt. Sie ruft weder `beginCursorDrive()` noch
+ * `startDriveHeartbeat()` und ruehrt keinen Zeitgeber an. Innerhalb einer laufenden Beruehrung
+ * darf sie den Maeher nach einem Fugenstopp allerdings wieder anfahren lassen: genau das ist der
+ * Richtungswechsel ohne Absetzen.
+ *
+ * Zonenwechsel: zuerst wird `state.driveVector` gesetzt, erst danach gesendet. `sendDriveVector()`
+ * verwirft eine ungezwungene Sendung innerhalb von DRIVE_POINTER_MIN_INTERVAL_MS oder waehrend
+ * eines laufenden Schreibvorgangs — der 650-ms-Takt traegt den neuen Wert dann nach. Genau dieses
+ * Muster nutzt der Joystick in `updateJoystickFromPointer()` bereits. Solange der Stopp eines
+ * Tastenwechsels noch unterwegs ist, wandert nur die Zone mit; der Vektor bleibt Stopp.
  */
 function updateCursorDriveFromPointer(event) {
-  const direction = state.driveDirection;
-  if (!CURSOR_DIRECTIONS.includes(direction)) return;
+  if (!state.cursorTouch) return;
   if (state.cursorPointerId !== null && event?.pointerId !== state.cursorPointerId) return;
-  if (!cursorZonesActive(direction)) return;
+  const key = cursorKeyUnderPointer(event);
+  if (key !== undefined && (key?.dataset?.direction ?? null) !== state.driveDirection) {
+    switchCursorKey(key, event);
+    return;
+  }
+  const direction = state.driveDirection;
+  if (!direction || !cursorZonesActive(direction)) return;
   const zone = cursorZoneFromPointer(direction, event);
   if (zone === state.cursorZone) return;
   state.cursorZone = zone;
-  state.driveVector = cursorDriveVector(direction, zone);
   refreshCursorZoneVisual();
+  if (state.cursorSwitch) return;
+  state.driveVector = cursorDriveVector(direction, zone);
   sendDriveVector(state.driveVector.linear, state.driveVector.angular)
     .catch((error) => reportBleError('AT+M', error));
+}
+
+/**
+ * Der Finger ist waehrend der Beruehrung auf eine andere Taste (`key`) oder in eine Fuge
+ * (`key === null`) geglitten. **Jeder Tastenwechsel geht ueber einen Stopp**, auch wenn kein
+ * einziges Zeigerereignis in der Fuge lag: die Fuge ist nur 4 px breit, und Chrome liefert
+ * `pointermove` hoechstens einmal je Bild — ein schneller Wisch springt sonst direkt von
+ * vorwaerts nach rueckwaerts.
+ *
+ * Der Stopp geht **erzwungen** raus (die Drossel in `sendDriveVector()` duerfte ihn sonst
+ * verwerfen). Bis er geschrieben ist, bleibt `state.driveVector` Stopp — auch der Fahr-Takt
+ * schickt in dieser Zeit nur Stopp, statt die neue Richtung vorzuziehen. Erst danach faehrt die
+ * neue Taste an, ebenfalls erzwungen, wie beim Aufsetzen. In der Fuge selbst ist
+ * `driveDirection` null: der Fahr-Takt schweigt, und der Ruhe-Stopp-Takt wiederholt den Stopp —
+ * derselbe Zustand wie beim Aufsetzen auf eine Fuge.
+ *
+ * **Scheitert der Stopp, faehrt die neue Taste nicht an.** Der Fahr-Takt schickt weiter Stopp,
+ * bis der Finger die Taste wechselt oder absetzt; gemeldet wird sofort, wie bei jedem Stopp.
+ * Eine neue Richtung ohne angekommenen Stopp waere genau der Sprung, den es zu vermeiden gilt.
+ */
+function switchCursorKey(key, event) {
+  if (!state.connected || state.demo || !state.characteristic) return;
+  const direction = key?.dataset?.direction ?? null;
+  // Markierung der bisherigen Taste abraeumen, bevor die Taste wechselt.
+  state.cursorZone = null;
+  refreshCursorZoneVisual();
+  state.driveDirection = direction;
+  state.cursorKey = key;
+  state.cursorZone = direction ? cursorZoneFromPointer(direction, event) : null;
+  refreshCursorZoneVisual();
+  const token = {};
+  state.cursorSwitch = token;
+  state.driveVector = { linear: 0, angular: 0 };
+  sendDriveVector(0, 0, { force: true }).then(() => {
+    if (state.cursorSwitch !== token) return undefined;
+    state.cursorSwitch = null;
+    if (!state.driveDirection) return undefined;
+    state.driveVector = cursorDriveVector(state.driveDirection, state.cursorZone);
+    return sendDriveVector(state.driveVector.linear, state.driveVector.angular, { force: true })
+      .catch((error) => reportBleError('AT+M', error));
+  }).catch((error) => reportBleError('AT+M,0,0', error, { immediate: true }));
 }
 
 function stopDrive({ send = true } = {}) {
   if (state.driveTimer) clearInterval(state.driveTimer);
   state.driveTimer = null;
-  const wasDriving = Boolean(state.driveDirection) || state.joystickPointerId !== null;
+  // Auch in einer Fuge (driveDirection null) war gefahren worden — der Stopp beim Loslassen
+  // geht deshalb auch dort raus.
+  const wasDriving = Boolean(state.driveDirection) || state.joystickPointerId !== null || state.cursorTouch;
   state.driveDirection = null;
   state.joystickPointerId = null;
   state.cursorPointerId = null;
+  state.cursorTouch = false;
+  state.cursorSwitch = null;
   state.cursorZone = null;
   refreshCursorZoneVisual();
   state.cursorKey = null;
@@ -6525,8 +6645,8 @@ function bindEvents() {
     const key = event.target.closest?.('[data-direction]');
     if (key) beginCursorDrive(key.dataset.direction, event);
   });
-  // Zonenwechsel beim Schieben. Bewusst **kein** eigener Startweg: updateCursorDriveFromPointer()
-  // steigt ohne gedrueckte Richtungstaste sofort wieder aus.
+  // Richtungs- und Zonenwechsel beim Schieben. Bewusst **kein** eigener Startweg:
+  // updateCursorDriveFromPointer() steigt ohne laufende Beruehrung sofort wieder aus.
   ui.driveButtons.addEventListener('pointermove', (event) => updateCursorDriveFromPointer(event));
   ['pointerup', 'pointercancel', 'lostpointercapture', 'pointerleave'].forEach((name) => ui.driveButtons
     .addEventListener(name, (event) => {

@@ -313,12 +313,20 @@ Die vier Tasten sind als **Sanduhr** geschnitten: vorwärts und rückwärts sind
 links und rechts schmale Keile. Das folgt der Bedienung – bei vor und zurück schiebt der Daumen
 über die ganze Länge, links und rechts sind Korrekturen auf der Stelle.
 
+**Die Richtung wechselt ohne Absetzen.** Wie beim Joystick zählt, wo der Finger gerade liegt: wer
+von vorwärts nach rückwärts oder seitlich auf eine Drehtaste gleitet, fährt dort weiter, ohne den
+Finger anzuheben. In der Fuge zwischen zwei Tasten hält der Mäher an – auch ein schneller Wisch,
+der die Fuge überspringt, geht über diesen Stopp. Wer über die Außenkante des Tastenfelds
+hinausschiebt, bleibt in Taste und Zone.
+
 **Vorwärts und rückwärts sind längs in drei Geschwindigkeitszonen geteilt**: innen die
 eingestellte Mindestgeschwindigkeit, in der Mitte der Tastenwert, außen die Höchstgeschwindigkeit.
 Es kommt dadurch keine neue Einstellung hinzu – es sind dieselben drei Werte, die unter
 *Einstellungen › Fahrgeschwindigkeit* ohnehin stehen. Die Zone folgt dem Finger, solange er
 gedrückt bleibt: weiter nach außen schieben heißt schneller, zurück zur Mitte wieder langsamer.
-Die Grenzen sind auf der Taste eingezeichnet, die gerade gefahrene Zone ist hervorgehoben.
+Die Grenzen sind auf der Taste eingezeichnet, die gerade gefahrene Zone ist hervorgehoben. Wer
+genau auf einer Grenze liegt, fährt mit der langsameren der beiden Zonen – angehalten wird dort
+nicht.
 Jede Zone trägt zusätzlich einen **Chevron**, der nach außen breiter, flacher und kräftiger wird.
 Die Einteilung lässt sich abschalten – dann gilt für beide Richtungen der Tastenwert, und
 vorwärts wie rückwärts zeigen nur noch den einen Chevron der mittleren Geschwindigkeit: die Taste
@@ -790,11 +798,18 @@ The four keys are cut as an **hourglass**: forward and reverse are wide trapezoi
 narrow wedges. That follows how they are used – for forward and back your thumb slides along the
 whole length, while left and right are corrections on the spot.
 
+**The direction changes without lifting.** As with the joystick, what counts is where your finger
+is right now: slide from forward to reverse, or sideways onto a turn key, and the mower continues
+there without you lifting your finger. In the gap between two keys the mower stops – even a fast
+swipe that skips over the gap passes through this stop. Sliding past the outer edge of the key
+field keeps the current key and zone.
+
 **Forward and reverse are split lengthwise into three speed zones**: the configured minimum speed
 on the inside, the key speed in the middle, the maximum speed on the outside. No new setting is
 added – these are the same three values already under *Settings › Drive speed*. The zone follows
 your finger while it stays down: sliding further out means faster, back towards the centre slower
-again. The boundaries are drawn on the key and the zone currently in use is highlighted. Each zone
+again. The boundaries are drawn on the key and the zone currently in use is highlighted; a finger
+right on a boundary drives at the slower of the two zones – it does not stop there. Each zone
 also carries a **chevron** that grows wider, flatter and stronger towards the outside. The split
 can be switched off – the key speed then applies to both directions, and forward and reverse show
 only the single chevron of the middle speed: the key shows nothing it does not do.

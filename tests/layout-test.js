@@ -1677,6 +1677,26 @@ test('Das aktive Ende der Erweiterung blinkt und traegt eine eigene Tokenfarbe',
     'unter prefers-reduced-motion wird die Farbe des aktiven Endes angetastet');
 });
 
+test('Die Zonenstriche zeichnen mit derselben Breite, die app.js der langsameren Zone gibt', () => {
+  // Welche Flaeche zum Strich gehoert, liest app.js aus `--drive-zone-line`. Stuende im Verlauf
+  // eine eigene Zahl, koennten gezeichneter und gefahrener Strich auseinanderlaufen, ohne dass
+  // es auffaellt. Und die Darstellung bleibt, was sie war: 1 px zu jeder Seite.
+  assert.strictEqual(resolve('.drive-zone .drive-control', '--drive-zone-line').value, '1px',
+    'die Strichbreite hat sich geaendert');
+  for (const sel of ['.drive-pad.zones-on .drive-key', '.drive-pad.zones-on .drive-key[data-zone]']) {
+    const value = (resolve(sel, 'background-image').value || '').replace(/\s+/g, ' ');
+    for (const grenze of ['--zone-inner', '--zone-outer']) {
+      for (const seite of ['-', '+']) {
+        assert.ok(value.includes(`calc(var(${grenze}) ${seite} var(--drive-zone-line))`),
+          `${sel}: der Strich an ${grenze} (${seite}) nimmt seine Breite nicht aus --drive-zone-line`);
+      }
+    }
+    assert.ok(!/zone-(inner|outer)\) [-+] \d/.test(value), `${sel}: im Verlauf steht wieder eine eigene Strichbreite`);
+  }
+  const app = require('fs').readFileSync(require('path').join(__dirname, '..', 'app.js'), 'utf8');
+  assert.ok(app.includes("'--drive-zone-line'"), 'app.js liest die Strichbreite nicht aus dem Stylesheet');
+});
+
 for (const c of cases) {
   try { c.fn(); } catch (error) {
     failed += 1;
