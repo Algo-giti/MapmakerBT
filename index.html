@@ -20,7 +20,7 @@
 
 <header class="appbar">
 <button aria-label="Menü" class="appbar-icon-btn" data-i18n-aria-label="menu" id="menuBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-<button aria-label="Verbindung" class="appbar-icon-btn ble-chip offline" data-i18n-aria-label="tabConnection" id="bleStatusBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 7.5 16 16.5 12 20.5V3.5l4 4L8 16.5"/></svg></button>
+<button aria-label="Verbindung" class="appbar-icon-btn ble-chip offline" data-i18n-aria-label="tabConnection" id="bleStatusBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 7.5 16 16.5 12 20.5V3.5l4 4L8 16.5"/></svg><span aria-hidden="true" class="ble-chip-demo" data-i18n="demoMark">DEMO</span></button>
 <button class="mode-chip" id="modeCycleBtn" type="button">
 <span aria-hidden="true" class="mode-dot"></span><span id="modeChipLabel">Perimeter</span>
 </button>
@@ -166,6 +166,7 @@
 <header class="menu-bar">
 <button aria-label="Zurück zur Karte" class="appbar-icon-btn" data-i18n-aria-label="backToMap" id="menuCloseBtn" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>
 <strong data-i18n="menu">Menü</strong>
+<span class="demo-mark" data-i18n="demoMark" hidden="" id="menuDemoMark">DEMO</span>
 <button aria-label="Auf Englisch umschalten" class="language-toggle" data-language="de" id="languageToggle" type="button"><span class="lang-option lang-de">DE</span><span aria-hidden="true" class="lang-divider">|</span><span class="lang-option lang-en">EN</span></button>
 </header>
 <div class="menu-scroll" id="menuScroll">
@@ -579,6 +580,7 @@
 <li data-i18n="driveHelp2">Minimale und maximale Geschwindigkeit werden im Menü unter „Fahren“ festgelegt und gelten für den vollen Ausschlag.</li>
 <li data-i18n="driveHelp3">Im Ruhezustand — Joystick losgelassen, keine Richtungstaste gehalten — schickt die App laufend alle 500 ms einen Stopp-Befehl. Geht einer davon verloren, ersetzt ihn der nächste von selbst. Wichtig bleibt trotzdem: Bei Bluetooth-Funkverlust kann die Webseite keinen neuen Stop-Befehl mehr übertragen. Deshalb nur bei Sichtkontakt arbeiten und den physischen Stop/Not-Aus am Mäher erreichbar halten.</li>
 <li data-i18n="driveHelp4">Diese App steuert bewusst kein Mähen: kein Start, kein Stop, kein Docking. Sie nimmt ausschließlich Karten auf.</li>
+<li data-i18n="driveHelp5">Zum Ausprobieren ohne Gerät gibt es den Demo-Modus im Menü unter Verbindung. Der simulierte Mäher steht still, bis du ihn mit Joystick oder Richtungstasten fährst – mit denselben Geschwindigkeiten und derselben Drehrate, die auch der echte Mäher bekäme. Er fährt überall hin wie ein ferngesteuertes Auto: Perimeter, Ausschlussflächen und Hindernisse halten ihn nicht auf, es gibt keine Warnung. Aufnahme, Telemetrie und Karte arbeiten wie gewohnt, die Position hat immer RTK FIX. Solange der Demo läuft, steht in der Kopfzeile „DEMO“ statt des Bluetooth-Zeichens und auf der Menüseite neben dem Titel. Beim nächsten Start steht er dort, wo zuletzt ein Mäher war.</li>
 </ul>
 </section>
 <section class="card help-card">

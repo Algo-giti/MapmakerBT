@@ -46,7 +46,7 @@ Die Oberfläche lässt sich zwischen **Deutsch und Englisch** umschalten; Deutsc
 - den Mäher während der Aufnahme mit dem Daumen-Joystick manuell fahren
 - wahlweise mit Joystick oder mit vier Richtungstasten fahren
 - die gesamte Bedienung für Links- oder Rechtshänder spiegeln
-- Demo-Modus zum Ausprobieren ohne Mäher
+- Demo-Modus zum Ausprobieren ohne Mäher: ein simulierter Mäher, den du selbst mit Joystick oder Richtungstasten fährst
 
 Ein Upload der fertigen Karte zu Sunray gehört **nicht** zum Funktionsumfang. MapCreator erzeugt
 die Kartendatei, das Einspielen erfolgt mit deinem gewohnten Werkzeug.
@@ -346,6 +346,15 @@ zwischendurch langsamer wird. Geändert wird davon nichts – stattdessen steht 
 Geschwindigkeitsfeldern ein Hinweis, der die drei Werte in ihrer tatsächlichen Reihenfolge nennt.
 Die Zonen bleiben dabei voll bedienbar.
 
+**Ohne Mäher ausprobieren: der Demo-Modus.** Im Menü unter *Verbindung* startest du einen
+simulierten Mäher. Er steht still, bis du ihn mit Joystick oder Richtungstasten fährst – mit
+denselben Geschwindigkeiten und derselben Drehrate, die der echte Mäher bekäme. Er fährt überall
+hin wie ein ferngesteuertes Auto: Perimeter, Ausschlussflächen und Hindernisse halten ihn nicht
+auf, es gibt keine Warnung. Aufnahme, Telemetrie und Karte arbeiten wie gewohnt, die Position hat
+immer RTK FIX. Solange der Demo läuft, steht in der Kopfzeile **DEMO** statt des
+Bluetooth-Symbols, und auf der Menüseite steht dieselbe Marke neben dem Titel. Beim nächsten
+Start steht der Mäher dort, wo zuletzt einer war.
+
 Diese App steuert bewusst **kein Mähen**: kein Start, kein Stop, kein Docking und keine
 Mähmotor-Steuerung. Sie nimmt ausschließlich Karten auf.
 
@@ -545,7 +554,7 @@ The interface can be switched between **German and English**; German is the defa
 - drive the mower manually with the thumb joystick while recording
 - drive either with the joystick or with four direction keys
 - mirror the entire layout for left- or right-handed use
-- demo mode for trying things out without a mower
+- demo mode for trying things out without a mower: a simulated mower you drive yourself with the joystick or the direction keys
 
 Uploading the finished map to Sunray is **not** part of the scope. MapCreator produces the map
 file; loading it onto the mower is done with your usual tool.
@@ -826,6 +835,14 @@ The three values are yours to set and the app does **not** sort them: if you put
 minimum above the key speed, you get a ladder that slows down in between. Nothing is changed for
 you – instead a note next to the speed fields spells out the three values in the order they
 actually apply. The zones stay fully usable.
+
+**Trying it out without a mower: demo mode.** In the menu under *Connection* you start a simulated
+mower. It stands still until you drive it with the joystick or the direction keys – at the same
+speeds and turn rate the real mower would receive. It goes anywhere like a remote-controlled car:
+perimeter, exclusions and obstacles do not stop it, and there is no warning. Capture, telemetry
+and the map work as usual; the position always has RTK FIX. While the demo runs, the header shows
+**DEMO** in place of the Bluetooth symbol, and the menu page shows the same mark next to the
+title. On the next start the mower stands where one was last seen.
 
 This app deliberately does **not** control mowing: no start, no stop, no docking and no mowing
 motor control. It only records maps.

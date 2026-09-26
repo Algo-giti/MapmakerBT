@@ -1968,6 +1968,63 @@ entfernt (vom Nutzer verworfen). Neue Karten führen kein `history`-Feld mehr; v
 in alten Karten werden nur nicht mehr gelesen. Rückgängig gibt es nur noch über den Lösch-Button
 auf der Karte („Letzten Punkt“).
 
+### Demo-Modus: selbst gesteuerter Mäher (Stand v76)
+
+**Keine Bahnfahrt mehr.** Der Demo-Mäher (`state.demoMower`: Lage, Ausrichtung, letzter Befehl samt
+Zeitpunkt) steht still, bis gefahren wird, und fährt überall hin wie ein ferngesteuertes Auto —
+keine Reaktion auf Perimeter, Ausschlussflächen oder Hindernisse, kein Anhalten, kein Abprallen,
+keine Warnung. Die Hindernisbremse der Firmware (`applyManualSlowDown()`, comm.cpp:57-77, bei
+:286 auf `AT+M` angewandt) fehlt bewusst. Ein ui-Test hält per Quelltextsuche fest, dass der
+Simulator die Karte gar nicht kennt.
+
+**Eine Weiche, sonst dieselben Wege.** Joystick, Richtungstasten und Tastenwechsel sind dieselben
+Funktionen wie am Gerät. `driveTargetReady()` ist die **einzige** Freigabe (ohne Demo wortgleich
+die frühere Bedingung `connected && characteristic`, im Demo allein `state.demo`). Der Befehl
+verzweigt an genau zwei Stellen: `sendDriveVector()` gibt dem Demo **nach** Drossel, Totzone
+und Rundung dieselben Zahlen, die als `AT+M` rausgingen (`else` ist die unveränderte Sendezeile),
+und `stopDrive()` gibt ihm den Stopp unter denselben Bedingungen wie dem Gerät (der Sendezweig
+steht wortgleich als `else if`). Die reinen Funkfunktionen — `sendSunray()`, `writeBytes()`,
+Polling, `sendIdleStop()`, `emergencyStop()`, `checkRxWatchdog()` — sind unangetastet und
+schließen den Demo weiterhin aus; ein Test prüft das und dass im Demo kein `AT+M` geschrieben
+wird, selbst mit beschreibbarer Characteristic.
+
+**Einheiten wie am Gerät:** `linear` in m/s, `angular` in rad/s, positiv links herum —
+`Motor::setLinearAngularSpeed()` rechnet daraus `linear ± angular · Radstand/2`
+(MeinSunray/sunray/motor.cpp:194-198; Master-Kopie, für MRTREE nicht belegt). Der Sollwert gilt
+sofort, `AT+M` setzt ihn ohne Rampe (comm.cpp:287 → motor.cpp:188-193); wie schnell echte Räder
+ihn erreichen, ist nicht belegt und nicht nachgebildet, ebenso wenig der 1000-ms-Timeout.
+`demoMowerAdvance()` schreibt die Lage **exakt** fort (Gerade bzw. Kreisbogen) und läuft vor jedem
+neuen Befehl bis zu dessen Eintreffen — ein Befehl zwischen zwei Takten gilt ab seinem Zeitpunkt.
+Die Ausrichtung bleibt im Bereich ±π wie `stateDelta`.
+
+**Telemetrie wie im bisherigen Demo, aber im Takt des Pollings** (`BLE_POLL_INTERVAL_MS`, 500 ms
+statt 850 ms): fester RTK FIX und dieselben Zusatzwerte, direkt in `state.telemetry`, **ohne**
+`fixHistory` — also wie bisher keine Glättung und keine Streuung im Demo (vom Nutzer so
+entschieden). **Start** an der letzten bekannten Position samt Ausrichtung (aus einem früheren
+Demo oder vom Gerät), sonst 0/0 mit Blick nach +x.
+
+**Demo-Marke, solange der Demo läuft:** im Verbindungsknopf der Kopfzeile steht „DEMO“ statt des
+Bluetooth-Zeichens, auf der Menüseite dieselbe Marke neben dem Titel (`#menuDemoMark`). Beide
+hängen allein an `state.demo` und werden nur in `refreshConnectionUi()` nachgeführt. Der Knopf
+behält seine Größe — im Browser nachgemessen 38/42 px vor und im Demo in 12
+Breiten-/Theme-Kombinationen, das Wort hat 4–6 px Luft; eine erste Fassung mit wachsendem Knopf
+kostete bei 360 px den Modus-Chip seinen vollen Namen und ist verworfen. Kein Blinken, nichts über
+der Karte. Die Farben stehen unter `.appbar .ble-chip.demo`, weil `:root[data-theme="light"] button`
+(`styles.css`, Hell-Block) und seine Media-Query-Fassung mit (0,2,1) sonst jede Statusfarbe des
+Knopfes schlagen.
+
+**Gemeldet, nicht angefasst (BLE-Pfad bzw. außerhalb des Auftrags):**
+- Startet der Demo aus einer stehenden Verbindung, läuft `disconnectBluetooth()` ungewartet weiter;
+  das nachlaufende `onDisconnected()` setzt `connected` zurück und die Verbindungsanzeige im Menü
+  auf „Nicht verbunden“, während der Demo läuft (im Harness gemessen: nach 1,5 s). Der Not-Halt ans
+  Gerät geht dabei wie bisher raus. Fahren und Marke hängen deshalb bewusst nicht an `connected`.
+- Im Hellmodus tragen **alle** Statusknöpfe der Kopfzeile keine Statusfarbe (Bluetooth offline/
+  online, RTK-Feld) — dieselbe Hell-Override-Falle wie oben; nur für die Demo-Marke behoben.
+- Das Bild `screenshots/demo_mode.jpg` der README zeigt noch den alten Demo (angesehen:
+  bernsteinfarbenes Bluetooth-Zeichen statt „DEMO“, gestrichelte Ellipsenspur der Bahnfahrt).
+**Nicht ohne Gerät verifizierbar:** ob sich Fahren im Demo so anfühlt wie am Mäher (Anfahren,
+Bremsen und Funkverzögerung sind nicht nachgebildet).
+
 ### Wichtige Funktionsgruppen in `app.js`
 
 - **BLE** (~Z. 1265–1500): `onNotification`, `writeBytes`, `sendSunray`, `initializeSunrayHandshake`,
@@ -2566,6 +2623,21 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-09-26: **v76 — Demo-Modus: selbst gesteuerter Mäher statt Bahnfahrt.** Einzelheiten im
+  Abschnitt „Demo-Modus: selbst gesteuerter Mäher“. **Drei Punkte vorab gemeldet und vom Nutzer
+  entschieden:** (1) die Fahrfunktionen waren im Demo über dieselbe Sperre abgeschaltet, die den
+  BLE-Pfad schützt (`app.js` 994/1014/1309/1391/1467/1506 vor der Änderung) — „am BLE-Pfad nichts
+  ändern“ heißt deshalb *Verhalten gleich*: eine Weiche, die Funkfunktionen unangetastet;
+  (2) Telemetrie im 500-ms-Takt des Pollings, sonst wie bisher ohne `fixHistory` (keine Glättung,
+  keine Streuung); (3) Start an der letzten bekannten Position, sonst 0/0. Im echten Chrome per
+  Touch gemessen: Joystick voll vorwärts 0,25 m/s, Drehtaste links 0,71 rad/s, vorwärts außen
+  0,25 m/s, beim Loslassen Stillstand. Die Demo-Marke ist im Browser in 4 Breiten × 3 Themes
+  nachgemessen. Neu: 10 ui-Fälle (247), 1 layout-Fall (49); kein Bestandstest geändert, ble 41 und
+  sw 9 unverändert grün. Gegen 26 neue simulierte Rückfälle geprüft, alle gefangen, dazu die 23
+  aus den Skripten zu v74/v75 erneut. Hilfe (`driveHelp5`), Markup-Fallback, Verbindungstext
+  `demoDetail` und README in beiden Sprachen; i18n-Parität maschinell geprüft (541/541).
+  `APP_VERSION` auf `v76`.
 
 - 2026-09-26: **v75 — Zonenstriche gehören zur langsameren Nachbarzone.** Vorab gemessen und
   gemeldet: schon v74 erzeugte an den Zonenstrichen **keinen** Stopp — die Striche sind

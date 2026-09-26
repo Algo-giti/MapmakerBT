@@ -2167,7 +2167,16 @@ body.menu-open .app-frame { visibility: hidden; }
 .appbar-icon-btn:active { background: var(--shell-hover); }
 .ble-chip.offline { color: var(--shell-danger); border-color: #57302f; }
 .ble-chip.online { color: var(--shell-ok); border-color: var(--shell-ok-border); background: var(--shell-ok-bg); }
-.ble-chip.demo { color: var(--shell-warn); border-color: var(--shell-warn-border); background: var(--shell-warn-bg); }
+/* Demo-Marke (Stand v76): solange der Demo laeuft, steht das Wort im Verbindungsknopf statt des
+   Bluetooth-Zeichens — es gibt ja keine Funkverbindung. Kein Blinken, nichts liegt ueber der
+   Karte, und der Knopf behaelt seine Groesse: die Kopfzeile verschiebt sich beim Umschalten
+   nicht, der Modus-Chip verliert keinen Platz (im Browser nachgemessen, 38 und 42 px).
+   Die Farben stehen zusaetzlich unter `.appbar`, weil `:root[data-theme="light"] button` und
+   seine Media-Query-Fassung mit (0,2,1) sonst jede Statusfarbe des Knopfes ueberschreiben. */
+.ble-chip-demo { display: none; }
+.ble-chip.demo svg { display: none; }
+.ble-chip.demo .ble-chip-demo { display: block; font-size: .62rem; font-weight: 800; letter-spacing: .02em; line-height: 1; }
+.appbar .ble-chip.demo { color: var(--shell-warn); border-color: var(--shell-warn-border); background: var(--shell-warn-bg); }
 
 .mode-chip {
   flex: 1 1 auto;
@@ -2839,7 +2848,24 @@ body.menu-open .app-frame { visibility: hidden; }
   background: var(--shell-bar);
   border-bottom: 1px solid var(--shell-border-soft);
 }
-.menu-bar strong { flex: 1 1 auto; font-size: 1rem; letter-spacing: .04em; text-transform: uppercase; }
+/* Der Titel nimmt nur seine eigene Breite, damit die Demo-Marke direkt daneben steht; die
+   Sprachumschaltung bleibt ueber margin-left: auto am rechten Rand. */
+.menu-bar strong { flex: 0 1 auto; min-width: 0; font-size: 1rem; letter-spacing: .04em; text-transform: uppercase; }
+.menu-bar .language-toggle { margin-left: auto; }
+.menu-bar .demo-mark {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--shell-warn-border);
+  border-radius: 999px;
+  background: var(--shell-warn-bg);
+  color: var(--shell-warn);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
 .menu-scroll {
   flex: 1 1 auto;
   /* min-height: 0 ist Pflicht: ohne das waechst das Flex-Kind auf Inhaltshoehe. */

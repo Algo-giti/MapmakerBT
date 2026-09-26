@@ -1697,6 +1697,54 @@ test('Die Zonenstriche zeichnen mit derselben Breite, die app.js der langsameren
   assert.ok(app.includes("'--drive-zone-line'"), 'app.js liest die Strichbreite nicht aus dem Stylesheet');
 });
 
+test('Die Demo-Marke ersetzt das Bluetooth-Zeichen und liegt nirgends ueber der Karte', () => {
+  // In der Kopfzeile: ohne Demo das Zeichen, mit Demo das Wort — nie beides, nie keins.
+  const inChip = (demo) => ['appbar-icon-btn', 'ble-chip', ...(demo ? ['demo'] : [])];
+  // Regeln, die nur im Demo auf den Knopf selbst greifen und eine Eigenschaft setzen.
+  const demoRulesFor = (prop) => rules.filter((rule) => rule.selectors.some((sel) => /\.ble-chip\.demo$/.test(sel))
+    && new RegExp(`(?:^|;)\\s*${prop}\\s*:`).test(rule.body)).map((rule) => rule.selectors.join(', '));
+  assert.strictEqual(effectiveStyle({ classes: ['ble-chip-demo'], ancestors: inChip(false), tag: 'span' }, 'display').value, 'none',
+    'ohne Demo steht das Wort nicht da');
+  assert.strictEqual(effectiveStyle({ classes: ['ble-chip-demo'], ancestors: inChip(true), tag: 'span' }, 'display').value, 'block',
+    'im Demo steht das Wort im Verbindungsknopf');
+  assert.strictEqual(effectiveStyle({ classes: [], ancestors: inChip(true), tag: 'svg' }, 'display').value, 'none',
+    'im Demo weicht das Bluetooth-Zeichen');
+  assert.strictEqual(effectiveStyle({ classes: [], ancestors: inChip(false), tag: 'svg' }, 'display').value, null,
+    'ohne Demo bleibt das Zeichen, wie es war');
+  // Der Knopf behaelt seine Groesse — die Kopfzeile verschiebt sich beim Umschalten nicht.
+  for (const prop of ['width', 'height', 'padding', 'padding-inline', 'min-width', 'flex']) {
+    assert.ok(demoRulesFor(prop).length === 0, `im Demo darf ${prop} am Knopf nicht wechseln: ${demoRulesFor(prop).join(', ')}`);
+  }
+
+  // Die Warnfarben setzen sich auch im Hellmodus durch: dort ueberschreibt
+  // `:root[data-theme="light"] button` (und die Media-Query-Fassung) jede schwaechere Farbe.
+  // `:not()` zaehlt in CSS nur mit seinem Argument — deshalb vor dem Zaehlen aufgeloest.
+  const real = (sel) => specificity(sel.replace(/:not\(/g, '('));
+  for (const light of [':root[data-theme="light"] button', ':root:not([data-theme="dark"]) button']) {
+    assert.ok(rules.some((rule) => rule.selectors.includes(light)), `${light} gibt es nicht mehr — Test nachziehen`);
+    assert.ok(real('.appbar .ble-chip.demo') > real(light), `die Demo-Farben verlieren im Hellmodus gegen ${light}`);
+  }
+
+  // Farben aus Tokens, damit Hell und Dunkel folgen; kein Blinken, nichts schwebt ueber der Karte.
+  for (const [sel, prop] of [['.appbar .ble-chip.demo', 'color'], ['.appbar .ble-chip.demo', 'background'], ['.appbar .ble-chip.demo', 'border-color'],
+    ['.menu-bar .demo-mark', 'color'], ['.menu-bar .demo-mark', 'background'], ['.menu-bar .demo-mark', 'border']]) {
+    assert.ok(/var\(--shell-warn/.test(resolve(sel, prop).value || ''), `${sel} ${prop} muss aus den Warn-Tokens kommen`);
+  }
+  const demoRules = rules.filter((rule) => rule.selectors.some((sel) => /demo/.test(sel)));
+  assert.ok(demoRules.length >= 4, 'die Regeln der Marke fehlen');
+  for (const rule of demoRules) {
+    assert.ok(!/animation|transition/.test(rule.body), `${rule.selectors.join(', ')}: die Marke blinkt nicht und blendet nicht`);
+    assert.ok(!/position\s*:\s*(absolute|fixed)/.test(rule.body), `${rule.selectors.join(', ')}: die Marke liegt nicht ueber anderem Inhalt`);
+    assert.ok(!/display\s*:[^;]*!important/.test(rule.body), `${rule.selectors.join(', ')}: [hidden] muss die Marke ausblenden koennen`);
+  }
+  // Auf der Menueseite direkt neben dem Titel; die Sprachumschaltung bleibt am rechten Rand.
+  assert.strictEqual(resolve('.menu-bar strong', 'flex').value, '0 1 auto', 'der Titel nimmt nur seine eigene Breite');
+  assert.strictEqual(resolve('.menu-bar .language-toggle', 'margin-left').value, 'auto');
+  const bar = html.slice(html.indexOf('<header class="menu-bar">'), html.indexOf('</header>', html.indexOf('<header class="menu-bar">')));
+  assert.ok(bar.indexOf('data-i18n="menu"') < bar.indexOf('id="menuDemoMark"')
+    && bar.indexOf('id="menuDemoMark"') < bar.indexOf('id="languageToggle"'), 'Reihenfolge: Titel, Marke, Sprache');
+});
+
 for (const c of cases) {
   try { c.fn(); } catch (error) {
     failed += 1;

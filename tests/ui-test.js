@@ -62,7 +62,9 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'UNDO_STACK_BYTE_BUDGET', 'trimUndoStack', 'mapWithoutUndo', 'geometrySnapshot', 'loadMaps',
   'setActiveMapById', 'deleteActiveMap', 'saveActiveMap', 'duplicateMapById',
   'captureTarget', 'getActivePointArray', 'geoJsonToMap',
-  'playCaptureTone', 'primeCaptureTone'];
+  'playCaptureTone', 'primeCaptureTone',
+  'startDemo', 'stopDemo', 'beginJoystick', 'driveTargetReady', 'demoMowerAdvance', 'sendDriveVector',
+  'connectBluetooth', 'refreshConnectionUi', 'applyLanguage'];
 
 /** Minimaler IndexedDB-Ersatz, damit saveActiveMap() im Test durchlaeuft. */
 function fakeDb() {
@@ -5874,6 +5876,357 @@ test('Der Schalter steht bei den Aufnahme-Einstellungen und ueberlebt den Neusta
   assert.strictEqual(t.state.view.captureTone, false, 'aus bleibt aus');
   t.applyViewPreferencesToUi();
   assert.strictEqual(elements.get('captureTone').checked, false, 'und der Schalter zeigt es');
+});
+
+
+// === Demo: ein selbst gesteuerter Maeher statt der Bahnfahrt (v76) ==========
+/** Joystick-Ereignis bei einer Auslenkung (nx, ny) in Anteilen des Ausschlags; ny < 0 ist vorwaerts. */
+function joystickAt(t, nx, ny, pointerId = 7) {
+  const rect = t.ui.driveJoystick.getBoundingClientRect();
+  const radius = Math.max(20, Math.min(rect.width, rect.height) / 2 - 34);
+  return {
+    pointerId, preventDefault() {},
+    clientX: rect.left + rect.width / 2 + nx * radius, clientY: rect.top + rect.height / 2 + ny * radius,
+  };
+}
+
+/** Auslieferungswerte der Fahrgeschwindigkeit, wie in zonedSetup(), aber ohne Verbindung. */
+function demoSetup() {
+  const ctx = setup();
+  ctx.t.state.view.driveSpeedMin = 0.08;
+  ctx.t.state.view.driveSpeedMax = 0.25;
+  ctx.t.state.view.driveTurnMax = 1.15;
+  ctx.t.state.view.cursorSpeedCms = 15;
+  ctx.t.state.view.driveZones = true;
+  ctx.t.state.view.mowerWidth = 0.35;
+  return ctx;
+}
+
+const near = (actual, expected, label, eps = 1e-9) =>
+  assert.ok(Math.abs(actual - expected) <= eps, `${label}: erwartet ${expected}, ist ${actual}`);
+
+test('Demo: ohne Fahrbefehl steht der Maeher still, die Position kommt im Takt des Pollings', async () => {
+  const { t, clock } = demoSetup();
+  // setup() hinterlaesst eine letzte Position 2/3; die Ausrichtung soll mitkommen.
+  t.state.telemetry.delta = 0.7;
+  t.startDemo();
+  assert.strictEqual(t.state.demo, true);
+  assert.deepStrictEqual([t.state.telemetry.x, t.state.telemetry.y, t.state.telemetry.delta], [2, 3, 0.7],
+    'er steht dort, wo zuletzt ein Maeher war, mit derselben Ausrichtung');
+  const start = t.state.telemetry.receivedAt;
+  for (let i = 1; i <= 20; i += 1) {
+    await clock.runFor(t.BLE_POLL_INTERVAL_MS);
+    assert.strictEqual(t.state.telemetry.receivedAt, start + i * t.BLE_POLL_INTERVAL_MS,
+      'jede neue Position kommt im Takt des echten Pollings, nicht mehr alle 850 ms');
+    assert.deepStrictEqual([t.state.telemetry.x, t.state.telemetry.y, t.state.telemetry.delta], [2, 3, 0.7],
+      `nach ${i * t.BLE_POLL_INTERVAL_MS} ms ohne Fahrbefehl hat er sich bewegt — die Bahnfahrt ist zurueck`);
+  }
+  // Die uebrigen Werte wie im bisherigen Demo: fester RTK FIX und dieselben Zusatzwerte ...
+  const tel = t.state.telemetry;
+  assert.deepStrictEqual([tel.solution, tel.age, tel.accuracy, tel.visibleSatellites, tel.visibleSatellitesDgps, tel.batteryVoltage],
+    [2, 0.15, 0.02, 39, 35, 26.4]);
+  assert.strictEqual(t.telemetryHasFix(), true, 'die Aufnahme sieht einen Fix');
+  // ... und wie bisher an fixHistory vorbei: keine Glaettung, keine Streuung.
+  assert.strictEqual(t.state.fixHistory.length, 0, 'der Demo fuellt fixHistory nicht, wie bisher');
+  assert.strictEqual(t.smoothedPosition(), null);
+  t.stopDemo();
+
+  // Ohne bekannte Position steht er im Nullpunkt und blickt nach +x.
+  const fresh = demoSetup();
+  Object.assign(fresh.t.state.telemetry, { x: null, y: null, delta: null });
+  fresh.t.startDemo();
+  assert.deepStrictEqual([fresh.t.state.telemetry.x, fresh.t.state.telemetry.y, fresh.t.state.telemetry.delta], [0, 0, 0]);
+  fresh.t.stopDemo();
+});
+
+test('Demo: Joystick und Richtungstasten bekommen genau die Zahlen, die als AT+M rausgingen', async () => {
+  // Dieselbe Eingabe einmal am (gestubbten) Geraet und einmal im Demo — der simulierte Maeher
+  // muss exakt die Geschwindigkeit und Drehrate uebernehmen, die das Geraet bekaeme.
+  const eingaben = [
+    ['Joystick voll vorwaerts', (t) => t.beginJoystick(joystickAt(t, 0, -1))],
+    ['Joystick halb vorwaerts rechts', (t) => t.beginJoystick(joystickAt(t, 0.5, -0.5))],
+    ['Joystick rueckwaerts links', (t) => t.beginJoystick(joystickAt(t, -0.7, 0.3))],
+    ['Joystick Drehen auf der Stelle', (t) => t.beginJoystick(joystickAt(t, 1, 0))],
+    ['Taste vorwaerts innen', (t) => pressKey(t, 'up', 0.10)],
+    ['Taste vorwaerts Mitte', (t) => pressKey(t, 'up', 0.60)],
+    ['Taste vorwaerts aussen', (t) => pressKey(t, 'up', 0.90)],
+    ['Taste rueckwaerts aussen', (t) => pressKey(t, 'down', 0.90)],
+    ['Drehtaste links', (t) => pressKey(t, 'left', 0.90)],
+    ['Drehtaste rechts', (t) => pressKey(t, 'right', 0.90)],
+  ];
+  for (const [name, action] of eingaben) {
+    const geraet = demoSetup();
+    const tx = readyToDrive(geraet.t);
+    action(geraet.t);
+    await geraet.clock.runFor(50);
+    const [, l, a] = tx.last().split(',');
+
+    const demo = demoSetup();
+    demo.t.startDemo();
+    action(demo.t);
+    await demo.clock.runFor(50);
+    const m = demo.t.state.demoMower;
+    assert.deepStrictEqual([m.linear, m.angular], [Number(l), Number(a)],
+      `${name}: Geraet bekaeme ${tx.last()}, der Demo-Maeher faehrt mit ${m.linear}/${m.angular}`);
+    assert.ok(m.linear !== 0 || m.angular !== 0, `${name}: im Demo muss sich etwas bewegen`);
+    demo.t.stopDemo();
+  }
+});
+
+test('Demo: der Maeher faehrt, solange gefahren wird, und haelt beim Loslassen an', async () => {
+  const { t, clock } = demoSetup();
+  t.startDemo();
+  assert.strictEqual(t.ui.driveJoystick.classList.contains('unavailable'), false, 'der Joystick ist im Demo bedienbar');
+  assert.strictEqual(t.ui.driveState.textContent, t.tr('driveIdle'), 'keine Aufforderung mehr, erst zu verbinden');
+
+  // Joystick voll vorwaerts, Blick nach +x: 0,25 m/s, nach 2 s also 0,5 m weiter.
+  t.beginJoystick(joystickAt(t, 0, -1));
+  await clock.runFor(2000);
+  near(t.state.telemetry.x, 2.5, 'x nach 2 s mit 0,25 m/s');
+  near(t.state.telemetry.y, 3, 'y bleibt');
+  t.stopDrive();
+  await clock.runFor(2000);
+  near(t.state.telemetry.x, 2.5, 'nach dem Loslassen steht er');
+  assert.deepStrictEqual([t.state.demoMower.linear, t.state.demoMower.angular], [0, 0]);
+
+  // Drehtaste links: auf der Stelle, mit der Drehrate der Taste (0,125 m/s / 0,175 m → 0,71 rad/s).
+  pressKey(t, 'left', 0.9);
+  await clock.runFor(1000);
+  near(t.state.telemetry.delta, 0.71, 'eine Sekunde links herum');
+  near(t.state.telemetry.x, 2.5, 'Drehen auf der Stelle verschiebt nichts');
+  near(t.state.telemetry.y, 3, 'Drehen auf der Stelle verschiebt nichts');
+  t.stopDrive();
+
+  // Vorwaerts in die neue Richtung — die Ausrichtung zaehlt.
+  pressKey(t, 'up', 0.9);
+  await clock.runFor(2000);
+  near(t.state.telemetry.x, 2.5 + 0.5 * Math.cos(0.71), 'vorwaerts in Blickrichtung, x');
+  near(t.state.telemetry.y, 3 + 0.5 * Math.sin(0.71), 'vorwaerts in Blickrichtung, y');
+  t.stopDrive();
+  t.stopDemo();
+});
+
+test('Demo: der Richtungswechsel ohne Absetzen wirkt auch auf den simulierten Maeher', async () => {
+  const { t, clock, sandbox } = demoSetup();
+  stubHitTest(t, sandbox);
+  t.startDemo();
+  pressKey(t, 'up', 0.9);
+  await clock.runFor(1000);
+  near(t.state.telemetry.x, 2.25, 'eine Sekunde vorwaerts aussen');
+  // Ohne Absetzen in die Rueckwaertstaste: ueber den Stopp, dann rueckwaerts.
+  t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, 'down', 0.9) });
+  await clock.runFor(0);
+  assert.strictEqual(t.state.driveDirection, 'down');
+  assert.deepStrictEqual([t.state.demoMower.linear, t.state.demoMower.angular], [-0.25, 0], 'jetzt faehrt er rueckwaerts');
+  await clock.runFor(1000);
+  near(t.state.telemetry.x, 2, 'und kommt eine Sekunde spaeter wieder am Start an');
+  // Seitlich in den Drehkeil, weiter ohne Absetzen.
+  t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, 'left', 0.9) });
+  await clock.runFor(0);
+  assert.deepStrictEqual([t.state.demoMower.linear, t.state.demoMower.angular], [0, 0.71], 'und dreht auf der Stelle');
+  t.stopDrive();
+  t.stopDemo();
+});
+
+test('Demo: Kreisbogen und Befehlswechsel werden exakt fortgeschrieben', async () => {
+  const { t, clock } = demoSetup();
+  t.startDemo();
+  // (a) Ein voller Kreis fuehrt an den Ausgangspunkt zurueck, ein halber auf die Gegenseite.
+  const at = clock.now();
+  t.state.demoMower = { x: 1, y: 2, delta: 0, linear: 0.25, angular: Math.PI / 2, at };
+  const r = 0.25 / (Math.PI / 2);
+  t.demoMowerAdvance(at + 1000);
+  near(t.state.demoMower.x, 1 + r, 'Viertelkreis x'); near(t.state.demoMower.y, 2 + r, 'Viertelkreis y');
+  near(t.state.demoMower.delta, Math.PI / 2, 'Viertelkreis Ausrichtung');
+  t.demoMowerAdvance(at + 2000);
+  near(t.state.demoMower.x, 1, 'Halbkreis x'); near(t.state.demoMower.y, 2 + 2 * r, 'Halbkreis y');
+  t.demoMowerAdvance(at + 4000);
+  near(t.state.demoMower.x, 1, 'voller Kreis x'); near(t.state.demoMower.y, 2, 'voller Kreis y');
+  near(Math.abs(Math.sin(t.state.demoMower.delta)), 0, 'voller Kreis Ausrichtung');
+  assert.ok(Math.abs(t.state.demoMower.delta) <= Math.PI, 'die Ausrichtung bleibt im Bereich ±π');
+  t.stopDemo();
+
+  // (b) Ein Befehl zwischen zwei Positionstakten gilt ab seinem Eintreffen, nicht erst ab dem Takt.
+  const b = demoSetup();
+  b.t.startDemo();
+  await b.t.sendDriveVector(0.25, 0, { force: true });
+  await b.clock.runFor(1250);
+  await b.t.sendDriveVector(0, 1, { force: true });
+  await b.clock.runFor(1250);
+  near(b.t.state.telemetry.x, 2 + 0.25 * 1.25, '1,25 s geradeaus, dann nur noch gedreht');
+  near(b.t.state.telemetry.y, 3, 'beim Drehen auf der Stelle aendert sich y nicht');
+  near(b.t.state.telemetry.delta, 1.25, '1,25 s mit 1 rad/s');
+  b.t.stopDemo();
+});
+
+test('Demo: der Maeher faehrt ueber Perimeter und Ausschlussflaechen hinweg, ohne jede Reaktion', async () => {
+  const { t, clock, sandbox } = demoSetup();
+  const map = t.state.activeMap;
+  map.perimeter = [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }, { x: 0, y: 4 }];
+  map.perimeterClosed = true;
+  map.exclusions = [{ id: 'ex1', name: 'Ausschluss 1', closed: true,
+    points: [{ x: 2.5, y: 1.5 }, { x: 3, y: 1.5 }, { x: 3, y: 2.5 }, { x: 2.5, y: 2.5 }] }];
+  Object.assign(t.state.telemetry, { x: 1, y: 2, delta: 0 });
+  t.startDemo();
+  t.beginJoystick(joystickAt(t, 0, -1));
+  // 20 s mit 0,25 m/s: durch die Ausschlussflaeche bei x 2,5–3 und bei x 4 aus dem Perimeter.
+  let previous = t.state.telemetry.x;
+  for (let i = 0; i < 40; i += 1) {
+    await clock.runFor(t.BLE_POLL_INTERVAL_MS);
+    near(t.state.telemetry.x - previous, 0.125, `Schritt ${i}: jeder Takt 12,5 cm weiter, kein Anhalten und kein Abprallen`);
+    near(t.state.telemetry.y, 2, `Schritt ${i}: keine Ablenkung`);
+    assert.strictEqual(t.state.demoMower.linear, 0.25, `Schritt ${i}: der Befehl steht unveraendert`);
+    previous = t.state.telemetry.x;
+  }
+  near(t.state.telemetry.x, 6, 'nach 20 s zwei Meter ausserhalb des Perimeters');
+  assert.strictEqual(sandbox.__lastConfirm, undefined, 'keine Meldung, keine Rueckfrage');
+  t.stopDrive();
+  t.stopDemo();
+
+  // Und strukturell: der Simulator kennt die Karte gar nicht.
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  for (const name of ['startDemo', 'demoMowerAdvance', 'demoMowerCommand', 'demoTelemetryTick']) {
+    const start = src.indexOf(`function ${name}(`);
+    assert.ok(start > 0, `${name} muss eine eigene Funktion sein`);
+    const body = src.slice(src.indexOf('{', start), src.indexOf('\n}', start));
+    for (const verboten of ['activeMap', 'perimeter', 'exclusion', 'pointInPolygon', 'nearestBoundaryPoint', 'showNotice', 'askConfirm']) {
+      assert.ok(!body.includes(verboten), `${name} darf ${verboten} nicht anfassen — der Demo-Maeher reagiert auf nichts`);
+    }
+  }
+});
+
+test('Demo: die Weiche — im Demo geht kein Fahrbefehl an das Geraet, ausserhalb bleibt alles wie es war', async () => {
+  const { t, clock } = demoSetup();
+  // (a) Ausserhalb des Demos ist die Freigabe wortgleich die fruehere Bedingung.
+  for (const connected of [false, true]) {
+    for (const characteristic of [null, {}]) {
+      Object.assign(t.state, { demo: false, connected, characteristic });
+      assert.strictEqual(t.driveTargetReady(), !(!connected || false || !characteristic),
+        `ohne Demo, connected=${connected}, characteristic=${Boolean(characteristic)}`);
+      Object.assign(t.state, { demo: true });
+      assert.strictEqual(t.driveTargetReady(), true, 'im Demo immer — unabhaengig von connected und characteristic');
+    }
+  }
+  Object.assign(t.state, { demo: false, connected: false, characteristic: null });
+
+  // (b) Selbst mit einer beschreibbaren Characteristic schreibt der Demo nichts.
+  t.startDemo();
+  const tx = readyToDrive(t);
+  t.state.demo = true;
+  t.beginJoystick(joystickAt(t, 0.3, -0.8));
+  await clock.runFor(2000);
+  t.stopDrive();
+  pressKey(t, 'up', 0.9);
+  await clock.runFor(700);
+  t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, 'up', 0.1) });
+  await clock.runFor(700);
+  t.stopDrive();
+  await clock.runFor(1000);
+  assert.deepStrictEqual(tx.drives(), [], 'im Demo darf kein einziges AT+M geschrieben werden');
+  t.stopDemo();
+
+  // (c) Strukturell: genau eine Weiche, und der Sendezweig ist die unveraenderte Zeile.
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  const body = (name) => { const s = src.indexOf(`function ${name}(`); return src.slice(s, src.indexOf('\n}', s)); };
+  assert.ok(/if \(state\.demo\) demoMowerCommand\(Number\(l\.toFixed\(2\)\), Number\(a\.toFixed\(2\)\)\);\s*else await sendSunray\(`AT\+M,\$\{l\.toFixed\(2\)\},\$\{a\.toFixed\(2\)\}`, \{ skipIfBusy: !force \}\);/
+    .test(body('sendDriveVector')), 'sendDriveVector: Demo oder AT+M, dieselben gerundeten Zahlen');
+  assert.ok(body('stopDrive').includes("} else if (send && state.connected && !state.demo && state.characteristic && wasDriving) {\n    // Ein nicht angekommener Stopp ist sicherheitsrelevant: immer sofort melden.\n    sendSunray('AT+M,0,0')"),
+    'stopDrive: der Stopp ans Geraet steht unveraendert');
+  // Jeder Aufruf (nicht die Definition) samt der Funktion, in der er steht — auch `async function`.
+  const callers = [...src.matchAll(/(?<!function )demoMowerCommand\(/g)].map((m) => {
+    const heads = [...src.slice(0, m.index).matchAll(/\n(?:async )?function (\w+)\(/g)];
+    return heads[heads.length - 1][1];
+  });
+  assert.deepStrictEqual([...new Set(callers)].sort(), ['sendDriveVector', 'stopDrive'],
+    `der Demo-Maeher bekommt Befehle nur ueber die beiden Sendestellen, gefunden: ${callers}`);
+  // Die reinen Funkfunktionen tragen ihre Sperre gegen den Demo weiterhin wortgleich.
+  for (const name of ['sendIdleStop', 'emergencyStop', 'checkRxWatchdog']) {
+    assert.ok(body(name).includes('if (!state.connected || state.demo || !state.characteristic) return;'),
+      `${name} muss den Demo weiterhin ausschliessen`);
+  }
+});
+
+test('Demo: Start aus einer stehenden Verbindung haelt das Geraet an und faehrt danach nur den Simulator', async () => {
+  const { t, clock, fake, elements } = demoSetup();
+  elements.get('passwordInput').value = '123456';
+  const pending = t.connectBluetooth();
+  await clock.runFor(2000);
+  await pending;
+  assert.strictEqual(t.state.connected, true);
+  const vorher = fake.sim.commands.length;
+  t.startDemo();
+  await clock.runFor(1500);
+  const beimStart = fake.sim.commands.slice(vorher);
+  assert.ok(beimStart.some((c) => c.startsWith('AT+M,0,0')) && beimStart.some((c) => c.startsWith('AT+C,0,0')),
+    `wie bisher: Not-Halt ans Geraet beim Wechsel in den Demo, gesendet: ${beimStart}`);
+  const mitte = fake.sim.commands.length;
+  const x0 = t.state.telemetry.x;
+  const y0 = t.state.telemetry.y;
+  t.beginJoystick(joystickAt(t, 0, -1));
+  await clock.runFor(2000);
+  t.stopDrive();
+  await clock.runFor(1000);
+  assert.deepStrictEqual(fake.sim.commands.slice(mitte), [], 'waehrend der Demo-Fahrt geht nichts ans Geraet');
+  near(Math.hypot(t.state.telemetry.x - x0, t.state.telemetry.y - y0), 0.5, 'der Simulator ist 2 s mit 0,25 m/s gefahren');
+  // Die Marke haengt allein am Demo — auch wenn die alte Verbindung inzwischen abgebaut ist.
+  assert.strictEqual(t.ui.bleStatusBtn.classList.contains('demo'), true);
+  assert.strictEqual(t.ui.menuDemoMark.hidden, false);
+  t.stopDemo();
+});
+
+test('Demo: die Marke steht durchgehend, solange der Demo laeuft', async () => {
+  const { t, clock } = demoSetup();
+  t.refreshConnectionUi();
+  assert.strictEqual(t.ui.menuDemoMark.hidden, true, 'ohne Demo keine Marke');
+  assert.strictEqual(t.ui.bleStatusBtn.classList.contains('demo'), false);
+  t.startDemo();
+  for (let i = 0; i < 10; i += 1) {
+    await clock.runFor(1000);
+    assert.strictEqual(t.ui.bleStatusBtn.classList.contains('demo'), true, `nach ${i + 1} s: Kopfzeile`);
+    assert.strictEqual(t.ui.menuDemoMark.hidden, false, `nach ${i + 1} s: Menueseite`);
+  }
+  t.setMenuOpen(true);
+  assert.strictEqual(t.ui.menuDemoMark.hidden, false, 'auch mit offener Menueseite');
+  t.setMenuOpen(false);
+  t.toggleLanguage();
+  assert.strictEqual(t.ui.bleStatusBtn.classList.contains('demo'), true, 'ein Sprachwechsel nimmt sie nicht weg');
+  assert.strictEqual(t.ui.menuDemoMark.hidden, false);
+  t.toggleLanguage();
+  t.stopDemo();
+  assert.strictEqual(t.ui.bleStatusBtn.classList.contains('demo'), false, 'nach dem Demo ist sie weg');
+  assert.strictEqual(t.ui.menuDemoMark.hidden, true);
+
+  assert.strictEqual(t.I18N.de.demoMark, 'DEMO');
+  assert.strictEqual(t.I18N.en.demoMark, 'DEMO');
+  assert.ok(t.I18N.de.demoMarkAria && t.I18N.en.demoMarkAria, 'Vorlesetext in beiden Sprachen');
+  const markup = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const chip = markup.slice(markup.indexOf('id="bleStatusBtn"'), markup.indexOf('</button>', markup.indexOf('id="bleStatusBtn"')));
+  assert.ok(/class="ble-chip-demo" data-i18n="demoMark"/.test(chip), 'das Wort steht im Verbindungsknopf der Kopfzeile');
+  const bar = markup.slice(markup.indexOf('<header class="menu-bar">'), markup.indexOf('</header>', markup.indexOf('<header class="menu-bar">')));
+  assert.ok(/<span class="demo-mark" data-i18n="demoMark" hidden="" id="menuDemoMark">/.test(bar), 'und neben dem Titel der Menueseite');
+});
+
+test('Demo beenden: Fahrt endet, Steuerung gesperrt, beim naechsten Start steht er noch da', async () => {
+  const { t, clock } = demoSetup();
+  t.startDemo();
+  t.beginJoystick(joystickAt(t, 0, -1));
+  await clock.runFor(2000);
+  t.stopDemo();
+  assert.strictEqual(t.state.demo, false);
+  assert.strictEqual(t.state.demoMower, null);
+  assert.strictEqual(t.state.demoTimer, null);
+  assert.strictEqual(t.state.driveDirection, null, 'eine laufende Fahreingabe endet mit dem Demo');
+  assert.strictEqual(t.state.joystickPointerId, null, 'auch die Zeigerbindung des Joysticks, wie beim Abriss einer Verbindung');
+  assert.strictEqual(t.state.telemetry.receivedAt, 0, 'die Position gilt nicht mehr als frisch');
+  near(t.state.telemetry.x, 2.5, 'die letzte Position bleibt stehen');
+  t.beginJoystick(joystickAt(t, 0, -1));
+  assert.strictEqual(t.state.driveDirection, null, 'ohne Demo und ohne Verbindung faehrt nichts');
+  assert.strictEqual(t.ui.driveState.textContent, t.tr('driveNeedConnection'));
+  await clock.runFor(5000);
+  t.startDemo();
+  near(t.state.telemetry.x, 2.5, 'der naechste Demo beginnt dort, wo der letzte aufgehoert hat');
+  near(t.state.telemetry.y, 3, 'und y');
+  t.stopDemo();
 });
 
 

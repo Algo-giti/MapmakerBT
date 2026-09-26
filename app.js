@@ -182,6 +182,7 @@ const I18N = {
     driveHelp2: 'Minimale und maximale Geschwindigkeit werden im Menü unter „Einstellungen › Fahrgeschwindigkeit“ festgelegt: das Minimum gilt ab der Totzone, das Maximum am vollen Ausschlag.',
     driveHelp3: 'Im Ruhezustand — Joystick losgelassen, keine Richtungstaste gehalten — schickt die App laufend alle 500 ms einen Stopp-Befehl. Geht einer davon verloren, ersetzt ihn der nächste von selbst. Wichtig bleibt trotzdem: Bei Bluetooth-Funkverlust kann die Webseite keinen neuen Stop-Befehl mehr übertragen. Deshalb nur bei Sichtkontakt arbeiten und den physischen Stop/Not-Aus am Mäher erreichbar halten.',
     driveHelp4: 'Diese App steuert bewusst kein Mähen: kein Start, kein Stop, kein Docking. Sie nimmt ausschließlich Karten auf.',
+    driveHelp5: 'Zum Ausprobieren ohne Gerät gibt es den Demo-Modus im Menü unter Verbindung. Der simulierte Mäher steht still, bis du ihn mit Joystick oder Richtungstasten fährst – mit denselben Geschwindigkeiten und derselben Drehrate, die auch der echte Mäher bekäme. Er fährt überall hin wie ein ferngesteuertes Auto: Perimeter, Ausschlussflächen und Hindernisse halten ihn nicht auf, es gibt keine Warnung. Aufnahme, Telemetrie und Karte arbeiten wie gewohnt, die Position hat immer RTK FIX. Solange der Demo läuft, steht in der Kopfzeile „DEMO“ statt des Bluetooth-Zeichens und auf der Menüseite neben dem Titel. Beim nächsten Start steht er dort, wo zuletzt ein Mäher war.',
     appTitle: 'MapCreator für Ardumower',
     appDescription: 'MapCreator für Ardumower – mobile Kartenaufnahme über Web Bluetooth und Sunray.',
     languageToggleLabel: 'Auf Englisch umschalten', tabMaps: 'Karten', tabConnection: 'Verbindung', tabHelp: 'Hilfe', tabDebug: 'Diagnose',
@@ -255,7 +256,7 @@ const I18N = {
     noVersionReply: 'BLE verbunden, aber keine Sunray-AT+V-Antwort. Diagnose öffnen.', noVersionLog: 'Keine Sunray-Version empfangen. Status wird unverschlüsselt getestet.',
     stateError: 'AT+S Fehler', noWebBluetooth: 'Web Bluetooth ist in diesem Browser nicht verfügbar.', openingPicker: 'Bluetooth-Geräteauswahl wird geöffnet …',
     connectingDevice: 'Verbinde mit {name} …', bleDevice: 'BLE-Gerät', connectedWith: 'Verbunden mit {name}', bleDisconnectedLog: 'BLE getrennt',
-    demoStop: 'Demo-Modus beenden', demoStart: 'Demo-Modus starten', demoDetail: 'Demo-Modus: simulierte RTK-FIX-Position.', demoEnded: 'Demo beendet.',
+    demoStop: 'Demo-Modus beenden', demoStart: 'Demo-Modus starten', demoDetail: 'Demo-Modus: simulierter Mäher mit RTK FIX. Er fährt nur auf Joystick oder Richtungstasten – überall hin, Perimeter, Ausschlussflächen und Hindernisse halten ihn nicht auf.', demoMark: 'DEMO', demoMarkAria: 'Demo-Modus aktiv – Verbindung', demoEnded: 'Demo beendet.',
     firstMapName: 'Meine erste Karte', saving: 'Speichert …', savedAt: 'Lokal gespeichert · {time}',
     exclusionN: 'Ausschluss {n}', mapN: 'Karte {n}', deleteMapConfirm: 'Karte „{name}“ wirklich lokal löschen?',
     dockPath: 'Dockpfad',
@@ -442,6 +443,7 @@ const I18N = {
     driveHelp2: 'Minimum and maximum speed are set in the menu under “Settings › Drive speed”: the minimum applies from the dead zone on, the maximum at full deflection.',
     driveHelp3: 'While idle — joystick released, no direction key held — the app keeps sending a stop command every 500 ms. If one of them is lost, the next one replaces it by itself. It still matters that: if the Bluetooth link is lost, the website cannot transmit a new stop command. Use only with line of sight and keep the mower’s physical stop/emergency control accessible.',
     driveHelp4: 'This app deliberately does not control mowing: no start, no stop, no docking. It only captures maps.',
+    driveHelp5: 'To try things out without a mower there is demo mode in the menu under Connection. The simulated mower stands still until you drive it with the joystick or the direction keys — at the same speeds and turn rate the real mower would receive. It goes anywhere like a remote-controlled car: perimeter, exclusions and obstacles do not stop it, and there is no warning. Capture, telemetry and the map work as usual; the position always has RTK FIX. While the demo runs, the header shows “DEMO” in place of the Bluetooth symbol, and the menu page shows it next to the title. On the next start it stands where a mower was last seen.',
     appTitle: 'MapCreator für Ardumower',
     appDescription: 'MapCreator für Ardumower – mobile map recording via Web Bluetooth and Sunray.',
     languageToggleLabel: 'Switch to German', tabMaps: 'Maps', tabConnection: 'Connection', tabHelp: 'Help', tabDebug: 'Diagnostics',
@@ -515,7 +517,7 @@ const I18N = {
     noVersionReply: 'BLE connected, but no Sunray AT+V response. Open Diagnostics.', noVersionLog: 'No Sunray version received. Status will be tested unencrypted.',
     stateError: 'AT+S error', noWebBluetooth: 'Web Bluetooth is not available in this browser.', openingPicker: 'Opening Bluetooth device picker …',
     connectingDevice: 'Connecting to {name} …', bleDevice: 'BLE device', connectedWith: 'Connected to {name}', bleDisconnectedLog: 'BLE disconnected',
-    demoStop: 'Stop demo mode', demoStart: 'Start demo mode', demoDetail: 'Demo mode: simulated RTK FIX position.', demoEnded: 'Demo ended.',
+    demoStop: 'Stop demo mode', demoStart: 'Start demo mode', demoDetail: 'Demo mode: simulated mower with RTK FIX. It only moves on joystick or direction-key commands — anywhere; perimeter, exclusions and obstacles do not stop it.', demoMark: 'DEMO', demoMarkAria: 'Demo mode active – connection', demoEnded: 'Demo ended.',
     firstMapName: 'My first map', saving: 'Saving …', savedAt: 'Saved locally · {time}',
     exclusionN: 'Exclusion {n}', mapN: 'Map {n}', deleteMapConfirm: 'Really delete map “{name}” locally?',
     dockPath: 'Dock path',
@@ -721,7 +723,7 @@ const ui = {
   driveSpeedMinInput: $('driveSpeedMinInput'), driveSpeedMaxInput: $('driveSpeedMaxInput'), driveTurnMaxInput: $('driveTurnMaxInput'), driveSpeedValue: $('driveSpeedValue'),
   // Menueseite
   menuPage: $('menuPage'), menuScroll: $('menuScroll'), settingsSections: $('settingsSections'),
-  menuCloseBtn: $('menuCloseBtn'), languageToggle: $('languageToggle'),
+  menuCloseBtn: $('menuCloseBtn'), languageToggle: $('languageToggle'), menuDemoMark: $('menuDemoMark'),
   connectionPill: $('connectionPill'), connectionDetail: $('connectionDetail'), browserWarning: $('browserWarning'), passwordInput: $('passwordInput'),
   connectBtn: $('connectBtn'), disconnectBtn: $('disconnectBtn'), demoBtn: $('demoBtn'),
   firmwareValue: $('firmwareValue'),
@@ -779,6 +781,9 @@ const state = {
   rxOverflows: 0,
   pendingStateReplies: 0,
   demoTimer: null,
+  // Der simulierte Maeher im Demo: Lage, Ausrichtung und der zuletzt „empfangene“ Fahrbefehl
+  // samt Zeitpunkt. Nur zwischen startDemo() und stopDemo() gesetzt, sonst null.
+  demoMower: null,
   sendBusy: false,
   manualDisconnect: false,
   reconnectTimer: null,
@@ -973,6 +978,11 @@ function refreshConnectionUi() {
   ui.bleStatusBtn.classList.toggle('online', online);
   ui.bleStatusBtn.classList.toggle('offline', !online);
   ui.bleStatusBtn.classList.toggle('demo', state.demo);
+  // Die Demo-Marke, solange der Demo laeuft: in der Kopfzeile traegt der Verbindungsknopf das
+  // Wort statt des Bluetooth-Zeichens (Stylesheet, `.ble-chip.demo`), auf der Menueseite steht
+  // dieselbe Marke neben dem Titel. Beide haengen allein an `state.demo`, nicht an `connected`.
+  ui.bleStatusBtn.setAttribute('aria-label', tr(state.demo ? 'demoMarkAria' : 'tabConnection'));
+  ui.menuDemoMark.hidden = !state.demo;
   ui.connectionPill.textContent = tr(state.connectionStatusKey, state.connectionVars);
   ui.connectionDetail.textContent = tr(state.connectionDetailKey, state.connectionVars);
   ui.connectionPill.classList.toggle('online', state.connected);
@@ -990,8 +1000,23 @@ function driveSpeedLimits() {
   return { min, max, turn };
 }
 
+/**
+ * Kann eine Fahreingabe gerade etwas bewegen? **Die einzige Stelle, die das entscheidet** —
+ * Joystick, Richtungstasten, Tastenwechsel, Senden und Anzeige fragen alle hier.
+ *
+ * Ohne Demo ist das wortgleich die fruehere Bedingung (verbunden und Characteristic vorhanden);
+ * am echten Geraet aendert sich dadurch nichts. Im Demo faehrt der simulierte Maeher — und zwar
+ * allein an `state.demo` gebunden, nicht an `state.connected`: startet der Demo aus einer
+ * stehenden Verbindung heraus, setzt das nachlaufende `onDisconnected()` `connected` zurueck,
+ * waehrend der Demo laeuft.
+ */
+function driveTargetReady() {
+  if (state.demo) return true;
+  return state.connected && Boolean(state.characteristic);
+}
+
 function refreshControlUi() {
-  const available = state.connected && !state.demo && Boolean(state.characteristic);
+  const available = driveTargetReady();
   if (ui.driveJoystick) ui.driveJoystick.classList.toggle('unavailable', !available);
   const { min, max } = driveSpeedLimits();
   const decimal = (v) => v.toFixed(2).replace('.', state.language === 'de' ? ',' : '.');
@@ -1011,14 +1036,18 @@ function refreshControlUi() {
 }
 
 async function sendDriveVector(linear, angular, { force = false } = {}) {
-  if (!state.connected || state.demo || !state.characteristic) return;
+  if (!driveTargetReady()) return;
   const now = performance.now();
   if (!force && now - state.lastDriveSentAt < DRIVE_POINTER_MIN_INTERVAL_MS) return;
   if (!force && state.sendBusy) return;
   state.lastDriveSentAt = now;
   const l = Math.abs(linear) < 0.005 ? 0 : linear;
   const a = Math.abs(angular) < 0.01 ? 0 : angular;
-  await sendSunray(`AT+M,${l.toFixed(2)},${a.toFixed(2)}`, { skipIfBusy: !force });
+  // **Die Weiche zwischen Geraet und Simulator, fuer jeden Fahrbefehl genau hier.** Drossel,
+  // Rundung und Totzone liegen davor, der Demo-Maeher bekommt also dieselben Zahlen, die als
+  // AT+M rausgingen — und nur diese. Am echten Geraet ist der else-Zweig die unveraenderte Zeile.
+  if (state.demo) demoMowerCommand(Number(l.toFixed(2)), Number(a.toFixed(2)));
+  else await sendSunray(`AT+M,${l.toFixed(2)},${a.toFixed(2)}`, { skipIfBusy: !force });
   if (ui.driveState) {
     const fmt = (v, digits) => Number(v).toFixed(digits).replace('.', state.language === 'de' ? ',' : '.');
     ui.driveState.textContent = `v ${fmt(l, 2)} m/s · ω ${fmt(a, 2)} rad/s`;
@@ -1306,7 +1335,7 @@ function updateJoystickFromPointer(event, { forceSend = false } = {}) {
 
 function beginJoystick(event) {
   event.preventDefault();
-  if (!state.connected || state.demo || !state.characteristic) {
+  if (!driveTargetReady()) {
     if (ui.driveState) ui.driveState.textContent = tr('driveNeedConnection');
     return;
   }
@@ -1388,7 +1417,7 @@ function refreshCursorZoneVisual() {
 /** Eine der vier Richtungstasten wird gedrueckt: fahren, bis sie losgelassen wird. */
 function beginCursorDrive(direction, event) {
   if (event?.preventDefault) event.preventDefault();
-  if (!state.connected || state.demo || !state.characteristic) {
+  if (!driveTargetReady()) {
     if (ui.driveState) ui.driveState.textContent = tr('driveNeedConnection');
     return;
   }
@@ -1464,7 +1493,7 @@ function updateCursorDriveFromPointer(event) {
  * Eine neue Richtung ohne angekommenen Stopp waere genau der Sprung, den es zu vermeiden gilt.
  */
 function switchCursorKey(key, event) {
-  if (!state.connected || state.demo || !state.characteristic) return;
+  if (!driveTargetReady()) return;
   const direction = key?.dataset?.direction ?? null;
   // Markierung der bisherigen Taste abraeumen, bevor die Taste wechselt.
   state.cursorZone = null;
@@ -1503,7 +1532,10 @@ function stopDrive({ send = true } = {}) {
   state.driveVector = { linear: 0, angular: 0 };
   resetJoystickVisual();
   if (ui.driveState) ui.driveState.textContent = tr('driveIdle');
-  if (send && state.connected && !state.demo && state.characteristic && wasDriving) {
+  if (send && wasDriving && state.demo) {
+    // Derselbe Stopp, den das Geraet bekaeme — unter denselben Bedingungen.
+    demoMowerCommand(0, 0);
+  } else if (send && state.connected && !state.demo && state.characteristic && wasDriving) {
     // Ein nicht angekommener Stopp ist sicherheitsrelevant: immer sofort melden.
     sendSunray('AT+M,0,0').catch((error) => reportBleError('AT+M,0,0', error, { immediate: true }));
   }
@@ -2868,38 +2900,109 @@ async function disconnectBluetooth() {
   }
 }
 
+/**
+ * **Demo: ein simulierter Maeher, der nur auf Fahrbefehle faehrt** — wie ein ferngesteuertes
+ * Auto. Es gibt keine Bahn mehr, die er von selbst abfaehrt; ohne Fahreingabe steht er still.
+ *
+ * Er bekommt genau die Zahlen, die am Geraet als `AT+M,linear,angular` ankaemen, ueber die eine
+ * Weiche in `sendDriveVector()` (und den Stopp in `stopDrive()`). Die Einheiten sind die der
+ * Firmware: `linear` in m/s, `angular` in rad/s, positiv = links herum — `Motor::
+ * setLinearAngularSpeed()` rechnet daraus die Radgeschwindigkeiten `linear ± angular ·
+ * Radstand/2` (MeinSunray/sunray/motor.cpp:194-198; Master-Kopie, fuer die geflashte
+ * MRTREE-Variante nicht belegt). Uebernommen wird der Sollwert **sofort**, wie ihn `AT+M`
+ * ohne Rampe setzt (comm.cpp:287 → motor.cpp:188-193); wie schnell die echten Raeder ihn
+ * erreichen, ist nicht belegt und nicht nachgebildet.
+ *
+ * **Keine Reaktion auf Perimeter, Ausschlussflaechen oder Hindernisse** — kein Anhalten, kein
+ * Abprallen, keine Warnung. Auch die Hindernisbremse der Firmware (`applyManualSlowDown()`,
+ * comm.cpp:57-77) fehlt bewusst.
+ *
+ * Telemetrie wie im bisherigen Demo (fester RTK-FIX, dieselben Zusatzwerte, direkt in
+ * `state.telemetry`, ohne `fixHistory`), aber im Takt des echten Pollings.
+ */
 function startDemo() {
   disconnectBluetooth();
   state.demo = true;
   ui.demoBtn.textContent = tr('demoStop');
   state.firmware = { firmware: 'Demo Sunray', version: '1.0', encryptionEnabled: false };
-  let angle = 0;
-  setConnectionStatus(true, 'demoActive', 'demoDetail');
-  const tick = () => {
-    angle += 0.08;
-    state.telemetry = {
-      x: 4 + Math.cos(angle) * 3.2,
-      y: 2 + Math.sin(angle * 1.25) * 2.1,
-      delta: Math.atan2(2.1 * 1.25 * Math.cos(angle * 1.25), -3.2 * Math.sin(angle)),
-      solution: 2,
-      age: 0.15,
-      accuracy: 0.02,
-      visibleSatellites: 39,
-      visibleSatellitesDgps: 35,
-      batteryVoltage: 26.4,
-      receivedAt: Date.now(),
-    };
-    refreshTelemetry();
+  // Der Maeher steht dort, wo zuletzt einer war — aus einem frueheren Demo oder vom Geraet —,
+  // mit derselben Ausrichtung. Ohne bekannte Position im Nullpunkt, Blick nach +x.
+  const t = state.telemetry;
+  const known = Number.isFinite(t.x) && Number.isFinite(t.y);
+  state.demoMower = {
+    x: known ? t.x : 0,
+    y: known ? t.y : 0,
+    delta: known && Number.isFinite(t.delta) ? t.delta : 0,
+    linear: 0,
+    angular: 0,
+    at: Date.now(),
   };
-  tick();
-  state.demoTimer = setInterval(tick, 850);
+  setConnectionStatus(true, 'demoActive', 'demoDetail');
+  demoTelemetryTick();
+  // Derselbe Takt, in dem am Geraet eine neue Position ankommt.
+  state.demoTimer = setInterval(demoTelemetryTick, BLE_POLL_INTERVAL_MS);
+}
+
+/**
+ * Schreibt die Lage des Demo-Maehers bis `now` fort — **exakt** fuer konstante Geschwindigkeit
+ * und Drehrate (Kreisbogen bzw. Gerade), nicht naeherungsweise in Schritten. Deshalb wird vor
+ * jedem neuen Fahrbefehl zuerst bis zu seinem Eintreffen gerechnet: jeder Abschnitt faehrt
+ * genau mit dem Befehl, der in ihm galt.
+ */
+function demoMowerAdvance(now = Date.now()) {
+  const m = state.demoMower;
+  if (!m) return;
+  const dt = Math.max(0, (now - m.at) / 1000);
+  m.at = now;
+  if (!(dt > 0) || (m.linear === 0 && m.angular === 0)) return;
+  if (m.angular === 0) {
+    m.x += m.linear * Math.cos(m.delta) * dt;
+    m.y += m.linear * Math.sin(m.delta) * dt;
+    return;
+  }
+  const next = m.delta + m.angular * dt;
+  m.x += (m.linear / m.angular) * (Math.sin(next) - Math.sin(m.delta));
+  m.y += (m.linear / m.angular) * (Math.cos(m.delta) - Math.cos(next));
+  // Wie `stateDelta` der Firmware im Bereich ±π halten.
+  m.delta = Math.atan2(Math.sin(next), Math.cos(next));
+}
+
+/** Ein Fahrbefehl erreicht den Demo-Maeher. Gerufen nur aus `sendDriveVector()` und `stopDrive()`. */
+function demoMowerCommand(linear, angular) {
+  if (!state.demoMower) return;
+  demoMowerAdvance();
+  state.demoMower.linear = linear;
+  state.demoMower.angular = angular;
+}
+
+/** Eine neue Demo-Position, wie am Geraet eine `S,`-Antwort. Sonstige Werte wie bisher fest. */
+function demoTelemetryTick() {
+  if (!state.demoMower) return;
+  demoMowerAdvance();
+  const m = state.demoMower;
+  state.telemetry = {
+    x: m.x,
+    y: m.y,
+    delta: m.delta,
+    solution: 2,
+    age: 0.15,
+    accuracy: 0.02,
+    visibleSatellites: 39,
+    visibleSatellitesDgps: 35,
+    batteryVoltage: 26.4,
+    receivedAt: Date.now(),
+  };
+  refreshTelemetry();
 }
 
 function stopDemo() {
   if (state.demoTimer) clearInterval(state.demoTimer);
   state.demoTimer = null;
   if (state.demo) {
+    // Wie beim Abriss einer echten Verbindung (onDisconnected): eine laufende Fahreingabe endet.
+    stopDrive({ send: false });
     state.demo = false;
+    state.demoMower = null;
     ui.demoBtn.textContent = tr('demoStart');
     state.telemetry.receivedAt = 0;
     setConnectionStatus(false, 'notConnected', 'demoEnded');
