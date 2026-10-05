@@ -339,8 +339,9 @@ eingestellten Höchstgeschwindigkeit – bei den Vorgaben also 12,5 cm/s –, ge
 eingestellte Höchst-Drehrate. Sie tragen je einen nach außen zeigenden Chevron.
 
 Die Größe des Fahrfelds stellst du unter *Einstellungen › Fahrgeschwindigkeit* ein. In kleinen
-Stufen werden die **Drehtasten** schmaler als ein Daumen; die App sagt das dann als Hinweis bei
-der Größeneinstellung und ändert die Größe **nicht** von selbst.
+Stufen ragen die **Drehtasten** seitlich über das Feld hinaus – gerade so weit, dass auf jede ein
+Daumen (44 px) passt. Die Fahrtanzeige daneben rückt dafür ein Stück zur Seite; die Größe des
+Feldes selbst ändert sich nicht.
 
 Die drei Werte sind frei einstellbar, und die App sortiert sie **nicht**: wer die
 Mindestgeschwindigkeit des Joysticks über den Tastenwert legt, bekommt eine Staffel, die
@@ -835,8 +836,8 @@ speed – 12.5 cm/s with the defaults – capped by the configured maximum turn 
 outward-pointing chevron.
 
 The size of the drive field is set under *Settings › Drive speed*. At small sizes the **turn keys**
-become narrower than a thumb; the app says so as a note next to the size setting and does **not**
-change the size for you.
+reach out sideways beyond the field – just far enough for a thumb (44 px) to fit on each. The drive
+status next to it moves aside a little for this; the size of the field itself does not change.
 
 The three values are yours to set and the app does **not** sort them: if you put the joystick
 minimum above the key speed, you get a ladder that slows down in between. Nothing is changed for

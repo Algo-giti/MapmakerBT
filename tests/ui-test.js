@@ -21,7 +21,7 @@ const EXPORTS = ['state', 'ui', 'setMode', 'modeLabel', 'CAPTURE_MODES', 'addCur
   'mapOriginInUse', 'originFromInputs', 'normalizeOrigin',
   'applyDriveControlMode', 'toggleDriveControl', 'beginCursorDrive', 'cursorDriveVector', 'cursorSpeedLimits',
   'updateCursorDriveFromPointer', 'cursorZoneFromPointer', 'cursorZoneSpeeds', 'DRIVE_ZONES',
-  'cursorZoneLadder', 'refreshDriveZoneHint', 'turnKeyIncircle', 'refreshTurnKeyHint',
+  'cursorZoneLadder', 'refreshDriveZoneHint',
   'applyDriveZonePreferences',
   'renameMapById', 'duplicateMapById', 'uniqueCopyName', 'askText', 'localizedMapName', 'MAP_NAME_MAX',
   'stopDrive', 'saveViewPreferences',
@@ -2663,72 +2663,82 @@ test('Eine absteigende Staffel wird benannt, nicht stillschweigend korrigiert', 
   }
 });
 
-test('Zu schmale Drehtasten werden benannt, nicht heimlich vergroessert', () => {
-  const { t, sandbox } = setup();
-  // Die Formgroessen stehen im Stylesheet und werden von dort gelesen. Hier gibt es kein Layout,
-  // deshalb werden genau die Werte untergeschoben, die `styles.css` traegt — dass sie
-  // uebereinstimmen, rechnet `tests/layout-test.js` nach.
-  sandbox.__cssTokens = { '--drive-pad-gap': '4px', '--drive-pad-waist': '0.5', '--drive-pad-key-min': '44px' };
-  const setzeFeld = (F) => { t.ui.driveButtons.getBoundingClientRect = () => ({ left: 0, top: 0, width: F, height: F }); };
-
-  // Tastenmodus, kleinstes Feld: der groesste Kreis im Keil misst rund 29 px.
-  setzeFeld(140);
+test('Nur im Tastenmodus haelt das Feld Platz fuer den Ueberstand der Drehtasten frei', () => {
+  const { t } = setup();
+  // Die Drehtasten ragen nur im Tastenmodus ueber das Feld hinaus; das Stylesheet reserviert den
+  // Platz daneben ueber genau diese Klasse (`tests/layout-test.js` rechnet die Breite nach).
+  t.applyDriveControlMode();
+  assert.strictEqual(t.state.view.driveControl, 'joystick');
+  assert.strictEqual(t.ui.driveControlArea.classList.contains('mode-buttons'), false,
+    'im Joystick-Modus gibt es keinen Ueberstand und keinen freigehaltenen Platz');
   t.toggleDriveControl();
   assert.strictEqual(t.state.view.driveControl, 'buttons');
-  assert.ok(t.turnKeyIncircle(140, 4, 0.5) < 44, 'bei 140px ist der Keil kein Daumenziel');
-  assert.strictEqual(t.ui.driveTurnSizeHint.hidden, false, 'die Zeile muss bei 140px dastehen');
-  const de = t.ui.driveTurnSizeHint.textContent;
-  assert.ok(de.includes('44'), `die Zeile muss das Mass nennen, steht da: ${de}`);
-  assert.ok(!de.includes('{'), `Platzhalterrest: ${de}`);
-
-  // **Die Groesse wird nicht angetastet** — es wird nur benannt.
-  const stufe = t.state.view.joystickScale;
-  t.refreshTurnKeyHint();
-  assert.strictEqual(t.state.view.joystickScale, stufe, 'der Hinweis darf die Groessenstufe nicht veraendern');
-
-  // Gross genug: die Zeile verschwindet und hinterlaesst keinen alten Text.
-  setzeFeld(204);
-  t.refreshTurnKeyHint();
-  assert.strictEqual(t.ui.driveTurnSizeHint.hidden, true, 'ab rund 204px ist der Keil ein Daumenziel');
-  assert.strictEqual(t.ui.driveTurnSizeHint.textContent, '', 'und die Zeile bleibt nicht als Rest stehen');
-  // Knapp darunter steht sie wieder da — die Schwelle wirkt, sie ist nicht nur gerechnet.
-  setzeFeld(203);
-  t.refreshTurnKeyHint();
-  assert.strictEqual(t.ui.driveTurnSizeHint.hidden, false, 'knapp unter der Schwelle muss die Zeile stehen');
-
-  // **Im Joystick-Modus nie** — dort gibt es keine Drehtasten, die zu schmal sein koennten.
-  setzeFeld(140);
+  assert.strictEqual(t.ui.driveControlArea.classList.contains('mode-buttons'), true, 'Tastenmodus haelt Platz frei');
   t.toggleDriveControl();
-  assert.strictEqual(t.state.view.driveControl, 'joystick');
-  assert.strictEqual(t.ui.driveTurnSizeHint.hidden, true, 'im Joystick-Modus hat die Zeile nichts zu sagen');
-  assert.strictEqual(t.ui.driveTurnSizeHint.textContent, '');
-  t.toggleDriveControl();
-  assert.strictEqual(t.ui.driveTurnSizeHint.hidden, false, 'zurueck im Tastenmodus steht sie wieder da');
+  assert.strictEqual(t.ui.driveControlArea.classList.contains('mode-buttons'), false, 'und gibt ihn wieder her');
 
-  // Die Groessenstufe fuehrt sie nach: derselbe Weg, den der Nutzer im Menue nimmt.
-  setzeFeld(230);
-  t.applyDriveZonePreferences();
-  assert.strictEqual(t.ui.driveTurnSizeHint.hidden, true, 'nach der Groessenaenderung muss sie weg sein');
-
-  // Ohne lesbare Formgroessen wird nichts behauptet, statt eine Zahl zu raten.
-  setzeFeld(140);
-  sandbox.__cssTokens = {};
-  t.refreshTurnKeyHint();
-  assert.strictEqual(t.ui.driveTurnSizeHint.hidden, true, 'ohne Tokenwerte darf nichts behauptet werden');
-  sandbox.__cssTokens = { '--drive-pad-gap': '4px', '--drive-pad-waist': '0.5', '--drive-pad-key-min': '44px' };
-  t.refreshTurnKeyHint();
-
-  // Beide Sprachen, ueber den echten Sprachwechsel.
-  t.toggleLanguage();
-  assert.strictEqual(t.state.language, 'en');
-  const en = t.ui.driveTurnSizeHint.textContent;
-  assert.notStrictEqual(en, de, 'die englische Fassung ist nicht der deutsche Satz');
-  assert.ok(en.includes('44'), `auch die englische Fassung nennt das Mass: ${en}`);
-  t.toggleLanguage();
-  assert.strictEqual(t.ui.driveTurnSizeHint.textContent, de);
-  for (const key of ['driveTurnSizeHint']) {
-    assert.ok(t.I18N.de[key] && t.I18N.en[key], `${key} fehlt in einer Sprache`);
+  // **Die Hinweiszeile zu schmalen Drehtasten ist entfallen**: mit dem Ueberstand erreicht jeder
+  // Drehkeil das Daumenmass, die Zeile koennte nie mehr erscheinen. Kein Rest bleibt stehen.
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  for (const name of ['driveTurnSizeHint', 'refreshTurnKeyHint', 'turnKeyIncircle', 'driveShapeTokens']) {
+    assert.ok(!src.includes(name) && !html.includes(name), `${name} darf nicht zurueckkehren`);
   }
+  // Und der Erklaertext bei der Groesseneinstellung verspricht keinen Hinweis mehr.
+  assert.ok(!/Hinweis/.test(t.I18N.de.joystickSizeHint), `DE kuendigt noch einen Hinweis an: ${t.I18N.de.joystickSizeHint}`);
+  assert.ok(!/\bnote\b/.test(t.I18N.en.joystickSizeHint), `EN kuendigt noch einen Hinweis an: ${t.I18N.en.joystickSizeHint}`);
+  assert.ok(/hinaus/.test(t.I18N.de.joystickSizeHint) && /beyond the field/.test(t.I18N.en.joystickSizeHint),
+    'beide Sprachen nennen den Ueberstand');
+});
+
+test('Der Ueberstand der Drehtasten gehoert zur Taste, nicht nach „ausserhalb“', async () => {
+  const { t, clock, tx, sandbox } = zonedSetup();
+  const keys = stubHitTest(t, sandbox);
+  // Der Stellvertreter kennt nur das Feldrechteck. Dazu kommt hier der Ueberstand links: ein
+  // Streifen von 12 px vor der Feldkante, darum ein Rahmen ohne Taste — so trifft auch der Browser
+  // (im echten Chrome gemessen: der Ueberstand trifft die Taste, sein Rahmen das Tastenkreuz).
+  const rect = t.ui.driveButtons.getBoundingClientRect();
+  const midY = rect.top + rect.height / 2;
+  const inField = sandbox.document.elementFromPoint;
+  const frame = { closest: () => null };
+  sandbox.document.elementFromPoint = (x, y) => {
+    const dy = Math.abs(y - midY);
+    if (x < rect.left && x >= rect.left - 12 && dy < rect.height / 2 - 9) return keys.left;
+    if (x < rect.left && x >= rect.left - 16 && dy < rect.height / 2 - 5) return frame;
+    return inField(x, y);
+  };
+  t.state.view.mowerWidth = 0.50;
+  t.state.view.driveTurnMax = 2.00;
+
+  // (a) Von vorwaerts in einem Zug auf den Ueberstand: Wechsel ueber Stopp, dann Drehen. Ohne die
+  // Regel galte der Ueberstand als „ausserhalb“, und es ginge weiter vorwaerts.
+  pressKey(t, 'up', 0.60);
+  await clock.runFor(50);
+  const before = tx.drives().length;
+  t.updateCursorDriveFromPointer({ pointerId: 1, clientX: rect.left - 6, clientY: midY });
+  await clock.runFor(50);
+  const sent = tx.drives().slice(before);
+  assert.strictEqual(t.state.driveDirection, 'left', 'auf dem Ueberstand dreht es links');
+  assert.ok(sent.length >= 2 && isStop(sent[0]), `zuerst der Stopp: ${sent.join(' | ')}`);
+  assert.ok(tx.last().startsWith('AT+M,0.00,0.50'), `dann Drehen: ${tx.last()}`);
+  assertNoJump(tx.drives());
+
+  // (b) Rahmen um den Ueberstand und Aussenraum sind Aussenkante, keine Fuge: es dreht weiter.
+  const turning = tx.drives().length;
+  for (const x of [rect.left - 14, rect.left - 40]) {
+    t.updateCursorDriveFromPointer({ pointerId: 1, clientX: x, clientY: midY });
+    await clock.runFor(16);
+    assert.strictEqual(t.state.driveDirection, 'left', `bei x=${x} dreht es weiter`);
+  }
+  assert.ok(!tx.drives().slice(turning).some(isStop), 'Rahmen und Aussenraum loesen keinen Stopp aus');
+
+  // (c) Zurueck ins Feld auf vorwaerts: wieder ueber Stopp.
+  const back = tx.drives().length;
+  t.updateCursorDriveFromPointer({ pointerId: 1, ...padPoint(t, 'up', 0.60) });
+  await clock.runFor(50);
+  assert.strictEqual(t.state.driveDirection, 'up');
+  assert.ok(isStop(tx.drives()[back]), `auch zurueck zuerst der Stopp: ${tx.drives().slice(back).join(' | ')}`);
+  t.stopDrive();
 });
 
 test('Links dreht auf der Stelle, ohne Vortrieb', async () => {

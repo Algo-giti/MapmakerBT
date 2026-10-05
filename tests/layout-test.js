@@ -654,7 +654,7 @@ const drive = (() => {
     '--drive-chevron-air', '--drive-chevron-stroke', '--drive-chevron-stroke-min', '--drive-chevron-turn',
     '--drive-chevron-dim-slow', '--drive-chevron-dim-normal', '--drive-chevron-dim-fast',
     '--drive-chevron-rise-slow', '--drive-chevron-rise-normal', '--drive-chevron-rise-fast',
-    '--drive-chevron-rise-turn']) tokens[name] = raw(CTL, name);
+    '--drive-chevron-rise-turn', '--drive-turn-reach-factor', '--drive-turn-reach']) tokens[name] = raw(CTL, name);
   for (const name of ['--zone-inner', '--zone-outer', '--drive-turn-depth',
     '--key-size', '--key-half', '--drive-pad-waist-half-len']) tokens[name] = raw('.drive-key', name);
   // Die beiden Zonengrenzen setzt `applyDriveZonePreferences()` aus DRIVE_ZONES. Eingesetzt
@@ -810,7 +810,10 @@ const drive = (() => {
     return out;
   };
 
-  return { raw, px, CTL, app, bounds, tokens, toPx, polygonOf, polyDistance, inside,
+  /** Wie weit die Drehtasten bei Feldgroesse F ueber die Feldkante hinausragen (Rahmen inklusive). */
+  const reach = (F) => toPx('var(--drive-turn-reach)', F);
+
+  return { raw, px, CTL, app, bounds, tokens, toPx, polygonOf, polyDistance, inside, reach,
     chevronBox, chevronBand, chevronStrokeExpr, substitute, toPx, tokens,
     keyMin, padGap, waist, padMin, reserve, field, allFields };
 })();
@@ -866,8 +869,10 @@ test('Die Sanduhrform: Fugen, Breiten und Schranken nachgerechnet', () => {
     };
     assert.strictEqual(P.up.length, 4, 'vorwaerts ist ein Trapez, kein Dreieck');
     assert.strictEqual(P.down.length, 4, 'rueckwaerts ist ein Trapez, kein Dreieck');
-    assert.strictEqual(P.left.length, 3, 'links ist ein Keil');
-    assert.strictEqual(P.right.length, 3, 'rechts ist ein Keil');
+    // Links/rechts: Keil plus Ueberstand ueber die Feldkante — fuenf Ecken; reicht der Keil von
+    // selbst, fallen je zwei davon zusammen (Ueberstand 0).
+    assert.strictEqual(P.left.length, 5, 'links ist ein Keil mit Ueberstand');
+    assert.strictEqual(P.right.length, 5, 'rechts ist ein Keil mit Ueberstand');
     for (const [a, b] of NACHBARN) {
       const d = polyDistance(P[a], P[b]);
       assert.ok(Math.abs(d - padGap) < 1e-6,
@@ -880,7 +885,13 @@ test('Die Sanduhrform: Fugen, Breiten und Schranken nachgerechnet', () => {
       `${label}: links und rechts stehen nur ${quer.toFixed(3)}px auseinander`);
     // Und zum Rand ist die Fuge genauso breit — der Grund fuer die Faktoren ueberhaupt.
     assert.ok(Math.abs(P.up[0][1] - padGap) < 1e-9, `${label}: vorwaerts haelt ${P.up[0][1]}px zum Rand`);
-    assert.ok(Math.abs(P.left[0][0] - padGap) < 1e-9, `${label}: links haelt ${P.left[0][0]}px zum Rand`);
+    // Die Ecke, an der die Schraege beginnt, bleibt eine Fuge vom Feldrand entfernt; der Ueberstand
+    // setzt dort an und ragt um `--drive-turn-reach` minus Rahmen ueber die Feldkante.
+    assert.ok(Math.abs(P.left[1][0] - padGap) < 1e-9, `${label}: links setzt die Schraege bei ${P.left[1][0]}px an`);
+    assert.ok(Math.abs(P.left[0][0] - (padGap - drive.reach(F))) < 1e-9,
+      `${label}: links endet bei ${P.left[0][0]}px statt bei ${padGap - drive.reach(F)}px`);
+    assert.ok(Math.abs(P.right[0][0] - (F - padGap + drive.reach(F))) < 1e-9,
+      `${label}: rechts endet bei ${P.right[0][0]}px statt bei ${F - padGap + drive.reach(F)}px`);
     // Die Taille ist breiter als die Fuge — sonst kippt das Trapez in sich zusammen.
     assert.ok(P.up[2][0] > P.up[3][0],
       `${label}: die Taille ist mit ${(P.up[2][0] - P.up[3][0]).toFixed(2)}px nicht breiter als die Fuge`);
@@ -916,8 +927,8 @@ test('Die Sanduhrform: Fugen, Breiten und Schranken nachgerechnet', () => {
     const left = drive.polygonOf('left', F);
     assert.ok(Math.abs((up[2][0] - up[3][0]) - widthUD(F, 0)) < 1e-6,
       `${label}: Taille gerechnet ${widthUD(F, 0).toFixed(3)}px, im Polygon ${(up[2][0] - up[3][0]).toFixed(3)}px`);
-    assert.ok(Math.abs((left[2][1] - left[0][1]) - outerLR(F)) < 1e-6,
-      `${label}: Aussenkante gerechnet ${outerLR(F).toFixed(3)}px, im Polygon ${(left[2][1] - left[0][1]).toFixed(3)}px`);
+    assert.ok(Math.abs((left[4][1] - left[0][1]) - outerLR(F)) < 1e-6,
+      `${label}: Aussenkante gerechnet ${outerLR(F).toFixed(3)}px, im Polygon ${(left[4][1] - left[0][1]).toFixed(3)}px`);
 
     assert.ok(outerLR(F) >= keyMin,
       `${label}: der Keil links/rechts ist an der Aussenkante nur ${outerLR(F).toFixed(1)}px hoch`);
@@ -953,18 +964,20 @@ test('Die Sanduhrform: Fugen, Breiten und Schranken nachgerechnet', () => {
   }
 });
 
-test('Der Inkreis der Drehtasten und die Schwelle, an der der Hinweis verschwindet', () => {
-  // `turnKeyIncircle()` in app.js ist die **einzige** Stelle, die beurteilt, ob eine Drehtaste
-  // noch ein Daumenziel ist. Hier wird sie gegen die tatsaechlich ausgewerteten clip-path-Polygone
-  // gerechnet — nicht gegen eine zweite Formel, die dieselben Annahmen wiederholte.
-  const { app, padGap, waist, keyMin, polygonOf, allFields, inside } = drive;
-  const { loadApp } = require('./app-harness.js');
-  const { t } = loadApp({ exportNames: ['turnKeyIncircle'] });
+test('Die Drehtasten fassen in allen zwanzig Faellen einen Daumen — durch den Ueberstand', () => {
+  // Bis v78 war der Drehkeil ein reines Dreieck. Der groesste Kreis darin blieb in 12 von 20
+  // Faellen unter dem Daumenmass (29,0 px bei F = 140), und eine Hinweiszeile benannte das nur.
+  // Seit v79 ragt die Aussenkante um `--drive-turn-reach` ueber das Feld hinaus — gerade so weit,
+  // dass der Kreis das Daumenmass erreicht. Gemessen wird an den **ausgewerteten** Polygonen, nicht
+  // an einer zweiten Formel; die Rechnung im Stylesheet muss sich dort bewaehren.
+  const { raw, CTL, padGap, waist, keyMin, polygonOf, allFields, inside, reach, toPx } = drive;
 
   /** Groesster Kreis im Polygon, direkt gemessen: Mittelpunkt maximalen Randabstands. */
   const incircleOfPolygon = (poly) => {
-    const edgeDist = (p) => Math.min(...poly.map((a, i) => {
-      const b = poly[(i + 1) % poly.length];
+    // Zusammenfallende Ecken (Ueberstand 0) ergeben Kanten der Laenge 0 — die tragen nichts bei.
+    const edges = poly.map((a, i) => [a, poly[(i + 1) % poly.length]])
+      .filter(([a, b]) => Math.hypot(b[0] - a[0], b[1] - a[1]) > 1e-9);
+    const edgeDist = (p) => Math.min(...edges.map(([a, b]) => {
       const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
       return Math.abs((p[0] - a[0]) * (b[1] - a[1]) - (p[1] - a[1]) * (b[0] - a[0])) / len;
     }));
@@ -973,7 +986,7 @@ test('Der Inkreis der Drehtasten und die Schwelle, an der der Hinweis verschwind
     if (!inside(best, poly)) best = [poly[0][0], poly[0][1]];
     let step = Math.max(...xs) - Math.min(...xs);
     let value = inside(best, poly) ? edgeDist(best) : 0;
-    for (let i = 0; i < 200; i += 1) {
+    for (let i = 0; i < 400; i += 1) {
       let moved = false;
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
         const p = [best[0] + dx * step, best[1] + dy * step];
@@ -987,51 +1000,93 @@ test('Der Inkreis der Drehtasten und die Schwelle, an der der Hinweis verschwind
     return 2 * value;
   };
 
-  let unter = 0;
-  for (const [label, F] of allFields()) {
-    for (const dir of ['left', 'right']) {
-      const gemessen = incircleOfPolygon(polygonOf(dir, F));
-      const gerechnet = t.turnKeyIncircle(F, padGap, waist);
-      assert.ok(Math.abs(gemessen - gerechnet) < 1e-3,
-        `${label} ${dir}: turnKeyIncircle sagt ${gerechnet.toFixed(4)}px, im Polygon stecken ${gemessen.toFixed(4)}px`);
-    }
-    if (t.turnKeyIncircle(F, padGap, waist) < keyMin) unter += 1;
+  // --- Der Faktor passt zur Taille, der Ausdruck baut nur auf Token ----------
+  const factor = parseFloat(raw(CTL, '--drive-turn-reach-factor'));
+  const want = 1 + Math.sqrt((1 - waist) ** 2 + 1);
+  assert.ok(Math.abs(factor - want) < 1e-5,
+    `--drive-turn-reach-factor ist ${factor}, zur Taille ${waist} gehoert ${want.toFixed(6)}`);
+  const expr = raw(CTL, '--drive-turn-reach');
+  for (const name of ['--drive-pad-key-min', '--drive-turn-reach-factor', '--joystick-size',
+    '--drive-pad-gap', '--drive-pad-cut-y', '--drive-pad-waist']) {
+    assert.ok(expr.includes(`var(${name})`), `--drive-turn-reach muss ${name} lesen: "${expr}"`);
   }
-  // Der Befund, der die Hinweiszeile ueberhaupt noetig macht — festgehalten, nicht behauptet.
-  assert.strictEqual(unter, 12, `der Keil unterschreitet ${keyMin}px in ${unter} statt 12 der 20 Faelle`);
+  for (const num of expr.replace(/var\([^()]*\)/g, '').match(/[\d.]+/g) || []) {
+    assert.ok(['0', '1', '2'].includes(num), `--drive-turn-reach schreibt die eigene Zahl ${num}: "${expr}"`);
+  }
 
-  // Die Schwelle wird **abgeleitet**, nicht hingeschrieben.
+  // --- Jeder Fall erreicht das Daumenmass, keiner bekommt mehr als noetig ----
+  // Ohne Ueberstand: dieselbe Form, nur an der bisherigen Aussenkante abgeschnitten.
+  const withoutReach = (dir, poly, F) => poly.map(([x, y]) =>
+    [dir === 'left' ? Math.max(x, padGap) : Math.min(x, F - padGap), y]);
+  let mitUeberstand = 0;
+  for (const [label, F] of allFields()) {
+    const r = reach(F);
+    assert.ok(r >= 0, `${label}: negativer Ueberstand ${r}`);
+    for (const dir of ['left', 'right']) {
+      const poly = polygonOf(dir, F);
+      const d = incircleOfPolygon(poly);
+      const vorher = incircleOfPolygon(withoutReach(dir, poly, F));
+      assert.ok(d >= keyMin - 1e-3, `${label} ${dir}: der groesste Kreis misst nur ${d.toFixed(3)}px`);
+      if (r > 0) {
+        assert.ok(vorher < keyMin, `${label} ${dir}: Ueberstand ${r.toFixed(2)}px, obwohl der Keil allein reicht`);
+        assert.ok(Math.abs(d - keyMin) < 1e-3,
+          `${label} ${dir}: genau so viel wie noetig — der Kreis misst ${d.toFixed(4)}px statt ${keyMin}px`);
+      } else {
+        assert.ok(vorher >= keyMin - 1e-3, `${label} ${dir}: kein Ueberstand, aber der Keil misst nur ${vorher.toFixed(2)}px`);
+      }
+    }
+    if (r > 0) mitUeberstand += 1;
+  }
+  // Genau die zwoelf Faelle, in denen bis v78 die Hinweiszeile stand.
+  assert.strictEqual(mitUeberstand, 12, `Ueberstand in ${mitUeberstand} statt 12 der 20 Faelle`);
+  // Die Grenze, ab der kein Ueberstand mehr noetig ist, wird abgeleitet, nicht hingeschrieben.
   let lo = 100; let hi = 400;
   for (let i = 0; i < 200; i += 1) {
     const mid = (lo + hi) / 2;
-    if (t.turnKeyIncircle(mid, padGap, waist) >= keyMin) hi = mid; else lo = mid;
+    if (reach(mid) > 0) lo = mid; else hi = mid;
   }
   assert.ok(Math.abs(Math.ceil(hi * 100) / 100 - 203.34) < 1e-9,
-    `voll ab ${(Math.ceil(hi * 100) / 100).toFixed(2)}px statt 203.34px Feldgroesse`);
-  assert.ok(t.turnKeyIncircle(140, padGap, waist) < 29.1 && t.turnKeyIncircle(140, padGap, waist) > 29.0,
-    'im kleinsten Fall bleiben rund 29,0px');
-  // Unbrauchbare Eingaben liefern 0 und damit „zu schmal" — nie eine geratene Zahl.
-  for (const args of [[0, padGap, waist], [140, padGap, 0], [140, padGap, 1], [8, padGap, waist]]) {
-    assert.strictEqual(t.turnKeyIncircle(...args), 0, `turnKeyIncircle(${args}) muss 0 liefern`);
-  }
+    `ohne Ueberstand ab ${(Math.ceil(hi * 100) / 100).toFixed(2)}px statt 203.34px Feldgroesse`);
+  assert.ok(Math.abs(reach(140) - 15.833) < 1e-3, `im kleinsten Feld ${reach(140).toFixed(3)}px statt 15,833px`);
 
-  // --- Waechter: keine zweite Rechnung daneben -----------------------------
-  assert.strictEqual((app.match(/function turnKeyIncircle\(/g) || []).length, 1,
-    'turnKeyIncircle darf es nur einmal geben');
-  assert.strictEqual((app.match(/turnKeyIncircle\(/g) || []).length, 2,
-    'genau eine Definition und genau ein Aufrufer — sonst steht die Beurteilung an zwei Stellen');
-  assert.strictEqual((app.match(/Math\.sqrt\(\(1 - /g) || []).length, 1,
-    'die Fugenfaktoren duerfen nur in turnKeyIncircle nachgerechnet werden');
-  assert.ok(!/203[.,]3/.test(app),
-    'die Schwelle gehoert nicht als Zahl in den Code — sie folgt aus der Funktion');
-  // Und die 44 px kommen aus dem Stylesheet, nicht aus einer zweiten Zahl in app.js.
-  assert.ok(/--drive-pad-key-min/.test(app) && /shape\.keyMin/.test(app),
-    'das Daumenmass muss aus --drive-pad-key-min gelesen werden');
-  const hintBody = app.slice(app.indexOf('function refreshTurnKeyHint'),
-    app.indexOf('function refreshDriveZoneHint'));
-  assert.ok(!/\b44\b/.test(hintBody), 'in der Hinweiszeile darf keine eigene 44 stehen');
-  assert.ok(/driveControl === 'buttons'/.test(hintBody),
-    'die Zeile gilt nur im Tastenmodus — im Joystick-Modus gibt es keine Drehtasten');
+  // --- Gemalt, gerahmt, freigehalten ---------------------------------------
+  // Der Ueberstand liegt ausserhalb des Tastenkastens; gemalt wird er vom Pseudo-Element, das die
+  // Hintergrundfarbe (auch `:active`) von der Taste erbt und vom clip-path mitbeschnitten wird.
+  for (const [sel, side] of [['.drive-key.key-left::before', 'right'], ['.drive-key.key-right::before', 'left']]) {
+    assert.strictEqual(resolve(sel, 'width').value, 'var(--drive-turn-reach)', `${sel}: Breite`);
+    assert.strictEqual(resolve(sel, 'background').value, 'inherit', `${sel}: erbt den Tastengrund`);
+    assert.strictEqual(resolve(sel, 'position').value, 'absolute');
+    assert.strictEqual(resolve(sel, side).value, '100%', `${sel}: liegt ausserhalb des Kastens`);
+  }
+  // Der Rahmen um den Ueberstand: Untergrund des Feldes, unter den Tasten, genau eine Fuge breit.
+  assert.strictEqual(resolve('.drive-zone .drive-pad', 'isolation').value, 'isolate');
+  const rim = '.drive-zone .drive-pad::before';
+  assert.strictEqual(resolve(rim, 'z-index').value, '-1');
+  assert.strictEqual(resolve(rim, 'background').value, 'inherit');
+  assert.strictEqual(resolve(rim, 'top').value, 'var(--drive-pad-cut-y)');
+  assert.strictEqual(resolve(rim, 'bottom').value, 'var(--drive-pad-cut-y)');
+  const overlap = resolve(rim, '--drive-turn-rim-overlap').value;
+  const rimAt = (F, prop) => toPx(resolve(rim, prop).value, F, { '--drive-turn-rim-overlap': overlap });
+  for (const [label, F] of allFields()) {
+    const r = reach(F);
+    const width = rimAt(F, 'width');
+    // `right` bezieht sich auf die Breite des Feldes: Aussenkante des Rahmens = F - right - width.
+    const outer = F - rimAt(F, 'right') - width;
+    if (r > 0) {
+      assert.ok(Math.abs(outer + r) < 1e-6, `${label}: Rahmen endet bei ${outer}px statt bei ${-r}px`);
+      const poly = polygonOf('left', F);
+      assert.ok(Math.abs((poly[0][0] - outer) - padGap) < 1e-6, `${label}: Rahmen neben der Taste nicht eine Fuge breit`);
+      assert.ok(Math.abs((poly[0][1] - toPx('var(--drive-pad-cut-y)', F)) - padGap) < 1e-6,
+        `${label}: Rahmen ueber der Taste nicht eine Fuge breit`);
+    } else {
+      assert.strictEqual(width, 0, `${label}: ohne Ueberstand darf kein Rahmen die Feldecke veraendern`);
+    }
+  }
+  // Und daneben haelt das Feld im Tastenmodus genau diesen Platz frei.
+  assert.strictEqual(resolve('.drive-zone .drive-control.mode-buttons', 'margin-inline').value,
+    'var(--drive-turn-reach)', 'die Seitenspalten weichen um den Ueberstand');
+  assert.strictEqual(resolve('.drive-zone .drive-control', 'margin-inline').value, null,
+    'im Joystick-Modus bleibt das Feld, wie es war');
 });
 
 test('Die Chevrons: Anzahl, Sichtbarkeit und Lage', () => {
@@ -1306,11 +1361,24 @@ test('Schmaler Bildschirm: Seitenspalte behaelt Platz fuer Umschalter und Anzeig
   assert.ok(size.includes('calc(100vw - var(--drive-side-reserve))'),
     `die Joystick-Groesse ist an die Bildschirmbreite gebunden: ${size}`);
   // Nachgerechnet fuer ein schmales Telefon (360 x 800) in jeder Groessenstufe.
-  const joystick = (scale, w, h) => Math.max(110, Math.min(25 * h / 100 * scale, 240 * scale, 38 * h / 100, w - reserve));
+  // Im Tastenmodus weicht jede Seitenspalte zusaetzlich um den Ueberstand der Drehtasten — gerechnet
+  // wird der engere der beiden Modi.
+  const sideWidthAt = (scale, w, h) => {
+    // Feldgroesse samt Untergrenze `--drive-field-min` — dieselbe Rechnung wie fuer die Fugen.
+    const F = drive.field(scale, w, h);
+    return (w - 2 * padding - 2 * gap - F - 2 * drive.reach(F)) / 2;
+  };
   for (const scale of [0.75, 1, 1.25, 1.5]) {
-    const sideWidth = (360 - 2 * padding - 2 * gap - joystick(scale, 360, 800)) / 2;
+    const sideWidth = sideWidthAt(scale, 360, 800);
     assert.ok(sideWidth >= toggle, `Stufe ${scale}: Seitenspalte ${sideWidth}px < Umschalter ${toggle}px`);
     if (scale <= 1) assert.ok(sideWidth >= 52, `Stufe ${scale}: „gestoppt“ passt nicht (${sideWidth}px)`);
+  }
+  // Der Umschalter passt in allen zwanzig Faellen, auch mit Ueberstand.
+  for (const [w, h] of [[360, 640], [360, 800], [320, 568], [412, 915], [393, 786]]) {
+    for (const scale of [0.75, 1, 1.25, 1.5]) {
+      const sideWidth = sideWidthAt(scale, w, h);
+      assert.ok(sideWidth >= toggle, `${w}x${h} Stufe ${scale}: Seitenspalte ${sideWidth.toFixed(1)}px < Umschalter ${toggle}px`);
+    }
   }
   // Im breiten Fenster gilt dieselbe Bindung, nur an die Fahrspalte statt an 100vw.
   const wide = { media: 'min-width: 760px' };

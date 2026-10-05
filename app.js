@@ -100,12 +100,11 @@ const MAX_MAPS = 25;
 const I18N = {
   de: {
     joystickSize: 'Größe des Joysticks', joystickSmall: 'Klein', joystickMedium: 'Mittel', joystickLarge: 'Groß', joystickXLarge: 'Sehr groß',
-    joystickSizeHint: '„Mittel“ passt sich der Bildschirmhöhe an. Größer heißt mehr Trefferfläche, kleiner mehr Karte. In kleinen Stufen können die Drehtasten schmaler werden als ein Daumen; dann steht hier ein Hinweis. Geändert wird dadurch nichts.',
+    joystickSizeHint: '„Mittel“ passt sich der Bildschirmhöhe an. Größer heißt mehr Trefferfläche, kleiner mehr Karte. In kleinen Stufen ragen die Drehtasten seitlich über das Feld hinaus, damit sie ein Daumenziel bleiben.',
     driveControl: 'Steuerung', driveControlJoystick: 'Joystick', driveControlButtons: 'Richtungstasten',
     driveModeToggle: 'Steuerung umschalten', driveModeToJoystick: 'Zu Joystick wechseln', driveModeToButtons: 'Zu Richtungstasten wechseln', cursorSpeed: 'Geschwindigkeit im Cursor-Modus',
     driveZones: 'Geschwindigkeitszonen',
     driveZonesNote: 'Mit Zonen sind vorwärts und rückwärts längs dreigeteilt: innen das Minimum, in der Mitte der eingetragene Wert, außen das Maximum des Joysticks. Die Zone folgt dem Finger, solange er gedrückt bleibt — weiter nach außen schieben heißt schneller. Ohne Zonen gilt für beide der eingetragene Wert. Links und rechts drehen unabhängig davon immer mit der Hälfte des Höchstwerts.',
-    driveTurnSizeHint: 'Bei dieser Größe sind die Drehtasten schmaler als ein Daumen (44 px). Eine größere Stufe hilft.',
     driveZoneOrderHint: 'Die Zonen beim Vorwärts- und Rückwärtsfahren ergeben von innen nach außen {slow} · {normal} · {fast} cm/s — diese Staffel steigt nicht durchgehend an. Beim Schieben nach außen wird es dazwischen langsamer. Die Werte gelten wie eingetragen, geändert wird nichts von selbst.',
     driveControlHint: 'Die Richtungstasten fahren bewusst langsam und ohne seitliches Lenken — links und rechts drehen auf der Stelle. Der Joystick bleibt vom Cursor-Wert unberührt.',
     driveUp: 'Vorwärts fahren', driveDown: 'Rückwärts fahren', driveLeft: 'Links drehen', driveRight: 'Rechts drehen',
@@ -346,7 +345,7 @@ const I18N = {
     helpQualityTitle: 'Punktqualität', helpQualityText: 'Der Rand eines Punktes zeigt, zu welchem Element er gehört, die Füllung die RTK-Qualität bei der Aufnahme.',
     helpExtendTitle: 'Kontur nachträglich erweitern', helpExtendText: 'Ist ein Perimeter oder eine Ausschlussfläche schon geschlossen, öffnet „Erweitern“ in der Kartenleiste sie wieder. Ein Hinweisstreifen über der Karte führt in drei Schritten: erst den Punkt wählen, von dem aus weitergebaut wird, dann den Punkt, an dem die Öffnung endet — die Kontur wird zwischen beiden geöffnet. Die beiden müssen keine Nachbarn sein — liegen Punkte dazwischen, werden sie gelöscht, und zwar auf der kürzeren der beiden Seiten. Der Hinweisstreifen nennt die Anzahl vorher; erst ein zweiter Tipp auf denselben Punkt führt es aus, ein Tipp auf einen anderen Punkt wählt stattdessen diesen. Der zuerst gewählte Punkt blinkt in eigener Farbe, damit er sich vom nur vorgemerkten zweiten unterscheidet. Danach nimmst du wie gewohnt weitere Punkte auf — auch mit Automatik —, sie landen genau zwischen den beiden gewählten. „Fertig“ im Hinweisstreifen schließt die Kontur wieder.',
     helpMapToolsTitle: 'Karten umbenennen & kopieren', helpMapToolsText: 'In der Kartenübersicht trägt jede Karte zwei kleine Werkzeuge: der Stift benennt sie um (nur der Name ändert sich), das Kopiersymbol legt eine vollständige, unabhängige Kopie an — mit allen Punkten, dem Positionsmodus und dem Ursprung. Die Kopie bekommt automatisch einen freien Namen, die gerade aktive Karte bleibt aktiv.',
-    helpDriveZonesTitle: 'Geschwindigkeitszonen beim Vorwärts- und Rückwärtsfahren', helpDriveZonesText: 'Die vier Tasten sind als Sanduhr geschnitten: vorwärts und rückwärts sind breite Trapeze, links und rechts schmale Keile. Der Grund ist die Bedienung — bei vor und zurück schiebt der Daumen über die ganze Länge, links und rechts sind Korrekturen auf der Stelle. Vorwärts und rückwärts sind längs dreigeteilt: innen das Minimum, in der Mitte der eingetragene Tastenwert, außen das Maximum — dieselben drei Werte, die unter Einstellungen › Fahrgeschwindigkeit ohnehin stehen, es kommt keine neue Zahl dazu. Die Zone folgt dem Finger, solange er gedrückt bleibt: weiter nach außen schieben heißt schneller, zurück zur Mitte wieder langsamer. Die Grenzen sind auf der Taste eingezeichnet, die gerade gefahrene Zone ist hervorgehoben; wer genau auf einer Grenze liegt, fährt mit der langsameren der beiden Zonen — angehalten wird dort nicht. Jede Zone trägt einen Chevron, der nach außen breiter, flacher und kräftiger wird. Sind die Zonen abgeschaltet, steht auf vorwärts und rückwärts nur noch der eine Chevron der mittleren Geschwindigkeit — die Taste zeigt nichts, was sie nicht tut. Loslassen stoppt wie zuvor sofort. Die Richtung folgt dem Finger ebenso, wie beim Joystick: wer ohne abzusetzen auf eine andere Taste gleitet, fährt in deren Richtung weiter. In der Fuge zwischen zwei Tasten hält der Mäher an, und auch ein schneller Wisch über die Fuge hinweg geht über diesen Stopp. Wer über die Außenkante hinausschiebt, bleibt in Taste und Zone. Die Einteilung lässt sich abschalten — dann gilt für beide Richtungen der eingetragene Tastenwert. Links und rechts haben keine Zonen: das Drehen auf der Stelle läuft immer mit der Hälfte des eingestellten Höchstwerts, gedeckelt durch die eingestellte Höchst-Drehrate. Die drei Werte sind frei einstellbar und werden nicht sortiert: liegt der mittlere unter dem inneren, wird das Schieben nach außen zwischendurch langsamer. Die Werte gelten dann wie eingetragen, und ein Hinweis bei den Geschwindigkeitsfeldern nennt die Reihenfolge.',
+    helpDriveZonesTitle: 'Geschwindigkeitszonen beim Vorwärts- und Rückwärtsfahren', helpDriveZonesText: 'Die vier Tasten sind als Sanduhr geschnitten: vorwärts und rückwärts sind breite Trapeze, links und rechts schmale Keile. Der Grund ist die Bedienung — bei vor und zurück schiebt der Daumen über die ganze Länge, links und rechts sind Korrekturen auf der Stelle. Ist das Fahrfeld klein, ragen die beiden Drehtasten seitlich über das Feld hinaus, damit auch sie ein Daumenziel von mindestens 44 px bleiben. Vorwärts und rückwärts sind längs dreigeteilt: innen das Minimum, in der Mitte der eingetragene Tastenwert, außen das Maximum — dieselben drei Werte, die unter Einstellungen › Fahrgeschwindigkeit ohnehin stehen, es kommt keine neue Zahl dazu. Die Zone folgt dem Finger, solange er gedrückt bleibt: weiter nach außen schieben heißt schneller, zurück zur Mitte wieder langsamer. Die Grenzen sind auf der Taste eingezeichnet, die gerade gefahrene Zone ist hervorgehoben; wer genau auf einer Grenze liegt, fährt mit der langsameren der beiden Zonen — angehalten wird dort nicht. Jede Zone trägt einen Chevron, der nach außen breiter, flacher und kräftiger wird. Sind die Zonen abgeschaltet, steht auf vorwärts und rückwärts nur noch der eine Chevron der mittleren Geschwindigkeit — die Taste zeigt nichts, was sie nicht tut. Loslassen stoppt wie zuvor sofort. Die Richtung folgt dem Finger ebenso, wie beim Joystick: wer ohne abzusetzen auf eine andere Taste gleitet, fährt in deren Richtung weiter. In der Fuge zwischen zwei Tasten hält der Mäher an, und auch ein schneller Wisch über die Fuge hinweg geht über diesen Stopp. Wer über die Außenkante hinausschiebt, bleibt in Taste und Zone. Die Einteilung lässt sich abschalten — dann gilt für beide Richtungen der eingetragene Tastenwert. Links und rechts haben keine Zonen: das Drehen auf der Stelle läuft immer mit der Hälfte des eingestellten Höchstwerts, gedeckelt durch die eingestellte Höchst-Drehrate. Die drei Werte sind frei einstellbar und werden nicht sortiert: liegt der mittlere unter dem inneren, wird das Schieben nach außen zwischendurch langsamer. Die Werte gelten dann wie eingetragen, und ein Hinweis bei den Geschwindigkeitsfeldern nennt die Reihenfolge.',
     helpDriveControlTitle: 'Joystick oder Richtungstasten', helpDriveControlText: 'Der kleine Knopf neben dem Fahrfeld schaltet zwischen beidem um; er zeigt das Symbol des Modus, in den er wechselt. Bei Rechtshändern steht er links vom Feld, bei Linkshändern gespiegelt rechts – jeweils direkt über der Fahrtanzeige. Der Joystick fährt wie eine Fernsteuerung: Richtung und Stärke der Auslenkung. Die Richtungstasten kennen nur vorwärts, rückwärts und Drehen auf der Stelle — kein versehentliches Lenken beim Geradeausfahren. Sie fahren mit einer eigenen, langsamen Geschwindigkeit für genaues Rangieren, einstellbar unter Einstellungen › Fahrgeschwindigkeit.',
     helpPositionModeTitle: 'Positionsmodus', helpPositionModeText: 'Jede Karte rechnet standardmäßig in lokalen Metern („Relativ“) — dafür ist keine Eingabe nötig. In der Voreinstellung zählt Sunray diese Meter relativ zur RTK-Basisstation, nicht zu einem Punkt im Garten. „Absolut“ brauchst du nur, wenn du die Karte mit Programmen austauschen willst, die echte Weltkoordinaten erwarten: dort trägst du im Menü unter Karten einmalig die GPS-Position ein, die dem Nullpunkt entsprechen soll. Welcher Punkt das ist, legst du selbst fest — der Mäher hat von sich aus keinen. Nur wenn im Mäher über AT+P ein Bezugspunkt gesetzt wurde, rechnet er selbst gegen diesen; dann ist es genau dieser Wert. Der Ursprung gehört zur jeweiligen Karte, weil verschiedene Karten meist an verschiedenen Orten liegen. Fehlt ein gültiger Ursprung, bleibt der Export bei lokalen Metern — falsch machen kannst du dabei nichts.',
     helpLockTitle: 'Kartensperre', helpLockText: 'Fertige Karten lassen sich gegen versehentliche Änderungen sperren.',
@@ -365,12 +364,11 @@ const I18N = {
   },
   en: {
     joystickSize: 'Joystick size', joystickSmall: 'Small', joystickMedium: 'Medium', joystickLarge: 'Large', joystickXLarge: 'Extra large',
-    joystickSizeHint: '“Medium” adapts to the screen height. Larger means a bigger target, smaller leaves more map. At small sizes the turn keys can get narrower than a thumb; a note appears here when they do. Nothing is changed for you.',
+    joystickSizeHint: '“Medium” adapts to the screen height. Larger means a bigger target, smaller leaves more map. At small sizes the turn keys reach out sideways beyond the field so that they stay a thumb target.',
     driveControl: 'Control', driveControlJoystick: 'Joystick', driveControlButtons: 'Direction keys',
     driveModeToggle: 'Switch control', driveModeToJoystick: 'Switch to joystick', driveModeToButtons: 'Switch to direction keys', cursorSpeed: 'Speed in cursor mode',
     driveZones: 'Speed zones',
     driveZonesNote: 'With zones, forward and reverse are split lengthwise into three: the minimum on the inside, the value entered above in the middle, the joystick maximum on the outside. The zone follows your finger while it stays down — sliding further out means faster. Without zones the value entered above applies to both. Left and right always turn at half the maximum speed, regardless of this setting.',
-    driveTurnSizeHint: 'At this size the turn keys are narrower than a thumb (44 px). A larger size helps.',
     driveZoneOrderHint: 'From the inside out the forward and reverse zones are {slow} · {normal} · {fast} cm/s — that ladder does not rise all the way. Sliding outwards gets slower in between. The values apply exactly as entered, nothing is changed automatically.',
     driveControlHint: 'The direction keys deliberately drive slowly and without any sideways steering — left and right turn on the spot. The joystick is unaffected by the cursor speed.',
     driveUp: 'Drive forward', driveDown: 'Drive backward', driveLeft: 'Turn left', driveRight: 'Turn right',
@@ -611,7 +609,7 @@ const I18N = {
     helpQualityTitle: 'Point quality', helpQualityText: 'The outline of a point shows which element it belongs to, the fill shows the RTK quality at the time it was captured.',
     helpExtendTitle: 'Extending a closed contour', helpExtendText: 'If a perimeter or exclusion area is already closed, “Extend” in the map bar reopens it. A hint strip above the map guides you through three steps: first choose the point building continues from, then the point where the opening ends — the contour opens between them. They need not be neighbours — any points in between are deleted, on the shorter of the two sides. The hint strip states the number beforehand; only a second tap on the same point carries it out, while a tap on a different point picks that one instead. The point you chose first blinks in its own colour so it stands apart from the merely pending second one. Then capture further points as usual — automatic capture included — and they land exactly between the two you picked. “Done” in the hint strip closes the contour again.',
     helpMapToolsTitle: 'Renaming & copying maps', helpMapToolsText: 'In the map overview every map carries two small tools: the pencil renames it (only the name changes), the copy icon creates a complete, independent copy — with all points, the position mode and the origin. The copy automatically gets a free name, and the map you are working on stays active.',
-    helpDriveZonesTitle: 'Speed zones for driving forward and back', helpDriveZonesText: 'The four keys are cut as an hourglass: forward and reverse are wide trapezoids, left and right narrow wedges. The reason is how they are used — for forward and back your thumb slides along the whole length, while left and right are corrections on the spot. Forward and reverse are split lengthwise into three: the minimum on the inside, the key speed you entered in the middle, the maximum on the outside — the same three values already under Settings › Drive speed, no new number is added. The zone follows your finger while it stays down: sliding further out means faster, back towards the centre slower again. The boundaries are drawn on the key and the zone currently in use is highlighted; a finger right on a boundary drives at the slower of the two zones — it does not stop there. Each zone carries a chevron that grows wider, flatter and stronger towards the outside. With the zones switched off, forward and reverse show only the single chevron of the middle speed — the key shows nothing it does not do. Releasing stops immediately, as before. The direction follows your finger too, just like the joystick: slide onto another key without lifting and the mower continues in that direction. In the gap between two keys the mower stops, and even a fast swipe across the gap passes through this stop. Sliding past the outer edge keeps the current key and zone. The split can be switched off — the key speed then applies to both directions. Left and right have no zones: turning on the spot always runs at half the maximum speed you set, capped by the maximum turn rate. The three values are yours to set and are never sorted: if the middle one is below the inner one, sliding outwards gets slower in between. The values then apply exactly as entered, and a note next to the speed fields spells out the order.',
+    helpDriveZonesTitle: 'Speed zones for driving forward and back', helpDriveZonesText: 'The four keys are cut as an hourglass: forward and reverse are wide trapezoids, left and right narrow wedges. The reason is how they are used — for forward and back your thumb slides along the whole length, while left and right are corrections on the spot. On a small drive field the two turn keys reach out sideways beyond the field so that they, too, stay a thumb target of at least 44 px. Forward and reverse are split lengthwise into three: the minimum on the inside, the key speed you entered in the middle, the maximum on the outside — the same three values already under Settings › Drive speed, no new number is added. The zone follows your finger while it stays down: sliding further out means faster, back towards the centre slower again. The boundaries are drawn on the key and the zone currently in use is highlighted; a finger right on a boundary drives at the slower of the two zones — it does not stop there. Each zone carries a chevron that grows wider, flatter and stronger towards the outside. With the zones switched off, forward and reverse show only the single chevron of the middle speed — the key shows nothing it does not do. Releasing stops immediately, as before. The direction follows your finger too, just like the joystick: slide onto another key without lifting and the mower continues in that direction. In the gap between two keys the mower stops, and even a fast swipe across the gap passes through this stop. Sliding past the outer edge keeps the current key and zone. The split can be switched off — the key speed then applies to both directions. Left and right have no zones: turning on the spot always runs at half the maximum speed you set, capped by the maximum turn rate. The three values are yours to set and are never sorted: if the middle one is below the inner one, sliding outwards gets slower in between. The values then apply exactly as entered, and a note next to the speed fields spells out the order.',
     helpDriveControlTitle: 'Joystick or direction keys', helpDriveControlText: 'The small button beside the drive field switches between the two; it shows the icon of the mode it switches to. For right-handed use it sits to the left of the field, for left-handed use mirrored to the right, directly above the drive status. The joystick drives like a remote control: direction and amount of deflection. The direction keys only know forward, backward and turning on the spot — no accidental steering while driving straight. They use their own slow speed for precise manoeuvring, adjustable under Settings › Drive speed.',
     helpPositionModeTitle: 'Position mode', helpPositionModeText: 'Every map works in local metres by default (“Relative”) — no input needed. By default Sunray counts those metres relative to the RTK base station, not to a point in the garden. You only need “Absolute” if you want to exchange the map with programs that expect real world coordinates: there you enter, once, in the menu under Maps, the GPS position the zero point should correspond to. Which point that is, is your choice — the mower has none of its own. Only if a reference point was set in the mower via AT+P does it compute against that one; then it is exactly that value. The origin belongs to the individual map, because different maps usually sit in different places. Without a valid origin the export stays in local metres — you cannot get this wrong.',
     helpLockTitle: 'Map lock', helpLockText: 'Finished maps can be locked against accidental changes.',
@@ -706,11 +704,10 @@ const ui = {
   closeAndNewWrap: $('closeAndNewWrap'), closeAndNewBtn: $('closeAndNewBtn'), fitViewBtn: $('fitViewBtn'),
   undoFabWrap: $('undoFabWrap'), undoBtn: $('undoBtn'),
   driveModeBtn: $('driveModeBtn'), driveModeLabel: $('driveModeLabel'),
-  driveButtons: $('driveButtons'), driveControlSelect: $('driveControlSelect'),
+  driveButtons: $('driveButtons'), driveControlArea: $('driveControlArea'), driveControlSelect: $('driveControlSelect'),
   cursorSpeedInput: $('cursorSpeedInput'), cursorSpeedRow: $('cursorSpeedRow'),
   driveZonesToggle: $('driveZonesToggle'), driveZonesRow: $('driveZonesRow'),
   driveZoneOrderHint: $('driveZoneOrderHint'),
-  driveTurnSizeHint: $('driveTurnSizeHint'),
   extendWrap: $('extendWrap'), extendBtn: $('extendBtn'), extendBtnLabel: $('extendBtnLabel'),
   extendPanel: $('extendPanel'), extendPanelText: $('extendPanelText'),
   extendCancelBtn: $('extendCancelBtn'), extendDoneBtn: $('extendDoneBtn'),
@@ -1033,10 +1030,9 @@ function refreshControlUi() {
   const { min, max } = driveSpeedLimits();
   const decimal = (v) => v.toFixed(2).replace('.', state.language === 'de' ? ',' : '.');
   if (ui.driveSpeedValue) ui.driveSpeedValue.textContent = `${decimal(min)} – ${decimal(max)} m/s`;
-  // Auch der Sprachwechsel laeuft hier durch (applyLanguage), beide Hinweistexte sind dynamisch
-  // und tragen deshalb kein festes data-i18n.
+  // Auch der Sprachwechsel laeuft hier durch (applyLanguage), der Hinweistext ist dynamisch
+  // und traegt deshalb kein festes data-i18n.
   refreshDriveZoneHint();
-  refreshTurnKeyHint();
   if (!available) {
     clearInterval(state.driveTimer);
     state.driveTimer = null;
@@ -1152,47 +1148,15 @@ function cursorZonesActive(direction) {
 }
 
 /**
- * **Der groesste Kreis, der in eine Drehtaste passt — die einzige Stelle, die das rechnet.**
- *
- * Der Keil ist ein gleichschenkliges Dreieck: `base` ist seine Aussenkante am Feldrand, `depth`
- * die Tiefe bis zur Spitze an der Taille. Beide folgen aus der Feldgroesse `field`, der Fuge
- * `gap` und der Taille `waist` — denselben drei Groessen, aus denen das Stylesheet die Form
- * schneidet. Der Inkreisdurchmesser eines Dreiecks ist `2 * Flaeche / Umfang * 2`, hier
- * ausgeschrieben als `2 * base * depth / (base + 2 * Schenkel)`.
- *
- * Die 44-px-Bedingung wird fuer links/rechts **hier** beantwortet und nirgends sonst: die
- * Aussenkante allein taugt nicht als Mass, weil ein langer duenner Keil daran vorbeikaeme.
- * `tests/layout-test.js` rechnet die Funktion gegen die ausgewerteten clip-path-Polygone nach
- * und leitet daraus die Schwelle ab, statt sie zu unterstellen.
+ * Breite der Fuge `--drive-pad-gap` in px — dieselbe Zahl, mit der das Stylesheet die Tasten
+ * schneidet und am Feldrand den Rahmen stehen laesst. Sie wird von dort gelesen statt hier ein
+ * zweites Mal hingeschrieben. Nicht lesbar (kein Layout, kein Browser): `null`.
  */
-function turnKeyIncircle(field, gap, waist) {
-  const half = field / 2 - gap;
-  if (!(half > 0) || !(waist > 0) || !(waist < 1)) return 0;
-  const cutX = gap / 2 * Math.sqrt((1 - waist) ** 2 + 1);
-  const cutY = cutX / (1 - waist);
-  const base = 2 * (half - cutY);
-  const depth = half * (1 - waist) - cutX;
-  if (!(base > 0) || !(depth > 0)) return 0;
-  return 2 * base * depth / (base + 2 * Math.hypot(base / 2, depth));
-}
-
-/**
- * Die drei Formgroessen, aus denen die Tasten geschnitten werden. Sie stehen im **Stylesheet**
- * (`--drive-pad-gap`, `--drive-pad-waist`, `--drive-pad-key-min`) und werden von dort gelesen
- * statt hier ein zweites Mal hingeschrieben — sonst koennten Form und Hinweis auseinanderlaufen,
- * ohne dass es auffaellt. Sind sie nicht lesbar (kein Layout, kein Browser), gibt es `null`, und
- * der Hinweis bleibt weg: lieber nichts sagen als etwas Geratenes.
- */
-function driveShapeTokens() {
+function drivePadGap() {
   const read = globalThis.getComputedStyle;
   if (typeof read !== 'function') return null;
-  const style = read(ui.driveButtons);
-  const value = (name) => parseFloat(style?.getPropertyValue?.(name));
-  const gap = value('--drive-pad-gap');
-  const waist = value('--drive-pad-waist');
-  const keyMin = value('--drive-pad-key-min');
-  if (![gap, waist, keyMin].every(Number.isFinite)) return null;
-  return { gap, waist, keyMin };
+  const gap = parseFloat(read(ui.driveButtons)?.getPropertyValue?.('--drive-pad-gap'));
+  return Number.isFinite(gap) ? gap : null;
 }
 
 /**
@@ -1262,6 +1226,12 @@ function driveZoneLineHalf() {
  *   sie hinausschiebt, bleibt in der bisherigen Taste und Zone. Ohne Trefferpruefung (kein
  *   Browser) gibt es ebenfalls `undefined` — dann gilt der letzte Zustand weiter.
  *
+ * **Das Tastenkreuz ist kein Rechteck mehr:** die Drehtasten ragen seitlich ueber das Feld hinaus
+ * (`--drive-turn-reach`). Was dort getroffen wird, ist die Taste und nicht „ausserhalb" — sonst
+ * fuehre, wer von vorwaerts auf den Ueberstand gleitet, einfach weiter vorwaerts. Ausserhalb des
+ * Feldrechtecks und im Rahmen zaehlt deshalb ein Tastentreffer; nur ohne ihn bleibt es beim
+ * letzten Zustand. Auch der Rahmen um den Ueberstand trifft keine Taste und ist damit Aussenkante.
+ *
  * Ist die Rahmenbreite nicht lesbar, zaehlt der Rahmen als Fuge: im Zweifel Stopp.
  */
 function cursorKeyUnderPointer(event) {
@@ -1270,11 +1240,12 @@ function cursorKeyUnderPointer(event) {
   const y = event?.clientY;
   const rect = ui.driveButtons.getBoundingClientRect?.();
   if (!rect || !Number.isFinite(x) || !Number.isFinite(y)) return undefined;
-  const frame = driveShapeTokens()?.gap ?? 0;
+  const frame = drivePadGap() ?? 0;
   const inside = x > rect.left + frame && x < rect.left + rect.width - frame
     && y > rect.top + frame && y < rect.top + rect.height - frame;
-  if (!inside) return undefined;
-  return document.elementFromPoint(x, y)?.closest?.('[data-direction]') || null;
+  const key = document.elementFromPoint(x, y)?.closest?.('[data-direction]') || null;
+  if (inside) return key;
+  return key || undefined;
 }
 
 /**
@@ -1985,27 +1956,6 @@ function applyHandedness() {
  * Zonen. Ohne Zonen gilt allein der mittlere Wert, es wird also nirgends langsamer; im
  * Joystick-Modus ist das betroffene Eingabefeld selbst ausgeblendet (`cursorSpeedRow`).
  */
-/**
- * Der Hinweis auf zu schmale Drehtasten: dauerhafte Zeile bei der Groesseneinstellung, kein
- * Dialog — dasselbe Muster wie `#driveZoneOrderHint` und `#cassandraSkippedHint`. Er **sperrt
- * nichts** und **aendert nichts**: die Groesse bleibt, wie der Nutzer sie eingestellt hat,
- * benannt wird nur die Folge.
- *
- * Gezeigt nur im Tastenmodus — im Joystick-Modus gibt es keine Drehtasten, die zu schmal sein
- * koennten. Gemessen wird am tatsaechlich gezeichneten Feld (`getBoundingClientRect`), nicht an
- * der eingestellten Stufe: dieselbe Stufe ergibt auf verschiedenen Bildschirmen verschiedene
- * Feldgroessen, und genau davon haengt der Keil ab.
- */
-function refreshTurnKeyHint() {
-  const shape = driveShapeTokens();
-  const rect = ui.driveButtons.getBoundingClientRect?.();
-  const field = Math.min(rect?.width || 0, rect?.height || 0);
-  const show = state.view.driveControl === 'buttons' && shape !== null && field > 0
-    && turnKeyIncircle(field, shape.gap, shape.waist) < shape.keyMin;
-  ui.driveTurnSizeHint.hidden = !show;
-  ui.driveTurnSizeHint.textContent = show ? tr('driveTurnSizeHint') : '';
-}
-
 function refreshDriveZoneHint() {
   const ladder = cursorZoneLadder();
   const zonesApply = state.view.driveControl === 'buttons' && Boolean(state.view.driveZones);
@@ -2036,9 +1986,10 @@ function applyDriveControlMode() {
   // Die Striche auf den Tasten haengen an derselben Groesse wie die Wirkung. Links und rechts
   // bleiben ohne Striche, das entscheidet das Stylesheet — sie haben keine Zonen.
   ui.driveButtons.classList.toggle('zones-on', Boolean(state.view.driveZones));
+  // Nur im Tastenmodus ragen die Drehtasten ueber das Feld hinaus; das Stylesheet haelt den Platz
+  // daneben ueber diese Klasse frei, damit der Ueberstand die Fahrtanzeige nicht ueberdeckt.
+  ui.driveControlArea.classList.toggle('mode-buttons', buttons);
   refreshDriveZoneHint();
-  // Nach dem Ein-/Ausblenden: vorher hat das Feld keine messbare Groesse.
-  refreshTurnKeyHint();
 }
 
 /** Schnellumschalter in der Kartenleiste — dieselbe Einstellung wie im Menue. */
@@ -2062,8 +2013,6 @@ function applyDriveZonePreferences() {
   document.documentElement.style.setProperty('--drive-zone-inner', `${DRIVE_ZONES[0].until}`);
   document.documentElement.style.setProperty('--drive-zone-outer', `${DRIVE_ZONES[1].until}`);
   applyHandedness();
-  // Die Groessenstufe aendert das Feld und damit die Breite der Drehtasten.
-  refreshTurnKeyHint();
 }
 
 function applyTheme() {
@@ -6977,7 +6926,7 @@ function bindEvents() {
     if (state.autoCaptureRunning) requestWakeLockIfNeeded();
   });
   window.addEventListener('blur', () => { stopDrive(); cancelCaptureHold(); });
-  window.addEventListener('resize', () => { renderMap(); refreshTurnKeyHint(); });
+  window.addEventListener('resize', () => { renderMap(); });
 }
 
 async function init() {

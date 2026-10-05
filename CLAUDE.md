@@ -386,10 +386,12 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
      Keine Mindesthaltezeit: ob der Mäher dabei physisch zum Stehen kommt, hängt an der Firmware
      und ist **nicht belegt**.
    - **Außerhalb** des Feldes **und im 4-px-Rahmen** (`--drive-pad-gap`, gelesen über
-     `driveShapeTokens()`) gilt der letzte Zustand: über die Außenkante bleibt die schnellste Zone,
+     `drivePadGap()`) gilt der letzte Zustand: über die Außenkante bleibt die schnellste Zone,
      aus einer Fuge heraus bleibt der Stopp. Der Rahmen ist keine Fuge zwischen zwei Tasten; ohne
      diese Regel hätte ein Ereignis im Rahmen die Fahrt beim Überschieben zufällig gestoppt. Ist
-     die Rahmenbreite nicht lesbar, zählt er als Fuge (im Zweifel Stopp).
+     die Rahmenbreite nicht lesbar, zählt er als Fuge (im Zweifel Stopp). **Seit v79 zählt dort ein
+     Tastentreffer trotzdem** — der Überstand der Drehtasten liegt außerhalb des Feldrechtecks
+     (siehe „Seit v79 ragen die Drehtasten …“); der Rahmen um ihn bleibt Außenkante.
    **Nicht ohne Gerät verifizierbar:** ob der Wechsel auf dem Telefon flüssig wirkt und ob die
    kurzen Stopps beim schnellen Umwischen als Ruckeln stören.
    **Zuerst `state.driveVector`, dann senden:** `sendDriveVector()` verwirft eine ungezwungene
@@ -454,7 +456,7 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    | Außenkante des Keils links/rechts | 123,1 px | F ≥ 60,9 px |
    | Trapez an der inneren Zonengrenze | 98,5 px | F ≥ 67,3 px |
    | Trapez an seiner Taille | 63,5 px | F ≥ 100,9 px |
-   | **Inkreis des Drehkeils links/rechts** | **29,0 px** | **F ≥ 203,34 px** |
+   | **Inkreis des Drehkeils links/rechts** | **29,0 px** | **F ≥ 203,34 px** (seit v79 per Überstand erfüllt) |
 
    `--drive-field-min` (140 px) stammt noch aus dem Dreierraster und bleibt für die ersten drei
    Maße die **schärfste** Schranke. Der Keil ist **kürzer** als die frühere Rastertaste — das ist
@@ -468,25 +470,44 @@ selbst, unabhängig davon, wie viele Geschwister gerade ausgeblendet sind.
    Auflösungs-/Größenkombinationen bleibt er unter 44 px. Voll erfüllt ist die Bedingung erst ab
    **F ≥ 203,34 px** (abgeleitet, nicht gesetzt).
 
-   **Entscheidung: v63 behält die Taille und macht die Folge sichtbar.** Die beiden gerechneten
-   Alternativen kosten mehr, als sie einbringen: eine von der Feldgröße abhängige Taille `k(F)`
-   erkauft den Inkreis, indem sie die Taille bricht (21,4 px bei F = 140) und den Anteil der
-   langsamen Vorwärtszone, der ein 44-px-Ziel ist, von 100 % auf 60 % drückt; `--drive-field-min`
-   auf 203,34 px anzuheben kostet in 12 von 20 Fällen Kartenhöhe, im schlimmsten Fall **63,3 px =
-   11,2 % der Bildschirmhöhe** (320 × 568), lässt auf diesem Gerät alle vier Größenstufen auf
-   denselben Wert zusammenfallen und vergrößerte über dasselbe Token auch den runden Joystick.
-   Statt zu korrigieren wird **benannt**: `turnKeyIncircle()` (`app.js`) ist die einzige Stelle,
-   die den Inkreis beurteilt, und `refreshTurnKeyHint()` zeigt bei zu kleinem Feld die dauerhafte
-   Zeile `#driveTurnSizeHint` bei der Größeneinstellung — Muster wie `#driveZoneOrderHint`, kein
-   Dialog, sperrt nichts, ändert die eingestellte Größe nicht. Nur im Tastenmodus; im
-   Joystick-Modus gibt es keine Drehtasten. Nachgeführt aus `applyDriveControlMode()`
-   (Moduswechsel), `applyDriveZonePreferences()` (Größenstufe), dem `resize`-Ereignis und
-   `refreshControlUi()` (Sprachwechsel). Die drei Formgrößen liest `driveShapeTokens()` über
-   `getComputedStyle` aus `--drive-pad-gap`, `--drive-pad-waist` und `--drive-pad-key-min` — sie
-   stehen im Stylesheet und werden nicht ein zweites Mal in `app.js` geschrieben; sind sie nicht
-   lesbar, bleibt die Zeile weg, statt etwas zu raten. **Nicht ohne Gerät verifizierbar:** ob 29 px
-   breite Drehtasten in der Praxis tatsächlich danebengetroffen werden — belegt ist nur, dass sie
-   das selbstgesetzte 44-px-Maß unterschreiten.
+   **v63 behielt die Taille und benannte die Folge nur** (Hinweiszeile bei der Größeneinstellung);
+   eine feldabhängige Taille `k(F)` brach die Taille (21,4 px bei F = 140), ein höheres
+   `--drive-field-min` kostete bis zu 63,3 px Kartenhöhe. Beides gilt weiter als verworfen.
+
+   **Seit v79 ragen die Drehtasten über das Feld hinaus** (vom Nutzer entschieden; Hinweiszeile
+   `#driveTurnSizeHint`, `turnKeyIncircle()` und `refreshTurnKeyHint()` sind entfallen,
+   `driveShapeTokens()` ist zu `drivePadGap()` geschrumpft). Die Außenkante beider Keile wandert um
+   `--drive-turn-reach` nach außen — gerade so weit, dass der größte Kreis genau
+   `--drive-pad-key-min` misst: `key-min/2 · (1 + √((1−k)²+1)) − (1−k)(F/2 − gap − cut-y)` =
+   **50,83 − F/4 px** bei k = 0,5, ab F ≥ 203,34 px null (höchstens 15,8 px). Linear in F, weil die
+   Schräge des Keils nicht von F abhängt. Gemessen ab Feldkante, Rahmen inklusive; die Tastenfläche
+   selbst ragt eine Fuge weniger hinaus. Sanduhr, Taille, Fugenfaktoren, Zonen, Chevrons und
+   Feldgröße sind unverändert — der Dreh-Chevron steht dadurch nicht mehr mittig in der Taste.
+   - **Gemalt** von `.key-left::before`/`.key-right::before` (`background: inherit`, auch
+     `:active`), beschnitten vom clip-path der Taste, das über den Kasten hinausreicht. **Der
+     Tastenkasten bleibt das Feld** — alle Prozente und die Chevron-Lage gelten unverändert, und der
+     Layout-Test wertet die Polygone wie bisher aus (fünf Ecken, bei Überstand 0 fallen je zwei
+     zusammen).
+   - **Rahmen** um den Überstand: `.drive-pad::before/::after` im Untergrund der Fugen, `z-index: -1`
+     in der eigenen Stapelebene (`isolation: isolate`). Er greift eine Fuge ins Feld, sonst bliebe an
+     der gerundeten Feldecke eine Kerbe; ohne Überstand schrumpft er über
+     `min(gap, Überstand · 1000)` auf null, die Feldecke bleibt dann wie in v78.
+   - **Platz:** im Tastenmodus trägt `#driveControlArea` die Klasse `mode-buttons`
+     (`applyDriveControlMode()`), `.drive-control.mode-buttons` hält per `margin-inline` genau den
+     Überstand frei. Die Seitenspalten weichen um diesen Betrag, zwischen Rahmen und Fahrtanzeige
+     bleiben die vollen 10 px Spaltenabstand. **Kosten, in Chrome gemessen (320 × 568):** neu gekürzt
+     „verbinden.“ (Stufe ≤ 1), EN „stopped“/„Connect“ (1,25) und „manual“ (1,5); „gestoppt“ passt
+     in Stufe ≤ 1 weiter (Spalte 51,7 px, Wort 49,3 px). Der Umschalter samt Einrückung (41 px) ragt
+     bei 320 × 568/1,5 um 1,3 px, im Breitbild 800 × 600/1,5 um 6,3 px aus seiner Spalte, hält aber
+     8,7 bzw. 3,7 px zum Rahmen. `--drive-side-reserve` ist bewusst unverändert — sonst schrumpfte
+     das Feld.
+   **Belegt in Chrome 154** (5 Auflösungen × 4 Stufen × 2 Händigkeiten × 2 Sprachen): Kreis
+   ≥ 44,000 px überall, Trefferprüfung über die ganze Kreisfläche bestanden, nichts überlappt oder
+   ragt aus dem Bild, Feldgrößen und Joystick-Modus identisch zu v78. Touch-Wisch im Demo:
+   vorwärts → Überstand → vorwärts jeweils über Stopp. **`elementFromPoint` rastet auf ganze CSS-px
+   ein** (links bis 1 px nach außen versetzt) — Kanten deshalb aus `getComputedStyle` der
+   Pseudo-Elemente und dem berechneten Polygon messen, die Trefferprüfung nur als Gegenprobe.
+   **Nicht ohne Gerät verifizierbar:** ob der Überstand am Daumen tatsächlich besser trifft.
 
    **Die Fuge zwischen vorwärts und rückwärts gab es bis v63 nicht.** Beide Trapeze schrieben für
    ihre Taillenkante denselben Ausdruck und berührten sich dort auf voller Länge — Abstand
@@ -2758,6 +2779,18 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-10-05: **v79 — Drehtasten ragen über das Feld hinaus, bis jede einen 44-px-Kreis fasst.**
+  Einzelheiten im Absatz „Seit v79 ragen die Drehtasten …“. Vorab gemessen und gemeldet (Chrome
+  154 gegen v78): Überstand höchstens 15,8 px je Seite; auf der Seite der Fahrtanzeige stehen nur
+  10 px Spaltenabstand, in 6 von 20 Fällen hätte er den Text überdeckt; Umschalter und Gegenseite
+  frei. „44 px breit“ als Inkreis gelesen — nur dieses Maß lässt die Hinweiszeile verschwinden.
+  Vom Nutzer entschieden: Platz am Feld freihalten (A) und die Hinweiszeile entfernen.
+  **Nachgemeldet:** neu gekürzt werden mehr Wörter als vorab genannt (nicht nur „stopped“).
+  Tests: layout 49 (Inkreisfall neu, Sanduhr- und Seitenspaltenfall nachgezogen), ui 253
+  (Hinweisfall ersetzt durch Platzreserve und Überstand als Taste). Gegen 12 simulierte Rückfälle
+  geprüft, alle gefangen. Hilfe, `joystickSizeHint`, Markup-Fallback und README in beiden
+  Sprachen. `APP_VERSION` auf `v79`.
 
 - 2026-10-05: **v78 — CaSSAndRA-Export: Ringbereinigung gegen `edge_too_short`** (Auslöser:
   doppelt gesetzter Schlusspunkt). Details im Abschnitt „CaSSAndRA-Exportformat“. Zuerst auf

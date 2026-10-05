@@ -2435,6 +2435,20 @@ body.menu-open .app-frame { visibility: hidden; }
  */
   --drive-pad-cut-x: calc(var(--drive-pad-gap) * 0.559017);
   --drive-pad-cut-y: calc(var(--drive-pad-gap) * 1.118034);
+  /* **Wie weit die Drehtasten ueber das Feld hinausragen.** Der Keil allein ist ein Dreieck; der
+     groesste Kreis darin bleibt bis zu einer Feldgroesse von 203,34 px unter dem Daumenmass (bei
+     140 px nur 29 px). Statt das Feld zu vergroessern, wandert nur die Aussenkante der beiden
+     Drehtasten nach aussen — Sanduhr, Fugen, Zonen und Hoehe des Feldes bleiben, wie sie sind.
+     Gerechnet ist genau so viel, dass der Kreis `--drive-pad-key-min` misst:
+       Ueberstand = key-min/2 * (1 + sqrt((1-k)^2 + 1)) - (1-k) * (F/2 - gap - cut-y)
+     Die Schraege des Keils haengt nicht von F ab, deshalb ist das linear in F; reicht der Keil von
+     selbst, ist der Ueberstand 0. Gemessen von der bisherigen Aussenkante der Taste (eine Fuge im
+     Feld) bis zum Aussenrand des Rahmens um den Ueberstand, also ab der Feldkante — genau der
+     Platz, den `.drive-control.mode-buttons` daneben freihaelt. Der Faktor ist ausgerechnet wie die
+     Fugenfaktoren; `tests/layout-test.js` rechnet ihn aus `--drive-pad-waist` nach. */
+  --drive-turn-reach-factor: 2.118034;
+  --drive-turn-reach: max(0px, calc(var(--drive-pad-key-min) / 2 * var(--drive-turn-reach-factor)
+    - (var(--joystick-size) / 2 - var(--drive-pad-gap) - var(--drive-pad-cut-y)) * (1 - var(--drive-pad-waist))));
   /* Die Rechnung stammt aus dem alten Dreierraster (drei gestapelte Tasten). Seit dem
      diagonalen Schnitt ist sie nicht mehr die Herleitung, aber weiterhin die **schaerfste** der
      Schranken. Die Sanduhr verlangt bei k = 0,5 (44 px Daumenziel, 4 px Fuge): Aussenkante des
@@ -2459,6 +2473,12 @@ body.menu-open .app-frame { visibility: hidden; }
   align-self: center;
   justify-self: center;
 }
+/* Im Tastenmodus haelt das Feld links und rechts den Platz frei, um den die Drehtasten
+   hinausragen. Nur so kann der Ueberstand nichts ueberdecken: die Seitenspalten werden um genau
+   diesen Betrag schmaler, und zwischen Ueberstand und Fahrtanzeige bleibt der volle
+   Spaltenabstand. Die Feldgroesse selbst aendert sich nicht, das Feld bleibt mittig. Im
+   Joystick-Modus gibt es keinen Ueberstand. */
+.drive-zone .drive-control.mode-buttons { margin-inline: var(--drive-turn-reach); }
 .drive-zone .joystick-base {
   width: 100%;
   height: 100%;
@@ -2552,11 +2572,38 @@ body.menu-open .app-frame { visibility: hidden; }
      laenger. Die Tasten liegen uebereinander und werden erst durch `clip-path` getrennt; die
      Trefferpruefung folgt der Beschneidung, es kann also nur eine Taste gemeint sein. */
   position: relative;
+  /* Eigene Stapelebene: der Rahmen um den Ueberstand der Drehtasten liegt darin unter den Tasten,
+     aber ueber dem Untergrund der Fahrzone. */
+  isolation: isolate;
   display: block;
   /* Die Fugen zwischen den Keilen sind der durchscheinende Untergrund der Flaeche. */
   background: var(--shell-border);
   border-radius: 14px;
   touch-action: none;
+}
+/* Der Rahmen um den Ueberstand der Drehtasten — derselbe Untergrund wie die Fugen, damit die
+   Taste nicht ohne Kante aus dem Feld waechst. Er greift eine Fuge weit ins Feld hinein, sonst
+   bliebe an der gerundeten Feldecke ueber dem Ueberstand eine Kerbe. Ohne Ueberstand schrumpft er
+   samt diesem Eingriff auf null (`min(…, Ueberstand * 1000)`), die Feldecke bleibt dann, wie sie
+   war. */
+.drive-zone .drive-pad::before,
+.drive-zone .drive-pad::after {
+  --drive-turn-rim-overlap: min(var(--drive-pad-gap), var(--drive-turn-reach) * 1000);
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: var(--drive-pad-cut-y);
+  bottom: var(--drive-pad-cut-y);
+  width: calc(var(--drive-turn-reach) + var(--drive-turn-rim-overlap));
+  background: inherit;
+}
+.drive-zone .drive-pad::before {
+  right: calc(100% - var(--drive-turn-rim-overlap));
+  border-radius: var(--drive-pad-gap) 0 0 var(--drive-pad-gap);
+}
+.drive-zone .drive-pad::after {
+  left: calc(100% - var(--drive-turn-rim-overlap));
+  border-radius: 0 var(--drive-pad-gap) var(--drive-pad-gap) 0;
 }
 
 .drive-key {
@@ -2634,16 +2681,38 @@ body.menu-open .app-frame { visibility: hidden; }
       calc(50% + var(--drive-pad-waist-lift)),
     calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut-x)) calc(100% - var(--drive-pad-gap)));
 }
+/* Links/rechts: der Keil plus ein Streifen ueber die Feldkante hinaus, `--drive-turn-reach` breit
+   (bei grossem Feld 0, dann fallen je zwei Ecken zusammen und es bleibt der reine Keil). Die
+   Schraegen zur Sanduhr sind dieselben wie vorher, die Fugen dorthin also auch. */
 .drive-key.key-left {
-  clip-path: polygon(var(--drive-pad-gap) calc(var(--drive-pad-gap) + var(--drive-pad-cut-y)),
+  clip-path: polygon(calc(var(--drive-pad-gap) - var(--drive-turn-reach)) calc(var(--drive-pad-gap) + var(--drive-pad-cut-y)),
+    var(--drive-pad-gap) calc(var(--drive-pad-gap) + var(--drive-pad-cut-y)),
     calc(50% - var(--drive-pad-waist-half) - var(--drive-pad-cut-x)) 50%,
-    var(--drive-pad-gap) calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut-y)));
+    var(--drive-pad-gap) calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut-y)),
+    calc(var(--drive-pad-gap) - var(--drive-turn-reach)) calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut-y)));
 }
 .drive-key.key-right {
-  clip-path: polygon(calc(100% - var(--drive-pad-gap)) calc(var(--drive-pad-gap) + var(--drive-pad-cut-y)),
+  clip-path: polygon(calc(100% - var(--drive-pad-gap) + var(--drive-turn-reach)) calc(var(--drive-pad-gap) + var(--drive-pad-cut-y)),
+    calc(100% - var(--drive-pad-gap) + var(--drive-turn-reach)) calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut-y)),
     calc(100% - var(--drive-pad-gap)) calc(100% - var(--drive-pad-gap) - var(--drive-pad-cut-y)),
-    calc(50% + var(--drive-pad-waist-half) + var(--drive-pad-cut-x)) 50%);
+    calc(50% + var(--drive-pad-waist-half) + var(--drive-pad-cut-x)) 50%,
+    calc(100% - var(--drive-pad-gap)) calc(var(--drive-pad-gap) + var(--drive-pad-cut-y)));
 }
+/* **Der Ueberstand liegt ausserhalb des Tastenkastens.** Der Kasten bleibt das Feld — damit gelten
+   alle Prozente, die Fugen und die Lage der Chevrons unveraendert. Gemalt wird der Ueberstand von
+   diesem Pseudo-Element; beschnitten wird er wie die ganze Taste vom clip-path oben, das dafuer
+   ueber den Kasten hinausreicht. Trefferpruefung und `:active` gehoeren damit zur Taste selbst. */
+.drive-key.key-left::before,
+.drive-key.key-right::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--drive-turn-reach);
+  background: inherit;
+}
+.drive-key.key-left::before { right: 100%; }
+.drive-key.key-right::before { left: 100%; }
 
 /* **Die Zonen.** Die Achse laeuft von der Mitte des Feldes (50 %) zur Aussenkante der jeweiligen
    Taste (100 %); ein Anteil q der Strecke Mitte->Kante liegt deshalb bei `50% + q/2`. Die
