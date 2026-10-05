@@ -395,6 +395,10 @@ gelöschte Website-Daten bedeuten: Karten sind weg.
   damit ein Versehen auffällt, bevor die Datei in CaSSAndRA liegt. Leerst du beide Felder, ist der
   Export gesperrt. Der Bezugspunkt gilt für alle Karten dieses Geräts und ist unabhängig vom
   Positionsmodus der einzelnen Karte.
+  Beim Export werden Punkte entfernt, die weniger als 3 cm neben dem vorigen liegen, und jede
+  Fläche wird mit genau einem Schlusspunkt geschlossen – der Mäher verweigert an Kanten unter
+  2 cm den Start. Bleiben danach in einer Fläche keine 3 verschiedenen Punkte übrig, ist der
+  Export gesperrt und der Hinweis nennt die Fläche.
 - Alle drei Formate lassen sich wieder importieren. **Auch Dateien, die CaSSAndRA selbst
   geschrieben hat**: die App erkennt sie an ihrer Form und rechnet die Grad mit demselben
   Bezugspunkt zurück in lokale Meter. Nach dem Import steht neben dem Import-Knopf, dass die Datei
@@ -883,6 +887,9 @@ or cleared site data means the maps are gone.
   mistake shows up before the file reaches CaSSAndRA. Clearing both fields locks the export. The
   reference point applies to every map on this device and is independent of an individual map's
   position mode.
+  On export, points less than 3 cm from the previous one are removed, and every area is closed
+  with exactly one closing point – the mower refuses to start on edges under 2 cm. If an area is
+  left with fewer than 3 distinct points, the export is locked and the notice names the area.
 - All three formats can be imported again, **including files CaSSAndRA wrote itself**: the app
   recognises them by their shape and converts the degrees back into local metres using the same
   reference point. After the import, a line next to the import button states that the file was

@@ -224,7 +224,7 @@ const I18N = {
     sunrayImportIgnoredFields: 'Nicht übernommen wurden außerdem die Mäheinstellungen der Datei (Musterwinkel, Bahnabstand, Ringmuster und die Mäh-/Randflaggen) — diese App steuert kein Mähen.',
     sunrayExportTitle: 'Sunray-App-Export',
     sunrayExportDone: 'Die Datei ist im Format der Sunray-App von grauonline geschrieben: lokale X/Y-Koordinaten in Metern, wie der Mäher sie selbst führt. Ein Bezugspunkt wird dafür nicht gebraucht.',
-    cassandraHelp: 'Genau die Form, die CaSSAndRA selbst schreibt und einliest: Weltkoordinaten in Grad, Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Gerechnet wird gegen den Bezugspunkt bei den Export-Knöpfen — voreingestellt 0 / 0, wie in CaSSAndRA ab Werk. Nach jedem Export steht der verwendete Wert in einer Meldung; er muss in CaSSAndRA derselbe sein. Dateien aus CaSSAndRA lassen sich damit auch **einlesen**: die App erkennt sie an ihrer Form und rechnet die Grad mit demselben Bezugspunkt in lokale Meter zurück. Ist dort nichts eingetragen, wird die Datei nicht importiert — ohne den Wert wären die Grad nicht zu deuten, denn CaSSAndRA schreibt ihn nicht in die Datei.',
+    cassandraHelp: 'Genau die Form, die CaSSAndRA selbst schreibt und einliest: Weltkoordinaten in Grad, Perimeter, Dockpfad, Suchdraht und Ausschlussflächen. Gerechnet wird gegen den Bezugspunkt bei den Export-Knöpfen — voreingestellt 0 / 0, wie in CaSSAndRA ab Werk. Nach jedem Export steht der verwendete Wert in einer Meldung; er muss in CaSSAndRA derselbe sein. Dateien aus CaSSAndRA lassen sich damit auch **einlesen**: die App erkennt sie an ihrer Form und rechnet die Grad mit demselben Bezugspunkt in lokale Meter zurück. Ist dort nichts eingetragen, wird die Datei nicht importiert — ohne den Wert wären die Grad nicht zu deuten, denn CaSSAndRA schreibt ihn nicht in die Datei. Beim Export fallen Punkte weg, die weniger als 3 cm neben dem vorigen liegen, und jede Fläche wird mit genau einem Schlusspunkt geschlossen — der Mäher verweigert an Kanten unter 2 cm den Start.',
     cassandraRefLat: 'CaSSAndRA-Bezugspunkt: Breite', cassandraRefLon: 'CaSSAndRA-Bezugspunkt: Länge',
     cassandraRefHint: 'Trage hier genau denselben Wert ein, der in CaSSAndRA unter den Robotereinstellungen als Breite und Länge steht. Es ist keine Ortsbestimmung: der Wert muss nur auf beiden Seiten derselbe sein, sonst liegt die Karte nach dem Import versetzt. Voreingestellt ist 0 / 0 — das ist auch CaSSAndRAs Auslieferungswert, passt also, solange dort nichts eingetragen wurde. Er gilt für alle Karten dieser Installation.',
     cassandraBlocked: 'Der CaSSAndRA-Export ist gesperrt: {reason}',
@@ -234,6 +234,7 @@ const I18N = {
     cassandraSkippedItem: '{label} ({count} Punkte)',
     cassandraSkippedAhead: 'Nicht mit dabei: {names}. CaSSAndRA verlangt je Fläche mindestens 3 Punkte — der Rest der Karte wird exportiert.',
     cassandraMissingHint: 'Es ist unten kein Bezugspunkt eingetragen.',
+    cassandraEdgesTooShort: 'Nach dem Entfernen von Punkten, die weniger als 3 cm neben ihrem Vorgänger liegen, bleiben hier keine 3 verschiedenen Punkte übrig: {names}. Der Mäher verweigert an Kanten unter 2 cm den Start — bitte die Punkte dort neu setzen oder löschen.',
     cassandraImportNoReference: 'Diese Datei stammt aus CaSSAndRA und enthält Grad-Koordinaten, aber keinen Bezugspunkt — CaSSAndRA schreibt ihn nicht in die Datei. Trage unter „CaSSAndRA-Bezugspunkt“ Breite und Länge ein (denselben Wert wie in CaSSAndRA unter den Robotereinstellungen, im Auslieferungszustand 0 und 0) und importiere die Datei danach erneut.',
     cassandraImportNotice: 'Als CaSSAndRA-Datei erkannt und aus Grad in lokale Meter umgerechnet. Verwendeter Bezugspunkt: Breite {lat}, Länge {lon} — derselbe Wert, der in CaSSAndRA unter den Robotereinstellungen steht. Weicht er dort ab, liegt die Karte hier versetzt.',
     shareHelpNote: 'Karten von einem Gerät auf ein anderes bringen: Auf dem Quellgerät die Karte speichern oder teilen. „Teilen“ übergibt genau dieselbe Datei an das Freigabe-Menü des Geräts, sodass sie ohne Umweg über den Download-Ordner weitergereicht werden kann; welche Ziele dort angeboten werden, entscheidet das Gerät, nicht diese App. Auf dem Zielgerät die Datei über „JSON / GeoJSON importieren“ im Menü unter Karten einlesen. Kann ein Browser keine Dateien teilen, erscheint der Teilen-Knopf gar nicht erst — dann bleibt Speichern der Weg.',
@@ -488,7 +489,7 @@ const I18N = {
     sunrayImportIgnoredFields: 'Also left out were the file’s mowing settings (pattern angle, line offset, ring pattern and the mow/border flags) — this app does not control mowing.',
     sunrayExportTitle: 'Sunray app export',
     sunrayExportDone: 'The file is written in the format of grauonline’s Sunray app: local X/Y coordinates in metres, exactly as the mower keeps them. No reference point is needed for this.',
-    cassandraHelp: 'Exactly the shape CaSSAndRA writes and reads itself: world coordinates in degrees, perimeter, dock path, search wire and exclusion areas. It is computed against the reference point next to the export buttons — preset to 0 / 0, as CaSSAndRA ships it. After every export a notice states the value that was used; it has to match the one in CaSSAndRA. Files from CaSSAndRA can also be **imported**: the app recognises them by their shape and converts the degrees back into local metres using the same reference point. If none is entered, the file is not imported — without that value the degrees cannot be interpreted, because CaSSAndRA does not write it into the file.',
+    cassandraHelp: 'Exactly the shape CaSSAndRA writes and reads itself: world coordinates in degrees, perimeter, dock path, search wire and exclusion areas. It is computed against the reference point next to the export buttons — preset to 0 / 0, as CaSSAndRA ships it. After every export a notice states the value that was used; it has to match the one in CaSSAndRA. Files from CaSSAndRA can also be **imported**: the app recognises them by their shape and converts the degrees back into local metres using the same reference point. If none is entered, the file is not imported — without that value the degrees cannot be interpreted, because CaSSAndRA does not write it into the file. On export, points less than 3 cm from the previous one are dropped, and every area is closed with exactly one closing point — the mower refuses to start on edges under 2 cm.',
     cassandraRefLat: 'CaSSAndRA reference point: latitude', cassandraRefLon: 'CaSSAndRA reference point: longitude',
     cassandraRefHint: 'Enter exactly the same value that CaSSAndRA shows under its robot settings as latitude and longitude. This is not a location fix: the value only has to be identical on both sides, otherwise the map ends up offset after the import. It is preset to 0 / 0 — which is also CaSSAndRA’s factory value, so it fits as long as nothing was entered there. It applies to every map of this installation.',
     cassandraBlocked: 'The CaSSAndRA export is locked: {reason}',
@@ -498,6 +499,7 @@ const I18N = {
     cassandraSkippedItem: '{label} ({count} points)',
     cassandraSkippedAhead: 'Not included: {names}. CaSSAndRA requires at least 3 points per area — the rest of the map is exported.',
     cassandraMissingHint: 'No reference point has been entered below.',
+    cassandraEdgesTooShort: 'After removing points that lie less than 3 cm from their predecessor, fewer than 3 distinct points remain here: {names}. The mower refuses to start on edges under 2 cm — please re-record or delete the points there.',
     cassandraImportNoReference: 'This file comes from CaSSAndRA and holds degree coordinates, but no reference point — CaSSAndRA does not write one into the file. Enter latitude and longitude under “CaSSAndRA reference point” (the same value as in CaSSAndRA under its robot settings, 0 and 0 as shipped) and import the file again.',
     cassandraImportNotice: 'Recognised as a CaSSAndRA file and converted from degrees to local metres. Reference point used: latitude {lat}, longitude {lon} — the same value that is set in CaSSAndRA under its robot settings. If it differs there, the map ends up offset here.',
     shareHelpNote: 'Moving a map from one device to another: on the source device, save or share the map. “Share” hands exactly the same file to the device’s share menu, so it can be passed on without the detour via the download folder; which targets appear there is decided by the device, not by this app. On the target device, read the file back in via “Import JSON / GeoJSON” in the menu under Maps. If a browser cannot share files, the share button does not appear at all — saving remains the way there.',
@@ -5061,7 +5063,10 @@ function refreshExportButtons() {
   ui.exportCassandraBtn.disabled = Boolean(reason);
   ui.shareCassandraBtn.disabled = Boolean(reason);
   ui.cassandraMissingHint.hidden = !reason;
-  ui.cassandraMissingHint.textContent = reason ? tr('cassandraBlocked', { reason: tr(reason) }) : '';
+  const vars = reason === 'cassandraEdgesTooShort'
+    ? { names: cassandraCollapsedPolygons(state.activeMap, cassandraReferenceInUse()).join(', ') }
+    : {};
+  ui.cassandraMissingHint.textContent = reason ? tr('cassandraBlocked', { reason: tr(reason, vars) }) : '';
   // Die Auslassung soll schon zu sehen sein, bevor die Datei in CaSSAndRA liegt — dieselbe
   // Aufstellung wie die Meldung nach dem Export, damit beide dasselbe sagen.
   const skipped = skippedAreas(state.activeMap);
@@ -5201,8 +5206,10 @@ function hasUsablePolygon(points) {
  * vollstaendig ab (mapdata.py:569) statt nur den Perimeter auszulassen.
  */
 function cassandraExportBlockKey(map) {
-  if (!cassandraReferenceInUse()) return 'cassandraMissingHint';
+  const reference = cassandraReferenceInUse();
+  if (!reference) return 'cassandraMissingHint';
   if (!hasUsablePolygon(map?.perimeter)) return 'checkPerimeterTooFew';
+  if (cassandraCollapsedPolygons(map, reference).length) return 'cassandraEdgesTooShort';
   return null;
 }
 
@@ -5430,6 +5437,75 @@ function mapToGeoJson(map) {
  */
 const CASSANDRA_METADATA_NAME = 'mapmaker';
 
+/**
+ * Kuerzeste Kante, die ein Polygon im CaSSAndRA-Export behalten darf. Die Maeher-Firmware
+ * verwirft Kanten unter 2 cm (`MIN_EDGE_LENGTH`, MeinSunray `hard_safety_geometry.cpp:9`, Meldung
+ * „edge_too_short“) und verweigert dann den Maehstart; 3 cm lassen Abstand und entsprechen
+ * `MAP_CLEANUP_MIN_EDGE_CM` der Firmware-Bereinigung (`map_cleanup.h`). Ausloeser war ein doppelt
+ * gesetzter Schlusspunkt — eine Kante der Laenge null.
+ */
+const CASSANDRA_MIN_EDGE_M = 0.03;
+
+/**
+ * Kante zwischen zwei **exportierten** Koordinaten [lon, lat] in Metern, gerechnet mit
+ * CaSSAndRAs eigener Rueckrechnung (`coords_abs_to_rel`, mapdata.py:704-710, ohne Rundung).
+ * Gemessen wird also die Kante, die beim Maeher ankommt, samt der Rundung auf 7 Nachkommastellen —
+ * in lokalen Metern vor der Rundung gemessen koennte eine 3-cm-Kante um bis zu 1,6 cm schrumpfen.
+ */
+function cassandraEdgeMeters(a, b, origin) {
+  return Math.hypot((b[0] - a[0]) * lonScale(origin.lat), (b[1] - a[1]) * METERS_PER_DEGREE);
+}
+
+/**
+ * Bereinigter, geschlossener Ring eines Polygons in Grad — oder `null`, wenn danach keine drei
+ * verschiedenen Punkte uebrig sind. Nur der Export wird bereinigt, das Modell bleibt unberuehrt.
+ * 1. Ein Punkt naeher als `CASSANDRA_MIN_EDGE_M` am zuletzt **behaltenen** faellt weg — gegen den
+ *    Vorgaenger im Modell gemessen blieben aus einer Kette von 2-cm-Schritten lauter 2-cm-Kanten.
+ * 2. Dasselbe fuer die Schlusskante letzter → erster Punkt. Der Startpunkt bleibt; ein doppelt
+ *    gesetzter Schlusspunkt faellt hier weg.
+ * 3. Geschlossen wird mit genau einem Schlusspunkt, dem Startpunkt — bitgleich, damit
+ *    `geoRingClosed()` den Ring beim Wiedereinlesen als geschlossen erkennt.
+ */
+function cassandraRing(points, origin) {
+  const vertices = [];
+  (points || []).forEach((point) => {
+    const coord = localToAbsolute(point, origin);
+    const last = vertices[vertices.length - 1];
+    if (!last || cassandraEdgeMeters(last, coord, origin) >= CASSANDRA_MIN_EDGE_M) vertices.push(coord);
+  });
+  while (vertices.length > 1
+    && cassandraEdgeMeters(vertices[vertices.length - 1], vertices[0], origin) < CASSANDRA_MIN_EDGE_M) {
+    vertices.pop();
+  }
+  // „Verschieden“ heisst paarweise nicht zusammenfallend: A, B, A, B hat vier Ecken, aber nur zwei
+  // Punkte. Die Suche endet beim dritten Fund.
+  const distinct = [];
+  for (const vertex of vertices) {
+    if (distinct.every((other) => cassandraEdgeMeters(other, vertex, origin) >= CASSANDRA_MIN_EDGE_M)) {
+      distinct.push(vertex);
+    }
+    if (hasUsablePolygon(distinct)) break;
+  }
+  if (!hasUsablePolygon(distinct)) return null;
+  return [...vertices, [...vertices[0]]];
+}
+
+/**
+ * Polygone, die erst die Bereinigung unbrauchbar macht: genug Punkte im Modell, aber danach keine
+ * drei verschiedenen mehr. Anders als eine unfertige Flaeche (`skippedAreas()`) ist das ein Fehler
+ * der Karte — deshalb Sperre statt stillem Auslassen.
+ */
+function cassandraCollapsedPolygons(map, origin) {
+  const labels = [];
+  if (hasUsablePolygon(map?.perimeter) && !cassandraRing(map.perimeter, origin)) labels.push(tr('perimeter'));
+  (map?.exclusions || []).forEach((exclusion, index) => {
+    if (hasUsablePolygon(exclusion.points) && !cassandraRing(exclusion.points, origin)) {
+      labels.push(localizedExclusionName(exclusion, index));
+    }
+  });
+  return labels;
+}
+
 /** Offene Punktfolge in absoluten Grad — Dockpfad und Suchdraht schliessen nicht (mapdata.py:619-621). */
 function cassandraLine(points, origin) {
   return (points || []).map((point) => localToAbsolute(point, origin));
@@ -5450,11 +5526,20 @@ function cassandraLine(points, origin) {
 function mapToCassandraGeoJson(map, reference) {
   const origin = normalizeOrigin(reference);
   if (!map || !origin) return null;
+  const perimeter = cassandraRing(map.perimeter, origin);
+  // Flaechen unter drei Punkten im Modell bleiben draussen: `Polygon(coordinates[0])`
+  // (mapdata.py:515) wirft dann, und ein einziger solcher Rest reisst den ganzen Import mit.
+  // Zerfaellt eine Flaeche dagegen erst durch die Bereinigung, kommt gar keine Datei heraus statt
+  // einer, der sie still fehlt — dieselbe Lage sperrt die Knoepfe (`cassandraExportBlockKey()`).
+  const exclusions = (map.exclusions || [])
+    .filter((exclusion) => hasUsablePolygon(exclusion.points))
+    .map((exclusion) => cassandraRing(exclusion.points, origin));
+  if (!perimeter || exclusions.some((ring) => !ring)) return null;
   const features = [
     {
       type: 'Feature',
       properties: { name: 'perimeter' },
-      geometry: { type: 'Polygon', coordinates: [closeRing(map.perimeter || [], origin)] },
+      geometry: { type: 'Polygon', coordinates: [perimeter] },
     },
     {
       type: 'Feature',
@@ -5467,18 +5552,14 @@ function mapToCassandraGeoJson(map, reference) {
       geometry: { type: 'LineString', coordinates: cassandraLine(map.waypoints, origin) },
     },
   ];
-  // Flaechen unter drei Punkten bleiben draussen: `Polygon(coordinates[0])` (mapdata.py:515)
-  // wirft dann, und ein einziger solcher Rest reisst den ganzen Import mit.
-  (map.exclusions || [])
-    .filter((exclusion) => hasUsablePolygon(exclusion.points))
-    .forEach((exclusion, index) => {
-      features.push({
-        type: 'Feature',
-        properties: { name: 'exclusion' },
-        idx: index,
-        geometry: { type: 'Polygon', coordinates: [closeRing(exclusion.points, origin)] },
-      });
+  exclusions.forEach((ring, index) => {
+    features.push({
+      type: 'Feature',
+      properties: { name: 'exclusion' },
+      idx: index,
+      geometry: { type: 'Polygon', coordinates: [ring] },
     });
+  });
   // Unsere Metadaten. `origin` traegt genau den Bezugspunkt, gegen den die Grad oben gerechnet
   // wurden — damit bleibt die Datei nachtraeglich pruefbar und fuer uns wieder einlesbar.
   features.push({

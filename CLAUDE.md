@@ -908,6 +908,21 @@ davon. Endung `.json`, MIME `application/json`, wie CaSSAndRAs eigener Download
 - **Geschlossene Ringe** (mapdata.py:614-630 über :668). Empirisch geprüft: shapely liefert für
   offenen wie geschlossenen Ring dieselben Koordinaten, ein geschlossener erzeugt **keinen**
   doppelten Punkt — nur ein doppelt geschlossener täte das.
+- **Ringbereinigung (v78)**, `cassandraRing()`: Punkte unter `CASSANDRA_MIN_EDGE_M` (3 cm) neben
+  dem zuletzt **behaltenen** fallen weg, ebenso an der Schlusskante (der Startpunkt bleibt, ein
+  doppelt gesetzter Schlusspunkt fällt weg); geschlossen wird mit genau **einem**, bitgleichen
+  Schlusspunkt. Grund: die Firmware verwirft Kanten unter 2 cm (`MIN_EDGE_LENGTH`,
+  `/home/penis/projects/MeinSunray/sunray/hard_safety_geometry.cpp:9`, „edge_too_short“); die
+  Firmware-Bereinigung `map_cleanup.h` nutzt dieselbe Regel mit 3 cm. **Gemessen in den gerundeten
+  Export-Grad**, zurückgerechnet mit CaSSAndRAs `coords_abs_to_rel` (`cassandraEdgeMeters()`) —
+  die Rundung auf 7 Stellen kann eine Kante um bis zu 1,6 cm verkürzen. Bleiben keine **3
+  verschiedenen** Punkte, sperrt `cassandraExportBlockKey()` mit `cassandraEdgesTooShort`, der
+  Hinweis nennt die Flächen (`cassandraCollapsedPolygons()`), der Builder liefert `null`. Flächen,
+  die schon im Modell unter 3 Punkten liegen, werden weiter nur ausgelassen (`skippedAreas()`).
+  Nur der Export wird bereinigt; Modell, JSON, GeoJSON und Sunray-App-Format bleiben unberührt.
+  **Warum der Import das nicht schon erledigt:** `geoRingClosed()` schneidet nur **einen**
+  bitgleichen Schlusspunkt ab; ein zweiter bleibt als Ecke im Modell, und v77 schrieb daraus
+  wieder eine 0-cm-Kante (per Test belegt).
 - **7 Nachkommastellen — unsere Wahl, keine Eigenschaft des Vorbilds.** CaSSAndRAs eigener
   Export **rundet nicht**: `coords_rel_to_abs()` (mapdata.py:696-703) gibt volle Doubles zurück,
   `.values.tolist()` und `json.dumps` schreiben sie unverändert. Nachgeprüft an zwei echten
@@ -2399,6 +2414,113 @@ Pfad (nur lesen): `/home/penis/projects/MeinSunray/esp32_ble/esp32_ble_platformi
 - WiFi wird nur gestartet, solange **kein** BLE-Client verbunden ist; einmal assoziiertes WiFi
   bleibt aber aktiv. `ArduinoOTA.handle()` und `relay_loop()` laufen immer.
 
+### BLE-Diagnosebefunde (2026-09-10, reine Analyse — nichts geaendert)
+
+**Stand der Zeilenangaben:** Firmware-Stellen beziehen sich auf `/home/penis/projects/MeinSunray`,
+`app.js`-Stellen auf den Stand **v54** — `app.js` ist seitdem gewachsen (etwa `writeChunk()`
+1955 → 2617, `sendSunray()` 2005 → 2667); vor einer Verwendung nachschlagen.
+
+**Beleglage doppelt eingeschraenkt.** Auf dem Geraet laeuft eine MRTREE-Variante, die hier nicht
+vorliegt — das war bekannt. Neu: `include/config.h` ist gitignoriert
+(`esp32_ble/esp32_ble_platformio/.gitignore:3`) und **existiert lokal gar nicht**. Selbst fuer die
+Arbeitskopie sind `BLE_MTU`, `BLE_MIN/MAX_INTERVAL`, `BLE_LATENCY` und `BLE_TIMEOUT` also nicht
+belegt; alle Zahlen unten stammen aus `include/config_example.h`.
+
+**Gleichzeitige Verbindungen:** die Firmware konfiguriert nichts, `platformio.ini:26-27` setzt
+keine Build-Flags. Es gelten die SDK-Defaults `CONFIG_BTDM_CTRL_BLE_MAX_CONN 3` und
+`CONFIG_BT_ACL_CONNECTIONS 4` (arduino-esp32 `tools/sdk/esp32/qout_qspi/include/sdkconfig.h:112`
+bzw. `:173`).
+
+**Ein zweiter Client kann sich nicht verbinden.** `onConnect` (`main.cpp:185-209`) startet das
+Werben nicht neu; der einzige Neustart steht im Trennzweig (`main.cpp:646`), und der Stack stoppt
+Legacy-Advertising beim Verbindungsaufbau selbst. **Der Zwei-Client-Verdacht ist damit fuer diese
+Codefassung ausgeraeumt.** Latent bleibt: `bleConnected` (`:93`), `pCharacteristic` (`:88`) und
+beide Ringpuffer (`:105/109`) sind global, und `onDisconnect` (`:211`) prueft nicht, welche
+Verbindung ging.
+
+**Der Trennungsgrund wird erzeugt und weggeworfen — wichtigster Einzelbefund.** Die Bibliothek
+ruft beide Ueberladungen (`BLEServer.cpp:208-209`), und `param->disconnect.reason` traegt den
+HCI-Code (Kommentar `BLEServer.cpp:203`). Die Firmware ueberschreibt nur die **grundlose**
+Variante (`main.cpp:210-213`). Auch der Umweg ueber Stack-Logs ist versperrt: die vorkompilierte
+SDK hat `CONFIG_LOG_MAXIMUM_LEVEL 1` (`sdkconfig.h:443`), Bluedroids Debug-Ausgaben sind
+wegkompiliert — ein hoeheres `CORE_DEBUG_LEVEL` holt sie nicht zurueck.
+
+**Verbindungsparameter: der Top-Verdacht ist nicht mehr eindeutig.** Gesetzt in `main.cpp:203` aus
+`config_example.h:48-51` = 2,5 ms / 12,5 ms / 0 / 300 ms. Zwei Auffaelligkeiten: (a) der Kommentar
+darueber (`main.cpp:190-196`) beschreibt voellig andere Werte (150 ms / 600 ms); (b) **2,5 ms liegt
+unter dem Spezifikationsminimum von 7,5 ms** (`connInterval` min 0x0006), und
+`BLEServer::updateConnParams` (`BLEServer.cpp:428-436`) klemmt nichts ab und prueft den
+Rueckgabewert nicht. Entweder wird die Anfrage komplett zurueckgewiesen — **dann trag das
+300-ms-Timeout gar nicht und ESP32-Verdacht 1 faellt weg** — oder sie greift und der Link hat nur
+~24 Verbindungsereignisse Reserve. Ein Handler fuer `ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT` existiert
+in `BLEDevice.cpp` nicht, das Ergebnis steht also nirgends.
+
+**MTU: `setMTU(20)` ist ungueltig.** `BLEDevice.cpp:549` dokumentiert den gueltigen Bereich als
+„larger than 23 and lower or equal to 517" (`ESP_GATT_DEF_BLE_MTU_SIZE` 23,
+`esp_gatt_common_api.h:29`). Der Aufruf aus `main.cpp:263` schlaegt damit vermutlich fehl und
+protokolliert `can't set local mtu value: 20` (`BLEDevice.cpp:557`); effektiv bleiben 23. Die
+15 Byte je Notify (`main.cpp:163`) sind ein Sicherheitsabstand ohne Not.
+**Die Logzeile `peerMTU=` ist wertlos:** der Eintrag wird mit fest 23 angelegt
+(`BLEServer.cpp:626`) und erst im `ESP_GATTS_MTU_EVT` aktualisiert (`BLEServer.cpp:158-159`), das
+**nach** `ESP_GATTS_CONNECT_EVT` kommt — `main.cpp:206-207` liest also immer den Platzhalter.
+`onMtuChanged` (`BLEServer.h:147`) wird im Bluedroid-Zweig nicht ueberschrieben; die Ausgabe in
+`main.cpp:176-179` steht in `#ifdef USE_NIM_BLE`, und das ist auskommentiert
+(`config_example.h:52`).
+
+**Keine Zeitueberwachung, die selbst trennt.** `BLEServer::disconnect()` (`BLEServer.cpp:438-440`)
+wird nirgends gerufen; weder Stille noch Schreibrate loesen etwas aus. Der Task-Watchdog steht auf
+`WDT_TIMEOUT 60` (`main.cpp:26`, gefuettert `:769-772`) — grosszuegiger als frueher angenommen,
+ein Reboot dadurch unwahrscheinlich. Puffer-Ueberlaeufe (`main.cpp:150`, `:243`) verwerfen still
+und lassen die Verbindung stehen.
+
+**App-Schreibweg: keine Ueberlappung moeglich, aber auch keine Warteschlange.** Alle Writes laufen
+ueber die einzige Stelle `writeChunk()` (`app.js:1955-1967`). Innerhalb eines Kommandos wartet
+`writeBytes()` je Chunk (`app.js:1993-1995`) plus 12 ms. Zwischen Kommandos greift der Mutex
+`state.sendBusy` (`app.js:2007-2009`, freigegeben `:2023-2024`); er ist **korrekt**, weil zwischen
+Bedingungspruefung und Setzen kein `await` liegt und eine `async`-Funktion bis zum ersten `await`
+synchron laeuft. **Folgerung: „GATT Error Unknown" kann nicht von ueberlappenden Writes kommen** —
+Chrome meldet eine echte Ueberlappung als „GATT operation already in progress".
+
+Bei belegtem Mutex gibt es zwei Verhalten: **verwerfen** (`skipIfBusy: true` — Polling
+`app.js:2065`, Joystick `app.js:872`) oder **warten** (Ruhe-Stopp `app.js:996`, Heartbeat
+`app.js:1019-1020`, Stopp `app.js:1053`, Not-Halt `app.js:1061-1062`). **Chrome setzt fuer
+`writeValueWithResponse` keine Zeitgrenze:** haengt ein Write, bleibt `sendBusy` dauerhaft `true`,
+und die wartenden Aufrufer stapeln sich in der 8-ms-Spin-Schleife, bis der RX-Watchdog nach 8 s
+greift (`app.js:2103`) und `onDisconnected()` das Flag zurueckstellt (`app.js:2227`). Acht Sekunden
+lang tut die App dabei nichts und meldet nichts. Randfall: `sendSunray` prueft die Verbindung nur
+beim Eintritt (`app.js:2006`), nicht nach dem Warten — raeumt `dropStaleLink` dazwischen auf, gibt
+es einen `TypeError` auf `state.characteristic` (null), gefangen in `app.js:1996`, sichtbar als
+irrefuehrendes `bleResyncFailed`.
+
+Last, nachgerechnet mit `protocol.js`: `AT+S` und `AT+C,0,0` sind je **1** Chunk, jedes `AT+M`
+**2**. Ruhe = 6 bestaetigte Writes/s, Fahrt-Spitze ~15/s.
+
+**Was das Diagnoseprotokoll nicht hergibt.** Vorhanden, aber unbrauchbar: der Zeitstempel ist
+**sekundengenau** (`app.js:748`) und nicht monoton — bei 500-ms-Takt und 12-ms-Chunkabstand
+nutzlos. Vorhanden und brauchbar: der letzte gesendete Befehl (`app.js:2016/2018`) und die
+Abschlusszeile mit Dauer, TX und RX (`app.js:2231`). Bekannt, aber nie ausgegeben:
+`state.pendingStateReplies` (`app.js:2066`), die Zeit seit letztem RX ausserhalb des
+Watchdog-Falls, verworfene Polls (Rueckgabe `false` aus `app.js:2007`), laufende TX-/RX-Zaehler,
+die Dauer eines einzelnen `writeChunk`. **Gar nicht gefuehrt:** die Zahl empfangener
+Notifications — `onNotification` (`app.js:1931`) zaehlt nichts, `bleRxLines` zaehlt zusammengesetzte
+Zeilen; sowie der Sichtbarkeitszustand (fuer App-Punkt 12). **Prinzipiell unerreichbar:** die
+ausgehandelte MTU (Chrome stellt sie nicht bereit; nur die groesste beobachtete Notification-Laenge
+waere eine Untergrenze) und der HCI-Trennungsgrund — `gattserverdisconnected` traegt keinen,
+`state.disconnectReasonKey` (`app.js:2216`) kennt nur selbst ausgeloeste Trennungen.
+**Reichweite des Exports:** 100 Zeilen (`app.js:50`) bei ~4 Zeilen/s im Ruhezustand = **rund 25
+Sekunden**.
+
+**Serielle Konsole.** `CONSOLE` = `Serial` = USB-UART0 (`config_example.h:128`), 115200 Bd
+(`main.cpp:600`); kein Konflikt mit dem Maeher-Link auf `Serial2`/GPIO16/17. `pio device monitor`
+im Verzeichnis `esp32_ble/esp32_ble_platformio` bringt ueber `platformio.ini:16-17` bereits
+`monitor_filters = esp32_exception_decoder, time` mit. **Keine Zeile traegt den Trennungsgrund**
+(siehe oben). Unterscheidbar ist aber die entscheidende Weiche: `rst:0x…` (ROM-Banner, `0x8`
+Task-Watchdog, `0xc` Panic) bzw. die Versionszeile `main.cpp:603` und ein Ruecksprung der
+`millis()`-Zahl im 2-s-`ping` (`main.cpp:745-749`) beweisen einen **Reboot**; laeuft `millis()`
+monoton durch und kommt trotzdem `---------BLE client disconnected---------` (`main.cpp:212`), war
+es die **Funkstrecke** — dann liegt der HCI-Grund nur auf der Android-Seite
+(`chrome://bluetooth-internals`, `adb logcat -v time bt_stack:V BtGatt:V '*:S'`).
+
 ## Offene Baustelle: BLE bricht nach Sekunden ab
 
 Noch **nicht** behoben — nur analysiert. Kandidaten, grob nach Wahrscheinlichkeit:
@@ -2636,6 +2758,22 @@ gemeldete Wortlaut **`GATT Error Unknown`**.
   Dateien vom Installationszeitpunkt der alten Version.
 
 ## Änderungsprotokoll
+
+- 2026-10-05: **v78 — CaSSAndRA-Export: Ringbereinigung gegen `edge_too_short`** (Auslöser:
+  doppelt gesetzter Schlusspunkt). Details im Abschnitt „CaSSAndRA-Exportformat“. Zuerst auf
+  einem 22 Commits alten Stand (v54) gebaut, dann von Hand auf v77 übertragen. Ein bestehender
+  Test exportierte eine Karte ohne Perimeter direkt über den Builder — der liefert dafür jetzt
+  `null`, die Testkarte hat einen Perimeter bekommen. Neuer Block in `tests/app-core-test.js`
+  (Testkarte mit doppeltem Schlusspunkt + 1-cm-Punkt, 2-cm-Kette, Zittern, Import-Rundlauf mit
+  doppeltem Schlusspunkt, Zerfall, A-B-A-B), ein ui-Fall (252); gegen acht Sabotagen geprüft,
+  darunter der unveränderte v77-Export. **Offen, nicht angefasst:** das Sunray-App-Format
+  (`mapToSunrayApp()`) bereinigt nicht — eine doppelte Ecke im Modell ginge dort unverändert raus.
+  Die MCU schneidet Meter beim Umrechnen in ganze Zentimeter ab (`map.cpp:63`, `short`); eine
+  3-cm-Diagonale, die beide Achsen knapp am Nullpunkt kreuzt, könnte dort auf 1,4 cm fallen —
+  theoretischer Randfall, die Firmware-Bereinigung rechnet bereits in ganzen Zentimetern.
+  **Nachgetragen:** der Abschnitt „BLE-Diagnosebefunde (2026-09-10)“ stammte aus der alten
+  Arbeitskopie und ist übernommen, deren Pfadkorrektur nicht — sie zeigte auf ein Verzeichnis,
+  das es nicht gibt; gültig ist `/home/penis/projects/MeinSunray`.
 
 - 2026-09-26: **v77 — Streuungsanzeige in zwei Zeilen, 30-s-Wert bis zum vollen Fenster
   „vorläufig“.** Gemeldet: „max 30 s“ stand sofort da, und die Fixzahl hinter der Klammer wirkte

@@ -10,6 +10,7 @@ const { t } = loadApp({
     'mapToSunrayApp', 'sunrayAppPoint', 'skippedAreas', 'mapExportFile', 'MAP_EXPORT_FORMATS',
     'isSunrayAppFile', 'sunrayAppToMap', 'sunrayAppPointToModel', 'sunrayAppMapLabel',
     'sunrayDiscardedWaypoints', 'geoRingClosed',
+    'cassandraCollapsedPolygons',
     'closePerimeter',
     'validateActiveMap'],
 });
@@ -390,14 +391,17 @@ assert.ok(geoWithWaypoints.features.some((f)=>f.properties.role==='waypoints' &&
   assert.strictEqual('idx' in doc.features[0], false);
 
   // Dockpfad und Suchdraht werden auch leer geschrieben — das Vorbild legt sie unbedingt an.
-  const empty = t.mapToCassandraGeoJson(t.makeMap('Leer'), reference);
+  const leer = t.makeMap('Leer');
+  leer.perimeter = [{x:0,y:0},{x:5,y:0},{x:5,y:5}];
+  const empty = t.mapToCassandraGeoJson(leer, reference);
   assert.strictEqual(empty.features.map((f) => f.properties.name).join('|'),
     'perimeter|dockpoints|search wire|mapmaker');
   assert.strictEqual(empty.features[1].geometry.coordinates.length, 0);
   assert.strictEqual(empty.features[2].geometry.coordinates.length, 0);
 
-  // Ohne Bezugspunkt entsteht keine Datei.
+  // Ohne Bezugspunkt entsteht keine Datei, ohne brauchbaren Perimeter ebenso.
   assert.strictEqual(t.mapToCassandraGeoJson(m, null), null);
+  assert.strictEqual(t.mapToCassandraGeoJson(t.makeMap('Ohne Perimeter'), reference), null);
   assert.strictEqual(t.mapToCassandraGeoJson(m, { lat: 95, lon: 8 }), null);
 
   // Ringe sind geschlossen (mapdata.py:614-630 haengt den ersten Punkt an), offene Pfade nicht.
@@ -586,6 +590,98 @@ assert.ok(geoWithWaypoints.features.some((f)=>f.properties.role==='waypoints' &&
   const doc = t.mapToCassandraGeoJson(m, t.state.cassandraReference);
   assert.strictEqual(doc.features.filter((f) => f.properties.name === 'exclusion').length, 1);
   t.state.activeMap = null;
+  t.state.cassandraReference = null;
+}
+
+// --- CaSSAndRA: Bereinigung der Ringe -------------------------------------
+// Die Maeher-Firmware verwirft Kanten unter 2 cm („edge_too_short“, MeinSunray
+// `hard_safety_geometry.cpp:9`); Ausloeser war ein doppelt gesetzter Schlusspunkt. Gemessen wird
+// wie oben gegen die zeilengetreue Portierung von `coords_abs_to_rel` — also die Kante, die beim
+// Maeher ankommt.
+{
+  const reference = { lat: 52.26742967, lon: 8.60921633 };
+  const lonM = 111111 * Math.cos((reference.lat * Math.PI) / 180);
+  const edgeM = (a, b) => Math.hypot((b[0] - a[0]) * lonM, (b[1] - a[1]) * 111111);
+  const kanten = (ring) => ring.slice(1).map((p, i) => edgeM(ring[i], p));
+  const ringOf = (doc, name, nr = 0) =>
+    doc.features.filter((f) => f.properties.name === name)[nr].geometry.coordinates[0];
+  const pruefeRing = (name, ring, ecken) => {
+    const start = ring[0].join(',');
+    assert.strictEqual(ring.length, ecken + 1, `${name}: ${ecken} Ecken plus genau ein Schlusspunkt`);
+    assert.strictEqual(ring[ring.length - 1].join(','), start, `${name}: der Schlusspunkt ist der Startpunkt`);
+    assert.strictEqual(ring.filter((c) => c.join(',') === start).length, 2,
+      `${name}: der Startpunkt steht genau zweimal im Ring — als Anfang und als einziger Schluss`);
+    const kuerzeste = Math.min(...kanten(ring));
+    assert.ok(kuerzeste >= 0.03, `${name}: kuerzeste Kante ${(kuerzeste * 100).toFixed(2)} cm`);
+  };
+
+  // Testkarte: doppelter Schlusspunkt (letzter = erster) und ein Punkt 1 cm neben dem Vorgaenger.
+  const m = t.makeMap('Bereinigung');
+  m.perimeter = [{x:0,y:0},{x:10,y:0},{x:10.01,y:0},{x:10,y:10},{x:0,y:10},{x:0,y:0}];
+  m.exclusions.push({ id:'e1', name:'Ausschluss 1', closed:true,
+    points:[{x:2,y:2},{x:4,y:2},{x:4,y:4},{x:2,y:4.01},{x:2,y:4},{x:2,y:2}] });
+  t.state.cassandraReference = reference;
+  assert.strictEqual(t.cassandraExportBlockKey(m), null, 'die Karte bleibt exportierbar');
+  const doc = t.mapToCassandraGeoJson(m, reference);
+  pruefeRing('perimeter', ringOf(doc, 'perimeter'), 4);
+  pruefeRing('exclusion', ringOf(doc, 'exclusion'), 4);
+  // Der 1-cm-Punkt ist weg, sein Vorgaenger (der zuerst gesetzte) bleibt.
+  const peri = ringOf(doc, 'perimeter').map((c) => edgeM([reference.lon, reference.lat], c));
+  assert.strictEqual(peri.map((d) => d.toFixed(2)).join(' | '), '0.00 | 10.00 | 14.14 | 10.00 | 0.00');
+  // Der Ring bleibt fuer unseren eigenen Import geschlossen (bitgleicher Schlusspunkt).
+  assert.strictEqual(t.geoRingClosed(doc.features[0].geometry), true);
+  // Nur der Export wird bereinigt, das Modell bleibt.
+  assert.strictEqual(m.perimeter.length, 6);
+  // Ohne Bereinigung waeren genau diese Kanten entstanden: 1 cm und 0 cm (doppelter Schluss).
+  const roh = m.perimeter.map((p) => [reference.lon + p.x / lonM, reference.lat + p.y / 111111]);
+  assert.ok(Math.min(...kanten([...roh, roh[0]])) < 0.02, 'die Testkarte enthaelt die schaedlichen Kanten wirklich');
+
+  // Eine Kette von 2-cm-Schritten: gemessen wird gegen den zuletzt BEHALTENEN Punkt.
+  const kette = t.makeMap('Kette');
+  kette.perimeter = [{x:0,y:0}, ...Array.from({ length: 10 }, (_, i) => ({ x: 0.02 * (i + 1), y: 0 })),
+    {x:5,y:0},{x:5,y:5},{x:0,y:5}];
+  const ketteRing = ringOf(t.mapToCassandraGeoJson(kette, reference), 'perimeter');
+  assert.ok(Math.min(...kanten(ketteRing)) >= 0.03,
+    `Kette: kuerzeste Kante ${(Math.min(...kanten(ketteRing)) * 100).toFixed(2)} cm`);
+  // Zittern auf der Stelle: der dritte Punkt liegt 4,3 cm neben seinem Vorgaenger im Modell, aber
+  // nur 1,5 cm neben dem zuletzt behaltenen — gegen den Vorgaenger gemessen bliebe er stehen.
+  // (Abstaende mit Luft zur Schwelle: die Rundung auf 7 Stellen verschiebt sie um bis zu 1,6 cm.)
+  const zittern = t.makeMap('Zittern');
+  zittern.perimeter = [{x:0,y:0},{x:0.028,y:0},{x:-0.015,y:0},{x:5,y:0},{x:5,y:5},{x:0,y:5}];
+  const zitterRing = ringOf(t.mapToCassandraGeoJson(zittern, reference), 'perimeter');
+  assert.ok(Math.min(...kanten(zitterRing)) >= 0.03,
+    `Zittern: kuerzeste Kante ${(Math.min(...kanten(zitterRing)) * 100).toFixed(2)} cm`);
+
+  // Zusammenspiel mit dem CaSSAndRA-Import (a4c8ca0): der schneidet nur EINEN bitgleichen
+  // Schlusspunkt ab. Bringt eine Datei ihn doppelt mit, bleibt der zweite als Ecke im Modell
+  // stehen — genau der Ausloeser. Der Export darf ihn trotzdem nicht wieder doppelt schreiben.
+  const deg = ([x, y]) => [Number((reference.lon + x / lonM).toFixed(7)), Number((reference.lat + y / 111111).toFixed(7))];
+  const fremd = { type: 'FeatureCollection', features: [
+    { type: 'Feature', properties: { name: 'perimeter' },
+      geometry: { type: 'Polygon', coordinates: [[[0,0],[8,0],[8,8],[0,8],[0,0],[0,0]].map(deg)] } },
+  ] };
+  assert.strictEqual(t.isCassandraGeoJson(fremd), true);
+  const importiert = t.geoJsonToMap(fremd);
+  assert.strictEqual(importiert.perimeter.length, 5, 'der Import laesst den zweiten Schlusspunkt als Ecke stehen');
+  assert.strictEqual(importiert.perimeterClosed, true);
+  pruefeRing('Import-Rundlauf', ringOf(t.mapToCassandraGeoJson(importiert, reference), 'perimeter'), 4);
+
+  // Zerfaellt ein Polygon durch die Bereinigung, gibt es eine Fehlermeldung statt eines Exports.
+  const zerfallen = t.makeMap('Zerfallen');
+  zerfallen.perimeter = [{x:0,y:0},{x:5,y:0},{x:5,y:5}];
+  zerfallen.exclusions.push({ id:'k', name:'Ausschluss 1', closed:true,
+    points:[{x:1,y:1},{x:1.01,y:1},{x:1.01,y:1.01},{x:1,y:1}] });
+  assert.strictEqual(t.cassandraExportBlockKey(zerfallen), 'cassandraEdgesTooShort');
+  assert.strictEqual(t.mapToCassandraGeoJson(zerfallen, reference), null, 'keine Datei, der die Flaeche still fehlt');
+  assert.strictEqual(t.cassandraCollapsedPolygons(zerfallen, reference).join(' | '), 'Ausschluss 1');
+  // Eine unfertige Flaeche (unter 3 Punkten im Modell) bleibt dagegen beim Auslassen mit Meldung.
+  zerfallen.exclusions[0].points = [{x:1,y:1},{x:2,y:1}];
+  assert.strictEqual(t.cassandraExportBlockKey(zerfallen), null);
+  // Perimeter: vier Ecken, aber nur zwei verschiedene Punkte (A, B, A, B).
+  zerfallen.perimeter = [{x:0,y:0},{x:5,y:0},{x:0,y:0.001},{x:5,y:0.001}];
+  assert.strictEqual(t.cassandraExportBlockKey(zerfallen), 'cassandraEdgesTooShort');
+  assert.strictEqual(t.cassandraCollapsedPolygons(zerfallen, reference).join(' | '), 'Perimeter');
+  assert.strictEqual(t.mapToCassandraGeoJson(zerfallen, reference), null);
   t.state.cassandraReference = null;
 }
 

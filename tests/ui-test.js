@@ -4678,6 +4678,31 @@ test('Ein Perimeter unter drei Punkten sperrt denselben Weg, mit dem Wortlaut de
   assert.strictEqual(elements.get('cassandraMissingHint').hidden, true);
 });
 
+test('Ein Polygon, das die 3-cm-Bereinigung zerfallen laesst, sperrt den Export und wird benannt', () => {
+  const { t, elements } = setup();
+  t.state.cassandraReference = { lat: 52.26742967, lon: 8.60921633 };
+  t.state.activeMap.perimeter = [{x:0,y:0},{x:10,y:0},{x:10,y:10},{x:0,y:10},{x:0,y:0}];
+  t.state.activeMap.exclusions = [
+    { id:'a', name:'Ausschluss 1', points:[{x:2,y:2},{x:4,y:2},{x:4,y:4}] },
+    { id:'b', name:'Ausschluss 2', points:[{x:6,y:6},{x:6.01,y:6},{x:6,y:6.01}] },
+  ];
+  t.refreshExportButtons();
+  assert.strictEqual(elements.get('exportCassandraBtn').disabled, true);
+  assert.strictEqual(elements.get('shareCassandraBtn').disabled, true);
+  const hint = elements.get('cassandraMissingHint');
+  assert.strictEqual(hint.hidden, false);
+  assert.ok(hint.textContent.includes('Ausschluss 2') && hint.textContent.includes('3 cm'),
+    `der Hinweis nennt die Flaeche und den Grund: ${hint.textContent}`);
+  assert.ok(!hint.textContent.includes('Ausschluss 1'), 'die intakte Flaeche wird nicht genannt');
+  assert.ok(!hint.textContent.includes('{names}'), 'kein unersetzter Platzhalter');
+  assert.strictEqual(t.mapExportFile('cassandra'), null, 'und es entsteht keine Datei');
+  // Behoben: der doppelte Schlusspunkt des Perimeters allein sperrt nicht, er wird bereinigt.
+  t.state.activeMap.exclusions.pop();
+  t.refreshExportButtons();
+  assert.strictEqual(elements.get('exportCassandraBtn').disabled, false);
+  assert.ok(t.mapExportFile('cassandra'));
+});
+
 test('Es gibt genau einen Sperrmechanismus, nicht zwei nebeneinander', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
   // Knopfzustand und Dateierzeugung fragen dieselbe Funktion.
